@@ -11,12 +11,13 @@ composeBom = "2026.05.01"
 
 # Backend & Architecture Versions
 room = "2.6.1"
-hilt = "2.51.1"
+hilt = "2.59.2"
 ktor = "2.3.12"
-ksp = "2.3.9" 
+ksp = "2.3.9"
 sqlcipher = "4.5.4"
 securityCrypto = "1.1.0-alpha06"
 workManager = "2.9.0"
+room3CommonJvm = "3.0.0-alpha06"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -55,6 +56,7 @@ ktor-serialization-kotlinx-json = { module = "io.ktor:ktor-serialization-kotlinx
 
 # WorkManager (Background Tasks)
 work-runtime-ktx = { module = "androidx.work:work-runtime-ktx", version.ref = "workManager" }
+androidx-room3-common-jvm = { group = "androidx.room3", name = "room3-common-jvm", version.ref = "room3CommonJvm" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
