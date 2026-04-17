@@ -46,16 +46,11 @@ interface GraphDao {
 
     // --- UPDATES ---
     @Query("UPDATE nodes SET status = :status, updated_at = :timestamp WHERE id = :nodeId")
-    suspend fun updateNodeStatus(nodeId: Int, status: String, timestamp: Long = System.currentTimeMillis())
+    suspend fun updateNodeStatus(nodeId: Int, status: String, timestamp: Long = System.currentTimeMillis()): Int
 
     @Query("UPDATE nodes SET content = :newContent, updated_at = :timestamp WHERE id = :nodeId")
-    suspend fun updateNodeContent(nodeId: Int, newContent: String, timestamp: Long = System.currentTimeMillis())
+    suspend fun updateNodeContent(nodeId: Int, newContent: String, timestamp: Long = System.currentTimeMillis()): Int
 
-    // --- TRANSACTIONS (For the LLM Tool Executor) ---
-    // @Transaction ensures that if the LLM hallucinates halfway through,
-    // the entire block rolls back and the database isn't corrupted.
-    @Transaction
-    suspend fun executeToolTransaction(block: suspend () -> Unit) {
-        block()
-    }
+
+
 }

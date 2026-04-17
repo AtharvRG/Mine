@@ -17,10 +17,10 @@ interface QueueDao {
     suspend fun getPendingMemories(limit: Int = 10): List<MemoryQueueEntity>
 
     @Query("UPDATE memory_queue SET status = :status WHERE id = :id")
-    suspend fun updateMemoryStatus(id: Int, status: String)
+    suspend fun updateMemoryStatus(id: Int, status: String): Int
 
     @Query("DELETE FROM memory_queue WHERE id = :id")
-    suspend fun deleteMemory(id: Int)
+    suspend fun deleteMemory(id: Int): Int
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertApiTask(task: ApiQueueEntity): Long
