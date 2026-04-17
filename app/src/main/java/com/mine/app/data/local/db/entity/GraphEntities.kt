@@ -84,8 +84,7 @@ data class EdgeEntity(
 
 // FTS5 Virtual Table for lightning-fast semantic search
 @Entity(tableName = "nodes_fts")
-@Fts4(contentEntity = NodeEntity::class) // 1. Fixed parameter name here
+@Fts4(contentEntity = NodeEntity::class)
 data class NodeFtsEntity(
-    @PrimaryKey @ColumnInfo(name = "rowid") val rowid: Int, // 2. Added required rowid primary key
     @ColumnInfo(name = "content") val content: String
 )
