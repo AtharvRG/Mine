@@ -1,6 +1,7 @@
 package com.mine.app.di
 
 import com.mine.app.data.remote.NimApi
+import com.mine.app.data.remote.GroqApi
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -12,27 +13,3 @@ import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
 import javax.inject.Singleton
 
-@Module
-@InstallIn(SingletonComponent::class)
-object NetworkModule {
-
-    @Provides
-    @Singleton
-    fun provideHttpClient(): HttpClient {
-        return HttpClient(OkHttp) {
-            install(ContentNegotiation) {
-                json(Json {
-                    ignoreUnknownKeys = true // Prevents crashes if API adds new fields
-                    isLenient = true
-                    encodeDefaults = true
-                })
-            }
-        }
-    }
-
-    @Provides
-    @Singleton
-    fun provideNimApi(client: HttpClient): NimApi {
-        return NimApi(client)
-    }
-}

@@ -33,7 +33,9 @@ object DatabaseModule {
             "mine_graph.db"
         )
             .openHelperFactory(supportFactory)
+            .fallbackToDestructiveMigration() // If we ever screw up a migration, it wipes and restarts instead of crashing permanently
             .build()
+
     }
 
     @Provides
