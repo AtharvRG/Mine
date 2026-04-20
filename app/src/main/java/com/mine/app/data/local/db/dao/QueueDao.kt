@@ -30,5 +30,5 @@ interface QueueDao {
     suspend fun getPendingApiTasks(limit: Int = 5): List<ApiQueueEntity>
 
     @Query("DELETE FROM api_queue WHERE id = :id")
-    suspend fun deleteApiTask(id: Int)
+    suspend fun deleteApiTask(id: Int): Int
 }
