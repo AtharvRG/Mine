@@ -1,5 +1,6 @@
 package com.mine.app.ai
 
+import android.util.Log
 import androidx.room.withTransaction
 import com.mine.app.data.local.db.MineDatabase
 import com.mine.app.data.local.db.dao.GraphDao
@@ -24,9 +25,11 @@ class ToolExecutor @Inject constructor(
         return try {
             val args = json.decodeFromString<UpdateMemoryGraphArgs>(argumentsJson)
 
-            if (args.discardTranscript) {
+            // Only discard if the AI actually didn't extract anything useful
+            if (args.discardTranscript && args.nodesToCreate.isEmpty() && args.nodesToUpdate.isEmpty() && args.contradictions.isEmpty()) {
                 return true // Successfully did nothing!
             }
+
 
             // Execute everything inside a single SQLite Transaction
             database.withTransaction {
@@ -96,8 +99,9 @@ class ToolExecutor @Inject constructor(
             }
             true // Transaction committed successfully
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e("ToolExecutor", "CRITICAL DB ERROR: ${e.message}", e)
             false // Transaction rolled back
         }
+
     }
 }

@@ -2,6 +2,7 @@ package com.mine.app.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.mine.app.ai.CuratorAgent
 import com.mine.app.ai.ToolExecutor
 import com.mine.app.data.local.db.dao.GraphDao
 import com.mine.app.data.local.db.entity.BranchEntity
@@ -22,6 +23,7 @@ class DebugViewModel @Inject constructor(
     private val toolExecutor: ToolExecutor,
     private val graphDao: GraphDao,
     private val nimApi: NimApi,
+    private val curatorAgent: CuratorAgent,
     networkMonitor: NetworkMonitor // Injected to watch the internet
 ) : ViewModel() {
 
@@ -92,6 +94,35 @@ class DebugViewModel @Inject constructor(
             }
         }
     }
+
+
+    fun runFullCuratorLoop() {
+        viewModelScope.launch(Dispatchers.IO) {
+            if (!isOnline.value) {
+                appendLog("❌ Offline! Cannot run Curator.")
+                return@launch
+            }
+
+            appendLog("🧠 Starting Full Curator Loop...")
+
+            // The ultimate test transcript
+            val fakeTranscript = "Hey man, are we still on for beers tonight? Actually I can't, I'm doing Keto now, no carbs. Plus I have that massive Q3 report due tomorrow."
+            appendLog("🎙️ Transcript: $fakeTranscript")
+
+            try {
+                // TODO: Put your real NIM API key here
+                val apiKey = "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"
+
+                val result = curatorAgent.processTranscript(apiKey, fakeTranscript)
+                appendLog("⚙️ Curator Result: $result")
+
+                fetchAndDisplayDatabase()
+            } catch (e: Exception) {
+                appendLog("❌ Curator Error: ${e.message}")
+            }
+        }
+    }
+
 
     fun fetchAndDisplayDatabase() {
         viewModelScope.launch(Dispatchers.IO) {

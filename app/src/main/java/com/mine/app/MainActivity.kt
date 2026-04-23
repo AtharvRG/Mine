@@ -98,6 +98,18 @@ fun DebugScreen(viewModel: DebugViewModel) {
 
             Spacer(modifier = Modifier.height(8.dp))
 
+            // --- FULL CURATOR LOOP BUTTON ---
+            Button(
+                onClick = { viewModel.runFullCuratorLoop() },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE91E63)) // Pink button!
+            ) {
+                Text("Run Full AI -> DB Loop")
+            }
+
+
+            Spacer(modifier = Modifier.height(8.dp))
+
             Button(
                 onClick = { viewModel.fetchAndDisplayDatabase() },
                 modifier = Modifier.fillMaxWidth(),
