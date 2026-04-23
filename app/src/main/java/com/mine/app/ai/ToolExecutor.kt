@@ -25,31 +25,36 @@ class ToolExecutor @Inject constructor(
         return try {
             val args = json.decodeFromString<UpdateMemoryGraphArgs>(argumentsJson)
 
-            // Only discard if the AI actually didn't extract anything useful
             if (args.discardTranscript && args.nodesToCreate.isEmpty() && args.nodesToUpdate.isEmpty() && args.contradictions.isEmpty()) {
-                return true // Successfully did nothing!
+                Log.d("ToolExecutor", "Discarding transcript. No action taken.")
+                return true
             }
 
+            Log.d("ToolExecutor", "Starting SQLite Transaction...")
 
             // Execute everything inside a single SQLite Transaction
             database.withTransaction {
 
                 // 1. Ensure a default group exists for dynamic branches
                 val defaultGroupId = graphDao.insertGroup(GroupEntity(name = "Auto-Generated", color = "#9E9E9E")).toInt()
-                val safeGroupId = if (defaultGroupId == -1) 1 else defaultGroupId // -1 means it already existed
+                val safeGroupId = if (defaultGroupId == -1) 1 else defaultGroupId
+
+                Log.d("ToolExecutor", "Using Group ID: $safeGroupId")
 
                 // 2. Create New Nodes
                 for (node in args.nodesToCreate) {
-                    // Ensure branch exists
+                    Log.d("ToolExecutor", "Attempting to insert node: ${node.content}")
+
                     var branch = graphDao.getBranchByPath(node.branch)
                     if (branch == null) {
+                        Log.d("ToolExecutor", "Branch '${node.branch}' not found. Creating it...")
                         val newBranchId = graphDao.insertBranch(
                             BranchEntity(groupId = safeGroupId, name = node.branch, path = node.branch)
                         ).toInt()
                         branch = BranchEntity(id = newBranchId, groupId = safeGroupId, name = node.branch, path = node.branch)
                     }
 
-                    graphDao.insertNode(
+                    val insertedId = graphDao.insertNode(
                         NodeEntity(
                             branchId = branch.id,
                             content = node.content,
@@ -57,6 +62,7 @@ class ToolExecutor @Inject constructor(
                             source = "ambient"
                         )
                     )
+                    Log.d("ToolExecutor", "Successfully inserted Node ID: $insertedId")
                 }
 
                 // 3. Update Existing Nodes

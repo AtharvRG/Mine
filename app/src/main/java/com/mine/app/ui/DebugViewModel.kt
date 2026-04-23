@@ -8,10 +8,14 @@ import com.mine.app.data.local.db.dao.GraphDao
 import com.mine.app.data.local.db.entity.BranchEntity
 import com.mine.app.data.local.db.entity.NodeEntity
 import com.mine.app.data.remote.NimApi
+import com.mine.app.data.remote.RivaClientManager
 import com.mine.app.data.remote.dto.NimChatRequest
 import com.mine.app.data.remote.dto.NimMessage
+import com.mine.app.util.AudioRecorder
 import com.mine.app.util.NetworkMonitor
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
+import android.content.Context
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -24,11 +28,16 @@ class DebugViewModel @Inject constructor(
     private val graphDao: GraphDao,
     private val nimApi: NimApi,
     private val curatorAgent: CuratorAgent,
+    private val rivaClientManager: RivaClientManager,
+    @ApplicationContext private val context: Context,
     networkMonitor: NetworkMonitor // Injected to watch the internet
 ) : ViewModel() {
 
     val isOnline = networkMonitor.isOnline
-
+    private val audioRecorder = AudioRecorder(context)
+    private val audioStream = java.io.ByteArrayOutputStream()
+    private var fullTranscript = ""
+    private var isRecording = false
     private val _logText = MutableStateFlow("System Ready. Waiting for input...\n")
     val logText: StateFlow<String> = _logText
 
@@ -74,7 +83,7 @@ class DebugViewModel @Inject constructor(
 
             try {
                 // TODO: Put your real NIM API key here for testing
-                val apiKey = "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"
+                val apiKey = "YOUR_API_KEY"
 
                 val request = NimChatRequest(
                     model = "openai/gpt-oss-20b",
@@ -111,7 +120,7 @@ class DebugViewModel @Inject constructor(
 
             try {
                 // TODO: Put your real NIM API key here
-                val apiKey = "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"
+                val apiKey = "YOUR_API_KEY"
 
                 val result = curatorAgent.processTranscript(apiKey, fakeTranscript)
                 appendLog("⚙️ Curator Result: $result")
@@ -123,11 +132,67 @@ class DebugViewModel @Inject constructor(
         }
     }
 
+    fun startRecording() {
+        viewModelScope.launch(Dispatchers.IO) {
+            appendLog("🎤 Recording started...")
+            audioStream.reset()
+            audioRecorder.startRecording()
+
+            val buffer = ByteArray(2048)
+            while (audioRecorder.isRecording) {
+                val read = audioRecorder.readAudioChunk(buffer)
+                if (read > 0) {
+                    audioStream.write(buffer, 0, read)
+                }
+                // CRITICAL: This prevents the AudioFlinger crash!
+                kotlinx.coroutines.delay(10)
+            }
+        }
+    }
+
+    fun stopRecordingAndProcess() {
+        viewModelScope.launch(Dispatchers.IO) {
+            appendLog("🛑 Stopping recording...")
+            audioRecorder.stopRecording()
+
+            val fullAudio = audioStream.toByteArray()
+            if (fullAudio.isEmpty()) {
+                appendLog("❌ Audio file was empty!")
+                return@launch
+            }
+
+            appendLog("🌐 Sending ${fullAudio.size} bytes to NVIDIA Riva ASR...")
+
+            try {
+                // TODO: Put your real NIM API key here
+                val apiKey = "YOUR_API_KEY"
+
+                val transcript = rivaClientManager.transcribeAudio(apiKey, fullAudio)
+                appendLog("📝 Riva Transcript: $transcript")
+
+                if (transcript.isNotBlank()) {
+                    appendLog("🧠 Passing transcript to Curator...")
+                    val result = curatorAgent.processTranscript(apiKey, transcript)
+                    appendLog("⚙️ Curator Result: $result")
+                    fetchAndDisplayDatabase()
+                } else {
+                    appendLog("❌ NVIDIA returned an empty transcript.")
+                }
+
+            } catch (e: Exception) {
+                appendLog("❌ Riva Error: ${e.message}")
+            }
+        }
+    }
+
 
     fun fetchAndDisplayDatabase() {
         viewModelScope.launch(Dispatchers.IO) {
             appendLog("\n--- CURRENT DATABASE STATE ---")
-            val nodes = graphDao.searchNodes("", limit = 20) // Empty string matches all in FTS4
+
+            // Use getAllNodes instead of searchNodes for the debug view
+            val nodes = graphDao.getAllNodes(limit = 20)
+
             if (nodes.isEmpty()) {
                 appendLog("Database is empty.")
             } else {

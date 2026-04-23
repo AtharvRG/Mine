@@ -1,10 +1,10 @@
 plugins {
     alias(libs.plugins.android.application)
-    // REMOVED kotlin.android from here
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.protobuf)
 }
 
 android {
@@ -12,6 +12,17 @@ android {
     compileSdk {
         version = release(36) {
             minorApiLevel = 1
+        }
+    }
+    sourceSets {
+        getByName("main") {
+            java {
+                srcDir("build/generated/source/proto/debug/java")
+                srcDir("build/generated/source/proto/debug/grpc")
+                // Also add the path from your specific build logs just in case:
+                srcDir("build/generated/java/generateDebugProto/java")
+                srcDir("build/generated/java/generateDebugProto/grpc")
+            }
         }
     }
 
@@ -91,8 +102,40 @@ dependencies {
     androidTestImplementation(libs.androidx.junit)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.tooling)
+
+    // gRPC
+    implementation(libs.grpc.okhttp)
+    implementation(libs.grpc.protobuf.lite)
+    implementation(libs.grpc.stub)
+    compileOnly(libs.javax.annotation) // compileOnly is better here to save APK size
 }
 
 ksp {
     arg("room.generateKotlin", "true")
 }
+
+protobuf {
+    protoc {
+        artifact = "com.google.protobuf:protoc:3.25.3"
+    }
+    plugins {
+        create("grpc") {
+            artifact = "io.grpc:protoc-gen-grpc-java:1.64.0"
+        }
+    }
+    generateProtoTasks {
+        all().forEach { task ->
+            task.builtins {
+                create("java") {
+                    option("lite")
+                }
+            }
+            task.plugins {
+                create("grpc") {
+                    option("lite")
+                }
+            }
+        }
+    }
+}
+

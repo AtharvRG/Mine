@@ -34,6 +34,10 @@ interface GraphDao {
     @Query("SELECT * FROM nodes WHERE id = :nodeId LIMIT 1")
     suspend fun getNodeById(nodeId: Int): NodeEntity?
 
+    @Query("SELECT * FROM nodes ORDER BY created_at DESC LIMIT :limit")
+    suspend fun getAllNodes(limit: Int = 50): List<NodeEntity>
+
+
     // The Magic Search: Joins the FTS4 table with the real nodes table
     @Query("""
         SELECT nodes.* FROM nodes 
