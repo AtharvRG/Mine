@@ -15,7 +15,6 @@ class ToolExecutor @Inject constructor(
     private val database: MineDatabase,
     private val graphDao: GraphDao
 ) {
-    // Lenient JSON parser in case the LLM makes slight formatting mistakes
     private val json = Json {
         ignoreUnknownKeys = true
         isLenient = true
@@ -32,16 +31,12 @@ class ToolExecutor @Inject constructor(
 
             Log.d("ToolExecutor", "Starting SQLite Transaction...")
 
-            // Execute everything inside a single SQLite Transaction
             database.withTransaction {
-
-                // 1. Ensure a default group exists for dynamic branches
                 val defaultGroupId = graphDao.insertGroup(GroupEntity(name = "Auto-Generated", color = "#9E9E9E")).toInt()
                 val safeGroupId = if (defaultGroupId == -1) 1 else defaultGroupId
 
                 Log.d("ToolExecutor", "Using Group ID: $safeGroupId")
 
-                // 2. Create New Nodes
                 for (node in args.nodesToCreate) {
                     Log.d("ToolExecutor", "Attempting to insert node: ${node.content}")
 
@@ -65,7 +60,6 @@ class ToolExecutor @Inject constructor(
                     Log.d("ToolExecutor", "Successfully inserted Node ID: $insertedId")
                 }
 
-                // 3. Update Existing Nodes
                 for (update in args.nodesToUpdate) {
                     val existingNode = graphDao.getNodeById(update.nodeId)
                     if (existingNode != null) {
@@ -78,11 +72,9 @@ class ToolExecutor @Inject constructor(
                     }
                 }
 
-                // 4. Handle Contradictions (Create new node + draw 'contradicts' edge)
                 for (contra in args.contradictions) {
                     val targetNode = graphDao.getNodeById(contra.targetNodeId)
                     if (targetNode != null) {
-                        // Create the new state node
                         val newNodeId = graphDao.insertNode(
                             NodeEntity(
                                 branchId = targetNode.branchId,
@@ -92,7 +84,6 @@ class ToolExecutor @Inject constructor(
                             )
                         ).toInt()
 
-                        // Draw the edge connecting them
                         graphDao.insertEdge(
                             EdgeEntity(
                                 sourceNodeId = newNodeId,
@@ -103,11 +94,12 @@ class ToolExecutor @Inject constructor(
                     }
                 }
             }
-            true // Transaction committed successfully
+
+            Log.d("ToolExecutor", "Transaction Complete!")
+            true
         } catch (e: Exception) {
             Log.e("ToolExecutor", "CRITICAL DB ERROR: ${e.message}", e)
-            false // Transaction rolled back
+            false
         }
-
     }
 }

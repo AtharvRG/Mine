@@ -15,7 +15,7 @@ data class MemoryQueueEntity(
     @ColumnInfo(name = "audio_blob", typeAffinity = ColumnInfo.BLOB) val audioBlob: ByteArray? = null,
     @ColumnInfo(name = "speaker_label") val speakerLabel: String? = null,
     @ColumnInfo(name = "source", defaultValue = "'ambient'") val source: String = "ambient",
-    @ColumnInfo(name = "status", defaultValue = "'pending'") val status: String = "pending", // pending, processing, failed
+    @ColumnInfo(name = "status", defaultValue = "'pending'") val status: String = "pending",
     @ColumnInfo(name = "created_at") val createdAt: Long = System.currentTimeMillis()
 )
 
@@ -27,7 +27,7 @@ data class ApiQueueEntity(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     @ColumnInfo(name = "endpoint") val endpoint: String,
     @ColumnInfo(name = "payload_blob", typeAffinity = ColumnInfo.BLOB) val payloadBlob: ByteArray,
-    @ColumnInfo(name = "priority", defaultValue = "5") val priority: Int = 5, // 1 is highest
+    @ColumnInfo(name = "priority", defaultValue = "5") val priority: Int = 5,
     @ColumnInfo(name = "created_at") val createdAt: Long = System.currentTimeMillis(),
     @ColumnInfo(name = "attempts", defaultValue = "0") val attempts: Int = 0,
     @ColumnInfo(name = "error") val error: String? = null
@@ -39,11 +39,11 @@ data class ApiQueueEntity(
 )
 data class ChatMessageEntity(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
-    @ColumnInfo(name = "day_timestamp") val dayTimestamp: Long, // Used to group messages by day in UI
-    @ColumnInfo(name = "role") val role: String, // user, mine, system
+    @ColumnInfo(name = "day_timestamp") val dayTimestamp: Long,
+    @ColumnInfo(name = "role") val role: String,
     @ColumnInfo(name = "content") val content: String,
     @ColumnInfo(name = "is_nudge", defaultValue = "0") val isNudge: Boolean = false,
-    @ColumnInfo(name = "thinking_trace") val thinkingTrace: String? = null, // Hidden JSON from 20B model
+    @ColumnInfo(name = "thinking_trace") val thinkingTrace: String? = null,
     @ColumnInfo(name = "model_used") val modelUsed: String? = null,
     @ColumnInfo(name = "created_at") val createdAt: Long = System.currentTimeMillis()
 )
@@ -52,6 +52,6 @@ data class ChatMessageEntity(
 data class RejectedLogEntity(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     @ColumnInfo(name = "transcript") val transcript: String,
-    @ColumnInfo(name = "reason") val reason: String, // e.g., "Noise gate: filler words only"
+    @ColumnInfo(name = "reason") val reason: String,
     @ColumnInfo(name = "created_at") val createdAt: Long = System.currentTimeMillis()
 )

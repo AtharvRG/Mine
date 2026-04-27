@@ -27,10 +27,8 @@ class GroqApi(private val client: HttpClient) {
                     formData {
                         append("model", model)
                         append("response_format", "json")
-                        append("language", "en") // Speeds up inference
+                        append("language", "en")
 
-                        // Groq requires a filename with an extension so it knows how to decode it.
-                        // We will use .wav as our default raw audio format.
                         append("file", audioBytes, Headers.build {
                             append(HttpHeaders.ContentType, "audio/wav")
                             append(HttpHeaders.ContentDisposition, "filename=\"chunk.wav\"")

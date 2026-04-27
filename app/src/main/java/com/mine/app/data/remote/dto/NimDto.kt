@@ -11,19 +11,17 @@ data class NimChatRequest(
     @SerialName("temperature") val temperature: Double? = 0.7,
     @SerialName("max_tokens") val maxTokens: Int? = 1024,
     @SerialName("tools") val tools: List<NimTool>? = null,
-    @SerialName("tool_choice") val toolChoice: String? = null // e.g., "auto"
+    @SerialName("tool_choice") val toolChoice: String? = null
 )
 
 @Serializable
 data class NimMessage(
-    @SerialName("role") val role: String, // "system", "user", "assistant", "tool"
-    @SerialName("content") val content: String? = null, // Can be null if tool_calls is present
-    @SerialName("reasoning_content") val reasoningContent: String? = null, // Extracted from GPT-OSS
+    @SerialName("role") val role: String,
+    @SerialName("content") val content: String? = null,
+    @SerialName("reasoning_content") val reasoningContent: String? = null,
     @SerialName("tool_calls") val toolCalls: List<NimToolCall>? = null,
-    @SerialName("tool_call_id") val toolCallId: String? = null // Used when role == "tool"
+    @SerialName("tool_call_id") val toolCallId: String? = null
 )
-
-// --- TOOL CALLING STRUCTURES ---
 
 @Serializable
 data class NimTool(
@@ -35,7 +33,7 @@ data class NimTool(
 data class NimFunctionDefinition(
     @SerialName("name") val name: String,
     @SerialName("description") val description: String,
-    @SerialName("parameters") val parameters: JsonObject // The raw JSON schema
+    @SerialName("parameters") val parameters: JsonObject
 )
 
 @Serializable
@@ -48,10 +46,8 @@ data class NimToolCall(
 @Serializable
 data class NimFunctionCall(
     @SerialName("name") val name: String,
-    @SerialName("arguments") val arguments: String // This is a JSON string that we must parse
+    @SerialName("arguments") val arguments: String
 )
-
-// --- RESPONSE STRUCTURES ---
 
 @Serializable
 data class NimChatResponse(
@@ -64,5 +60,5 @@ data class NimChatResponse(
 data class NimChoice(
     @SerialName("index") val index: Int,
     @SerialName("message") val message: NimMessage,
-    @SerialName("finish_reason") val finishReason: String? = null // "stop", "tool_calls"
+    @SerialName("finish_reason") val finishReason: String? = null
 )

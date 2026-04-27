@@ -25,7 +25,6 @@ interface QueueDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertApiTask(task: ApiQueueEntity): Long
 
-    // Fetches API tasks sorted by Priority (1 is highest) then by oldest first
     @Query("SELECT * FROM api_queue ORDER BY priority ASC, created_at ASC LIMIT :limit")
     suspend fun getPendingApiTasks(limit: Int = 5): List<ApiQueueEntity>
 

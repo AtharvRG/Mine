@@ -26,7 +26,7 @@ object NetworkModule {
                     ignoreUnknownKeys = true
                     isLenient = true
                     encodeDefaults = true
-                    explicitNulls = false // <-- This strips out nulls and fixes the NVIDIA crash!
+                    explicitNulls = false
                 })
             }
         }

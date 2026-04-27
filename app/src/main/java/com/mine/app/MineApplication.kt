@@ -7,6 +7,5 @@ import dagger.hilt.android.HiltAndroidApp
 class MineApplication : Application() {
     override fun onCreate() {
         super.onCreate()
-        // We will initialize the Sherpa-ONNX models and WorkManager here later
     }
 }

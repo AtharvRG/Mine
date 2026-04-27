@@ -31,7 +31,7 @@ data class BranchEntity(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     @ColumnInfo(name = "group_id") val groupId: Int,
     @ColumnInfo(name = "name") val name: String,
-    @ColumnInfo(name = "path") val path: String, // e.g., "health/diet"
+    @ColumnInfo(name = "path") val path: String,
     @ColumnInfo(name = "parent_branch_id") val parentBranchId: Int? = null,
     @ColumnInfo(name = "created_at") val createdAt: Long = System.currentTimeMillis()
 )
@@ -56,9 +56,9 @@ data class NodeEntity(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     @ColumnInfo(name = "branch_id") val branchId: Int,
     @ColumnInfo(name = "content") val content: String,
-    @ColumnInfo(name = "status", defaultValue = "'active'") val status: String = "active", // active, completed, stale, archived
+    @ColumnInfo(name = "status", defaultValue = "'active'") val status: String = "active",
     @ColumnInfo(name = "confidence", defaultValue = "1.0") val confidence: Float = 1.0f,
-    @ColumnInfo(name = "source") val source: String? = null, // ambient, chat, call_reflection
+    @ColumnInfo(name = "source") val source: String? = null,
     @ColumnInfo(name = "speaker_label") val speakerLabel: String? = null,
     @ColumnInfo(name = "created_at") val createdAt: Long = System.currentTimeMillis(),
     @ColumnInfo(name = "updated_at") val updatedAt: Long = System.currentTimeMillis(),
@@ -77,12 +77,11 @@ data class EdgeEntity(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     @ColumnInfo(name = "source_node_id") val sourceNodeId: Int,
     @ColumnInfo(name = "target_node_id") val targetNodeId: Int,
-    @ColumnInfo(name = "relation") val relation: String, // related_to, contradicts, etc.
+    @ColumnInfo(name = "relation") val relation: String,
     @ColumnInfo(name = "strength", defaultValue = "0.8") val strength: Float = 0.8f,
     @ColumnInfo(name = "created_at") val createdAt: Long = System.currentTimeMillis()
 )
 
-// FTS5 Virtual Table for lightning-fast semantic search
 @Entity(tableName = "nodes_fts")
 @Fts4(contentEntity = NodeEntity::class)
 data class NodeFtsEntity(
