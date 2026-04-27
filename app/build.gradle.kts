@@ -54,6 +54,25 @@ android {
     }
 }
 
+protobuf {
+    protoc { artifact = "com.google.protobuf:protoc:${libs.versions.protobuf.get()}" }
+    plugins {
+        create("grpc") { artifact = "io.grpc:protoc-gen-grpc-java:${libs.versions.grpc.get()}" }
+        create("grpckt") { artifact = "io.grpc:protoc-gen-grpc-kotlin:${libs.versions.grpcKotlin.get()}:jdk8@jar" }
+    }
+    generateProtoTasks {
+        all().forEach {
+            it.plugins {
+                create("grpc")
+                create("grpckt")
+            }
+            it.builtins {
+                create("java")
+            }
+        }
+    }
+}
+
 // NEW AGP 9.0+ WAY TO CONFIGURE KOTLIN
 kotlin {
     compilerOptions {
@@ -105,37 +124,17 @@ dependencies {
 
     // gRPC
     implementation(libs.grpc.okhttp)
-    implementation(libs.grpc.protobuf.lite)
+    implementation(libs.grpc.protobuf)
     implementation(libs.grpc.stub)
-    compileOnly(libs.javax.annotation) // compileOnly is better here to save APK size
+    implementation(libs.grpc.kotlin.stub)
+    implementation(libs.protobuf.kotlin)
+    implementation(libs.proto.google.common.protos)
+    compileOnly(libs.tomcat.annotations.api)
 }
 
 ksp {
     arg("room.generateKotlin", "true")
 }
 
-protobuf {
-    protoc {
-        artifact = "com.google.protobuf:protoc:3.25.3"
-    }
-    plugins {
-        create("grpc") {
-            artifact = "io.grpc:protoc-gen-grpc-java:1.64.0"
-        }
-    }
-    generateProtoTasks {
-        all().forEach { task ->
-            task.builtins {
-                create("java") {
-                    option("lite")
-                }
-            }
-            task.plugins {
-                create("grpc") {
-                    option("lite")
-                }
-            }
-        }
-    }
-}
+
 

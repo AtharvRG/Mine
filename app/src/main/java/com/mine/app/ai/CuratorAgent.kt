@@ -13,16 +13,14 @@ class CuratorAgent @Inject constructor(
     private val toolExecutor: ToolExecutor,
     private val graphDao: GraphDao
 ) {
-    // The exact schema parameters we designed
     private val toolSchemaJson = """
     {
       "type": "object",
       "properties": {
-                "discard_transcript": { 
+        "discard_transcript": { 
           "type": "boolean",
           "description": "Set to true ONLY if the ENTIRE transcript is useless. If you extract ANY nodes, this MUST be false."
         },
-
         "nodes_to_create": {
           "type": "array",
           "items": {
@@ -64,16 +62,13 @@ class CuratorAgent @Inject constructor(
     }
     """.trimIndent()
 
-
     suspend fun processTranscript(apiKey: String, transcript: String): String {
-        // 1. Fetch context from the database (What does the AI already know?)
         val relevantNodes = graphDao.searchNodes(transcript, limit = 5)
         val contextBuilder = StringBuilder("EXISTING CONTEXT:\n")
         relevantNodes.forEach { node ->
             contextBuilder.append("- ID ${node.id} (${node.branchId}): ${node.content}\n")
         }
 
-        // 2. Build the System Prompt
         val systemPrompt = """
             You are MineAI-Curator. Extract high-signal facts from the transcript and map them to the database using the update_memory_graph tool.
             RULES:
@@ -84,7 +79,6 @@ class CuratorAgent @Inject constructor(
             $contextBuilder
         """.trimIndent()
 
-        // 3. Build the Tool Object
         val memoryTool = NimTool(
             type = "function",
             function = NimFunctionDefinition(
@@ -94,7 +88,6 @@ class CuratorAgent @Inject constructor(
             )
         )
 
-        // 4. Send to NVIDIA NIM
         val request = NimChatRequest(
             model = "openai/gpt-oss-20b",
             messages = listOf(
@@ -108,7 +101,6 @@ class CuratorAgent @Inject constructor(
         val response = nimApi.getChatCompletion(apiKey, request)
         val responseMessage = response.choices.firstOrNull()?.message
 
-        // 5. Extract the Tool Call and Execute it!
         val toolCall = responseMessage?.toolCalls?.firstOrNull()
 
         if (toolCall != null && toolCall.function.name == "update_memory_graph") {

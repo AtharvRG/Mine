@@ -20,7 +20,6 @@ class QueueWorker @AssistedInject constructor(
         Log.d("QueueWorker", "Waking up to process offline backlog...")
 
         try {
-            // 1. Fetch pending audio/transcripts that happened while offline
             val pendingMemories = queueDao.getPendingMemories(limit = 10)
 
             if (pendingMemories.isEmpty()) {
@@ -30,18 +29,13 @@ class QueueWorker @AssistedInject constructor(
 
             for (memory in pendingMemories) {
                 Log.d("QueueWorker", "Processing offline memory ID: ${memory.id}")
-
-                // TODO: In the future, we will send memory.audioBlob to Groq here,
-                // then send the transcript to the ToolExecutor.
-
-                // For now, we just mark it as processed so it leaves the queue
                 queueDao.updateMemoryStatus(memory.id, "completed")
             }
 
             return Result.success()
         } catch (e: Exception) {
             Log.e("QueueWorker", "Failed to process queue: ${e.message}")
-            return Result.retry() // Tells Android to try again later
+            return Result.retry()
         }
     }
 }

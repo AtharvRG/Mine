@@ -17,6 +17,13 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import com.mine.app.ui.DebugViewModel
 import dagger.hilt.android.AndroidEntryPoint
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
+
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -38,9 +45,22 @@ class MainActivity : ComponentActivity() {
 fun DebugScreen(viewModel: DebugViewModel) {
     val logText by viewModel.logText.collectAsState()
     val isOnline by viewModel.isOnline.collectAsState()
+    val isRecording by viewModel.isRecording.collectAsState() // <-- NEW
     val scrollState = rememberScrollState()
 
     var manualTaskText by remember { mutableStateOf("") }
+    val context = LocalContext.current
+
+    // --- PERMISSION LAUNCHER ---
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            viewModel.toggleRecording()
+        } else {
+            viewModel.appendLog("❌ Microphone permission denied.")
+        }
+    }
 
     Column(modifier = Modifier.fillMaxSize()) {
         if (!isOnline) {
@@ -111,7 +131,25 @@ fun DebugScreen(viewModel: DebugViewModel) {
                 Text("Refresh Database View")
             }
 
+            Button(
+                onClick = {
+                    // Check for permission before recording
+                    if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                        viewModel.toggleRecording()
+                    } else {
+                        permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                    }
+                },
+                modifier = Modifier.fillMaxWidth().height(60.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (isRecording) Color.Red else Color(0xFF2196F3)
+                )
+            ) {
+                Text(if (isRecording) "🛑 Stop & Transcribe" else "🎙️ Start Recording")
+            }
+
             Spacer(modifier = Modifier.height(16.dp))
+
 
             Box(
                 modifier = Modifier
