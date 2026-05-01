@@ -49,6 +49,9 @@ interface GraphDao {
     @Query("UPDATE nodes SET content = :newContent, updated_at = :timestamp WHERE id = :nodeId")
     suspend fun updateNodeContent(nodeId: Int, newContent: String, timestamp: Long = System.currentTimeMillis()): Int
 
+    @Query("SELECT * FROM edges ORDER BY created_at DESC LIMIT :limit")
+    suspend fun getAllEdges(limit: Int = 50): List<EdgeEntity>
+
     // --- VECTOR DB QUERIES ---
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertNodeEmbedding(embedding: NodeEmbeddingEntity): Long

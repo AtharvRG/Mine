@@ -6,29 +6,15 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class UpdateMemoryGraphArgs(
     @SerialName("discard_transcript") val discardTranscript: Boolean = false,
-    @SerialName("nodes_to_create") val nodesToCreate: List<NodeToCreate> = emptyList(),
-    @SerialName("nodes_to_update") val nodesToUpdate: List<NodeToUpdate> = emptyList(),
-    @SerialName("contradictions") val contradictions: List<Contradiction> = emptyList(),
+    @SerialName("memory_operations") val memoryOperations: List<MemoryOperation> = emptyList(),
     @SerialName("trigger_nudge") val triggerNudge: Boolean = false
 )
 
 @Serializable
-data class NodeToCreate(
+data class MemoryOperation(
+    @SerialName("action") val action: String, // "create", "update", "contradict"
     @SerialName("content") val content: String,
-    @SerialName("branch") val branch: String,
-    @SerialName("confidence") val confidence: Float,
-    @SerialName("related_to_existing_node_id") val relatedToExistingNodeId: Int? = null
-)
-
-@Serializable
-data class NodeToUpdate(
-    @SerialName("node_id") val nodeId: Int,
-    @SerialName("new_status") val newStatus: String? = null,
-    @SerialName("appended_content") val appendedContent: String? = null
-)
-
-@Serializable
-data class Contradiction(
-    @SerialName("target_node_id") val targetNodeId: Int,
-    @SerialName("new_content") val newContent: String
+    @SerialName("branch") val branch: String? = null, // Required for "create"
+    @SerialName("confidence") val confidence: Float? = null,
+    @SerialName("target_node_id") val targetNodeId: Int? = null // Required for "update" and "contradict"
 )

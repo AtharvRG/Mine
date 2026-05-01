@@ -156,6 +156,15 @@ class DebugViewModel @Inject constructor(
                     appendLog("[ID: ${node.id}] [${node.source}]: ${node.content}")
                 }
             }
+
+            // --- NEW: PRINT THE EDGES ---
+            val edges = graphDao.getAllEdges(limit = 20)
+            if (edges.isNotEmpty()) {
+                appendLog("\n--- RELATIONSHIPS (EDGES) ---")
+                edges.forEach { edge ->
+                    appendLog("[Node ${edge.sourceNodeId}] --(${edge.relation})--> [Node ${edge.targetNodeId}]")
+                }
+            }
         }
     }
 
