@@ -18,4 +18,6 @@ interface ChatDao {
 
     @Query("SELECT * FROM chat_messages ORDER BY created_at DESC LIMIT :limit")
     suspend fun getRecentMessagesList(limit: Int = 10): List<ChatMessageEntity>
+
+
 }

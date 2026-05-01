@@ -122,6 +122,29 @@ class DebugViewModel @Inject constructor(
         }
     }
 
+    fun runMockToolExecution() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val mockJson = """
+                {
+                  "discard_transcript": false,
+                  "nodes_to_create": [
+                    {
+                      "content": "Testing tool executor with embeddings",
+                      "branch": "personal",
+                      "confidence": 1.0
+                    }
+                  ],
+                  "nodes_to_update": [],
+                  "contradictions": [],
+                  "trigger_nudge": false
+                }
+            """.trimIndent()
+            val success = toolExecutor.executeUpdateMemoryGraph("YOU_API_KEY", mockJson)
+            appendLog("🛠️ Mock Tool Execution: ${if (success) "Success" else "Failed"}")
+            fetchAndDisplayDatabase()
+        }
+    }
+
     fun fetchAndDisplayDatabase() {
         viewModelScope.launch(Dispatchers.IO) {
             appendLog("\n--- CURRENT DATABASE STATE ---")

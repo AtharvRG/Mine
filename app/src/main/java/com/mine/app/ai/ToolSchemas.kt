@@ -16,13 +16,14 @@ data class UpdateMemoryGraphArgs(
 data class NodeToCreate(
     @SerialName("content") val content: String,
     @SerialName("branch") val branch: String,
-    @SerialName("confidence") val confidence: Float
+    @SerialName("confidence") val confidence: Float,
+    @SerialName("related_to_existing_node_id") val relatedToExistingNodeId: Int? = null
 )
 
 @Serializable
 data class NodeToUpdate(
     @SerialName("node_id") val nodeId: Int,
-    @SerialName("new_status") val newStatus: String,
+    @SerialName("new_status") val newStatus: String? = null,
     @SerialName("appended_content") val appendedContent: String? = null
 )
 

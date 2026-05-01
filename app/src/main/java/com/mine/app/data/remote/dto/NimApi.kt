@@ -3,6 +3,8 @@ package com.mine.app.data.remote
 import android.util.Log
 import com.mine.app.data.remote.dto.NimChatRequest
 import com.mine.app.data.remote.dto.NimChatResponse
+import com.mine.app.data.remote.dto.NimEmbeddingRequest
+import com.mine.app.data.remote.dto.NimEmbeddingResponse
 import io.ktor.client.HttpClient
 import io.ktor.client.request.header
 import io.ktor.client.request.post
@@ -30,4 +32,16 @@ class NimApi(private val client: HttpClient) {
 
         return jsonParser.decodeFromString(rawJson)
     }
+
+    suspend fun getEmbeddings(apiKey: String, request: NimEmbeddingRequest): NimEmbeddingResponse {
+        val response = client.post("https://integrate.api.nvidia.com/v1/embeddings") {
+            contentType(ContentType.Application.Json)
+            header(HttpHeaders.Authorization, "Bearer $apiKey")
+            setBody(request)
+        }
+
+        val rawJson = response.bodyAsText()
+        return jsonParser.decodeFromString(rawJson)
+    }
+
 }

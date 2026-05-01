@@ -7,6 +7,7 @@ import androidx.room.Query
 import com.mine.app.data.local.db.entity.BranchEntity
 import com.mine.app.data.local.db.entity.EdgeEntity
 import com.mine.app.data.local.db.entity.GroupEntity
+import com.mine.app.data.local.db.entity.NodeEmbeddingEntity
 import com.mine.app.data.local.db.entity.NodeEntity
 
 @Dao
@@ -47,4 +48,11 @@ interface GraphDao {
 
     @Query("UPDATE nodes SET content = :newContent, updated_at = :timestamp WHERE id = :nodeId")
     suspend fun updateNodeContent(nodeId: Int, newContent: String, timestamp: Long = System.currentTimeMillis()): Int
+
+    // --- VECTOR DB QUERIES ---
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertNodeEmbedding(embedding: NodeEmbeddingEntity): Long
+
+    @Query("SELECT * FROM node_embeddings")
+    suspend fun getAllEmbeddings(): List<NodeEmbeddingEntity>
 }

@@ -87,3 +87,22 @@ data class EdgeEntity(
 data class NodeFtsEntity(
     @ColumnInfo(name = "content") val content: String
 )
+
+@Entity(
+    tableName = "node_embeddings",
+    foreignKeys = [
+        ForeignKey(
+            entity = NodeEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["node_id"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [Index(value = ["node_id"])]
+
+)
+data class NodeEmbeddingEntity(
+    @PrimaryKey val node_id: Int,
+    @ColumnInfo(name = "embedding", typeAffinity = ColumnInfo.BLOB) val embedding: ByteArray
+)
+

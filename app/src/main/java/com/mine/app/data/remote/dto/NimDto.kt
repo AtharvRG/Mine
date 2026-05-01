@@ -62,3 +62,23 @@ data class NimChoice(
     @SerialName("message") val message: NimMessage,
     @SerialName("finish_reason") val finishReason: String? = null
 )
+
+// --- EMBEDDING STRUCTURES ---
+
+@Serializable
+data class NimEmbeddingRequest(
+    @SerialName("input") val input: List<String>,
+    @SerialName("model") val model: String = "nvidia/nv-embed-v1",
+    @SerialName("input_type") val inputType: String = "passage",
+    @SerialName("encoding_format") val encodingFormat: String = "float"
+)
+
+@Serializable
+data class NimEmbeddingResponse(
+    @SerialName("data") val data: List<NimEmbeddingData>
+)
+
+@Serializable
+data class NimEmbeddingData(
+    @SerialName("embedding") val embedding: List<Float>
+)
