@@ -92,6 +92,7 @@ class SherpaManager @Inject constructor(private val context: Context) {
 
         // 2. Check if VAD has detected a complete speech segment
         if (!vad.empty()) {
+
             val segment = vad.front()
             val speechFloats = segment.samples
             vad.pop() // CRITICAL: Free C++ memory!

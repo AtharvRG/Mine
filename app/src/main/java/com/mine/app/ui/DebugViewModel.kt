@@ -20,6 +20,24 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+// UI Imports for DebugScreen
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
+import androidx.hilt.navigation.compose.hiltViewModel
+
 @HiltViewModel
 class DebugViewModel @Inject constructor(
     private val toolExecutor: ToolExecutor,
@@ -37,6 +55,20 @@ class DebugViewModel @Inject constructor(
     private val _logText = MutableStateFlow("System Ready. Waiting for input...\n")
     private val _isRecording = MutableStateFlow(false)
     val isRecording: StateFlow<Boolean> = _isRecording
+
+    // --- AMBIENT SERVICE STATE ---
+    private val _isAmbientRunning = MutableStateFlow(false)
+    val isAmbientRunning: StateFlow<Boolean> = _isAmbientRunning
+
+    fun setAmbientRunning(isRunning: Boolean) {
+        _isAmbientRunning.value = isRunning
+        if (isRunning) {
+            appendLog("🟢 Ambient Listening Service Started in Background.")
+        } else {
+            appendLog("⚪ Ambient Listening Service Stopped.")
+        }
+    }
+
     val logText: StateFlow<String> = _logText
 
     fun appendLog(msg: String) {
@@ -204,4 +236,112 @@ class DebugViewModel @Inject constructor(
     }
 
 
+}
+
+// --- DEBUG UI ---
+
+@Composable
+fun DebugScreen(viewModel: DebugViewModel = hiltViewModel()) {
+    val context = LocalContext.current
+    val logText by viewModel.logText.collectAsState()
+    val isRecording by viewModel.isRecording.collectAsState()
+    val isAmbientRunning by viewModel.isAmbientRunning.collectAsState()
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+            .verticalScroll(rememberScrollState())
+    ) {
+        Text("Mine Debug Console", style = MaterialTheme.typography.headlineMedium)
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        Button(onClick = { viewModel.runRealAiTest() }, modifier = Modifier.fillMaxWidth()) {
+            Text("Run Real AI Test")
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Button(onClick = { viewModel.runFullCuratorLoop() }, modifier = Modifier.fillMaxWidth()) {
+            Text("Run Full Curator Loop")
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Button(onClick = { viewModel.runMockToolExecution() }, modifier = Modifier.fillMaxWidth()) {
+            Text("Run Mock Tool Execution")
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Button(onClick = { viewModel.fetchAndDisplayDatabase() }, modifier = Modifier.fillMaxWidth()) {
+            Text("Fetch Database State")
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        // Standard Recording Toggle
+        Button(
+            onClick = {
+                if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                    viewModel.toggleRecording()
+                } else {
+                    permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                }
+            },
+            modifier = Modifier.fillMaxWidth().height(60.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = if (isRecording) Color.Red else Color.Gray)
+        ) {
+            Text(if (isRecording) "🔴 STOP RECORDING" else "🎙️ START RECORDING")
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // --- AMBIENT LISTENING TOGGLE ---
+        Button(
+            onClick = {
+                val intent = android.content.Intent(context, com.mine.app.service.AmbientListeningService::class.java)
+                if (isAmbientRunning) {
+                    intent.action = "STOP"
+                    context.startService(intent)
+                    viewModel.setAmbientRunning(false)
+                } else {
+                    if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                        context.startForegroundService(intent)
+                        viewModel.setAmbientRunning(true)
+                    } else {
+                        permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                    }
+                }
+            },
+            modifier = Modifier.fillMaxWidth().height(60.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = if (isAmbientRunning) Color(0xFF4CAF50) else Color.DarkGray
+            )
+        ) {
+            Text(if (isAmbientRunning) "🟢 Ambient Listening ON" else "⚪ Turn On Ambient Listening")
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Log Console
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(300.dp)
+                .background(Color.Black)
+                .padding(8.dp)
+        ) {
+            Text(
+                text = logText,
+                color = Color.Green,
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
+    }
 }
