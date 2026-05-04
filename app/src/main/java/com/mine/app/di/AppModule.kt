@@ -2,6 +2,7 @@ package com.mine.app.di
 
 import android.content.Context
 import com.mine.app.service.AudioRecorderManager
+import com.mine.app.service.SherpaManager
 import com.mine.app.util.NetworkMonitor
 import dagger.Module
 import dagger.Provides
@@ -24,5 +25,12 @@ object AppModule {
     fun provideAudioRecorderManager(@ApplicationContext context: Context): AudioRecorderManager {
         return AudioRecorderManager(context)
     }
+
+    @Provides
+    @Singleton
+    fun provideSherpaManager(@ApplicationContext context: Context): SherpaManager {
+        return SherpaManager(context)
+    }
+
 
 }

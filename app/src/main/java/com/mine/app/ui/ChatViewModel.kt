@@ -24,7 +24,6 @@ class ChatViewModel @Inject constructor(
     fun sendMessage(message: String) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                // TODO: Put your real NIM API key here
                 val apiKey = "YOU_API_KEY"
                 chatAgent.sendMessage(apiKey, message)
             } catch (e: Exception) {

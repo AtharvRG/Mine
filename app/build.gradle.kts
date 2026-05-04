@@ -52,6 +52,11 @@ android {
     buildFeatures {
         compose = true
     }
+
+    androidResources {
+        noCompress.add("onnx")
+    }
+
 }
 
 protobuf {
@@ -91,6 +96,7 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.hilt.common)
+    implementation(libs.androidx.hilt.navigation.compose)
     implementation(libs.androidx.lifecycle.runtime.ktx)
 
     // Room & SQLCipher
@@ -130,6 +136,9 @@ dependencies {
     implementation(libs.protobuf.kotlin)
     implementation(libs.proto.google.common.protos)
     compileOnly(libs.tomcat.annotations.api)
+
+    implementation(files("libs/sherpa-onnx-1.13.3.aar"))
+
 }
 
 ksp {
