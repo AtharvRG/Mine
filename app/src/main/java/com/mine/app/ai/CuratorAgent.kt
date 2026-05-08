@@ -69,8 +69,11 @@ class CuratorAgent @Inject constructor(
             }
         }
 
-        // 4. Build the STRICT System Prompt
+        val currentTime = com.mine.app.util.TimeUtils.getCurrentTimestamp()
+
         val systemPrompt = """
+            [CURRENT SYSTEM TIME: $currentTime]
+            
             You are MineAI-Curator. Extract high-signal facts from the transcript and map them to the database using the update_memory_graph tool.
             
             RULES:
@@ -81,6 +84,7 @@ class CuratorAgent @Inject constructor(
             
             $contextBuilder
         """.trimIndent()
+
 
 
         val memoryTool = NimTool(

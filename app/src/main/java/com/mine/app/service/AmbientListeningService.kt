@@ -12,6 +12,7 @@ import android.media.MediaRecorder
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import com.mine.app.BuildConfig
 import com.mine.app.ai.CuratorAgent
 import com.mine.app.data.remote.NimWhisperClient
 import com.mine.app.util.NetworkMonitor
@@ -31,8 +32,7 @@ class AmbientListeningService : Service() {
     private var audioRecord: AudioRecord? = null
     private var isListening = false
 
-    // TODO: Put your real API key here for the background service
-    private val apiKey = "YOU_API_KEY"
+    private val apiKey = BuildConfig.NVIDIA_API_KEY
 
     override fun onCreate() {
         super.onCreate()

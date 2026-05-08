@@ -2,6 +2,7 @@ package com.mine.app.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.mine.app.BuildConfig
 import com.mine.app.ai.ChatAgent
 import com.mine.app.data.local.db.dao.ChatDao
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -24,7 +25,7 @@ class ChatViewModel @Inject constructor(
     fun sendMessage(message: String) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val apiKey = "YOU_API_KEY"
+                val apiKey = BuildConfig.NVIDIA_API_KEY
                 chatAgent.sendMessage(apiKey, message)
             } catch (e: Exception) {
                 e.printStackTrace()

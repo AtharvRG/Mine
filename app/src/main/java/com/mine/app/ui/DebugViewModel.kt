@@ -37,6 +37,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.mine.app.BuildConfig
 
 @HiltViewModel
 class DebugViewModel @Inject constructor(
@@ -108,7 +109,7 @@ class DebugViewModel @Inject constructor(
             appendLog("🌐 Sending request to REAL NVIDIA NIM (gpt-oss-20b)...")
 
             try {
-                val apiKey = "YOU_API_KEY" // Replace with real key
+                val apiKey = BuildConfig.NVIDIA_API_KEY // Replace with real key
 
                 val request = NimChatRequest(
                     model = "openai/gpt-oss-20b",
@@ -142,7 +143,7 @@ class DebugViewModel @Inject constructor(
             appendLog("🎙️ Transcript: $fakeTranscript")
 
             try {
-                val apiKey = "YOU_API_KEY" // Replace with real key
+                val apiKey = BuildConfig.NVIDIA_API_KEY // Replace with real key
 
                 val result = curatorAgent.processTranscript(apiKey, fakeTranscript)
                 appendLog("⚙️ Curator Result: $result")
@@ -171,7 +172,7 @@ class DebugViewModel @Inject constructor(
                   "trigger_nudge": false
                 }
             """.trimIndent()
-            val success = toolExecutor.executeUpdateMemoryGraph("YOU_API_KEY", mockJson)
+            val success = toolExecutor.executeUpdateMemoryGraph(BuildConfig.NVIDIA_API_KEY, mockJson)
             appendLog("🛠️ Mock Tool Execution: ${if (success) "Success" else "Failed"}")
             fetchAndDisplayDatabase()
         }
@@ -211,7 +212,7 @@ class DebugViewModel @Inject constructor(
 
                 try {
                     // TODO: Put your real NIM API key here
-                    val apiKey = "YOU_API_KEY"
+                    val apiKey = BuildConfig.NVIDIA_API_KEY
 
                     val transcript = nimWhisperClient.transcribeAudio(apiKey, audioBytes)
                     appendLog("🗣️ You said: \"$transcript\"")

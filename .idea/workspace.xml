@@ -18,7 +18,7 @@
   <component name="ClangdSettings">
     <option name="formatViaClangd" value="false" />
   </component>
-  <component name="ExecutionTargetManager" SELECTED_TARGET="device_and_snapshot_combo_box_target[]" />
+  <component name="ExecutionTargetManager" SELECTED_TARGET="device_and_snapshot_combo_box_target[PhysicalDevice::serial=ZD2229P46Y]" />
   <component name="ExternalProjectsData">
     <projectState path="$PROJECT_DIR$">
       <ProjectState />
@@ -92,7 +92,7 @@
     "ignore.virus.scanning.warn.message": "true",
     "kotlin-language-version-configured": "true",
     "last_directory_selection": "D:/CnP/Mine/app/src/main/java/com/mine/app/data/remote",
-    "last_opened_file_path": "D:/CnP/Mine/app/src/main/assets",
+    "last_opened_file_path": "D:/CnP/Mine/app/libs",
     "project.structure.last.edited": "Modules",
     "project.structure.proportion": "0.17",
     "project.structure.side.proportion": "0.2",
@@ -101,8 +101,8 @@
 }]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
-      <recent name="D:\CnP\Mine\app\src\main\assets" />
       <recent name="D:\CnP\Mine\app\libs" />
+      <recent name="D:\CnP\Mine\app\src\main\assets" />
       <recent name="D:\CnP\Mine\app\src\main\proto" />
     </key>
     <key name="MoveFile.RECENT_KEYS">

@@ -46,18 +46,19 @@ class ChatAgent @Inject constructor(
         }
 
         // 4. Build the Impeccable System Prompt
+        val currentTime = com.mine.app.util.TimeUtils.getCurrentTimestamp()
+        val basePrompt = com.mine.app.util.PersonaManager.getSystemPrompt(com.mine.app.util.PersonaType.OPERATOR)
+
+        // 4. Build the Impeccable System Prompt
         val systemPrompt = """
-            You are MineAI, the user's Co-founder and Second Brain. You are NOT an AI assistant. You do not say "How can I help you?" or "As an AI language model." You speak as a peer, a partner, and a loyal confidant.
+            [CURRENT SYSTEM TIME: $currentTime]
             
-            YOUR DIRECTIVES:
-            1. Be Direct & Human: Speak naturally, concisely, and with conviction. 
-            2. Leverage Memory: You have access to the user's exact memories in the [EXISTING CONTEXT] block. Use these facts to prove you remember their life. Do not explicitly say "According to my database," just weave the facts naturally into the conversation.
-            3. Hold Them Accountable: If the user's current message contradicts their stated goals or past commitments in the context, you MUST call them out on it. Be a good friend—warn them, advise them, or playfully scold them.
-            4. Drive Momentum: If the user gives a short, conversation-ending reply (e.g., "okay", "cool"), look at the context. Proactively ask them for an update on an unresolved task or past event to keep the momentum going.
+            $basePrompt
             
             [EXISTING CONTEXT]
             $contextBuilder
         """.trimIndent()
+
 
         // 5. Fetch recent chat history so Kimi remembers the flow of the conversation
         val recentHistory = chatDao.getRecentMessagesList(limit = 10).reversed().map {

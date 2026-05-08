@@ -1,3 +1,6 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -6,6 +9,14 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.protobuf)
 }
+
+// --- READ API KEY FROM local.properties ---
+val localProperties = Properties()
+val localPropertiesFile = rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    localProperties.load(FileInputStream(localPropertiesFile))
+}
+val nvidiaApiKey = localProperties.getProperty("NVIDIA_API_KEY") ?: "\"\""
 
 android {
     namespace = "com.mine.app"
@@ -19,13 +30,11 @@ android {
             java {
                 srcDir("build/generated/source/proto/debug/java")
                 srcDir("build/generated/source/proto/debug/grpc")
-                // Also add the path from your specific build logs just in case:
                 srcDir("build/generated/java/generateDebugProto/java")
                 srcDir("build/generated/java/generateDebugProto/grpc")
             }
         }
     }
-
     defaultConfig {
         applicationId = "com.mine.app"
         minSdk = 28
@@ -34,8 +43,10 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-    }
 
+        // --- INJECT KEY INTO APP ---
+        buildConfigField("String", "NVIDIA_API_KEY", nvidiaApiKey)
+    }
     buildTypes {
         release {
             optimization {
@@ -43,20 +54,17 @@ android {
             }
         }
     }
-
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
-
     buildFeatures {
         compose = true
+        buildConfig = true // --- ENABLE BUILD CONFIG ---
     }
-
     androidResources {
         noCompress.add("onnx")
     }
-
 }
 
 protobuf {
@@ -138,12 +146,8 @@ dependencies {
     compileOnly(libs.tomcat.annotations.api)
 
     implementation(files("libs/sherpa-onnx-1.13.3.aar"))
-
 }
 
 ksp {
     arg("room.generateKotlin", "true")
 }
-
-
-
