@@ -9,12 +9,13 @@ data class UpdateMemoryGraphArgs(
     @SerialName("memory_operations") val memoryOperations: List<MemoryOperation> = emptyList(),
     @SerialName("trigger_nudge") val triggerNudge: Boolean = false
 )
-
 @Serializable
 data class MemoryOperation(
-    @SerialName("action") val action: String, // "create", "update", "contradict"
-    @SerialName("content") val content: String,
-    @SerialName("branch") val branch: String? = null, // Required for "create"
+    @SerialName("action") val action: String, // "create", "update", "contradict", "relate", "delete"
+    @SerialName("content") val content: String? = null, // Nullable because 'delete' doesn't need content
+    @SerialName("branch") val branch: String? = null,
     @SerialName("confidence") val confidence: Float? = null,
-    @SerialName("target_node_id") val targetNodeId: Int? = null // Required for "update" and "contradict"
+    @SerialName("target_node_id") val targetNodeId: Int? = null,
+    @SerialName("edge_label") val edgeLabel: String? = null // "depends_on", "sub_task_of", "blocks", "related_to"
 )
+

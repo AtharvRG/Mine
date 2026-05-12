@@ -41,19 +41,21 @@ class ToolExecutor @Inject constructor(
                 for (op in args.memoryOperations) {
                     when (op.action) {
                         "create" -> {
-                            val branchName = op.branch ?: "personal"
-                            var branch = graphDao.getBranchByPath(branchName)
-                            if (branch == null) {
-                                val newBranchId = graphDao.insertBranch(BranchEntity(groupId = safeGroupId, name = branchName, path = branchName)).toInt()
-                                branch = BranchEntity(id = newBranchId, groupId = safeGroupId, name = branchName, path = branchName)
+                            if (op.content != null) {
+                                val branchName = op.branch ?: "personal"
+                                var branch = graphDao.getBranchByPath(branchName)
+                                if (branch == null) {
+                                    val newBranchId = graphDao.insertBranch(BranchEntity(groupId = safeGroupId, name = branchName, path = branchName)).toInt()
+                                    branch = BranchEntity(id = newBranchId, groupId = safeGroupId, name = branchName, path = branchName)
+                                }
+                                val insertedId = graphDao.insertNode(
+                                    NodeEntity(branchId = branch.id, content = op.content, confidence = op.confidence ?: 1.0f, source = "ambient")
+                                ).toInt()
+                                newlyCreatedNodes.add(Pair(insertedId, op.content))
                             }
-                            val insertedId = graphDao.insertNode(
-                                NodeEntity(branchId = branch.id, content = op.content, confidence = op.confidence ?: 1.0f, source = "ambient")
-                            ).toInt()
-                            newlyCreatedNodes.add(Pair(insertedId, op.content))
                         }
                         "update" -> {
-                            if (op.targetNodeId != null) {
+                            if (op.targetNodeId != null && op.content != null) {
                                 val existingNode = graphDao.getNodeById(op.targetNodeId)
                                 if (existingNode != null) {
                                     val updatedContent = "${existingNode.content}\nUpdate: ${op.content}"
@@ -62,18 +64,41 @@ class ToolExecutor @Inject constructor(
                             }
                         }
                         "contradict" -> {
-                            if (op.targetNodeId != null) {
+                            if (op.targetNodeId != null && op.content != null) {
                                 val targetNode = graphDao.getNodeById(op.targetNodeId)
                                 if (targetNode != null) {
-                                    // Create the new state node
                                     val newNodeId = graphDao.insertNode(
                                         NodeEntity(branchId = targetNode.branchId, content = op.content, confidence = 1.0f, source = "ambient")
                                     ).toInt()
                                     newlyCreatedNodes.add(Pair(newNodeId, op.content))
-
-                                    // Draw the edge connecting them
                                     graphDao.insertEdge(EdgeEntity(sourceNodeId = newNodeId, targetNodeId = targetNode.id, relation = "contradicts"))
                                 }
+                            }
+                        }
+                        "relate" -> {
+                            if (op.targetNodeId != null && op.content != null) {
+                                val targetNode = graphDao.getNodeById(op.targetNodeId)
+                                if (targetNode != null) {
+                                    val branchName = op.branch ?: "personal"
+                                    var branch = graphDao.getBranchByPath(branchName)
+                                    if (branch == null) {
+                                        val newBranchId = graphDao.insertBranch(BranchEntity(groupId = safeGroupId, name = branchName, path = branchName)).toInt()
+                                        branch = BranchEntity(id = newBranchId, groupId = safeGroupId, name = branchName, path = branchName)
+                                    }
+                                    val newNodeId = graphDao.insertNode(
+                                        NodeEntity(branchId = branch.id, content = op.content, confidence = op.confidence ?: 1.0f, source = "ambient")
+                                    ).toInt()
+                                    newlyCreatedNodes.add(Pair(newNodeId, op.content))
+
+                                    val relation = op.edgeLabel ?: "related_to"
+                                    graphDao.insertEdge(EdgeEntity(sourceNodeId = newNodeId, targetNodeId = targetNode.id, relation = relation))
+                                }
+                            }
+                        }
+                        "delete" -> {
+                            if (op.targetNodeId != null) {
+                                graphDao.updateNodeStatus(op.targetNodeId, "trashed")
+                                Log.d("ToolExecutor", "Node ${op.targetNodeId} moved to trash.")
                             }
                         }
                     }

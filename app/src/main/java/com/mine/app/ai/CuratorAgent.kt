@@ -24,13 +24,14 @@ class CuratorAgent @Inject constructor(
           "items": {
             "type": "object",
             "properties": {
-              "action": { "type": "string", "enum": ["create", "update", "contradict"] },
-              "content": { "type": "string", "description": "The 3rd-person fact or update." },
+              "action": { "type": "string", "enum": ["create", "update", "contradict", "relate", "delete"] },
+              "content": { "type": "string", "description": "The 3rd-person fact. Leave empty if action is delete." },
               "branch": { "type": "string" },
               "confidence": { "type": "number" },
-              "target_node_id": { "type": "integer", "description": "The ID of the existing node you are updating or contradicting." }
+              "target_node_id": { "type": "integer", "description": "The ID of the existing node you are updating, contradicting, relating to, or deleting." },
+              "edge_label": { "type": "string", "enum": ["depends_on", "sub_task_of", "blocks", "related_to"] }
             },
-            "required": ["action", "content"]
+            "required": ["action"]
           }
         },
         "trigger_nudge": { "type": "boolean" }
@@ -78,9 +79,11 @@ class CuratorAgent @Inject constructor(
             
             RULES:
             1. 3RD PERSON ONLY: All `content` MUST be written in the third person (e.g., "User is...").
-            2. ACTION 'create': Use this ONLY for completely new topics not found in the EXISTING CONTEXT.
+            2. ACTION 'create': Use ONLY for completely new topics not found in the EXISTING CONTEXT.
             3. ACTION 'update': If the transcript adds details to an existing node, use this action and provide the `target_node_id`.
-            4. ACTION 'contradict': If the user changes their mind or contradicts an existing node, use this action, provide the `target_node_id`, and write the new state in `content`.
+            4. ACTION 'contradict': If the user changes their mind or contradicts an existing node, use this action, provide `target_node_id`, and write the new state in `content`.
+            5. ACTION 'relate': If the transcript introduces a new fact that is a sub-task, dependency, or blocker of an existing node, use this. Provide `target_node_id`, the new `content`, and an `edge_label` (depends_on, sub_task_of, blocks, related_to).
+            6. ACTION 'delete': If the user explicitly says to forget, delete, or cancel a specific memory, use this action and provide the `target_node_id`.
             
             $contextBuilder
         """.trimIndent()
