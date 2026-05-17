@@ -2,6 +2,7 @@ package com.mine.app.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.mine.app.ai.ChronosAgent
 import com.mine.app.ai.CuratorAgent
 import com.mine.app.ai.ToolExecutor
 import com.mine.app.data.local.db.dao.GraphDao
@@ -45,6 +46,7 @@ class DebugViewModel @Inject constructor(
     private val graphDao: GraphDao,
     private val nimApi: NimApi,
     private val curatorAgent: CuratorAgent,
+    private val chronosAgent: ChronosAgent,
     private val audioRecorderManager: AudioRecorderManager,
     private val nimWhisperClient: NimWhisperClient,
     networkMonitor: NetworkMonitor
@@ -96,6 +98,14 @@ class DebugViewModel @Inject constructor(
             )
             appendLog("✅ Saved manually!")
             fetchAndDisplayDatabase()
+        }
+    }
+
+    fun forceChronosWakeup() {
+        viewModelScope.launch(Dispatchers.IO) {
+            appendLog("⏰ Forcing Chronos Worker to wake up...")
+            chronosAgent.runProactiveCheck(BuildConfig.NVIDIA_API_KEY)
+            appendLog("⏰ Chronos check complete. Check Chat UI to see if it sent a message!")
         }
     }
 
@@ -276,6 +286,16 @@ fun DebugScreen(viewModel: DebugViewModel = hiltViewModel()) {
 
         Button(onClick = { viewModel.runMockToolExecution() }, modifier = Modifier.fillMaxWidth()) {
             Text("Run Mock Tool Execution")
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Button(
+            onClick = { viewModel.forceChronosWakeup() },
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF9800)) // Orange
+        ) {
+            Text("Force Proactive AI Check (Chronos)")
         }
 
         Spacer(modifier = Modifier.height(8.dp))

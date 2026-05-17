@@ -40,6 +40,9 @@ interface GraphDao {
     """)
     suspend fun searchNodes(searchQuery: String, limit: Int = 5): List<NodeEntity>
 
+    @Query("SELECT * FROM nodes WHERE status = 'active' ORDER BY updated_at DESC LIMIT :limit")
+    suspend fun getActiveNodes(limit: Int = 30): List<NodeEntity>
+
     @Query("SELECT * FROM nodes ORDER BY created_at DESC LIMIT :limit")
     suspend fun getAllNodes(limit: Int = 50): List<NodeEntity>
 
