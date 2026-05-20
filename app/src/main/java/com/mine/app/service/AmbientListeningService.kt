@@ -46,10 +46,16 @@ class AmbientListeningService : Service() {
             return START_NOT_STICKY
         }
 
-        startForeground(1, buildNotification("Listening to your day..."))
+        // Force the notification to show instantly (Android 12+)
+        val notification = buildNotification("Listening to your day...")
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            startForeground(1, notification, android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE)
+        } else {
+            startForeground(1, notification)
+        }
+        
         startListening()
-
-        return START_STICKY // Tells Android to restart this service if it gets killed
+        return START_STICKY
     }
 
     @SuppressLint("MissingPermission")

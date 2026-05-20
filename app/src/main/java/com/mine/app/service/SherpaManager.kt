@@ -5,6 +5,8 @@ import android.util.Log
 import com.k2fsa.sherpa.onnx.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.File
+import java.io.FileOutputStream
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -13,62 +15,71 @@ class SherpaManager @Inject constructor(private val context: Context) {
 
     private val sampleRate = 16000
 
-    // 1. VAD (Voice Activity Detection) - Updated to 1.13.3 class names
     private val vad: Vad
-
-    // 2. Denoiser
     private val denoiser: OfflineSpeechDenoiser
-
-    // 3. Speaker ID
     private val speakerExtractor: SpeakerEmbeddingExtractor
     private val speakerManager: SpeakerEmbeddingManager
 
     init {
-        Log.d("SherpaManager", "Initializing Sherpa-ONNX Models from Assets...")
+        Log.d("SherpaManager", "Extracting ONNX models to internal storage...")
 
-        // Initialize VAD
+        // 1. Extract the models from assets to internal storage
+        val vadModelPath = copyAsset("silero_vad.onnx")
+        val denoiserModelPath = copyAsset("gtcrn_simple.onnx")
+        val speakerModelPath = copyAsset("3dspeaker_speech_eres2net_base_sv_zh-cn_3dspeaker_16k.onnx")
+
+        Log.d("SherpaManager", "Initializing Sherpa-ONNX Models...")
+
+        // 2. Initialize VAD (Notice we don't pass assetManager anymore!)
         val sileroConfig = SileroVadModelConfig(
-            model = "silero_vad.onnx",
+            model = vadModelPath, // Use the absolute path
             threshold = 0.5f,
             minSilenceDuration = 1.0f,
             minSpeechDuration = 0.5f,
             windowSize = 512
         )
-
-        // We instantiate it empty, then set the properties.
         val vadConfig = VadModelConfig()
         vadConfig.sampleRate = sampleRate
         vadConfig.numThreads = 1
         vadConfig.debug = false
-
-        // Try setting the silero config.
-        // If 'sileroVad' is red, delete it, type 'silero', and press Ctrl+Space to let Android Studio autocomplete the exact name!
         vadConfig.sileroVadModelConfig = sileroConfig
+        vad = Vad(config = vadConfig) // Removed assetManager
 
-        vad = Vad(assetManager = context.assets, config = vadConfig)
-
-
-        // Initialize Denoiser
+        // 3. Initialize Denoiser
         val denoiserConfig = OfflineSpeechDenoiserConfig(
             model = OfflineSpeechDenoiserModelConfig(
-                gtcrn = OfflineSpeechDenoiserGtcrnModelConfig(model = "gtcrn_simple.onnx"),
+                gtcrn = OfflineSpeechDenoiserGtcrnModelConfig(model = denoiserModelPath),
                 provider = "cpu",
                 numThreads = 1
             )
         )
-        denoiser = OfflineSpeechDenoiser(assetManager = context.assets, config = denoiserConfig)
+        denoiser = OfflineSpeechDenoiser(config = denoiserConfig) // Removed assetManager
 
-        // Initialize Speaker ID
+        // 4. Initialize Speaker ID
         val extractorConfig = SpeakerEmbeddingExtractorConfig(
-            model = "3dspeaker_speech_eres2net_base_sv_zh-cn_3dspeaker_16k.onnx",
+            model = speakerModelPath,
             numThreads = 1,
             debug = false
         )
-        speakerExtractor = SpeakerEmbeddingExtractor(assetManager = context.assets, config = extractorConfig)
+        speakerExtractor = SpeakerEmbeddingExtractor(config = extractorConfig) // Removed assetManager
         speakerManager = SpeakerEmbeddingManager(speakerExtractor.dim())
 
         Log.d("SherpaManager", "Sherpa-ONNX Initialization Complete!")
     }
+
+    // --- NEW: ASSET EXTRACTION HELPER ---
+    private fun copyAsset(filename: String): String {
+        val outFile = File(context.filesDir, filename)
+        // Force overwrite to ensure we never have a corrupted model stuck on disk
+        context.assets.open(filename).use { inputStream ->
+            FileOutputStream(outFile).use { outputStream ->
+                inputStream.copyTo(outputStream)
+            }
+        }
+        return outFile.absolutePath
+    }
+
+
 
     suspend fun enrollUserVoice(pcmBytes: ByteArray): Boolean = withContext(Dispatchers.Default) {
         val floats = pcmBytesToFloatArray(pcmBytes)

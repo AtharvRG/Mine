@@ -7,6 +7,7 @@ import com.mine.app.data.local.db.entity.ChatMessageEntity
 import com.mine.app.data.remote.NimApi
 import com.mine.app.data.remote.dto.NimChatRequest
 import com.mine.app.data.remote.dto.NimMessage
+import com.mine.app.util.NotificationHelper
 import com.mine.app.util.PersonaManager
 import com.mine.app.util.PersonaType
 import com.mine.app.util.TimeUtils
@@ -15,8 +16,10 @@ import javax.inject.Inject
 class ChronosAgent @Inject constructor(
     private val nimApi: NimApi,
     private val graphDao: GraphDao,
-    private val chatDao: ChatDao
+    private val chatDao: ChatDao,
+    private val notificationHelper: NotificationHelper
 ) {
+
     suspend fun runProactiveCheck(apiKey: String) {
         Log.d("ChronosAgent", "Waking up to check active nodes...")
 
@@ -65,9 +68,10 @@ class ChronosAgent @Inject constructor(
 
             if (reply != "SKIP" && reply.isNotBlank()) {
                 Log.d("ChronosAgent", "AI decided to speak: $reply")
-                // Insert the proactive message into the Chat UI!
                 chatDao.insertMessage(ChatMessageEntity(dayTimestamp = 0L, role = "mine", content = reply))
-            } else {
+                notificationHelper.showNudgeNotification(reply) // <-- NEW
+            }
+            else {
                 Log.d("ChronosAgent", "AI decided to SKIP.")
             }
         } catch (e: Exception) {

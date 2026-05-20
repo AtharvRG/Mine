@@ -3,6 +3,7 @@ package com.mine.app.ai
 import android.util.Log
 import androidx.room.withTransaction
 import com.mine.app.data.local.db.MineDatabase
+import com.mine.app.data.local.db.dao.ChatDao
 import com.mine.app.data.local.db.dao.GraphDao
 import com.mine.app.data.local.db.entity.BranchEntity
 import com.mine.app.data.local.db.entity.EdgeEntity
@@ -11,6 +12,7 @@ import com.mine.app.data.local.db.entity.NodeEmbeddingEntity
 import com.mine.app.data.local.db.entity.NodeEntity
 import com.mine.app.data.remote.NimApi
 import com.mine.app.data.remote.dto.NimEmbeddingRequest
+import com.mine.app.util.NotificationHelper
 import com.mine.app.util.VectorUtils
 import kotlinx.serialization.json.Json
 import javax.inject.Inject
@@ -18,8 +20,11 @@ import javax.inject.Inject
 class ToolExecutor @Inject constructor(
     private val database: MineDatabase,
     private val graphDao: GraphDao,
-    private val nimApi: NimApi // <-- NEW: Injected to fetch embeddings
+    private val nimApi: NimApi,
+    private val notificationHelper: NotificationHelper, // <-- NEW
+    private val chatDao: ChatDao // <-- NEW
 ) {
+
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
     // Notice we added apiKey as a parameter here
@@ -122,6 +127,23 @@ class ToolExecutor @Inject constructor(
                     graphDao.insertNodeEmbedding(NodeEmbeddingEntity(nodeId, byteArray))
                 }
                 Log.d("ToolExecutor", "Embeddings saved successfully!")
+            }
+
+            // --- NEW: FIRE THE NUDGE ---
+            // Check the root level first, then check if any operation has it
+            val finalNudgeMessage = args.nudgeMessage ?: args.memoryOperations.firstNotNullOfOrNull { it.nudgeMessage }
+
+            if (args.triggerNudge && !finalNudgeMessage.isNullOrBlank()) {
+                Log.d("ToolExecutor", "FIRING NUDGE: $finalNudgeMessage")
+                notificationHelper.showNudgeNotification(finalNudgeMessage)
+                chatDao.insertMessage(
+                    com.mine.app.data.local.db.entity.ChatMessageEntity(
+                        dayTimestamp = 0L, 
+                        role = "mine", 
+                        content = "⚡ $finalNudgeMessage",
+                        isNudge = true
+                    )
+                )
             }
 
             true 

@@ -29,7 +29,9 @@ class CuratorAgent @Inject constructor(
               "branch": { "type": "string" },
               "confidence": { "type": "number" },
               "target_node_id": { "type": "integer", "description": "The ID of the existing node you are updating, contradicting, relating to, or deleting." },
-              "edge_label": { "type": "string", "enum": ["depends_on", "sub_task_of", "blocks", "related_to"] }
+              "edge_label": { "type": "string", "enum": ["depends_on", "sub_task_of", "blocks", "related_to"] },
+              "trigger_nudge": { "type": "boolean" },
+              "nudge_message": { "type": "string", "description": "If trigger_nudge is true, write the urgent message to the user here." }
             },
             "required": ["action"]
           }
@@ -56,8 +58,8 @@ class CuratorAgent @Inject constructor(
             Pair(dbEmb.node_id, score)
         }
 
-        // 3. Take the top 5 most similar nodes (Threshold > 0.5 means it's somewhat related)
-        val topNodeIds = scoredNodes.filter { it.second > 0.2f }
+        // 3. Take top 5, but use a very low threshold (0.1f) to block absolute garbage
+        val topNodeIds = scoredNodes.filter { it.second > 0.1f }
             .sortedByDescending { it.second }
             .take(5)
             .map { it.first }
@@ -75,18 +77,23 @@ class CuratorAgent @Inject constructor(
         val systemPrompt = """
             [CURRENT SYSTEM TIME: $currentTime]
             
-            You are MineAI-Curator. Extract high-signal facts from the transcript and map them to the database using the update_memory_graph tool.
+            You are MineAI-Curator. Extract high-signal facts from the ambient transcript and map them to the database using the update_memory_graph tool.
             
             RULES:
             1. 3RD PERSON ONLY: All `content` MUST be written in the third person (e.g., "User is...").
             2. ACTION 'create': Use ONLY for completely new topics not found in the EXISTING CONTEXT.
             3. ACTION 'update': If the transcript adds details to an existing node, use this action and provide the `target_node_id`.
             4. ACTION 'contradict': If the user changes their mind or contradicts an existing node, use this action, provide `target_node_id`, and write the new state in `content`.
-            5. ACTION 'relate': If the transcript introduces a new fact that is a sub-task, dependency, or blocker of an existing node, use this. Provide `target_node_id`, the new `content`, and an `edge_label` (depends_on, sub_task_of, blocks, related_to).
-            6. ACTION 'delete': If the user explicitly says to forget, delete, or cancel a specific memory, use this action and provide the `target_node_id`.
+            5. ACTION 'relate': If the transcript introduces a new fact that is a sub-task, dependency, or blocker of an existing node, use this. Provide `target_node_id`, the new `content`, and an `edge_label`.
+            6. ACTION 'delete': If the user explicitly says to forget or cancel a memory, use this action and provide the `target_node_id`.
+            
+            7. NUDGES (CRITICAL): You are the user's ambient co-founder. You MUST set `trigger_nudge` to true and write a `nudge_message` in TWO specific scenarios:
+               - SCENARIO A (Intervention): The user is breaking a commitment, slacking off, or making a bad choice (e.g., eating pizza on a diet, skipping work for games). Write a short, punchy intervention (e.g., "Are you sure? What about the Friday deadline?").
+               - SCENARIO B (Clarification): The user mentions something vague (e.g., "the database") and there are MULTIPLE matching projects in the context. Write a short message asking them to clarify which one (e.g., "Wait, do you mean the SQLite database or the Web backend?").
             
             $contextBuilder
         """.trimIndent()
+
 
 
 
@@ -100,7 +107,7 @@ class CuratorAgent @Inject constructor(
         )
 
         val request = NimChatRequest(
-            model = "openai/gpt-oss-20b",
+            model = "openai/gpt-oss-120b",
             messages = listOf(
                 NimMessage(role = "system", content = systemPrompt),
                 NimMessage(role = "user", content = "TRANSCRIPT: $transcript")
