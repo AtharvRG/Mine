@@ -12,7 +12,9 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Storage
+import com.mine.app.util.PreferencesManager
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -27,8 +29,8 @@ import androidx.core.content.ContextCompat
 @Composable
 fun MainAppScreen(debugViewModel: DebugViewModel, chatViewModel: ChatViewModel) {
     var selectedTab by remember { mutableIntStateOf(0) }
-    val tabs = listOf("Database", "Chat", "Ambient")
-    val icons = listOf(Icons.Default.Storage, Icons.Default.Chat, Icons.Default.Mic)
+    val tabs = listOf("Database", "Chat", "Ambient", "Settings")
+    val icons = listOf(Icons.Default.Storage, Icons.Default.Chat, Icons.Default.Mic, Icons.Default.Settings)
 
     Scaffold(
         bottomBar = {
@@ -49,6 +51,7 @@ fun MainAppScreen(debugViewModel: DebugViewModel, chatViewModel: ChatViewModel) 
                 0 -> DatabaseTab(debugViewModel)
                 1 -> ChatScreen(chatViewModel) // The Chat UI we built earlier!
                 2 -> AmbientTab(debugViewModel)
+                3 -> SettingsTab(debugViewModel.prefs)
             }
         }
     }
@@ -174,6 +177,38 @@ fun AmbientTab(viewModel: DebugViewModel) {
 
             Spacer(modifier = Modifier.height(16.dp))
             TerminalView(logs = logs)
+        }
+    }
+}
+
+@Composable
+fun SettingsTab(prefs: PreferencesManager) {
+    var isLocationEnabled by remember { mutableStateOf(prefs.isLocationContextEnabled) }
+
+    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+        Text("Settings", style = MaterialTheme.typography.headlineMedium)
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Contextual Location", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    "Allows the AI to know if you are on Wi-Fi (Indoors) or Cellular (Outside) to provide better context.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray
+                )
+            }
+            Switch(
+                checked = isLocationEnabled,
+                onCheckedChange = {
+                    isLocationEnabled = it
+                    prefs.isLocationContextEnabled = it
+                }
+            )
         }
     }
 }

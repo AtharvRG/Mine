@@ -16,6 +16,7 @@ import com.mine.app.data.remote.dto.NimChatRequest
 import com.mine.app.data.remote.dto.NimMessage
 import com.mine.app.service.AudioRecorderManager
 import com.mine.app.util.NetworkMonitor
+import com.mine.app.util.PreferencesManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -33,7 +34,8 @@ class DebugViewModel @Inject constructor(
     private val chronosAgent: ChronosAgent,
     private val audioRecorderManager: AudioRecorderManager,
     private val nimWhisperClient: NimWhisperClient,
-    networkMonitor: NetworkMonitor
+    networkMonitor: NetworkMonitor,
+    val prefs: PreferencesManager
 ) : ViewModel() {
 
 

@@ -4,6 +4,8 @@ import android.util.Log
 import com.mine.app.data.local.db.dao.GraphDao
 import com.mine.app.data.remote.NimApi
 import com.mine.app.data.remote.dto.*
+import com.mine.app.util.NetworkMonitor
+import com.mine.app.util.PreferencesManager
 import com.mine.app.util.VectorUtils
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
@@ -12,7 +14,9 @@ import javax.inject.Inject
 class CuratorAgent @Inject constructor(
     private val nimApi: NimApi,
     private val toolExecutor: ToolExecutor,
-    private val graphDao: GraphDao
+    private val graphDao: GraphDao,
+    private val networkMonitor: NetworkMonitor,
+    private val prefs: PreferencesManager
 ) {
     private val toolSchemaJson = """
     {
@@ -74,8 +78,12 @@ class CuratorAgent @Inject constructor(
 
         val currentTime = com.mine.app.util.TimeUtils.getCurrentTimestamp()
 
+        val locationContext = if (prefs.isLocationContextEnabled) {
+            "\n[SPATIAL CONTEXT: User is currently on ${networkMonitor.networkType.value}]"
+        } else ""
+
         val systemPrompt = """
-            [CURRENT SYSTEM TIME: $currentTime]
+            [CURRENT SYSTEM TIME: $currentTime]$locationContext
             
             You are MineAI-Curator. Extract high-signal facts from the ambient transcript and map them to the database using the update_memory_graph tool.
             

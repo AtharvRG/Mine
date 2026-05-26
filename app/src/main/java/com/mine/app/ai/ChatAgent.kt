@@ -9,6 +9,8 @@ import com.mine.app.data.remote.NimApi
 import com.mine.app.data.remote.dto.NimChatRequest
 import com.mine.app.data.remote.dto.NimEmbeddingRequest
 import com.mine.app.data.remote.dto.NimMessage
+import com.mine.app.util.NetworkMonitor
+import com.mine.app.util.PreferencesManager
 import com.mine.app.util.VectorUtils
 import javax.inject.Inject
 
@@ -16,7 +18,9 @@ class ChatAgent @Inject constructor(
     private val nimApi: NimApi,
     private val graphDao: GraphDao,
     private val chatDao: ChatDao,
-    private val queueDao: QueueDao
+    private val queueDao: QueueDao,
+    private val networkMonitor: NetworkMonitor,
+    private val prefs: PreferencesManager
 ) {
     suspend fun sendMessage(apiKey: String, userMessage: String): String {
         
@@ -47,11 +51,16 @@ class ChatAgent @Inject constructor(
 
         // 4. Build the Impeccable System Prompt
         val currentTime = com.mine.app.util.TimeUtils.getCurrentTimestamp()
+        val locationContext = if (prefs.isLocationContextEnabled) {
+            "\n[SPATIAL CONTEXT: User is currently on ${networkMonitor.networkType.value}]"
+        } else ""
         val basePrompt = com.mine.app.util.PersonaManager.getSystemPrompt(com.mine.app.util.PersonaType.OPERATOR)
 
         // 4. Build the Impeccable System Prompt
         val systemPrompt = """
             [CURRENT SYSTEM TIME: $currentTime]
+            
+            $locationContext
             
             $basePrompt
             
