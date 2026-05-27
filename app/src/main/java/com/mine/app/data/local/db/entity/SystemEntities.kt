@@ -55,3 +55,11 @@ data class RejectedLogEntity(
     @ColumnInfo(name = "reason") val reason: String,
     @ColumnInfo(name = "created_at") val createdAt: Long = System.currentTimeMillis()
 )
+
+@Entity(tableName = "transcripts")
+data class TranscriptEntity(
+    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    @ColumnInfo(name = "text") val text: String,
+    @ColumnInfo(name = "speaker") val speaker: String,
+    @ColumnInfo(name = "created_at") val createdAt: Long = System.currentTimeMillis()
+)

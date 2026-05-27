@@ -15,6 +15,8 @@ import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Storage
 import com.mine.app.util.PreferencesManager
+import com.mine.app.util.PersonaType
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -110,105 +112,163 @@ fun DatabaseTab(viewModel: DebugViewModel) {
 
 @Composable
 fun AmbientTab(viewModel: DebugViewModel) {
-    val isOnline by viewModel.isOnline.collectAsState()
-    val isRecording by viewModel.isRecording.collectAsState()
-    val isAmbientRunning by viewModel.isAmbientRunning.collectAsState()
-    val logs by viewModel.logs.collectAsState()
-    val context = LocalContext.current
+    var showVault by remember { mutableStateOf(false) }
 
-    val permissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
-        if (permissions[Manifest.permission.RECORD_AUDIO] == true) {
-            viewModel.toggleRecording()
-        } else {
-            viewModel.appendLog("❌ Microphone permission denied.")
+    if (showVault) {
+        TranscriptVaultScreen(viewModel, onBack = { showVault = false })
+    } else {
+        val isOnline by viewModel.isOnline.collectAsState()
+        val isRecording by viewModel.isRecording.collectAsState()
+        val isAmbientRunning by viewModel.isAmbientRunning.collectAsState()
+        val logs by viewModel.logs.collectAsState()
+        val context = LocalContext.current
+
+        val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
+            if (permissions[Manifest.permission.RECORD_AUDIO] == true) viewModel.toggleRecording()
         }
-    }
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        if (!isOnline) {
-            Box(modifier = Modifier.fillMaxWidth().background(Color.Red).padding(8.dp), contentAlignment = Alignment.Center) {
-                Text("OFFLINE MODE - AI Paused", color = Color.White)
+        Column(modifier = Modifier.fillMaxSize()) {
+            if (!isOnline) {
+                Box(modifier = Modifier.fillMaxWidth().background(Color.Red).padding(8.dp), contentAlignment = Alignment.Center) {
+                    Text("OFFLINE MODE - AI Paused", color = Color.White)
+                }
             }
-        }
 
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text("Ambient Audio Engine", style = MaterialTheme.typography.headlineSmall)
-            Spacer(modifier = Modifier.height(16.dp))
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text("Ambient Audio Engine", style = MaterialTheme.typography.headlineSmall)
+                Spacer(modifier = Modifier.height(16.dp))
 
-            Button(
-                onClick = {
-                    val intent = android.content.Intent(context, com.mine.app.service.AmbientListeningService::class.java)
-                    if (isAmbientRunning) {
-                        intent.action = "STOP"
-                        context.startService(intent)
-                        viewModel.setAmbientRunning(false)
-                    } else {
+                Button(
+                    onClick = {
+                        val intent = android.content.Intent(context, com.mine.app.service.AmbientListeningService::class.java)
+                        if (isAmbientRunning) {
+                            intent.action = "STOP"
+                            context.startService(intent)
+                            viewModel.setAmbientRunning(false)
+                        } else {
+                            if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                                context.startForegroundService(intent)
+                                viewModel.setAmbientRunning(true)
+                            } else {
+                                permissionLauncher.launch(arrayOf(Manifest.permission.RECORD_AUDIO, Manifest.permission.POST_NOTIFICATIONS))
+                            }
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth().height(60.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = if (isAmbientRunning) Color(0xFF4CAF50) else Color.DarkGray)
+                ) {
+                    Text(if (isAmbientRunning) "🟢 Ambient Listening ON" else "⚪ Turn On Ambient Listening")
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Button(
+                    onClick = {
                         if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
-                            context.startForegroundService(intent)
-                            viewModel.setAmbientRunning(true)
+                            viewModel.toggleRecording()
                         } else {
                             permissionLauncher.launch(arrayOf(Manifest.permission.RECORD_AUDIO, Manifest.permission.POST_NOTIFICATIONS))
                         }
-                    }
-                },
-                modifier = Modifier.fillMaxWidth().height(60.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = if (isAmbientRunning) Color(0xFF4CAF50) else Color.DarkGray)
-            ) {
-                Text(if (isAmbientRunning) "🟢 Ambient Listening ON" else "⚪ Turn On Ambient Listening")
+                    },
+                    modifier = Modifier.fillMaxWidth().height(60.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = if (isRecording) Color.Red else Color(0xFF2196F3))
+                ) {
+                    Text(if (isRecording) "🛑 Stop & Transcribe" else "🎙️ Manual Record Test")
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // --- NEW: VAULT BUTTON ---
+                Button(
+                    onClick = {
+                        viewModel.loadTranscripts()
+                        showVault = true
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF9C27B0)) // Purple
+                ) {
+                    Text("📂 View Transcript Vault")
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+                TerminalView(logs = logs)
             }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Button(
-                onClick = {
-                    if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
-                        viewModel.toggleRecording()
-                    } else {
-                        permissionLauncher.launch(arrayOf(Manifest.permission.RECORD_AUDIO, Manifest.permission.POST_NOTIFICATIONS))
-                    }
-                },
-                modifier = Modifier.fillMaxWidth().height(60.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = if (isRecording) Color.Red else Color(0xFF2196F3))
-            ) {
-                Text(if (isRecording) "🛑 Stop & Transcribe" else "🎙️ Manual Record Test")
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-            TerminalView(logs = logs)
         }
     }
 }
 
 @Composable
-fun SettingsTab(prefs: PreferencesManager) {
+fun SettingsTab(prefs: com.mine.app.util.PreferencesManager = hiltViewModel<DebugViewModel>().prefs) {
     var isLocationEnabled by remember { mutableStateOf(prefs.isLocationContextEnabled) }
+    var selectedPersona by remember { mutableStateOf(prefs.currentPersona) }
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Text("Settings", style = MaterialTheme.typography.headlineMedium)
         Spacer(modifier = Modifier.height(24.dp))
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
+        // Location Toggle
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
             Column(modifier = Modifier.weight(1f)) {
                 Text("Contextual Location", style = MaterialTheme.typography.titleMedium)
-                Text(
-                    "Allows the AI to know if you are on Wi-Fi (Indoors) or Cellular (Outside) to provide better context.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.Gray
-                )
+                Text("Allows AI to know if you are on Wi-Fi or Cellular.", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
             }
-            Switch(
-                checked = isLocationEnabled,
-                onCheckedChange = {
-                    isLocationEnabled = it
-                    prefs.isLocationContextEnabled = it
+            Switch(checked = isLocationEnabled, onCheckedChange = { isLocationEnabled = it; prefs.isLocationContextEnabled = it })
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+        HorizontalDivider()
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Persona Selector
+        Text("Co-founder Persona", style = MaterialTheme.typography.titleMedium)
+        Text("Choose how MineAI speaks to you.", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+        Spacer(modifier = Modifier.height(8.dp))
+
+        PersonaType.entries.forEach { persona ->
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                RadioButton(
+                    selected = selectedPersona == persona.name,
+                    onClick = {
+                        selectedPersona = persona.name
+                        prefs.currentPersona = persona.name
+                    }
+                )
+                Text(persona.name)
+            }
+        }
+    }
+}
+
+@Composable
+fun TranscriptVaultScreen(viewModel: DebugViewModel, onBack: () -> Unit) {
+    val transcripts by viewModel.transcripts.collectAsState()
+
+    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Button(onClick = onBack) { Text("← Back") }
+            Spacer(modifier = Modifier.width(16.dp))
+            Text("Transcript Vault", style = MaterialTheme.typography.headlineSmall)
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        if (transcripts.isEmpty()) {
+            Text("No transcripts found. Turn on Ambient Listening!", color = Color.Gray)
+        } else {
+            LazyColumn(modifier = Modifier.fillMaxSize()) {
+                items(transcripts) { t ->
+                    Card(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFF1E1E1E))
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text("[${t.speaker}]", color = Color.Gray, fontSize = 12.sp)
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(t.text, color = Color.White)
+                        }
+                    }
                 }
-            )
+            }
         }
     }
 }

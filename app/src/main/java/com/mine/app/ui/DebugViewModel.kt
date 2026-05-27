@@ -45,6 +45,15 @@ class DebugViewModel @Inject constructor(
     private val _logs = MutableStateFlow<List<String>>(listOf("System Ready. Waiting for input..."))
     val logs: StateFlow<List<String>> = _logs
 
+    private val _transcripts = MutableStateFlow<List<com.mine.app.data.local.db.entity.TranscriptEntity>>(emptyList())
+    val transcripts: StateFlow<List<com.mine.app.data.local.db.entity.TranscriptEntity>> = _transcripts
+
+    fun loadTranscripts() {
+        viewModelScope.launch(Dispatchers.IO) {
+            _transcripts.value = graphDao.getRecentTranscripts()
+        }
+    }
+
     fun appendLog(msg: String) {
         // Adds the new message to the list
         _logs.value = _logs.value + msg

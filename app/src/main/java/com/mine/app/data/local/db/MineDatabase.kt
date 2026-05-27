@@ -16,9 +16,10 @@ import com.mine.app.data.local.db.entity.*
         ApiQueueEntity::class,
         ChatMessageEntity::class,
         RejectedLogEntity::class,
-        NodeEmbeddingEntity::class
+        NodeEmbeddingEntity::class,
+        TranscriptEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class MineDatabase : RoomDatabase() {

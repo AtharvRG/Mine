@@ -61,4 +61,11 @@ interface GraphDao {
 
     @Query("SELECT * FROM node_embeddings")
     suspend fun getAllEmbeddings(): List<NodeEmbeddingEntity>
+
+    // --- TRANSCRIPT QUERIES ---
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertTranscript(transcript: com.mine.app.data.local.db.entity.TranscriptEntity): Long
+
+    @Query("SELECT * FROM transcripts ORDER BY created_at DESC LIMIT 100")
+    suspend fun getRecentTranscripts(): List<com.mine.app.data.local.db.entity.TranscriptEntity>
 }

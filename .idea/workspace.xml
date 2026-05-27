@@ -10,15 +10,17 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="7424ee0a-565a-43ee-a49f-1d3703332107" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/app/src/main/java/com/mine/app/util/PreferencesManager.kt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.gradle/buildOutputCleanup/buildOutputCleanup.lock" beforeDir="false" afterPath="$PROJECT_DIR$/.gradle/buildOutputCleanup/buildOutputCleanup.lock" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.gradle/file-system.probe" beforeDir="false" afterPath="$PROJECT_DIR$/.gradle/file-system.probe" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/src/main/java/com/mine/app/ai/ChatAgent.kt" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/java/com/mine/app/ai/ChatAgent.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/src/main/java/com/mine/app/ai/CuratorAgent.kt" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/java/com/mine/app/ai/CuratorAgent.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/java/com/mine/app/ai/ChronosAgent.kt" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/java/com/mine/app/ai/ChronosAgent.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/java/com/mine/app/data/local/db/MineDatabase.kt" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/java/com/mine/app/data/local/db/MineDatabase.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/java/com/mine/app/data/local/db/dao/GraphDao.kt" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/java/com/mine/app/data/local/db/dao/GraphDao.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/java/com/mine/app/data/local/db/entity/SystemEntities.kt" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/java/com/mine/app/data/local/db/entity/SystemEntities.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/java/com/mine/app/service/AmbientListeningService.kt" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/java/com/mine/app/service/AmbientListeningService.kt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/src/main/java/com/mine/app/ui/DebugViewModel.kt" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/java/com/mine/app/ui/DebugViewModel.kt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/src/main/java/com/mine/app/ui/MainScreen.kt" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/java/com/mine/app/ui/MainScreen.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/src/main/java/com/mine/app/util/NetworkMonitor.kt" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/java/com/mine/app/util/NetworkMonitor.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/java/com/mine/app/util/PreferencesManager.kt" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/java/com/mine/app/util/PreferencesManager.kt" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

@@ -27,6 +27,7 @@ class AmbientListeningService : Service() {
     @Inject lateinit var whisperClient: NimWhisperClient
     @Inject lateinit var curatorAgent: CuratorAgent
     @Inject lateinit var networkMonitor: NetworkMonitor
+    @Inject lateinit var graphDao: com.mine.app.data.local.db.dao.GraphDao
 
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var audioRecord: AudioRecord? = null
@@ -109,6 +110,14 @@ class AmbientListeningService : Service() {
 
                 if (transcript.isNotBlank()) {
                     Log.d("AmbientService", "[$speakerLabel]: $transcript")
+
+                    // --- NEW: SAVE TO TRANSCRIPT VAULT ---
+                    graphDao.insertTranscript(
+                        com.mine.app.data.local.db.entity.TranscriptEntity(
+                            text = transcript,
+                            speaker = speakerLabel
+                        )
+                    )
 
                     // Prepend the speaker label so the AI knows who is talking!
                     val labeledTranscript = "[$speakerLabel]: $transcript"

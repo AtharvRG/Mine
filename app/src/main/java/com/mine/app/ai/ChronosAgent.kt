@@ -17,7 +17,8 @@ class ChronosAgent @Inject constructor(
     private val nimApi: NimApi,
     private val graphDao: GraphDao,
     private val chatDao: ChatDao,
-    private val notificationHelper: NotificationHelper
+    private val notificationHelper: NotificationHelper,
+    private val prefs: com.mine.app.util.PreferencesManager
 ) {
 
     suspend fun runProactiveCheck(apiKey: String) {
@@ -35,7 +36,8 @@ class ChronosAgent @Inject constructor(
         }
 
         val currentTime = TimeUtils.getCurrentTimestamp()
-        val basePrompt = PersonaManager.getSystemPrompt(PersonaType.OPERATOR)
+        val personaType = com.mine.app.util.PersonaType.valueOf(prefs.currentPersona)
+        val basePrompt = com.mine.app.util.PersonaManager.getSystemPrompt(personaType)
 
         val systemPrompt = """
             [CURRENT SYSTEM TIME: $currentTime]

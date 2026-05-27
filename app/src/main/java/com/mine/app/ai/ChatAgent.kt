@@ -54,7 +54,8 @@ class ChatAgent @Inject constructor(
         val locationContext = if (prefs.isLocationContextEnabled) {
             "\n[SPATIAL CONTEXT: User is currently on ${networkMonitor.networkType.value}]"
         } else ""
-        val basePrompt = com.mine.app.util.PersonaManager.getSystemPrompt(com.mine.app.util.PersonaType.OPERATOR)
+        val personaType = com.mine.app.util.PersonaType.valueOf(prefs.currentPersona)
+        val basePrompt = com.mine.app.util.PersonaManager.getSystemPrompt(personaType)
 
         // 4. Build the Impeccable System Prompt
         val systemPrompt = """

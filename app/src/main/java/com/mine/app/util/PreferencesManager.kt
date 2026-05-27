@@ -25,4 +25,8 @@ class PreferencesManager @Inject constructor(@ApplicationContext context: Contex
     var isLocationContextEnabled: Boolean
         get() = prefs.getBoolean("location_context_enabled", false)
         set(value) = prefs.edit().putBoolean("location_context_enabled", value).apply()
+
+    var currentPersona: String
+        get() = prefs.getString("current_persona", PersonaType.OPERATOR.name) ?: PersonaType.OPERATOR.name
+        set(value) = prefs.edit().putString("current_persona", value).apply()
 }
