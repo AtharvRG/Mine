@@ -10,17 +10,30 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="7424ee0a-565a-43ee-a49f-1d3703332107" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.gradle/9.5.1/checksums/checksums.lock" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gradle/9.5.1/checksums/md5-checksums.bin" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gradle/9.5.1/checksums/sha1-checksums.bin" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gradle/9.5.1/executionHistory/executionHistory.bin" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gradle/9.5.1/executionHistory/executionHistory.lock" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gradle/9.5.1/expanded/expanded.lock" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gradle/9.5.1/fileChanges/last-build.bin" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gradle/9.5.1/fileHashes/fileHashes.bin" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gradle/9.5.1/fileHashes/fileHashes.lock" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gradle/9.5.1/fileHashes/resourceHashesCache.bin" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gradle/9.5.1/gc.properties" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gradle/9.5.1/kotlin-dsl-plugin-entries/jar-entries.bin" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gradle/9.5.1/kotlin-dsl-plugin-entries/kotlin-dsl-plugin-entries.lock" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/.gradle/buildOutputCleanup/buildOutputCleanup.lock" beforeDir="false" afterPath="$PROJECT_DIR$/.gradle/buildOutputCleanup/buildOutputCleanup.lock" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gradle/file-system.probe" beforeDir="false" afterPath="$PROJECT_DIR$/.gradle/file-system.probe" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/src/main/java/com/mine/app/ai/ChatAgent.kt" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/java/com/mine/app/ai/ChatAgent.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/src/main/java/com/mine/app/ai/ChronosAgent.kt" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/java/com/mine/app/ai/ChronosAgent.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/src/main/java/com/mine/app/data/local/db/MineDatabase.kt" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/java/com/mine/app/data/local/db/MineDatabase.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/src/main/java/com/mine/app/data/local/db/dao/GraphDao.kt" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/java/com/mine/app/data/local/db/dao/GraphDao.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/src/main/java/com/mine/app/data/local/db/entity/SystemEntities.kt" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/java/com/mine/app/data/local/db/entity/SystemEntities.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/AndroidManifest.xml" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/AndroidManifest.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/java/com/mine/app/MainActivity.kt" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/java/com/mine/app/MainActivity.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/java/com/mine/app/ai/CuratorAgent.kt" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/java/com/mine/app/ai/CuratorAgent.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/java/com/mine/app/di/NetworkModule.kt" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/java/com/mine/app/di/NetworkModule.kt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/src/main/java/com/mine/app/service/AmbientListeningService.kt" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/java/com/mine/app/service/AmbientListeningService.kt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/src/main/java/com/mine/app/ui/DebugViewModel.kt" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/java/com/mine/app/ui/DebugViewModel.kt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/src/main/java/com/mine/app/ui/MainScreen.kt" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/java/com/mine/app/ui/MainScreen.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/src/main/java/com/mine/app/util/PreferencesManager.kt" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/java/com/mine/app/util/PreferencesManager.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/java/com/mine/app/util/NotificationHelper.kt" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/java/com/mine/app/util/NotificationHelper.kt" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -407,12 +420,12 @@
       <map>
         <entry key="com.mine.app">
           <value>
-            <CheckInfo lastCheckTimestamp="1782909213792" />
+            <CheckInfo lastCheckTimestamp="1783260317772" />
           </value>
         </entry>
         <entry key="com.mine.app.test">
           <value>
-            <CheckInfo lastCheckTimestamp="1782909213771" />
+            <CheckInfo lastCheckTimestamp="1783260317770" />
           </value>
         </entry>
       </map>

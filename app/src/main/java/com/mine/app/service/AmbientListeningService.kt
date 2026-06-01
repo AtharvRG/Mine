@@ -5,6 +5,7 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
+import android.content.Context
 import android.content.Intent
 import android.media.AudioFormat
 import android.media.AudioRecord
@@ -28,6 +29,7 @@ class AmbientListeningService : Service() {
     @Inject lateinit var curatorAgent: CuratorAgent
     @Inject lateinit var networkMonitor: NetworkMonitor
     @Inject lateinit var graphDao: com.mine.app.data.local.db.dao.GraphDao
+    @Inject lateinit var notificationHelper: com.mine.app.util.NotificationHelper
 
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var audioRecord: AudioRecord? = null
@@ -76,6 +78,23 @@ class AmbientListeningService : Service() {
         )
 
         audioRecord?.startRecording()
+
+        // --- NEW: PHONE STATE LISTENER ---
+        val telephonyManager = getSystemService(Context.TELEPHONY_SERVICE) as android.telephony.TelephonyManager
+        serviceScope.launch {
+            var lastState = telephonyManager.callState
+            while (isActive && isListening) {
+                val currentState = telephonyManager.callState
+                if (lastState == android.telephony.TelephonyManager.CALL_STATE_OFFHOOK &&
+                    currentState == android.telephony.TelephonyManager.CALL_STATE_IDLE) {
+
+                    Log.d("AmbientService", "Call ended! Triggering Reflection Notification.")
+                    notificationHelper.showCallReflectionNotification()
+                }
+                lastState = currentState
+                delay(1000) // Check every second
+            }
+        }
 
         serviceScope.launch {
             // Read in tiny 0.1 second chunks (3200 bytes) to save RAM

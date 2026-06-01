@@ -1,5 +1,6 @@
 package com.mine.app
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -21,6 +22,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        handleIntent(intent) // Check intent on launch
+
         setContent {
             MaterialTheme {
                 Surface(
@@ -31,6 +34,18 @@ class MainActivity : ComponentActivity() {
                     MainAppScreen(debugViewModel, chatViewModel)
                 }
             }
+        }
+    }
+
+    // Check intent if the app was already open in the background
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleIntent(intent)
+    }
+
+    private fun handleIntent(intent: Intent?) {
+        if (intent?.action == "com.mine.app.ACTION_CALL_REFLECTION") {
+            debugViewModel.setShowReflectionDialog(true)
         }
     }
 }

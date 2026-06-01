@@ -25,17 +25,17 @@ object NetworkModule {
         return HttpClient(OkHttp) {
             // 1. Ktor Timeout Plugin
             install(HttpTimeout) {
-                requestTimeoutMillis = 60_000L // Wait 60 seconds
-                connectTimeoutMillis = 60_000L
-                socketTimeoutMillis = 60_000L
+                requestTimeoutMillis = 120_000L // Wait 2 minutes
+                connectTimeoutMillis = 120_000L
+                socketTimeoutMillis = 120_000L
             }
 
             // 2. OkHttp Engine Timeouts (Double protection)
             engine {
                 config {
-                    readTimeout(60, TimeUnit.SECONDS)
-                    connectTimeout(60, TimeUnit.SECONDS)
-                    writeTimeout(60, TimeUnit.SECONDS)
+                    readTimeout(120, TimeUnit.SECONDS)
+                    connectTimeout(120, TimeUnit.SECONDS)
+                    writeTimeout(120, TimeUnit.SECONDS)
                 }
             }
 

@@ -243,5 +243,36 @@ class DebugViewModel @Inject constructor(
         }
     }
 
+    // --- CALL REFLECTION STATE ---
+    private val _showReflectionDialog = MutableStateFlow(false)
+    val showReflectionDialog: StateFlow<Boolean> = _showReflectionDialog
 
+    fun setShowReflectionDialog(show: Boolean) {
+        _showReflectionDialog.value = show
+    }
+
+    fun processCallReflection() {
+        _isRecording.value = false
+        _showReflectionDialog.value = false
+        appendLog("⏹️ Reflection recorded. Processing...")
+
+        viewModelScope.launch(Dispatchers.IO) {
+            val audioBytes = audioRecorderManager.stopAndGetAudio()
+            try {
+                val apiKey = BuildConfig.NVIDIA_API_KEY
+                val transcript = nimWhisperClient.transcribeAudio(apiKey, audioBytes)
+
+                if (transcript.isNotBlank()) {
+                    appendLog("📞 Call Reflection: \"$transcript\"")
+                    // Prepend a tag so the AI knows the context!
+                    val taggedTranscript = "[POST-CALL REFLECTION]: $transcript"
+                    val result = curatorAgent.processTranscript(apiKey, taggedTranscript)
+                    appendLog("⚙️ Curator Result: $result")
+                    fetchAndDisplayDatabase()
+                }
+            } catch (e: Exception) {
+                appendLog("❌ Reflection Error: ${e.message}")
+            }
+        }
+    }
 }

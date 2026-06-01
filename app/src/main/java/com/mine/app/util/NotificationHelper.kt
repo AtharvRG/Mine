@@ -58,4 +58,29 @@ class NotificationHelper @Inject constructor(@ApplicationContext private val con
         // Use a random ID so multiple nudges don't overwrite each other
         notificationManager.notify(System.currentTimeMillis().toInt(), notification)
     }
+
+    @SuppressLint("MissingPermission")
+    fun showCallReflectionNotification() {
+        val intent = Intent(context, MainActivity::class.java).apply {
+            action = "com.mine.app.ACTION_CALL_REFLECTION"
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+        val pendingIntent = PendingIntent.getActivity(
+            context,
+            1, // Unique request code
+            intent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+
+        val notification = NotificationCompat.Builder(context, "nudge_channel")
+            .setSmallIcon(android.R.drawable.ic_btn_speak_now)
+            .setContentTitle("Call Ended")
+            .setContentText("Capture what mattered?")
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+            .setContentIntent(pendingIntent)
+            .build()
+
+        notificationManager.notify(System.currentTimeMillis().toInt(), notification)
+    }
 }

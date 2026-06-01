@@ -99,6 +99,8 @@ class CuratorAgent @Inject constructor(
                - SCENARIO A (Intervention): The user is breaking a commitment, slacking off, or making a bad choice (e.g., eating pizza on a diet, skipping work for games). Write a short, punchy intervention (e.g., "Are you sure? What about the Friday deadline?").
                - SCENARIO B (Clarification): The user mentions something vague (e.g., "the database") and there are MULTIPLE matching projects in the context. Write a short message asking them to clarify which one (e.g., "Wait, do you mean the SQLite database or the Web backend?").
             
+            8. SPEED & REASONING: Keep your internal reasoning/thinking process extremely brief. Do not over-analyze. Output the JSON tool call as fast as possible.
+            
             $contextBuilder
         """.trimIndent()
 

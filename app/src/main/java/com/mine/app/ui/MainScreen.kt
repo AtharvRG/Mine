@@ -34,6 +34,11 @@ fun MainAppScreen(debugViewModel: DebugViewModel, chatViewModel: ChatViewModel) 
     val tabs = listOf("Database", "Chat", "Ambient", "Settings")
     val icons = listOf(Icons.Default.Storage, Icons.Default.Chat, Icons.Default.Mic, Icons.Default.Settings)
 
+    val showReflectionDialog by debugViewModel.showReflectionDialog.collectAsState()
+    if (showReflectionDialog) {
+        CallReflectionDialog(debugViewModel)
+    }
+
     Scaffold(
         bottomBar = {
             NavigationBar {
@@ -123,8 +128,14 @@ fun AmbientTab(viewModel: DebugViewModel) {
         val logs by viewModel.logs.collectAsState()
         val context = LocalContext.current
 
-        val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
-            if (permissions[Manifest.permission.RECORD_AUDIO] == true) viewModel.toggleRecording()
+        val permissionLauncher = rememberLauncherForActivityResult(
+            ActivityResultContracts.RequestMultiplePermissions()
+        ) { permissions ->
+            if (permissions[Manifest.permission.RECORD_AUDIO] == true) {
+                viewModel.toggleRecording()
+            } else {
+                viewModel.appendLog("❌ Microphone permission denied.")
+            }
         }
 
         Column(modifier = Modifier.fillMaxSize()) {
@@ -146,11 +157,16 @@ fun AmbientTab(viewModel: DebugViewModel) {
                             context.startService(intent)
                             viewModel.setAmbientRunning(false)
                         } else {
-                            if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                            if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED &&
+                                ContextCompat.checkSelfPermission(context, Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED) {
                                 context.startForegroundService(intent)
                                 viewModel.setAmbientRunning(true)
                             } else {
-                                permissionLauncher.launch(arrayOf(Manifest.permission.RECORD_AUDIO, Manifest.permission.POST_NOTIFICATIONS))
+                                permissionLauncher.launch(arrayOf(
+                                    Manifest.permission.RECORD_AUDIO,
+                                    Manifest.permission.POST_NOTIFICATIONS,
+                                    Manifest.permission.READ_PHONE_STATE
+                                ))
                             }
                         }
                     },
@@ -167,7 +183,11 @@ fun AmbientTab(viewModel: DebugViewModel) {
                         if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
                             viewModel.toggleRecording()
                         } else {
-                            permissionLauncher.launch(arrayOf(Manifest.permission.RECORD_AUDIO, Manifest.permission.POST_NOTIFICATIONS))
+                            permissionLauncher.launch(arrayOf(
+                                Manifest.permission.RECORD_AUDIO,
+                                Manifest.permission.POST_NOTIFICATIONS,
+                                Manifest.permission.READ_PHONE_STATE
+                            ))
                         }
                     },
                     modifier = Modifier.fillMaxWidth().height(60.dp),
@@ -271,6 +291,36 @@ fun TranscriptVaultScreen(viewModel: DebugViewModel, onBack: () -> Unit) {
             }
         }
     }
+}
+
+@Composable
+fun CallReflectionDialog(viewModel: DebugViewModel) {
+    val isRecording by viewModel.isRecording.collectAsState()
+
+    AlertDialog(
+        onDismissRequest = { viewModel.setShowReflectionDialog(false) },
+        title = { Text("Call Reflection") },
+        text = { Text("What were the key takeaways or commitments from that call?") },
+        confirmButton = {
+            Button(
+                onClick = {
+                    if (isRecording) {
+                        viewModel.processCallReflection()
+                    } else {
+                        viewModel.toggleRecording() // Starts recording
+                    }
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = if (isRecording) Color.Red else Color(0xFF2196F3))
+            ) {
+                Text(if (isRecording) "🛑 Stop & Save" else "🎙️ Start Recording")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = { viewModel.setShowReflectionDialog(false) }) {
+                Text("Cancel", color = Color.Gray)
+            }
+        }
+    )
 }
 
 // The Bulletproof Auto-Scrolling Terminal
