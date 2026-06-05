@@ -67,51 +67,105 @@ fun MainAppScreen(debugViewModel: DebugViewModel, chatViewModel: ChatViewModel) 
 @Composable
 fun DatabaseTab(viewModel: DebugViewModel) {
     var manualTaskText by remember { mutableStateOf("") }
-    val logs by viewModel.logs.collectAsState()
+    val graphNodes by viewModel.graphNodes.collectAsState()
+
+    // Load nodes when the tab is opened
+    LaunchedEffect(Unit) { viewModel.loadGraphNodes() }
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        Text("Database & Chronos Manager", style = MaterialTheme.typography.headlineSmall)
+        Text("Graph Editor", style = MaterialTheme.typography.headlineSmall)
         Spacer(modifier = Modifier.height(16.dp))
 
-        OutlinedTextField(
-            value = manualTaskText,
-            onValueChange = { manualTaskText = it },
-            label = { Text("Add Manual Node") },
-            modifier = Modifier.fillMaxWidth()
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        Button(
-            onClick = {
-                if (manualTaskText.isNotBlank()) {
-                    viewModel.addManualTodo(manualTaskText)
-                    manualTaskText = ""
+        // Manual Entry
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            OutlinedTextField(
+                value = manualTaskText,
+                onValueChange = { manualTaskText = it },
+                label = { Text("Add Manual Node") },
+                modifier = Modifier.weight(1f)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Button(
+                onClick = {
+                    if (manualTaskText.isNotBlank()) {
+                        viewModel.addManualTodo(manualTaskText)
+                        manualTaskText = ""
+                    }
                 }
-            },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Save to Graph Database")
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-        Button(
-            onClick = { viewModel.fetchAndDisplayDatabase() },
-            modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.buttonColors(containerColor = Color.DarkGray)
-        ) {
-            Text("Refresh Database View")
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-        Button(
-            onClick = { viewModel.forceChronosWakeup() },
-            modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF9800))
-        ) {
-            Text("Force Proactive AI Check (Chronos)")
+            ) { Text("Add") }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
-        TerminalView(logs = logs)
+        HorizontalDivider()
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // The Interactive Graph List
+        LazyColumn(modifier = Modifier.fillMaxSize()) {
+            items(graphNodes) { node ->
+                NodeEditorCard(node = node, viewModel = viewModel)
+            }
+        }
+    }
+}
+
+@Composable
+fun NodeEditorCard(node: com.mine.app.data.local.db.entity.NodeEntity, viewModel: DebugViewModel) {
+    var isEditing by remember { mutableStateOf(false) }
+    var editText by remember { mutableStateOf(node.content) }
+
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = when (node.status) {
+                "completed" -> Color(0xFF1B5E20) // Dark Green
+                "trashed" -> Color(0xFFB71C1C) // Dark Red
+                else -> Color(0xFF1E1E1E) // Default Dark Gray
+            }
+        )
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                Text("ID: ${node.id} | Branch: ${node.branchId}", color = Color.Gray, fontSize = 12.sp)
+                Text(node.status.uppercase(), color = Color.Gray, fontSize = 12.sp)
+            }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+
+            if (isEditing) {
+                OutlinedTextField(
+                    value = editText,
+                    onValueChange = { editText = it },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    TextButton(onClick = { isEditing = false }) { Text("Cancel", color = Color.Gray) }
+                    TextButton(onClick = { 
+                        viewModel.updateNodeText(node.id, editText)
+                        isEditing = false 
+                    }) { Text("Save", color = Color(0xFF2196F3)) }
+                }
+            } else {
+                Text(node.content, color = Color.White)
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                // Action Buttons
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                    TextButton(onClick = { isEditing = true }) { Text("Edit", color = Color(0xFF2196F3)) }
+                    
+                    if (node.status != "completed") {
+                        TextButton(onClick = { viewModel.updateNodeStatus(node.id, "completed") }) { 
+                            Text("Complete", color = Color(0xFF4CAF50)) 
+                        }
+                    }
+                    
+                    if (node.status != "trashed") {
+                        TextButton(onClick = { viewModel.updateNodeStatus(node.id, "trashed") }) { 
+                            Text("Trash", color = Color(0xFFF44336)) 
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -128,14 +182,8 @@ fun AmbientTab(viewModel: DebugViewModel) {
         val logs by viewModel.logs.collectAsState()
         val context = LocalContext.current
 
-        val permissionLauncher = rememberLauncherForActivityResult(
-            ActivityResultContracts.RequestMultiplePermissions()
-        ) { permissions ->
-            if (permissions[Manifest.permission.RECORD_AUDIO] == true) {
-                viewModel.toggleRecording()
-            } else {
-                viewModel.appendLog("❌ Microphone permission denied.")
-            }
+        val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
+            if (permissions[Manifest.permission.RECORD_AUDIO] == true) viewModel.toggleRecording()
         }
 
         Column(modifier = Modifier.fillMaxSize()) {
@@ -157,16 +205,11 @@ fun AmbientTab(viewModel: DebugViewModel) {
                             context.startService(intent)
                             viewModel.setAmbientRunning(false)
                         } else {
-                            if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED &&
-                                ContextCompat.checkSelfPermission(context, Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED) {
+                            if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
                                 context.startForegroundService(intent)
                                 viewModel.setAmbientRunning(true)
                             } else {
-                                permissionLauncher.launch(arrayOf(
-                                    Manifest.permission.RECORD_AUDIO,
-                                    Manifest.permission.POST_NOTIFICATIONS,
-                                    Manifest.permission.READ_PHONE_STATE
-                                ))
+                                permissionLauncher.launch(arrayOf(Manifest.permission.RECORD_AUDIO, Manifest.permission.POST_NOTIFICATIONS))
                             }
                         }
                     },
@@ -183,11 +226,7 @@ fun AmbientTab(viewModel: DebugViewModel) {
                         if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
                             viewModel.toggleRecording()
                         } else {
-                            permissionLauncher.launch(arrayOf(
-                                Manifest.permission.RECORD_AUDIO,
-                                Manifest.permission.POST_NOTIFICATIONS,
-                                Manifest.permission.READ_PHONE_STATE
-                            ))
+                            permissionLauncher.launch(arrayOf(Manifest.permission.RECORD_AUDIO, Manifest.permission.POST_NOTIFICATIONS))
                         }
                     },
                     modifier = Modifier.fillMaxWidth().height(60.dp),
@@ -197,17 +236,41 @@ fun AmbientTab(viewModel: DebugViewModel) {
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
-
-                // --- NEW: VAULT BUTTON ---
+                
                 Button(
-                    onClick = {
+                    onClick = { 
                         viewModel.loadTranscripts()
-                        showVault = true
+                        showVault = true 
                     },
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF9C27B0)) // Purple
                 ) {
                     Text("📂 View Transcript Vault")
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+                HorizontalDivider()
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // --- RESTORED DEBUG CONTROLS ---
+                Text("Debug Controls", style = MaterialTheme.typography.titleMedium)
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Button(
+                        onClick = { viewModel.fetchAndDisplayDatabase() },
+                        modifier = Modifier.weight(1f).padding(end = 4.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.DarkGray)
+                    ) {
+                        Text("Print DB State")
+                    }
+                    Button(
+                        onClick = { viewModel.forceChronosWakeup() },
+                        modifier = Modifier.weight(1f).padding(start = 4.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF9800))
+                    ) {
+                        Text("Force Chronos")
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -269,7 +332,7 @@ fun TranscriptVaultScreen(viewModel: DebugViewModel, onBack: () -> Unit) {
             Spacer(modifier = Modifier.width(16.dp))
             Text("Transcript Vault", style = MaterialTheme.typography.headlineSmall)
         }
-
+        
         Spacer(modifier = Modifier.height(16.dp))
 
         if (transcripts.isEmpty()) {
@@ -282,9 +345,18 @@ fun TranscriptVaultScreen(viewModel: DebugViewModel, onBack: () -> Unit) {
                         colors = CardDefaults.cardColors(containerColor = Color(0xFF1E1E1E))
                     ) {
                         Column(modifier = Modifier.padding(12.dp)) {
-                            Text("[${t.speaker}]", color = Color.Gray, fontSize = 12.sp)
+                            Text("[${t.speaker}] - ${java.util.Date(t.createdAt)}", color = Color.Gray, fontSize = 12.sp)
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(t.text, color = Color.White)
+                            
+                            Spacer(modifier = Modifier.height(8.dp))
+                            // --- NEW: EXTRACT BUTTON ---
+                            OutlinedButton(
+                                onClick = { viewModel.extractTranscriptToGraph(t) },
+                                modifier = Modifier.align(Alignment.End)
+                            ) {
+                                Text("Extract to Graph", color = Color(0xFF9C27B0))
+                            }
                         }
                     }
                 }

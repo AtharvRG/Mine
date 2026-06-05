@@ -75,6 +75,51 @@ class DebugViewModel @Inject constructor(
         }
     }
 
+    // --- GRAPH EDITOR STATE ---
+    private val _graphNodes = MutableStateFlow<List<com.mine.app.data.local.db.entity.NodeEntity>>(emptyList())
+    val graphNodes: StateFlow<List<com.mine.app.data.local.db.entity.NodeEntity>> = _graphNodes
+
+    fun loadGraphNodes() {
+        viewModelScope.launch(Dispatchers.IO) {
+            // Fetch the latest 50 nodes to display in the editor
+            _graphNodes.value = graphDao.getAllNodes(limit = 50)
+        }
+    }
+
+    fun updateNodeStatus(nodeId: Int, newStatus: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            graphDao.updateNodeStatus(nodeId, newStatus)
+            appendLog("✏️ Node $nodeId marked as $newStatus")
+            loadGraphNodes() // Refresh UI
+        }
+    }
+
+    fun updateNodeText(nodeId: Int, newText: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            graphDao.updateNodeContent(nodeId, newText)
+            appendLog("✏️ Node $nodeId content updated")
+            loadGraphNodes() // Refresh UI
+        }
+    }
+
+    // --- MANUAL VAULT EXTRACTION ---
+    fun extractTranscriptToGraph(transcript: com.mine.app.data.local.db.entity.TranscriptEntity) {
+        viewModelScope.launch(Dispatchers.IO) {
+            appendLog("🧠 Manually extracting transcript to Graph...")
+            try {
+                val apiKey = com.mine.app.BuildConfig.NVIDIA_API_KEY
+                // Tag it so the AI knows it's a manual extraction
+                val taggedTranscript = "[MANUAL EXTRACTION] [${transcript.speaker}]: ${transcript.text}"
+                
+                val result = curatorAgent.processTranscript(apiKey, taggedTranscript)
+                appendLog("⚙️ Extraction Result: $result")
+                loadGraphNodes() // Refresh UI to show the new node!
+            } catch (e: Exception) {
+                appendLog("❌ Extraction Error: ${e.message}")
+            }
+        }
+    }
+
     fun addManualTodo(task: String) {
         viewModelScope.launch(Dispatchers.IO) {
             appendLog("✏️ Manual Entry: Saving '$task' directly to DB...")
@@ -95,6 +140,7 @@ class DebugViewModel @Inject constructor(
             )
             appendLog("✅ Saved manually!")
             fetchAndDisplayDatabase()
+            loadGraphNodes()
         }
     }
 
@@ -205,6 +251,7 @@ class DebugViewModel @Inject constructor(
                     appendLog("[Node ${edge.sourceNodeId}] --(${edge.relation})--> [Node ${edge.targetNodeId}]")
                 }
             }
+            loadGraphNodes()
         }
     }
 
