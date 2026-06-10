@@ -1,12 +1,14 @@
 package com.mine.app.util
 
 import android.annotation.SuppressLint
+import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import androidx.core.app.NotificationCompat
+import androidx.core.app.RemoteInput
 import com.mine.app.MainActivity
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
@@ -25,38 +27,47 @@ class NotificationHelper @Inject constructor(@ApplicationContext private val con
         val channel = NotificationChannel(
             "nudge_channel",
             "MineAI Nudges",
-            NotificationManager.IMPORTANCE_HIGH // HIGH means it pops up on screen and makes a sound
+            NotificationManager.IMPORTANCE_HIGH
         ).apply {
-            description = "Proactive messages and urgent reminders from your Co-founder"
+            description = "Proactive messages and urgent reminders"
         }
         notificationManager.createNotificationChannel(channel)
     }
 
     @SuppressLint("MissingPermission")
     fun showNudgeNotification(message: String) {
-        // When the user taps the notification, open MainActivity
+        val notifId = System.currentTimeMillis().toInt()
+
+        // 1. Intent to open the app
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         }
-        val pendingIntent = PendingIntent.getActivity(
-            context,
-            0,
-            intent,
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-        )
+        val pendingIntent = PendingIntent.getActivity(context, notifId, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
 
-        val notification = NotificationCompat.Builder(context, "nudge_channel")
-            .setSmallIcon(android.R.drawable.ic_dialog_alert) // Default alert icon
-            .setContentTitle("MineAI")
-            .setContentText(message)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(message)) // Expands for long messages
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setAutoCancel(true) // Dismisses when tapped
-            .setContentIntent(pendingIntent)
+        // 2. Direct Reply Action
+        val remoteInput = RemoteInput.Builder("nudge_reply").setLabel("Reply to MineAI...").build()
+        val replyIntent = Intent(context, NudgeReplyReceiver::class.java).apply {
+            putExtra("notif_id", notifId)
+        }
+        // FLAG_MUTABLE is strictly required for RemoteInput on Android 12+
+        val replyPendingIntent = PendingIntent.getBroadcast(context, notifId, replyIntent, PendingIntent.FLAG_MUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+        val replyAction = NotificationCompat.Action.Builder(android.R.drawable.ic_menu_send, "Reply", replyPendingIntent)
+            .addRemoteInput(remoteInput)
             .build()
 
-        // Use a random ID so multiple nudges don't overwrite each other
-        notificationManager.notify(System.currentTimeMillis().toInt(), notification)
+        val notification = NotificationCompat.Builder(context, "nudge_channel")
+            .setSmallIcon(android.R.drawable.ic_dialog_alert)
+            .setContentTitle("MineAI")
+            .setContentText(message)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(message))
+            .setPriority(NotificationCompat.PRIORITY_MAX) // MAX forces Heads-Up
+            .setDefaults(Notification.DEFAULT_ALL) // Sound and Vibrate required for Heads-Up
+            .setAutoCancel(true)
+            .setContentIntent(pendingIntent)
+            .addAction(replyAction) // Add the reply box!
+            .build()
+
+        notificationManager.notify(notifId, notification)
     }
 
     @SuppressLint("MissingPermission")
@@ -65,20 +76,20 @@ class NotificationHelper @Inject constructor(@ApplicationContext private val con
             action = "com.mine.app.ACTION_CALL_REFLECTION"
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         }
-        val pendingIntent = PendingIntent.getActivity(
-            context,
-            1, // Unique request code
-            intent,
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-        )
+        val pendingIntent = PendingIntent.getActivity(context, 1, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+
+        // Add a specific "Record" button to the notification
+        val recordAction = NotificationCompat.Action.Builder(android.R.drawable.ic_btn_speak_now, "🎙️ Record Summary", pendingIntent).build()
 
         val notification = NotificationCompat.Builder(context, "nudge_channel")
             .setSmallIcon(android.R.drawable.ic_btn_speak_now)
             .setContentTitle("Call Ended")
             .setContentText("Capture what mattered?")
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setPriority(NotificationCompat.PRIORITY_MAX)
+            .setDefaults(Notification.DEFAULT_ALL)
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
+            .addAction(recordAction) // Add the button!
             .build()
 
         notificationManager.notify(System.currentTimeMillis().toInt(), notification)

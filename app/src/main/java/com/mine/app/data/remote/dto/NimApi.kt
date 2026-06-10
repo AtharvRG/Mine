@@ -15,12 +15,13 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
 import kotlinx.serialization.json.Json
 
-class NimApi(private val client: HttpClient) {
+class NimApi(private val client: HttpClient, private val rateLimiter: com.mine.app.util.RateLimiter) {
 
     private val baseUrl = "https://integrate.api.nvidia.com/v1/chat/completions"
     private val jsonParser = Json { ignoreUnknownKeys = true; isLenient = true }
 
     suspend fun getChatCompletion(apiKey: String, request: NimChatRequest): NimChatResponse {
+        rateLimiter.waitAndConsume(apiKey)
         val response = client.post(baseUrl) {
             contentType(ContentType.Application.Json)
             header(HttpHeaders.Authorization, "Bearer $apiKey")
@@ -34,6 +35,7 @@ class NimApi(private val client: HttpClient) {
     }
 
     suspend fun getEmbeddings(apiKey: String, request: NimEmbeddingRequest): NimEmbeddingResponse {
+        rateLimiter.waitAndConsume(apiKey)
         val response = client.post("https://integrate.api.nvidia.com/v1/embeddings") {
             contentType(ContentType.Application.Json)
             header(HttpHeaders.Authorization, "Bearer $apiKey")

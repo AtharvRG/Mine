@@ -3,6 +3,7 @@ package com.mine.app.util
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 
 object TimeUtils {
     // This will output something like: "Friday, June 26, 2026 at 2:15 PM IST"
@@ -10,6 +11,11 @@ object TimeUtils {
         val now = ZonedDateTime.now(ZoneId.systemDefault())
         val formatter = DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy 'at' h:mm a z")
         return now.format(formatter)
+    }
+
+    fun getStartOfDayTimestamp(): Long {
+        val zone = ZoneId.of("Asia/Kolkata")
+        return ZonedDateTime.now(zone).truncatedTo(ChronoUnit.DAYS).toInstant().toEpochMilli()
     }
 }
 

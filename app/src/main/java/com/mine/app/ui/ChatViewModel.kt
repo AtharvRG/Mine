@@ -19,13 +19,13 @@ class ChatViewModel @Inject constructor(
 ) : ViewModel() {
 
     // Automatically streams the chat history from SQLite to the UI
-    val chatMessages = chatDao.getRecentMessagesFlow(50)
+    val chatMessages = chatDao.getRecentMessagesFlow(com.mine.app.util.TimeUtils.getStartOfDayTimestamp(), 50)
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     fun sendMessage(message: String) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val apiKey = BuildConfig.NVIDIA_API_KEY
+                val apiKey = BuildConfig.NVIDIA_API_KEY_CHAT
                 chatAgent.sendMessage(apiKey, message)
             } catch (e: Exception) {
                 e.printStackTrace()

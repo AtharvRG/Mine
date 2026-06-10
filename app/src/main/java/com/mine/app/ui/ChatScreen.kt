@@ -13,6 +13,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
+
 @Composable
 fun ChatScreen(viewModel: ChatViewModel = hiltViewModel()) {
     val messages by viewModel.chatMessages.collectAsState()
@@ -40,7 +45,7 @@ fun ChatScreen(viewModel: ChatViewModel = hiltViewModel()) {
                             .padding(12.dp)
                             .widthIn(max = 280.dp)
                     ) {
-                        Text(text = msg.content, color = Color.White)
+                        Text(text = parseMarkdown(msg.content), color = Color.White)
                     }
                 }
             }
@@ -72,6 +77,21 @@ fun ChatScreen(viewModel: ChatViewModel = hiltViewModel()) {
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE91E63))
             ) {
                 Text("Send")
+            }
+        }
+    }
+}
+
+fun parseMarkdown(text: String): AnnotatedString {
+    return buildAnnotatedString {
+        val parts = text.split("**")
+        parts.forEachIndexed { index, part ->
+            if (index % 2 == 1) { // Odd indices were wrapped in **
+                pushStyle(SpanStyle(fontWeight = FontWeight.Bold))
+                append(part)
+                pop()
+            } else {
+                append(part)
             }
         }
     }

@@ -15,6 +15,7 @@ import com.mine.app.data.remote.NimWhisperClient
 import com.mine.app.data.remote.dto.NimChatRequest
 import com.mine.app.data.remote.dto.NimMessage
 import com.mine.app.service.AudioRecorderManager
+import com.mine.app.service.ServiceStateHolder
 import com.mine.app.util.NetworkMonitor
 import com.mine.app.util.PreferencesManager
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -34,6 +35,7 @@ class DebugViewModel @Inject constructor(
     private val chronosAgent: ChronosAgent,
     private val audioRecorderManager: AudioRecorderManager,
     private val nimWhisperClient: NimWhisperClient,
+    private val serviceStateHolder: ServiceStateHolder,
     networkMonitor: NetworkMonitor,
     val prefs: PreferencesManager
 ) : ViewModel() {
@@ -63,17 +65,7 @@ class DebugViewModel @Inject constructor(
     val isRecording: StateFlow<Boolean> = _isRecording
 
     // --- AMBIENT SERVICE STATE ---
-    private val _isAmbientRunning = MutableStateFlow(false)
-    val isAmbientRunning: StateFlow<Boolean> = _isAmbientRunning
-
-    fun setAmbientRunning(isRunning: Boolean) {
-        _isAmbientRunning.value = isRunning
-        if (isRunning) {
-            appendLog("🟢 Ambient Listening Service Started in Background.")
-        } else {
-            appendLog("⚪ Ambient Listening Service Stopped.")
-        }
-    }
+    val isAmbientRunning = serviceStateHolder.isAmbientRunning
 
     // --- GRAPH EDITOR STATE ---
     private val _graphNodes = MutableStateFlow<List<com.mine.app.data.local.db.entity.NodeEntity>>(emptyList())
@@ -102,12 +94,20 @@ class DebugViewModel @Inject constructor(
         }
     }
 
+    fun deleteNodePermanently(nodeId: Int) {
+        viewModelScope.launch(Dispatchers.IO) {
+            graphDao.deleteNodePermanently(nodeId)
+            appendLog("🗑️ Node $nodeId permanently deleted from database.")
+            loadGraphNodes() // Refresh UI
+        }
+    }
+
     // --- MANUAL VAULT EXTRACTION ---
     fun extractTranscriptToGraph(transcript: com.mine.app.data.local.db.entity.TranscriptEntity) {
         viewModelScope.launch(Dispatchers.IO) {
             appendLog("🧠 Manually extracting transcript to Graph...")
             try {
-                val apiKey = com.mine.app.BuildConfig.NVIDIA_API_KEY
+                val apiKey = com.mine.app.BuildConfig.NVIDIA_API_KEY_AGENT
                 // Tag it so the AI knows it's a manual extraction
                 val taggedTranscript = "[MANUAL EXTRACTION] [${transcript.speaker}]: ${transcript.text}"
                 
@@ -122,23 +122,32 @@ class DebugViewModel @Inject constructor(
 
     fun addManualTodo(task: String) {
         viewModelScope.launch(Dispatchers.IO) {
-            appendLog("✏️ Manual Entry: Saving '$task' directly to DB...")
+            appendLog("✏️ Manual Entry: Routing '$task' through ToolExecutor for Embedding...")
+            
+            // We build a simple JSON payload to force the ToolExecutor to handle it properly
+            val manualJson = """
+                {
+                  "discard_transcript": false,
+                  "memory_operations": [
+                    {
+                      "action": "create",
+                      "content": "$task",
+                      "branch": "tasks",
+                      "confidence": 1.0
+                    }
+                  ],
+                  "trigger_nudge": false
+                }
+            """.trimIndent()
 
-            var branch = graphDao.getBranchByPath("personal/tasks")
-            if (branch == null) {
-                val branchId = graphDao.insertBranch(BranchEntity(groupId = 1, name = "tasks", path = "personal/tasks")).toInt()
-                branch = BranchEntity(id = branchId, groupId = 1, name = "tasks", path = "personal/tasks")
+            val success = toolExecutor.executeUpdateMemoryGraph(BuildConfig.NVIDIA_API_KEY_AGENT, manualJson)
+            
+            if (success) {
+                appendLog("✅ Saved manually and Vector Embedding generated!")
+            } else {
+                appendLog("❌ Failed to save manual entry.")
             }
 
-            graphDao.insertNode(
-                NodeEntity(
-                    branchId = branch.id,
-                    content = task,
-                    confidence = 1.0f,
-                    source = "manual"
-                )
-            )
-            appendLog("✅ Saved manually!")
             fetchAndDisplayDatabase()
             loadGraphNodes()
         }
@@ -147,7 +156,7 @@ class DebugViewModel @Inject constructor(
     fun forceChronosWakeup() {
         viewModelScope.launch(Dispatchers.IO) {
             appendLog("⏰ Forcing Chronos Worker to wake up...")
-            chronosAgent.runProactiveCheck(BuildConfig.NVIDIA_API_KEY)
+            chronosAgent.runProactiveCheck(BuildConfig.NVIDIA_API_KEY_AGENT)
             appendLog("⏰ Chronos check complete. Check Chat UI to see if it sent a message!")
         }
     }
@@ -162,7 +171,7 @@ class DebugViewModel @Inject constructor(
             appendLog("🌐 Sending request to REAL NVIDIA NIM (gpt-oss-20b)...")
 
             try {
-                val apiKey = BuildConfig.NVIDIA_API_KEY // Replace with real key
+                val apiKey = BuildConfig.NVIDIA_API_KEY_CHAT // Replace with real key
 
                 val request = NimChatRequest(
                     model = "openai/gpt-oss-20b",
@@ -196,7 +205,7 @@ class DebugViewModel @Inject constructor(
             appendLog("🎙️ Transcript: $fakeTranscript")
 
             try {
-                val apiKey = BuildConfig.NVIDIA_API_KEY // Replace with real key
+                val apiKey = BuildConfig.NVIDIA_API_KEY_AGENT // Replace with real key
 
                 val result = curatorAgent.processTranscript(apiKey, fakeTranscript)
                 appendLog("⚙️ Curator Result: $result")
@@ -225,7 +234,7 @@ class DebugViewModel @Inject constructor(
                   "trigger_nudge": false
                 }
             """.trimIndent()
-            val success = toolExecutor.executeUpdateMemoryGraph(BuildConfig.NVIDIA_API_KEY, mockJson)
+            val success = toolExecutor.executeUpdateMemoryGraph(BuildConfig.NVIDIA_API_KEY_AGENT, mockJson)
             appendLog("🛠️ Mock Tool Execution: ${if (success) "Success" else "Failed"}")
             fetchAndDisplayDatabase()
         }
@@ -239,7 +248,8 @@ class DebugViewModel @Inject constructor(
                 appendLog("Database is empty.")
             } else {
                 nodes.forEach { node ->
-                    appendLog("[ID: ${node.id}] [${node.source}]: ${node.content}")
+                    // Now it prints: [ID: 1] [TRASHED] [ambient]: User wants pizza
+                    appendLog("[ID: ${node.id}] [${node.status.uppercase()}] [${node.source}]: ${node.content}")
                 }
             }
 
@@ -266,7 +276,7 @@ class DebugViewModel @Inject constructor(
 
                 try {
                     // TODO: Put your real NIM API key here
-                    val apiKey = BuildConfig.NVIDIA_API_KEY
+                    val apiKey = BuildConfig.NVIDIA_API_KEY_WHISPER
 
                     val transcript = nimWhisperClient.transcribeAudio(apiKey, audioBytes)
                     appendLog("🗣️ You said: \"$transcript\"")
@@ -306,7 +316,7 @@ class DebugViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             val audioBytes = audioRecorderManager.stopAndGetAudio()
             try {
-                val apiKey = BuildConfig.NVIDIA_API_KEY
+                val apiKey = BuildConfig.NVIDIA_API_KEY_WHISPER
                 val transcript = nimWhisperClient.transcribeAudio(apiKey, audioBytes)
 
                 if (transcript.isNotBlank()) {

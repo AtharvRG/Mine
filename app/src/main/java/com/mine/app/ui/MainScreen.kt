@@ -150,15 +150,24 @@ fun NodeEditorCard(node: com.mine.app.data.local.db.entity.NodeEntity, viewModel
                 
                 // Action Buttons
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                    TextButton(onClick = { isEditing = true }) { Text("Edit", color = Color(0xFF2196F3)) }
-                    
-                    if (node.status != "completed") {
-                        TextButton(onClick = { viewModel.updateNodeStatus(node.id, "completed") }) { 
-                            Text("Complete", color = Color(0xFF4CAF50)) 
+                    if (node.status == "trashed") {
+                        // If it's in the trash, offer Restore or Permanent Delete
+                        TextButton(onClick = { viewModel.updateNodeStatus(node.id, "active") }) { 
+                            Text("Restore", color = Color.White) 
                         }
-                    }
-                    
-                    if (node.status != "trashed") {
+                        TextButton(onClick = { viewModel.deleteNodePermanently(node.id) }) { 
+                            Text("Delete Forever", color = Color.White) 
+                        }
+                    } else {
+                        // Normal active/completed buttons
+                        TextButton(onClick = { isEditing = true }) { Text("Edit", color = Color(0xFF2196F3)) }
+                        
+                        if (node.status != "completed") {
+                            TextButton(onClick = { viewModel.updateNodeStatus(node.id, "completed") }) { 
+                                Text("Complete", color = Color(0xFF4CAF50)) 
+                            }
+                        }
+
                         TextButton(onClick = { viewModel.updateNodeStatus(node.id, "trashed") }) { 
                             Text("Trash", color = Color(0xFFF44336)) 
                         }
@@ -203,11 +212,9 @@ fun AmbientTab(viewModel: DebugViewModel) {
                         if (isAmbientRunning) {
                             intent.action = "STOP"
                             context.startService(intent)
-                            viewModel.setAmbientRunning(false)
                         } else {
                             if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
                                 context.startForegroundService(intent)
-                                viewModel.setAmbientRunning(true)
                             } else {
                                 permissionLauncher.launch(arrayOf(Manifest.permission.RECORD_AUDIO, Manifest.permission.POST_NOTIFICATIONS))
                             }

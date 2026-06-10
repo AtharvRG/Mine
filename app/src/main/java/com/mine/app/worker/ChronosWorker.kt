@@ -19,7 +19,7 @@ class ChronosWorker @AssistedInject constructor(
     override suspend fun doWork(): Result {
         // In a real production app, we would fetch the API key from EncryptedSharedPreferences.
         // For now, we use the BuildConfig key.
-        val apiKey = BuildConfig.NVIDIA_API_KEY
+        val apiKey = BuildConfig.NVIDIA_API_KEY_AGENT
 
         if (apiKey.isBlank()) return Result.failure()
 

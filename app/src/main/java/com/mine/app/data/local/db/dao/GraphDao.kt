@@ -52,6 +52,14 @@ interface GraphDao {
     @Query("UPDATE nodes SET content = :newContent, updated_at = :timestamp WHERE id = :nodeId")
     suspend fun updateNodeContent(nodeId: Int, newContent: String, timestamp: Long = System.currentTimeMillis()): Int
 
+    // --- UPDATES ---
+    @Query("DELETE FROM nodes WHERE id = :nodeId")
+    suspend fun deleteNodePermanently(nodeId: Int): Int
+
+    @Query("DELETE FROM nodes WHERE status = 'trashed' AND updated_at < :thresholdTimestamp")
+    suspend fun deleteOldTrashedNodes(thresholdTimestamp: Long): Int
+
+
     @Query("SELECT * FROM edges ORDER BY created_at DESC LIMIT :limit")
     suspend fun getAllEdges(limit: Int = 50): List<EdgeEntity>
 

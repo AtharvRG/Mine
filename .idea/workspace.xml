@@ -10,10 +10,29 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="7424ee0a-565a-43ee-a49f-1d3703332107" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/app/src/main/java/com/mine/app/service/ServiceStateHolder.kt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/src/main/java/com/mine/app/util/NudgeReplyReceiver.kt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/src/main/java/com/mine/app/util/RateLimiter.kt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/src/main/java/com/mine/app/worker/PruningWorker.kt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.gradle/buildOutputCleanup/buildOutputCleanup.lock" beforeDir="false" afterPath="$PROJECT_DIR$/.gradle/buildOutputCleanup/buildOutputCleanup.lock" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/build.gradle.kts" beforeDir="false" afterPath="$PROJECT_DIR$/app/build.gradle.kts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/AndroidManifest.xml" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/AndroidManifest.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/java/com/mine/app/MineApplication.kt" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/java/com/mine/app/MineApplication.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/java/com/mine/app/ai/ChatAgent.kt" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/java/com/mine/app/ai/ChatAgent.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/java/com/mine/app/data/local/db/dao/ChatDao.kt" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/java/com/mine/app/data/local/db/dao/ChatDao.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/java/com/mine/app/data/local/db/dao/GraphDao.kt" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/java/com/mine/app/data/local/db/dao/GraphDao.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/java/com/mine/app/data/remote/NimWhisperClient.kt" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/java/com/mine/app/data/remote/NimWhisperClient.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/java/com/mine/app/data/remote/dto/NimApi.kt" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/java/com/mine/app/data/remote/dto/NimApi.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/java/com/mine/app/di/NetworkModule.kt" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/java/com/mine/app/di/NetworkModule.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/java/com/mine/app/service/AmbientListeningService.kt" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/java/com/mine/app/service/AmbientListeningService.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/java/com/mine/app/ui/ChatScreen.kt" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/java/com/mine/app/ui/ChatScreen.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/java/com/mine/app/ui/ChatViewModel.kt" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/java/com/mine/app/ui/ChatViewModel.kt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/src/main/java/com/mine/app/ui/DebugViewModel.kt" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/java/com/mine/app/ui/DebugViewModel.kt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/src/main/java/com/mine/app/ui/MainScreen.kt" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/java/com/mine/app/ui/MainScreen.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/java/com/mine/app/util/MineUtils.kt" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/java/com/mine/app/util/MineUtils.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/java/com/mine/app/util/NotificationHelper.kt" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/java/com/mine/app/util/NotificationHelper.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/java/com/mine/app/worker/ChronosWorker.kt" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/java/com/mine/app/worker/ChronosWorker.kt" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

@@ -13,13 +13,14 @@ import javax.inject.Inject
 
 
 
-class NimWhisperClient @Inject constructor() {
+class NimWhisperClient @Inject constructor(private val rateLimiter: com.mine.app.util.RateLimiter) {
 
     private val host = "grpc.nvcf.nvidia.com"
     private val port = 443
     private val functionId = "b702f636-f60c-4a3d-a6f4-f3568c13bd7d"
 
     suspend fun transcribeAudio(apiKey: String, audioBytes: ByteArray): String = withContext(Dispatchers.IO) {
+        rateLimiter.waitAndConsume(apiKey)
         // 1. Build the Secure Channel
         val channel = ManagedChannelBuilder.forAddress(host, port)
             .useTransportSecurity() // Required for port 443

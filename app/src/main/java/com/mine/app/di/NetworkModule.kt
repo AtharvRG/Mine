@@ -52,8 +52,8 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideNimApi(client: HttpClient): NimApi {
-        return NimApi(client)
+    fun provideNimApi(client: HttpClient, rateLimiter: com.mine.app.util.RateLimiter): NimApi {
+        return NimApi(client, rateLimiter)
     }
 
     @Provides

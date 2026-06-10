@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
@@ -29,13 +30,15 @@ class AmbientListeningService : Service() {
     @Inject lateinit var curatorAgent: CuratorAgent
     @Inject lateinit var networkMonitor: NetworkMonitor
     @Inject lateinit var graphDao: com.mine.app.data.local.db.dao.GraphDao
+    @Inject lateinit var queueDao: com.mine.app.data.local.db.dao.QueueDao
     @Inject lateinit var notificationHelper: com.mine.app.util.NotificationHelper
+    @Inject lateinit var serviceStateHolder: ServiceStateHolder
 
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var audioRecord: AudioRecord? = null
     private var isListening = false
 
-    private val apiKey = BuildConfig.NVIDIA_API_KEY
+    private val apiKey = BuildConfig.NVIDIA_API_KEY_WHISPER
 
     override fun onCreate() {
         super.onCreate()
@@ -57,6 +60,7 @@ class AmbientListeningService : Service() {
             startForeground(1, notification)
         }
         
+        serviceStateHolder.setRunning(true)
         startListening()
         return START_STICKY
     }
@@ -119,7 +123,15 @@ class AmbientListeningService : Service() {
     private fun processCompletedSentence(audioBytes: ByteArray, speakerLabel: String) {
         serviceScope.launch {
             if (!networkMonitor.isOnline.value) {
-                Log.d("AmbientService", "Offline. Dropping audio. (We will queue this in the future!)")
+                Log.d("AmbientService", "Offline! Saving audio to local SQLite queue.")
+                queueDao.insertMemory(
+                    com.mine.app.data.local.db.entity.MemoryQueueEntity(
+                        audioBlob = audioBytes,
+                        speakerLabel = speakerLabel,
+                        source = "ambient",
+                        status = "pending"
+                    )
+                )
                 return@launch
             }
 
@@ -160,6 +172,7 @@ class AmbientListeningService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
+        serviceStateHolder.setRunning(false)
         stopListening()
     }
 
@@ -177,11 +190,17 @@ class AmbientListeningService : Service() {
     }
 
     private fun buildNotification(text: String): Notification {
+        // Intent to stop the service directly from the notification
+        val stopIntent = Intent(this, AmbientListeningService::class.java).apply { action = "STOP" }
+        val stopPendingIntent = PendingIntent.getService(this, 0, stopIntent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+        val stopAction = NotificationCompat.Action.Builder(android.R.drawable.ic_delete, "🛑 Stop Listening", stopPendingIntent).build()
+
         return NotificationCompat.Builder(this, "ambient_channel")
-            .setContentTitle("MineAI")
+            .setContentTitle("MineAI Ambient")
             .setContentText(text)
-            .setSmallIcon(android.R.drawable.ic_btn_speak_now) // Default mic icon
+            .setSmallIcon(android.R.drawable.ic_btn_speak_now)
             .setOngoing(true)
+            .addAction(stopAction) // Add the stop button!
             .build()
     }
 }

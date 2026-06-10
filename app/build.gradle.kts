@@ -10,13 +10,15 @@ plugins {
     alias(libs.plugins.protobuf)
 }
 
-// --- READ API KEY FROM local.properties ---
+// --- READ API KEYS FROM local.properties ---
 val localProperties = Properties()
 val localPropertiesFile = rootProject.file("local.properties")
 if (localPropertiesFile.exists()) {
     localProperties.load(FileInputStream(localPropertiesFile))
 }
-val nvidiaApiKey = localProperties.getProperty("NVIDIA_API_KEY") ?: "\"\""
+val keyChat = localProperties.getProperty("NVIDIA_API_KEY_CHAT") ?: "\"\""
+val keyAgent = localProperties.getProperty("NVIDIA_API_KEY_AGENT") ?: "\"\""
+val keyWhisper = localProperties.getProperty("NVIDIA_API_KEY_WHISPER") ?: "\"\""
 
 android {
     namespace = "com.mine.app"
@@ -44,8 +46,10 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // --- INJECT KEY INTO APP ---
-        buildConfigField("String", "NVIDIA_API_KEY", nvidiaApiKey)
+        // --- INJECT KEYS INTO APP ---
+        buildConfigField("String", "NVIDIA_API_KEY_CHAT", keyChat)
+        buildConfigField("String", "NVIDIA_API_KEY_AGENT", keyAgent)
+        buildConfigField("String", "NVIDIA_API_KEY_WHISPER", keyWhisper)
     }
     buildTypes {
         release {

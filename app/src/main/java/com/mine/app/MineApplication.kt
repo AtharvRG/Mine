@@ -7,6 +7,7 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.mine.app.worker.ChronosWorker
+import com.mine.app.worker.PruningWorker
 import dagger.hilt.android.HiltAndroidApp
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
@@ -31,6 +32,14 @@ class MineApplication : Application(), Configuration.Provider {
             "ChronosWorker",
             ExistingPeriodicWorkPolicy.KEEP,
             chronosRequest
+        )
+
+        // Schedule Pruning to run once a day
+        val pruningRequest = PeriodicWorkRequestBuilder<PruningWorker>(1, TimeUnit.DAYS).build()
+        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+            "PruningWorker",
+            ExistingPeriodicWorkPolicy.KEEP,
+            pruningRequest
         )
     }
 }

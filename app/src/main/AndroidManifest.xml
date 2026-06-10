@@ -46,6 +46,10 @@
             android:exported="false"
             android:foregroundServiceType="microphone" />
 
+        <receiver
+            android:name=".util.NudgeReplyReceiver"
+            android:exported="false" />
+
     </application>
 
 </manifest>

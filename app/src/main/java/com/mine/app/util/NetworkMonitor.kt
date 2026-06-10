@@ -5,10 +5,12 @@ import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
-class NetworkMonitor(context: Context) {
+class NetworkMonitor(private val context: Context) {
 
     private val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
 
@@ -50,6 +52,10 @@ class NetworkMonitor(context: Context) {
         val caps = connectivityManager.getNetworkCapabilities(network)
         if (caps != null && caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) {
             _isOnline.value = true
+
+            // Trigger the QueueWorker to drain any offline backlog
+            WorkManager.getInstance(context).enqueue(OneTimeWorkRequestBuilder<com.mine.app.worker.QueueWorker>().build())
+
             if (caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
                 _networkType.value = "Wi-Fi (Likely Indoors/Home)"
             } else if (caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)) {

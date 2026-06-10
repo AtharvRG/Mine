@@ -4,7 +4,6 @@ import com.mine.app.data.local.db.dao.ChatDao
 import com.mine.app.data.local.db.dao.GraphDao
 import com.mine.app.data.local.db.dao.QueueDao
 import com.mine.app.data.local.db.entity.ChatMessageEntity
-import com.mine.app.data.local.db.entity.MemoryQueueEntity
 import com.mine.app.data.remote.NimApi
 import com.mine.app.data.remote.dto.NimChatRequest
 import com.mine.app.data.remote.dto.NimEmbeddingRequest
@@ -12,25 +11,21 @@ import com.mine.app.data.remote.dto.NimMessage
 import com.mine.app.util.NetworkMonitor
 import com.mine.app.util.PreferencesManager
 import com.mine.app.util.VectorUtils
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 class ChatAgent @Inject constructor(
     private val nimApi: NimApi,
     private val graphDao: GraphDao,
     private val chatDao: ChatDao,
-    private val queueDao: QueueDao,
     private val networkMonitor: NetworkMonitor,
-    private val prefs: PreferencesManager
+    private val prefs: PreferencesManager,
+    private val curatorAgent: CuratorAgent
 ) {
     suspend fun sendMessage(apiKey: String, userMessage: String): String {
         
         // 1. Save User Message to Chat UI History
-        chatDao.insertMessage(ChatMessageEntity(dayTimestamp = 0L, role = "user", content = userMessage))
-
-        // 2. SECRET DELEGATION: Queue the message for the Background Curator to process later!
-        queueDao.insertMemory(
-            MemoryQueueEntity(rawText = userMessage, source = "chat", status = "pending")
-        )
+        chatDao.insertMessage(ChatMessageEntity(dayTimestamp = com.mine.app.util.TimeUtils.getStartOfDayTimestamp(), role = "user", content = userMessage))
 
         // 3. FAST CONTEXT RETRIEVAL: Vector Search the local DB
         val embReq = NimEmbeddingRequest(input = listOf(userMessage), inputType = "query")
@@ -89,7 +84,21 @@ class ChatAgent @Inject constructor(
         val response = nimApi.getChatCompletion(apiKey, request)
         val aiReply = response.choices.firstOrNull()?.message?.content ?: "..."
 
-        chatDao.insertMessage(ChatMessageEntity(dayTimestamp = 0L, role = "mine", content = aiReply))
+        chatDao.insertMessage(ChatMessageEntity(dayTimestamp = com.mine.app.util.TimeUtils.getStartOfDayTimestamp(), role = "mine", content = aiReply))
+
+        // --- NEW: SILENTLY MEMORIZE THE CONVERSATION ---
+        // We launch this in a new CoroutineScope so it doesn't block the UI from receiving the chat reply!
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            try {
+                val agentKey = com.mine.app.BuildConfig.NVIDIA_API_KEY_AGENT
+                // We combine both messages so the Curator has the full context of the interaction
+                val chatTranscript = "[CHAT LOG] User: $userMessage \nMineAI: $aiReply"
+                android.util.Log.d("ChatAgent", "Sending chat log to Curator...")
+                curatorAgent.processTranscript(agentKey, chatTranscript)
+            } catch (e: Exception) {
+                android.util.Log.e("ChatAgent", "Failed to memorize chat: ${e.message}")
+            }
+        }
 
         return aiReply
     }
