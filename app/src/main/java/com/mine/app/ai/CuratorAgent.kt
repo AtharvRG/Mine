@@ -47,15 +47,16 @@ class CuratorAgent @Inject constructor(
     """.trimIndent()
 
     suspend fun processTranscript(apiKey: String, transcript: String): String {
-        // 1. Convert the incoming transcript into a Vector
+        // 1. Convert the incoming transcript into a Vector (Truncated to prevent 400 Token Limit errors)
+        val safeEmbeddingText = transcript.take(2000)
         val transcriptEmbReq = NimEmbeddingRequest(
-            input = listOf(transcript),
+            input = listOf(safeEmbeddingText),
             inputType = "query"
         )
         val transcriptVector = nimApi.getEmbeddings(apiKey, transcriptEmbReq).data[0].embedding.toFloatArray()
 
         // 2. Fetch all DB embeddings and run Cosine Similarity Math
-        val allEmbeddings = graphDao.getAllEmbeddings()
+        val allEmbeddings = graphDao.getActiveEmbeddings()
         val scoredNodes = allEmbeddings.map { dbEmb ->
             val dbVector = VectorUtils.byteArrayToFloatArray(dbEmb.embedding)
             val score = VectorUtils.cosineSimilarity(transcriptVector, dbVector)

@@ -37,6 +37,7 @@ class AmbientListeningService : Service() {
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var audioRecord: AudioRecord? = null
     private var isListening = false
+    private var isPausedByCall = false
 
     private val apiKey = BuildConfig.NVIDIA_API_KEY_WHISPER
 
@@ -89,12 +90,18 @@ class AmbientListeningService : Service() {
             var lastState = telephonyManager.callState
             while (isActive && isListening) {
                 val currentState = telephonyManager.callState
-                if (lastState == android.telephony.TelephonyManager.CALL_STATE_OFFHOOK &&
-                    currentState == android.telephony.TelephonyManager.CALL_STATE_IDLE) {
-
-                    Log.d("AmbientService", "Call ended! Triggering Reflection Notification.")
-                    notificationHelper.showCallReflectionNotification()
+                
+                if (currentState == android.telephony.TelephonyManager.CALL_STATE_OFFHOOK || 
+                    currentState == android.telephony.TelephonyManager.CALL_STATE_RINGING) {
+                    isPausedByCall = true
+                } else if (currentState == android.telephony.TelephonyManager.CALL_STATE_IDLE) {
+                    if (isPausedByCall && lastState == android.telephony.TelephonyManager.CALL_STATE_OFFHOOK) {
+                        Log.d("AmbientService", "Call ended! Triggering Reflection Notification.")
+                        notificationHelper.showCallReflectionNotification()
+                    }
+                    isPausedByCall = false
                 }
+                
                 lastState = currentState
                 delay(1000) // Check every second
             }
@@ -102,9 +109,14 @@ class AmbientListeningService : Service() {
 
         serviceScope.launch {
             // Read in tiny 0.1 second chunks (3200 bytes) to save RAM
-            val chunkBuffer = ByteArray(3200)
+            val chunkBuffer = ByteArray(3200) 
 
             while (isActive && isListening) {
+                if (isPausedByCall) {
+                    delay(500) // Sleep the CPU while on a call!
+                    continue
+                }
+
                 val read = audioRecord?.read(chunkBuffer, 0, chunkBuffer.size) ?: 0
                 if (read > 0) {
                     // 1. Feed the tiny chunk to Sherpa

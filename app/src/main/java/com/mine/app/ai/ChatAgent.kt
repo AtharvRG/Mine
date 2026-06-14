@@ -31,7 +31,7 @@ class ChatAgent @Inject constructor(
         val embReq = NimEmbeddingRequest(input = listOf(userMessage), inputType = "query")
         val userVector = nimApi.getEmbeddings(apiKey, embReq).data[0].embedding.toFloatArray()
         
-        val allEmbeddings = graphDao.getAllEmbeddings()
+        val allEmbeddings = graphDao.getActiveEmbeddings()
         val topNodeIds = allEmbeddings.map { dbEmb ->
             val dbVector = VectorUtils.byteArrayToFloatArray(dbEmb.embedding)
             Pair(dbEmb.node_id, VectorUtils.cosineSimilarity(userVector, dbVector))

@@ -67,8 +67,8 @@ interface GraphDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertNodeEmbedding(embedding: NodeEmbeddingEntity): Long
 
-    @Query("SELECT * FROM node_embeddings")
-    suspend fun getAllEmbeddings(): List<NodeEmbeddingEntity>
+    @Query("SELECT e.* FROM node_embeddings e INNER JOIN nodes n ON e.node_id = n.id WHERE n.status = 'active'")
+    suspend fun getActiveEmbeddings(): List<NodeEmbeddingEntity>
 
     // --- TRANSCRIPT QUERIES ---
     @Insert(onConflict = OnConflictStrategy.REPLACE)
