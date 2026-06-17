@@ -20,11 +20,13 @@ import com.mine.app.util.NetworkMonitor
 import com.mine.app.util.PreferencesManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import com.mine.app.BuildConfig
+import com.mine.app.service.SherpaManager
 
 @HiltViewModel
 class DebugViewModel @Inject constructor(
@@ -35,6 +37,7 @@ class DebugViewModel @Inject constructor(
     private val chronosAgent: ChronosAgent,
     private val audioRecorderManager: AudioRecorderManager,
     private val nimWhisperClient: NimWhisperClient,
+    private val sherpaManager: com.mine.app.service.SherpaManager,
     private val serviceStateHolder: ServiceStateHolder,
     networkMonitor: NetworkMonitor,
     val prefs: PreferencesManager
@@ -297,6 +300,25 @@ class DebugViewModel @Inject constructor(
             _isRecording.value = true
             audioRecorderManager.startRecording()
             appendLog("🎙️ Recording started... Speak into your phone!")
+        }
+    }
+
+    fun enrollUserVoice() {
+        viewModelScope.launch(Dispatchers.IO) {
+            appendLog("🎙️ ENROLLMENT: Please speak continuously for 5 seconds...")
+            audioRecorderManager.startRecording()
+            
+            delay(5000) // Record for exactly 5 seconds
+            
+            val audioBytes = audioRecorderManager.stopAndGetAudio()
+            appendLog("⚙️ Processing voice print...")
+            
+            val success = sherpaManager.enrollUserVoice(audioBytes)
+            if (success) {
+                appendLog("✅ Voice enrolled successfully! You are now recognized as [User].")
+            } else {
+                appendLog("❌ Voice enrollment failed. Please try again.")
+            }
         }
     }
 

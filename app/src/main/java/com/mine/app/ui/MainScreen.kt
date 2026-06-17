@@ -58,7 +58,7 @@ fun MainAppScreen(debugViewModel: DebugViewModel, chatViewModel: ChatViewModel) 
                 0 -> DatabaseTab(debugViewModel)
                 1 -> ChatScreen(chatViewModel) // The Chat UI we built earlier!
                 2 -> AmbientTab(debugViewModel)
-                3 -> SettingsTab(debugViewModel.prefs)
+                3 -> SettingsTab(debugViewModel)
             }
         }
     }
@@ -288,7 +288,8 @@ fun AmbientTab(viewModel: DebugViewModel) {
 }
 
 @Composable
-fun SettingsTab(prefs: com.mine.app.util.PreferencesManager = hiltViewModel<DebugViewModel>().prefs) {
+fun SettingsTab(viewModel: DebugViewModel = hiltViewModel()) {
+    val prefs = viewModel.prefs
     var isLocationEnabled by remember { mutableStateOf(prefs.isLocationContextEnabled) }
     var selectedPersona by remember { mutableStateOf(prefs.currentPersona) }
 
@@ -325,6 +326,23 @@ fun SettingsTab(prefs: com.mine.app.util.PreferencesManager = hiltViewModel<Debu
                 )
                 Text(persona.name)
             }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+        HorizontalDivider()
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // --- NEW: VOICE ENROLLMENT ---
+        Text("Voice Enrollment", style = MaterialTheme.typography.titleMedium)
+        Text("Teach MineAI to recognize your specific voice.", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        Button(
+            onClick = { viewModel.enrollUserVoice() },
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2196F3))
+        ) {
+            Text("🎙️ Record 5-Second Voice Print")
         }
     }
 }

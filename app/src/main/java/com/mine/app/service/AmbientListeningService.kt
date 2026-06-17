@@ -73,7 +73,7 @@ class AmbientListeningService : Service() {
 
         val sampleRate = 16000
         val bufferSize = AudioRecord.getMinBufferSize(sampleRate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT)
-
+        
         audioRecord = AudioRecord(
             MediaRecorder.AudioSource.MIC,
             sampleRate,
@@ -84,7 +84,7 @@ class AmbientListeningService : Service() {
 
         audioRecord?.startRecording()
 
-        // --- NEW: PHONE STATE LISTENER ---
+        // --- PHONE STATE LISTENER ---
         val telephonyManager = getSystemService(Context.TELEPHONY_SERVICE) as android.telephony.TelephonyManager
         serviceScope.launch {
             var lastState = telephonyManager.callState
@@ -93,42 +93,67 @@ class AmbientListeningService : Service() {
                 
                 if (currentState == android.telephony.TelephonyManager.CALL_STATE_OFFHOOK || 
                     currentState == android.telephony.TelephonyManager.CALL_STATE_RINGING) {
-                    isPausedByCall = true
-                } else if (currentState == android.telephony.TelephonyManager.CALL_STATE_IDLE) {
-                    if (isPausedByCall && lastState == android.telephony.TelephonyManager.CALL_STATE_OFFHOOK) {
-                        Log.d("AmbientService", "Call ended! Triggering Reflection Notification.")
-                        notificationHelper.showCallReflectionNotification()
+                    if (!isPausedByCall) {
+                        Log.d("AmbientService", "Phone call started. Pausing hardware mic.")
+                        isPausedByCall = true
+                        pauseMic() // <-- FIX 2: Actually stop the hardware!
                     }
-                    isPausedByCall = false
+                } else if (currentState == android.telephony.TelephonyManager.CALL_STATE_IDLE) {
+                    if (isPausedByCall) {
+                        Log.d("AmbientService", "Call ended! Resuming mic and triggering Reflection.")
+                        isPausedByCall = false
+                        resumeMic() // <-- FIX 2: Restart the hardware!
+                        if (lastState == android.telephony.TelephonyManager.CALL_STATE_OFFHOOK) {
+                            notificationHelper.showCallReflectionNotification()
+                        }
+                    }
                 }
-                
                 lastState = currentState
-                delay(1000) // Check every second
+                delay(1000)
             }
         }
 
+        // --- AUDIO READ LOOP ---
         serviceScope.launch {
-            // Read in tiny 0.1 second chunks (3200 bytes) to save RAM
             val chunkBuffer = ByteArray(3200) 
 
             while (isActive && isListening) {
                 if (isPausedByCall) {
-                    delay(500) // Sleep the CPU while on a call!
+                    delay(500)
                     continue
                 }
 
                 val read = audioRecord?.read(chunkBuffer, 0, chunkBuffer.size) ?: 0
-                if (read > 0) {
-                    // 1. Feed the tiny chunk to Sherpa
-                    val result = sherpaManager.processLiveAudio(chunkBuffer.copyOfRange(0, read))
+                
+                // --- FIX 1: MIC HIJACK SURVIVAL ---
+                if (read < 0) {
+                    Log.w("AmbientService", "Mic hijacked by another app (Error: $read). Waiting to recover...")
+                    pauseMic()
+                    delay(2000) // Wait 2 seconds for the other app to release the mic
+                    resumeMic()
+                    continue
+                }
 
-                    // 2. If Sherpa detected a complete sentence, it returns the clean audio!
+                if (read > 0) {
+                    val result = sherpaManager.processLiveAudio(chunkBuffer.copyOfRange(0, read))
                     if (result != null) {
                         val (cleanAudioBytes, speakerLabel) = result
                         processCompletedSentence(cleanAudioBytes, speakerLabel)
                     }
                 }
             }
+        }
+    }
+
+    private fun pauseMic() {
+        if (audioRecord?.recordingState == AudioRecord.RECORDSTATE_RECORDING) {
+            audioRecord?.stop()
+        }
+    }
+
+    private fun resumeMic() {
+        if (audioRecord?.recordingState != AudioRecord.RECORDSTATE_RECORDING) {
+            audioRecord?.startRecording()
         }
     }
 
