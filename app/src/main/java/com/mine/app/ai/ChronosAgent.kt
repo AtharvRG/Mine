@@ -70,7 +70,7 @@ class ChronosAgent @Inject constructor(
 
             if (reply != "SKIP" && reply.isNotBlank()) {
                 Log.d("ChronosAgent", "AI decided to speak: $reply")
-                chatDao.insertMessage(ChatMessageEntity(dayTimestamp = 0L, role = "mine", content = reply))
+                chatDao.insertMessage(ChatMessageEntity(dayTimestamp = TimeUtils.getStartOfDayTimestamp(), role = "mine", content = reply))
                 notificationHelper.showNudgeNotification(reply) // <-- NEW
             }
             else {

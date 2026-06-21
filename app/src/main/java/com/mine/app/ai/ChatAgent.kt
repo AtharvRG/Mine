@@ -66,7 +66,8 @@ class ChatAgent @Inject constructor(
 
 
         // 5. Fetch recent chat history so Kimi remembers the flow of the conversation
-        val recentHistory = chatDao.getRecentMessagesList(limit = 10).reversed().map {
+        val startOfDay = com.mine.app.util.TimeUtils.getStartOfDayTimestamp()
+        val recentHistory = chatDao.getRecentMessagesList(startOfDay, limit = 10).reversed().map {
             NimMessage(role = it.role, content = it.content)
         }
 

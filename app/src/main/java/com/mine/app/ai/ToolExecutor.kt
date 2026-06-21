@@ -138,7 +138,7 @@ class ToolExecutor @Inject constructor(
                 notificationHelper.showNudgeNotification(finalNudgeMessage)
                 chatDao.insertMessage(
                     com.mine.app.data.local.db.entity.ChatMessageEntity(
-                        dayTimestamp = 0L, 
+                        dayTimestamp = com.mine.app.util.TimeUtils.getStartOfDayTimestamp(),
                         role = "mine", 
                         content = "⚡ $finalNudgeMessage",
                         isNudge = true

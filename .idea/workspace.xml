@@ -9,7 +9,10 @@
     <option name="autoReloadType" value="NONE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="7424ee0a-565a-43ee-a49f-1d3703332107" name="Changes" comment="" />
+    <list default="true" id="7424ee0a-565a-43ee-a49f-1d3703332107" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/app/src/main/java/com/mine/app/ai/ChronosAgent.kt" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/java/com/mine/app/ai/ChronosAgent.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/java/com/mine/app/ai/ToolExecutor.kt" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/java/com/mine/app/ai/ToolExecutor.kt" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />

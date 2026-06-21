@@ -39,7 +39,8 @@ class AmbientListeningService : Service() {
     private var isListening = false
     private var isPausedByCall = false
 
-    private val apiKey = BuildConfig.NVIDIA_API_KEY_WHISPER
+    private val apiKeyWhisper = BuildConfig.NVIDIA_API_KEY_WHISPER
+    private val apiKeyAgent = BuildConfig.NVIDIA_API_KEY_AGENT
 
     override fun onCreate() {
         super.onCreate()
@@ -174,7 +175,7 @@ class AmbientListeningService : Service() {
 
             try {
                 Log.d("AmbientService", "Sending clean audio to Whisper...")
-                val transcript = whisperClient.transcribeAudio(apiKey, audioBytes)
+                val transcript = whisperClient.transcribeAudio(apiKeyWhisper, audioBytes)
 
                 if (transcript.isNotBlank()) {
                     Log.d("AmbientService", "[$speakerLabel]: $transcript")
@@ -190,7 +191,7 @@ class AmbientListeningService : Service() {
                     // Prepend the speaker label so the AI knows who is talking!
                     val labeledTranscript = "[$speakerLabel]: $transcript"
 
-                    val result = curatorAgent.processTranscript(apiKey, labeledTranscript)
+                    val result = curatorAgent.processTranscript(apiKeyAgent, labeledTranscript)
                     Log.d("AmbientService", "Curator: $result")
                 }
             } catch (e: Exception) {
