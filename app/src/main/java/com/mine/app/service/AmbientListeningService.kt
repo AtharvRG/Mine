@@ -160,6 +160,8 @@ class AmbientListeningService : Service() {
 
     private fun processCompletedSentence(audioBytes: ByteArray, speakerLabel: String) {
         serviceScope.launch {
+            if (audioBytes.isEmpty()) return@launch // <-- PREVENT 0-BYTE CRASH
+
             if (!networkMonitor.isOnline.value) {
                 Log.d("AmbientService", "Offline! Saving audio to local SQLite queue.")
                 queueDao.insertMemory(

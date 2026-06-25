@@ -276,6 +276,10 @@ class DebugViewModel @Inject constructor(
 
             viewModelScope.launch(Dispatchers.IO) {
                 val audioBytes = audioRecorderManager.stopAndGetAudio()
+                if (audioBytes.isEmpty()) { // <-- PREVENT 0-BYTE CRASH
+                    appendLog("⚠️ No audio detected. Canceling transcription.")
+                    return@launch
+                }
 
                 try {
                     // TODO: Put your real NIM API key here
@@ -337,6 +341,10 @@ class DebugViewModel @Inject constructor(
 
         viewModelScope.launch(Dispatchers.IO) {
             val audioBytes = audioRecorderManager.stopAndGetAudio()
+            if (audioBytes.isEmpty()) { // <-- PREVENT 0-BYTE CRASH
+                appendLog("⚠️ No audio detected. Canceling reflection.")
+                return@launch
+            }
             try {
                 val apiKey = BuildConfig.NVIDIA_API_KEY_WHISPER
                 val transcript = nimWhisperClient.transcribeAudio(apiKey, audioBytes)

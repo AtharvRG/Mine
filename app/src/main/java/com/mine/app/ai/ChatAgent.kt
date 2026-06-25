@@ -28,7 +28,9 @@ class ChatAgent @Inject constructor(
         chatDao.insertMessage(ChatMessageEntity(dayTimestamp = com.mine.app.util.TimeUtils.getStartOfDayTimestamp(), role = "user", content = userMessage))
 
         // 3. FAST CONTEXT RETRIEVAL: Vector Search the local DB
-        val embReq = NimEmbeddingRequest(input = listOf(userMessage), inputType = "query")
+        // Truncate to 2000 chars to prevent NVIDIA Embedding API crashes!
+        val safeEmbeddingText = userMessage.take(2000) 
+        val embReq = NimEmbeddingRequest(input = listOf(safeEmbeddingText), inputType = "query")
         val userVector = nimApi.getEmbeddings(apiKey, embReq).data[0].embedding.toFloatArray()
         
         val allEmbeddings = graphDao.getActiveEmbeddings()

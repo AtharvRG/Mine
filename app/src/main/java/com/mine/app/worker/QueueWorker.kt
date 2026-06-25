@@ -37,27 +37,33 @@ class QueueWorker @AssistedInject constructor(
             for (memory in pendingMemories) {
                 Log.d("QueueWorker", "Processing offline memory ID: ${memory.id}")
                 
-                var transcriptToProcess = ""
+                try {
+                    var transcriptToProcess = ""
 
-                // 1. If it's an audio blob (from Ambient), transcribe it first
-                if (memory.audioBlob != null) {
-                    val transcript = whisperClient.transcribeAudio(apiKeyWhisper, memory.audioBlob)
-                    if (transcript.isNotBlank()) {
-                        transcriptToProcess = "[${memory.speakerLabel}]: $transcript"
+                    // 1. If it's an audio blob (from Ambient), transcribe it first
+                    if (memory.audioBlob != null && memory.audioBlob.isNotEmpty()) {
+                        val transcript = whisperClient.transcribeAudio(apiKeyWhisper, memory.audioBlob)
+                        if (transcript.isNotBlank()) {
+                            transcriptToProcess = "[${memory.speakerLabel}]: $transcript"
+                        }
+                    } 
+                    // 2. If it's raw text (from an offline Chat or Manual entry)
+                    else if (!memory.rawText.isNullOrBlank()) {
+                        transcriptToProcess = memory.rawText
                     }
-                } 
-                // 2. If it's raw text (from an offline Chat or Manual entry)
-                else if (!memory.rawText.isNullOrBlank()) {
-                    transcriptToProcess = memory.rawText
-                }
 
-                // 3. Send to Curator
-                if (transcriptToProcess.isNotBlank()) {
-                    curatorAgent.processTranscript(apiKeyAgent, transcriptToProcess)
-                }
+                    // 3. Send to Curator
+                    if (transcriptToProcess.isNotBlank()) {
+                        curatorAgent.processTranscript(apiKeyAgent, transcriptToProcess)
+                    }
 
-                // 4. DELETE the memory so the audio blob doesn't bloat the database!
-                queueDao.deleteMemory(memory.id)
+                    // 4. DELETE the memory so the audio blob doesn't bloat the database!
+                    queueDao.deleteMemory(memory.id)
+                } catch (itemError: Exception) {
+                    Log.e("QueueWorker", "Poison Pill caught! Failed memory ID ${memory.id}: ${itemError.message}")
+                    // Mark as failed so it doesn't brick the rest of the queue!
+                    queueDao.updateMemoryStatus(memory.id, "failed")
+                }
             }
 
             return Result.success()
