@@ -214,6 +214,8 @@ class AmbientListeningService : Service() {
         super.onDestroy()
         serviceStateHolder.setRunning(false)
         stopListening()
+        // FREE THE C++ MEMORY!
+        sherpaManager.release()
     }
 
     override fun onBind(intent: Intent?): IBinder? = null

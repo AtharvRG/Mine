@@ -112,21 +112,25 @@ class ToolExecutor @Inject constructor(
             
             // --- NEW: GENERATE AND SAVE EMBEDDINGS ---
             if (newlyCreatedNodes.isNotEmpty()) {
-                Log.d("ToolExecutor", "Fetching embeddings for ${newlyCreatedNodes.size} new nodes...")
-                val request = NimEmbeddingRequest(
-                    input = newlyCreatedNodes.map { it.second },
-                    inputType = "passage"
-                )
-                val response = nimApi.getEmbeddings(apiKey, request)
-                
-                // Save the vectors to SQLite as BLOBs
-                response.data.forEachIndexed { index, embeddingData ->
-                    val nodeId = newlyCreatedNodes[index].first
-                    val floatArray = embeddingData.embedding.toFloatArray()
-                    val byteArray = VectorUtils.floatArrayToByteArray(floatArray)
-                    graphDao.insertNodeEmbedding(NodeEmbeddingEntity(nodeId, byteArray))
+                try {
+                    Log.d("ToolExecutor", "Fetching embeddings for ${newlyCreatedNodes.size} new nodes...")
+                    val request = NimEmbeddingRequest(
+                        input = newlyCreatedNodes.map { it.second },
+                        inputType = "passage"
+                    )
+                    val response = nimApi.getEmbeddings(apiKey, request)
+
+                    response.data.forEachIndexed { index, embeddingData ->
+                        val nodeId = newlyCreatedNodes[index].first
+                        val floatArray = embeddingData.embedding.toFloatArray()
+                        val byteArray = VectorUtils.floatArrayToByteArray(floatArray)
+                        graphDao.insertNodeEmbedding(NodeEmbeddingEntity(nodeId, byteArray))
+                    }
+                    Log.d("ToolExecutor", "Embeddings saved successfully!")
+                } catch (embedError: Exception) {
+                    // Catch this separately! Do not fail the whole transaction just because embeddings failed.
+                    Log.e("ToolExecutor", "Failed to fetch embeddings, but nodes were saved: ${embedError.message}")
                 }
-                Log.d("ToolExecutor", "Embeddings saved successfully!")
             }
 
             // --- NEW: FIRE THE NUDGE ---

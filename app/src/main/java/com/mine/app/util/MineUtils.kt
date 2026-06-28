@@ -14,7 +14,8 @@ object TimeUtils {
     }
 
     fun getStartOfDayTimestamp(): Long {
-        val zone = ZoneId.of("Asia/Kolkata")
+        // Dynamically use the phone's current timezone
+        val zone = ZoneId.systemDefault() 
         return ZonedDateTime.now(zone).truncatedTo(ChronoUnit.DAYS).toInstant().toEpochMilli()
     }
 }

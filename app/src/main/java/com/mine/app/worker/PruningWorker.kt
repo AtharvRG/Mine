@@ -40,7 +40,15 @@ class PruningWorker @AssistedInject constructor(
                 
                 // Format the chat log into a single transcript
                 val chatTranscript = oldChats.joinToString("\n") { "[${it.role}]: ${it.content}" }
-                val taggedTranscript = "[DAILY CHAT SUMMARY]\n$chatTranscript"
+                
+                // TRUNCATE to the last 15,000 characters to prevent LLM Token Overflow crashes!
+                val safeChatTranscript = if (chatTranscript.length > 15000) {
+                    "..." + chatTranscript.takeLast(15000)
+                } else {
+                    chatTranscript
+                }
+                
+                val taggedTranscript = "[DAILY CHAT SUMMARY]\n$safeChatTranscript"
 
                 // Send it to the 120B Curator to extract any final commitments
                 val apiKey = BuildConfig.NVIDIA_API_KEY_AGENT
