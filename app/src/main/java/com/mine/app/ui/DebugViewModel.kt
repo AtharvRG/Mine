@@ -309,6 +309,7 @@ class DebugViewModel @Inject constructor(
 
     fun enrollUserVoice() {
         viewModelScope.launch(Dispatchers.IO) {
+            sherpaManager.initializeModels() // <-- ADD THIS
             appendLog("🎙️ ENROLLMENT: Please speak continuously for 5 seconds...")
             audioRecorderManager.startRecording()
             

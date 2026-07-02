@@ -116,6 +116,9 @@ class AmbientListeningService : Service() {
 
         // --- AUDIO READ LOOP ---
         serviceScope.launch {
+            // Ensure Sherpa is initialized before we start feeding it audio!
+            sherpaManager.initializeModels() 
+
             val chunkBuffer = ByteArray(3200) 
 
             while (isActive && isListening) {
@@ -214,8 +217,7 @@ class AmbientListeningService : Service() {
         super.onDestroy()
         serviceStateHolder.setRunning(false)
         stopListening()
-        // FREE THE C++ MEMORY!
-        sherpaManager.release()
+        // DO NOT release SherpaManager here! It's a Singleton and needs to survive for the next time the service starts.
     }
 
     override fun onBind(intent: Intent?): IBinder? = null

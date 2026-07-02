@@ -15,24 +15,26 @@ class SherpaManager @Inject constructor(private val context: Context) {
 
     private val sampleRate = 16000
 
-    private val vad: Vad
-    private val denoiser: OfflineSpeechDenoiser
-    private val speakerExtractor: SpeakerEmbeddingExtractor
-    private val speakerManager: SpeakerEmbeddingManager
+    private lateinit var vad: Vad
+    private lateinit var denoiser: OfflineSpeechDenoiser
+    private lateinit var speakerExtractor: SpeakerEmbeddingExtractor
+    private lateinit var speakerManager: SpeakerEmbeddingManager
 
-    init {
-        Log.d("SherpaManager", "Extracting ONNX models to internal storage...")
+    private var isInitialized = false
 
-        // 1. Extract the models from assets to internal storage
+    // --- NEW: ASYNC INITIALIZATION ---
+    suspend fun initializeModels() = withContext(Dispatchers.IO) {
+        if (isInitialized) return@withContext
+
+        Log.d("SherpaManager", "Extracting ONNX models to internal storage on Background Thread...")
         val vadModelPath = copyAsset("silero_vad.onnx")
         val denoiserModelPath = copyAsset("gtcrn_simple.onnx")
         val speakerModelPath = copyAsset("3dspeaker_speech_eres2net_base_sv_zh-cn_3dspeaker_16k.onnx")
 
         Log.d("SherpaManager", "Initializing Sherpa-ONNX Models...")
 
-        // 2. Initialize VAD (Notice we don't pass assetManager anymore!)
         val sileroConfig = SileroVadModelConfig(
-            model = vadModelPath, // Use the absolute path
+            model = vadModelPath,
             threshold = 0.5f,
             minSilenceDuration = 1.0f,
             minSpeechDuration = 0.5f,
@@ -43,9 +45,8 @@ class SherpaManager @Inject constructor(private val context: Context) {
         vadConfig.numThreads = 1
         vadConfig.debug = false
         vadConfig.sileroVadModelConfig = sileroConfig
-        vad = Vad(config = vadConfig) // Removed assetManager
+        vad = Vad(config = vadConfig)
 
-        // 3. Initialize Denoiser
         val denoiserConfig = OfflineSpeechDenoiserConfig(
             model = OfflineSpeechDenoiserModelConfig(
                 gtcrn = OfflineSpeechDenoiserGtcrnModelConfig(model = denoiserModelPath),
@@ -53,17 +54,17 @@ class SherpaManager @Inject constructor(private val context: Context) {
                 numThreads = 1
             )
         )
-        denoiser = OfflineSpeechDenoiser(config = denoiserConfig) // Removed assetManager
+        denoiser = OfflineSpeechDenoiser(config = denoiserConfig)
 
-        // 4. Initialize Speaker ID
         val extractorConfig = SpeakerEmbeddingExtractorConfig(
             model = speakerModelPath,
             numThreads = 1,
             debug = false
         )
-        speakerExtractor = SpeakerEmbeddingExtractor(config = extractorConfig) // Removed assetManager
+        speakerExtractor = SpeakerEmbeddingExtractor(config = extractorConfig)
         speakerManager = SpeakerEmbeddingManager(speakerExtractor.dim())
-
+        
+        isInitialized = true
         Log.d("SherpaManager", "Sherpa-ONNX Initialization Complete!")
     }
 

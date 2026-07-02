@@ -22,6 +22,8 @@ class AudioRecorderManager(private val context: Context) {
 
     @SuppressLint("MissingPermission")
     fun startRecording() {
+        if (isRecording) return // <-- PREVENT DOUBLE THREAD CRASH
+
         outputStream = ByteArrayOutputStream()
         audioRecord = AudioRecord(
             MediaRecorder.AudioSource.MIC,
