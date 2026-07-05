@@ -5,87 +5,64 @@
 ```
 app/
 ├── src/main/java/com/mine/app/
-│   ├── MineApplication.kt
-│   ├── di/
-│   │   └── AppModule.kt (Hilt)
-│   ├── data/
-│   │   ├── local/
-│   │   │   ├── db/
-│   │   │   │   ├── MineDatabase.kt
-│   │   │   │   ├── dao/
-│   │   │   │   │   ├── NodeDao.kt
-│   │   │   │   │   ├── EdgeDao.kt
-│   │   │   │   │   ├── ChatDao.kt
-│   │   │   │   │   ├── MemoryQueueDao.kt
-│   │   │   │   │   └── ApiQueueDao.kt
-│   │   │   │   └── entity/
-│   │   │   │       ├── NodeEntity.kt
-│   │   │   │       ├── EdgeEntity.kt
-│   │   │   │       └── ...
-│   │   │   ├── crypto/
-│   │   │   │   └── KeystoreManager.kt
-│   │   │   └── prefs/
-│   │   │       └── EncryptedPrefs.kt
-│   │   ├── remote/
-│   │   │   ├── groq/
-│   │   │   │   ├── GroqApi.kt
-│   │   │   │   └── GroqWhisperRouter.kt
-│   │   │   └── nim/
-│   │   │       ├── NimApi.kt
-│   │   │       ├── NimAcc1Repository.kt
-│   │   │       └── NimAcc2Repository.kt
-│   │   └── repository/
-│   │       ├── GraphRepository.kt
-│   │       ├── ChatRepository.kt
-│   │       └── AmbientRepository.kt
-│   ├── service/
-│   │   ├── AmbientListeningService.kt
-│   │   ├── AudioRecorderManager.kt
-│   │   └── SherpaManager.kt
-│   ├── ai/
-│   │   ├── ToolExecutor.kt
-│   │   ├── CuratorPromptBuilder.kt
-│   │   ├── ChatPromptBuilder.kt
-│   │   └── RateLimiter.kt
-│   ├── worker/
-│   │   ├── BatchProcessingWorker.kt
-│   │   ├── PruningWorker.kt
-│   │   └── BackupWorker.kt
-│   ├── ui/
-│   │   ├── theme/
-│   │   ├── components/
-│   │   │   ├── OrbInput.kt
-│   │   │   ├── DayHeader.kt
-│   │   │   ├── NudgeBubble.kt
-│   │   │   └── MemoryCard.kt
-│   │   ├── screens/
-│   │   │   ├── DashboardScreen.kt
-│   │   │   ├── ChatScreen.kt
-│   │   │   ├── SettingsScreen.kt
-│   │   │   └── ...
-│   │   └── viewmodel/
-│   │       ├── DashboardViewModel.kt
-│   │       ├── ChatViewModel.kt
-│   │       └── SettingsViewModel.kt
-│   └── util/
-│       ├── AudioUtils.kt
-│       └── DateUtils.kt
-├── src/main/jni/
+│ ├── MainActivity.kt
+│ ├── MineApplication.kt
+│ ├── ai/
+│ │ ├── ChatAgent.kt
+│ │ ├── ChronosAgent.kt
+│ │ ├── CuratorAgent.kt
+│ │ ├── ToolExecutor.kt
+│ │ └── ToolSchemas.kt
+│ ├── data/
+│ │ ├── local/
+│ │ │ ├── db/
+│ │ │ │ ├── MineDatabase.kt
+│ │ │ │ ├── dao/
+│ │ │ │ │ ├── ChatDao.kt
+│ │ │ │ │ ├── GraphDao.kt
+│ │ │ │ │ └── QueueDao.kt
+│ │ │ │ └── entity/
+│ │ │ │ ├── GraphEntities.kt
+│ │ │ │ └── SystemEntities.kt
+│ │ └── remote/
+│ │ ├── NimWhisperClient.kt
+│ │ ├── GroqApi.kt
+│ │ ├── NimApi.kt
+│ │ └── dto/
+│ │ ├── GroqDto.kt
+│ │ └── NimDto.kt
+│ ├── di/
+│ │ ├── AppModule.kt
+│ │ ├── DatabaseModule.kt
+│ │ └── NetworkModule.kt
+│ ├── service/
+│ │ ├── AmbientListeningService.kt
+│ │ ├── AudioRecorderManager.kt
+│ │ ├── ServiceStateHolder.kt
+│ │ └── SherpaManager.kt
+│ ├── ui/
+│ │ ├── ChatScreen.kt
+│ │ ├── ChatViewModel.kt
+│ │ ├── DebugViewModel.kt
+│ │ └── MainScreen.kt
+│ ├── util/
+│ │ ├── MineUtils.kt
+│ │ ├── NetworkMonitor.kt
+│ │ ├── NotificationHelper.kt
+│ │ ├── NudgeReplyReceiver.kt
+│ │ ├── PreferencesManager.kt
+│ │ ├── RateLimiter.kt
+│ │ └── VectorUtils.kt
+│ └── worker/
+│ ├── ChronosWorker.kt
+│ ├── PruningWorker.kt
+│ └── QueueWorker.kt
 └── build.gradle.kts
 ```
 
-
 ## Open Source Release Checklist
-
-- [ ] Remove all API keys from codebase (use local.properties template)
 - [ ] Add CONTRIBUTING.md
 - [ ] Add LICENSE (MIT recommended)
-- [ ] Scrub default souls.md and core.md of personal data
 - [ ] Write README.md with screenshots, build instructions, architecture overview, privacy statement
-- [ ] Create GitHub repository with issues and labels:
-  - good first issue
-  - help wanted
-  - bug
-  - feature
+- [ ] Create GitHub repository with issues and labels
 - [ ] Tag v1.0.0 release with APK
-- [ ] Enable GitHub Discussions

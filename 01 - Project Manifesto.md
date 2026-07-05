@@ -15,10 +15,10 @@ Mine is not a chatbot. It is a co-founder for your life -- an ambient, graph-bas
 
 ## Core Pillars
 
-1.  Ambient First: The microphone is an input, not an interface. Turn it on, live your life, Mine remembers.
-2.  Zero Server: No cloud backend. No telemetry. No accounts. Only your API keys, your SQLite database, your graph.
-3.  Hierarchical Memory: Not a flat list. A tree of contexts: Group > Branch > Node > Edge.
-4.  Sovereign AI: You bring the models (Groq + NVIDIA NIM). You control the persona (souls.md). You control the anchor memory (core.md).
+1. Ambient First: The microphone is an input, not an interface. Turn it on, live your life, Mine remembers.
+2. Zero Server: No cloud backend. No telemetry. No accounts. Only your API keys, your SQLite database, your graph.
+3. Hybrid Memory: A relational graph database (Group > Branch > Node > Edge) supercharged by a local Vector Database for semantic recall.
+4. Sovereign AI: You bring the models (NVIDIA NIM). You control the persona presets. You own the data.
 
 ## Non-Goals
 
@@ -26,3 +26,4 @@ Mine is not a chatbot. It is a co-founder for your life -- an ambient, graph-bas
 - On-device LLM inference (version 1 -- cloud only)
 - Text-to-Speech output (version 1 -- text only)
 - Automatic cloud backup (manual encrypted export only)
+

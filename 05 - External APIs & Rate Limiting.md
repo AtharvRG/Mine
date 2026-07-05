@@ -1,80 +1,31 @@
 # External APIs & Rate Limiting
 
-## Account Separation
+## The 3-Key Architecture
+To maximize throughput and prevent ambient listening from blocking chat, Mine uses three separate NVIDIA NIM API keys, yielding a total of 120 Requests Per Minute (RPM).
 
-| Provider | Account | Model | Quota | Role |
-|----------|---------|-------|-------|------|
-| Groq | Single | whisper-large-v3-turbo | 20 RPM, 2K/day | Primary ASR |
-| Groq | Single | whisper-large-v3 | 20 RPM, 2K/day | Fallback ASR |
-| NVIDIA NIM | Acc1 | kimi-k2-instruct-0905 | 40 RPM | Chat output, Nudge polish |
-| NVIDIA NIM | Acc2 | gpt-oss-20b | 40 RPM | Background curator, Thinking planner |
-
-## Groq Whisper Router
-
-```kotlin
-suspend fun transcribe(audio: ByteArray): String {
-    return try {
-        groq.turbo(audio)
-    } catch (e: RateLimitException) {
-        groq.largeV3(audio)
-    }
-}
-```
-
-Inspect response headers for `x-ratelimit-remaining-requests`. If both models return 429, queue audio to `memory_queue` for batch processing.
+| Key | Model | Quota | Role |
+|-----|-------|-------|------|
+| `NVIDIA_API_KEY_WHISPER` | Riva Whisper Large v3 | 40 RPM | Ambient audio transcription (gRPC) |
+| `NVIDIA_API_KEY_AGENT` | gpt-oss-120b & nv-embed-v1 | 40 RPM | Background Curator, Chronos, Embeddings |
+| `NVIDIA_API_KEY_CHAT` | kimi-k2.6 | 40 RPM | Instant Chat UI responses |
 
 ## Rate Limiter Implementation
+A strict Coroutine `Mutex` Token Bucket ensures no key ever exceeds 39 RPM.
 
 ```kotlin
-class RateLimiter(private val rpm: Int) {
-    private val bucket = AtomicInteger(rpm)
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-    
-    init {
-        scope.launch {
-            while (isActive) {
-                delay(60_000)
-                bucket.set(rpm)
-            }
-        }
-    }
-    
-    suspend fun <T> withPermit(block: suspend () -> T): T {
-        while (true) {
-            if (bucket.getAndDecrement() > 0) {
-                return block()
-            }
-            delay(1000)
-        }
-    }
-}
+suspend fun waitAndConsume(apiKey: String) {
+mutex.withLock {
+val now = System.currentTimeMillis()
+val logs = requestLogs.getOrPut(apiKey) { mutableListOf() }
+logs.removeAll { it < now - 60_000L }
+
+if (logs.size >= 39) {
+val waitTime = (logs.first() + 60_000L) - now + 100
+delay(waitTime)
+// ...
 ```
 
-## NIM Warmup Strategy
-
-On app launch, send a dummy request to Kimi to keep the GPU container warm.
-
-```kotlin
-suspend fun warmupKimi() {
-    try {
-        nimAcc1.chat(
-            model = "kimi-k2-instruct-0905",
-            messages = listOf(Message("user", "hi")),
-            maxTokens = 1
-        )
-    } catch (e: Exception) {
-        // Silently fail warmup
-    }
-}
-```
-
-## Error Handling Matrix
-
-| Error | Action |
-|-------|--------|
-| Groq 429 (both models) | Queue audio to memory_queue. Switch to batch mode. |
-| NIM 429 | Queue request to api_queue. Retry in 60s. |
-| NIM Timeout (>30s) | Abort. Increment attempts. Retry if attempts < 3. |
-| Network unreachable | Set DEGRADED state. Queue everything. |
-| Invalid API Key | Show persistent banner. Block new requests. |
-
+## Network Resilience
+- **Ktor Timeouts:** Configured to wait 120 seconds for massive 120B model responses.
+- **Exception Handling:** `expectSuccess = false` ensures Ktor doesn't swallow 400/401 JSON error messages.
+- **Poison Pill Protection:** The `QueueWorker` wraps individual offline items in `try/catch` blocks so one corrupted audio file doesn't brick the entire queue.

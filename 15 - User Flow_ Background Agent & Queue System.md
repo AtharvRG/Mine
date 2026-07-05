@@ -1,77 +1,18 @@
 # User Flow: Background Agent & Queue System
 
-## The 4-Stage Pipeline
+## The Offline Queue (`QueueWorker`)
+If the internet drops, ambient audio is saved as a BLOB in the `memory_queue` table.
+When Wi-Fi returns, `NetworkMonitor` triggers the `QueueWorker` using `enqueueUniqueWork(REPLACE)` to prevent network spam.
+- The worker drains the queue, transcribes the audio, and sends it to the Curator.
+- **Poison Pill Protection:** Individual items are wrapped in `try/catch`. If an item fails, it is marked `failed` so it doesn't brick the queue.
+- **Cleanup:** Processed items are deleted immediately to prevent SQLite bloat.
 
-```mermaid
-flowchart TD
-  A[Transcript enters<br/>memory_queue] --> B[Stage 1: Noise Gate]
-  B --> C{Is Noise?}
-  C -->|Yes| D[Move to rejected_logs]
-  C -->|No| E[Stage 2: Context Fetch]
-  E --> F[FTS5 Search<br/>Top 3 existing nodes]
-  F --> G[Stage 3: Curator<br/>GPT-OSS-20B]
-  G --> H[Parse JSON Tool Calls]
-  H --> I[Stage 4: Tool Executor]
-  I --> J{Actions}
-  J -->|node_create| K[(SQLite Graph)]
-  J -->|node_update| K
-  J -->|edge_create| K
-  J -->|node_mark_completed| K
-  J -->|transcript_reject| D
+## The Nightly Pruning (`PruningWorker`)
+Runs once every 24 hours via WorkManager.
+1. Deletes `trashed` nodes older than 7 days.
+2. Deletes `failed` queue items older than 7 days.
+3. Grabs all chat messages from the day, truncates them to 15,000 characters (to prevent Token Overflow), sends them to the Curator for summarization, and deletes the raw logs.
 
-  H --> L{nudge_worthy?}
-  L -->|Yes + Cooldown OK| M[Queue to api_queue<br/>Priority 1]
-  L -->|No| N[Done]
-```
-
-## SQLite Concurrency & Tool Execution
-
-To prevent `SQLITE_BUSY` crashes when the user is chatting while the background agent is writing, Mine uses **Room with Write-Ahead Logging (WAL)** and **Kotlin Coroutines**.
-
-All tool calls execute within a single SQLite transaction on `Dispatchers.IO`:
-
-```mermaid
-flowchart TD
-  A[BEGIN TRANSACTION<br/>Dispatchers.IO] --> B[FOR each tool_call]
-  B --> C[Execute tool]
-  C --> D{Success?}
-  D -->|No| E[ROLLBACK]
-  E --> F[Log error<br/>Keep in local queue]
-  D -->|Yes| G[Next tool]
-  G --> H{More tools?}
-  H -->|Yes| B
-  H -->|No| I[COMMIT]
-  I --> J{Has nudge?}
-  J -->|Yes| K[Queue GPT-OSS-120B polish]
-  J -->|No| L[Done]
-```
-
-## Offline & Rate-Limited Fallback
-
-```mermaid
-flowchart TD
-  A[Real-time processing] --> B{API Success?}
-  B -->|Yes| C[Normal flow]
-  B -->|No: 429 or Offline| D[Set DEGRADED state]
-  D --> E[Show indicator<br/>Mine is catching up]
-  E --> F[Write to local queues]
-  F --> G[Audio chunks to<br/>memory_queue]
-  F --> H[API requests to<br/>api_queue]
-
-  I[WorkManager Trigger] --> J{Network OK?}
-  J -->|Yes| K[Drain queues via Dispatchers.IO]
-  K --> L[Respect rate limits]
-  L --> M[Process by priority]
-  M --> N[Set ONLINE state]
-  N --> O[Hide indicator]
-  J -->|No| P[Wait next trigger]
-```
-
-## Queue Priorities
-
-| Priority | Endpoint | Description |
-|----------|----------|-------------|
-| 1 | nim_gptoss(120b) | Nudge polish (user-facing, urgent) |
-| 2 | groq_whisper | Transcription (blocks downstream) |
-| 3 | nim_gptoss(20b) | Background curator |
-| 5 | nim_gptoss(20b) | Batch summaries and pruning |
+## The Proactive AI (`ChronosWorker`)
+Runs every 4 hours.
+Fetches active nodes, injects the current timestamp, and asks Kimi K2.6 if the user needs a reminder. If yes, it fires a Nudge notification and inserts the message into the Chat UI.
