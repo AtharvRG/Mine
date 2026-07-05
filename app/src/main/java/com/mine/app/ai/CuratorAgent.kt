@@ -47,6 +47,12 @@ class CuratorAgent @Inject constructor(
     """.trimIndent()
 
     suspend fun processTranscript(apiKey: String, transcript: String): String {
+        // --- FIX: Prevent 400 Bad Request on empty strings ---
+        if (transcript.isBlank()) {
+            Log.w("CuratorAgent", "Transcript is empty. Aborting process.")
+            return "Aborted: Empty transcript."
+        }
+
         // 1. Convert the incoming transcript into a Vector (Truncated to prevent 400 Token Limit errors)
         val safeEmbeddingText = transcript.take(2000)
         val transcriptEmbReq = NimEmbeddingRequest(

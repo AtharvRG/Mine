@@ -23,6 +23,8 @@ object NetworkModule {
     @Singleton
     fun provideHttpClient(): HttpClient {
         return HttpClient(OkHttp) {
+            expectSuccess = false // <-- FIX: Don't crash on 400/500 errors! Let us read the JSON!
+
             // 1. Ktor Timeout Plugin
             install(HttpTimeout) {
                 requestTimeoutMillis = 120_000L // Wait 2 minutes
