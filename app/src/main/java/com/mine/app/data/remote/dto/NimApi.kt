@@ -13,6 +13,7 @@ import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
+import io.ktor.http.isSuccess
 import kotlinx.serialization.json.Json
 
 class NimApi(private val client: HttpClient, private val rateLimiter: com.mine.app.util.RateLimiter) {
@@ -29,6 +30,10 @@ class NimApi(private val client: HttpClient, private val rateLimiter: com.mine.a
         }
 
         val rawJson = response.bodyAsText()
+        if (!response.status.isSuccess()) {
+            Log.e("NIM_API_DEBUG", "API Error: ${response.status.value} - $rawJson")
+            throw Exception("NVIDIA API Error: ${response.status.value}")
+        }
         Log.e("NIM_API_DEBUG", "Raw Response from NVIDIA: $rawJson")
 
         return jsonParser.decodeFromString(rawJson)
@@ -43,6 +48,10 @@ class NimApi(private val client: HttpClient, private val rateLimiter: com.mine.a
         }
 
         val rawJson = response.bodyAsText()
+        if (!response.status.isSuccess()) {
+            Log.e("NIM_API_DEBUG", "Embedding API Error: ${response.status.value} - $rawJson")
+            throw Exception("NVIDIA Embedding Error: ${response.status.value}")
+        }
         return jsonParser.decodeFromString(rawJson)
     }
 

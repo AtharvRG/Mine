@@ -22,11 +22,10 @@ class SherpaManager @Inject constructor(private val context: Context) {
 
     private var isInitialized = false
 
-    // --- NEW: ASYNC INITIALIZATION ---
     suspend fun initializeModels() = withContext(Dispatchers.IO) {
         if (isInitialized) return@withContext
 
-        Log.d("SherpaManager", "Extracting ONNX models to internal storage on Background Thread...")
+        Log.d("SherpaManager", "Extracting ONNX models to internal storage...")
         val vadModelPath = copyAsset("silero_vad.onnx")
         val denoiserModelPath = copyAsset("gtcrn_simple.onnx")
         val speakerModelPath = copyAsset("3dspeaker_speech_eres2net_base_sv_zh-cn_3dspeaker_16k.onnx")
