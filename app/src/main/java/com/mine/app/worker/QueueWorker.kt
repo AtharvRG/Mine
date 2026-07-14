@@ -69,7 +69,16 @@ class QueueWorker @AssistedInject constructor(
             return Result.success()
         } catch (e: Exception) {
             Log.e("QueueWorker", "Failed to process queue: ${e.message}")
-            return Result.retry() // Tells Android to try again when internet is better
+
+            // --- FIX: Don't retry forever on permanent API errors! ---
+            val errorMessage = e.message ?: ""
+            if (errorMessage.contains("401") || errorMessage.contains("400") || errorMessage.contains("403")) {
+                Log.e("QueueWorker", "Fatal API Error. Canceling worker to save battery.")
+                return Result.failure()
+            }
+
+            // Only retry for network timeouts or 500 server errors
+            return Result.retry()
         }
     }
 }

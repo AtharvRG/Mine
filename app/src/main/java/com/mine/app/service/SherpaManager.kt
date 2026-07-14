@@ -37,6 +37,7 @@ class SherpaManager @Inject constructor(private val context: Context) {
             threshold = 0.5f,
             minSilenceDuration = 1.0f,
             minSpeechDuration = 0.5f,
+            maxSpeechDuration = 15.0f, // <-- FIX: Force chunking after 15 seconds to prevent OOM!
             windowSize = 512
         )
         val vadConfig = VadModelConfig()

@@ -31,10 +31,11 @@ interface GraphDao {
     @Query("SELECT * FROM nodes WHERE id = :nodeId LIMIT 1")
     suspend fun getNodeById(nodeId: Int): NodeEntity?
 
+    // --- FIX: Sanitize FTS4 query to prevent syntax crashes ---
     @Query("""
         SELECT nodes.* FROM nodes 
         JOIN nodes_fts ON nodes.id = nodes_fts.rowid 
-        WHERE nodes_fts MATCH :searchQuery 
+        WHERE nodes_fts MATCH '"' || :searchQuery || '"*'
         ORDER BY nodes.last_accessed DESC 
         LIMIT :limit
     """)
