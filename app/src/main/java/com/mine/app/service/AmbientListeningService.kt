@@ -35,6 +35,7 @@ class AmbientListeningService : Service() {
     @Inject lateinit var serviceStateHolder: ServiceStateHolder
 
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val audioChannel = kotlinx.coroutines.channels.Channel<ByteArray>(kotlinx.coroutines.channels.Channel.UNLIMITED)
     private var audioRecord: AudioRecord? = null
     private var isListening = false
     private var isPausedByCall = false
@@ -114,13 +115,9 @@ class AmbientListeningService : Service() {
             }
         }
 
-        // --- AUDIO READ LOOP ---
+        // --- COROUTINE 1: FAST AUDIO READER ---
         serviceScope.launch {
-            // Ensure Sherpa is initialized before we start feeding it audio!
-            sherpaManager.initializeModels() 
-
-            val chunkBuffer = ByteArray(3200) 
-
+            val chunkBuffer = ByteArray(3200)
             while (isActive && isListening) {
                 if (isPausedByCall) {
                     delay(500)
@@ -128,22 +125,32 @@ class AmbientListeningService : Service() {
                 }
 
                 val read = audioRecord?.read(chunkBuffer, 0, chunkBuffer.size) ?: 0
-                
-                // --- FIX 1: MIC HIJACK SURVIVAL ---
                 if (read < 0) {
-                    Log.w("AmbientService", "Mic hijacked by another app (Error: $read). Waiting to recover...")
+                    Log.w("AmbientService", "Mic hijacked. Waiting to recover...")
                     pauseMic()
-                    delay(2000) // Wait 2 seconds for the other app to release the mic
+                    delay(2000)
                     resumeMic()
                     continue
                 }
 
                 if (read > 0) {
-                    val result = sherpaManager.processLiveAudio(chunkBuffer.copyOfRange(0, read))
-                    if (result != null) {
-                        val (cleanAudioBytes, speakerLabel) = result
-                        processCompletedSentence(cleanAudioBytes, speakerLabel)
-                    }
+                    // Send to channel instantly, do not block the mic!
+                    audioChannel.send(chunkBuffer.copyOfRange(0, read))
+                }
+            }
+        }
+
+        // --- COROUTINE 2: HEAVY AI PROCESSOR ---
+        serviceScope.launch {
+            // Ensure Sherpa is initialized before we start feeding it audio!
+            sherpaManager.initializeModels()
+
+            for (chunk in audioChannel) {
+                if (!isActive || !isListening) break
+                val result = sherpaManager.processLiveAudio(chunk)
+                if (result != null) {
+                    val (cleanAudioBytes, speakerLabel) = result
+                    processCompletedSentence(cleanAudioBytes, speakerLabel)
                 }
             }
         }

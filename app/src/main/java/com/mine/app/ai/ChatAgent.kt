@@ -70,7 +70,9 @@ class ChatAgent @Inject constructor(
         // 5. Fetch recent chat history so Kimi remembers the flow of the conversation
         val startOfDay = com.mine.app.util.TimeUtils.getStartOfDayTimestamp()
         val recentHistory = chatDao.getRecentMessagesList(startOfDay, limit = 10).reversed().map {
-            NimMessage(role = it.role, content = it.content)
+            // --- FIX: Truncate historical messages to 500 chars so old essays don't crash the API! ---
+            val safeContent = if (it.content.length > 500) it.content.take(500) + "..." else it.content
+            NimMessage(role = it.role, content = safeContent)
         }
 
         // 6. Build the Request for Kimi K2.6
