@@ -53,8 +53,13 @@ class NetworkMonitor(private val context: Context) {
         if (caps != null && caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) {
             _isOnline.value = true
 
-            // Trigger the QueueWorker to drain any offline backlog
-            WorkManager.getInstance(context).enqueue(OneTimeWorkRequestBuilder<com.mine.app.worker.QueueWorker>().build())
+            // --- FIX: Prevent spawning 100 workers if the network is unstable ---
+            val workRequest = OneTimeWorkRequestBuilder<com.mine.app.worker.QueueWorker>().build()
+            WorkManager.getInstance(context).enqueueUniqueWork(
+                "OfflineQueueDrainer",
+                androidx.work.ExistingWorkPolicy.REPLACE,
+                workRequest
+            )
 
             if (caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
                 _networkType.value = "Wi-Fi (Likely Indoors/Home)"

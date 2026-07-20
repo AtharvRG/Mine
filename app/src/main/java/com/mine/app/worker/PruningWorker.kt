@@ -9,6 +9,7 @@ import com.mine.app.BuildConfig
 import com.mine.app.ai.CuratorAgent
 import com.mine.app.data.local.db.dao.ChatDao
 import com.mine.app.data.local.db.dao.GraphDao
+import com.mine.app.data.local.db.dao.QueueDao
 import com.mine.app.util.TimeUtils
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
@@ -19,6 +20,7 @@ class PruningWorker @AssistedInject constructor(
     @Assisted workerParams: WorkerParameters,
     private val graphDao: GraphDao,
     private val chatDao: ChatDao,
+    private val queueDao: QueueDao,
     private val curatorAgent: CuratorAgent
 ) : CoroutineWorker(appContext, workerParams) {
 
@@ -30,6 +32,10 @@ class PruningWorker @AssistedInject constructor(
             val sevenDaysAgo = System.currentTimeMillis() - (7L * 24 * 60 * 60 * 1000)
             val deletedCount = graphDao.deleteOldTrashedNodes(sevenDaysAgo)
             Log.d("PruningWorker", "Permanently deleted $deletedCount trashed nodes.")
+
+            // 1.5 Delete old failed queue items so audio blobs don't bloat the DB
+            val deletedQueueItems = queueDao.deleteOldFailedMemories(sevenDaysAgo)
+            Log.d("PruningWorker", "Cleaned up $deletedQueueItems failed queue items.")
 
             // 2. Summarize and clear old chat logs
             val startOfToday = TimeUtils.getStartOfDayTimestamp()

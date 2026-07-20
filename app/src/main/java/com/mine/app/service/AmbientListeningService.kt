@@ -36,6 +36,7 @@ class AmbientListeningService : Service() {
 
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val audioChannel = kotlinx.coroutines.channels.Channel<ByteArray>(kotlinx.coroutines.channels.Channel.UNLIMITED)
+    private var listeningJob: Job? = null
     private var audioRecord: AudioRecord? = null
     private var isListening = false
     private var isPausedByCall = false
@@ -86,71 +87,73 @@ class AmbientListeningService : Service() {
 
         audioRecord?.startRecording()
 
-        // --- PHONE STATE LISTENER ---
-        val telephonyManager = getSystemService(Context.TELEPHONY_SERVICE) as android.telephony.TelephonyManager
-        serviceScope.launch {
-            var lastState = telephonyManager.callState
-            while (isActive && isListening) {
-                val currentState = telephonyManager.callState
-                
-                if (currentState == android.telephony.TelephonyManager.CALL_STATE_OFFHOOK || 
-                    currentState == android.telephony.TelephonyManager.CALL_STATE_RINGING) {
-                    if (!isPausedByCall) {
-                        Log.d("AmbientService", "Phone call started. Pausing hardware mic.")
-                        isPausedByCall = true
-                        pauseMic() // <-- FIX 2: Actually stop the hardware!
-                    }
-                } else if (currentState == android.telephony.TelephonyManager.CALL_STATE_IDLE) {
-                    if (isPausedByCall) {
-                        Log.d("AmbientService", "Call ended! Resuming mic and triggering Reflection.")
-                        isPausedByCall = false
-                        resumeMic() // <-- FIX 2: Restart the hardware!
-                        if (lastState == android.telephony.TelephonyManager.CALL_STATE_OFFHOOK) {
-                            notificationHelper.showCallReflectionNotification()
+        listeningJob = serviceScope.launch {
+            // --- PHONE STATE LISTENER ---
+            val telephonyManager = getSystemService(Context.TELEPHONY_SERVICE) as android.telephony.TelephonyManager
+            launch {
+                var lastState = telephonyManager.callState
+                while (isActive && isListening) {
+                    val currentState = telephonyManager.callState
+                    
+                    if (currentState == android.telephony.TelephonyManager.CALL_STATE_OFFHOOK || 
+                        currentState == android.telephony.TelephonyManager.CALL_STATE_RINGING) {
+                        if (!isPausedByCall) {
+                            Log.d("AmbientService", "Phone call started. Pausing hardware mic.")
+                            isPausedByCall = true
+                            pauseMic() // <-- FIX 2: Actually stop the hardware!
+                        }
+                    } else if (currentState == android.telephony.TelephonyManager.CALL_STATE_IDLE) {
+                        if (isPausedByCall) {
+                            Log.d("AmbientService", "Call ended! Resuming mic and triggering Reflection.")
+                            isPausedByCall = false
+                            resumeMic() // <-- FIX 2: Restart the hardware!
+                            if (lastState == android.telephony.TelephonyManager.CALL_STATE_OFFHOOK) {
+                                notificationHelper.showCallReflectionNotification()
+                            }
                         }
                     }
-                }
-                lastState = currentState
-                delay(1000)
-            }
-        }
-
-        // --- COROUTINE 1: FAST AUDIO READER ---
-        serviceScope.launch {
-            val chunkBuffer = ByteArray(3200)
-            while (isActive && isListening) {
-                if (isPausedByCall) {
-                    delay(500)
-                    continue
-                }
-
-                val read = audioRecord?.read(chunkBuffer, 0, chunkBuffer.size) ?: 0
-                if (read < 0) {
-                    Log.w("AmbientService", "Mic hijacked. Waiting to recover...")
-                    pauseMic()
-                    delay(2000)
-                    resumeMic()
-                    continue
-                }
-
-                if (read > 0) {
-                    // Send to channel instantly, do not block the mic!
-                    audioChannel.send(chunkBuffer.copyOfRange(0, read))
+                    lastState = currentState
+                    delay(1000)
                 }
             }
-        }
 
-        // --- COROUTINE 2: HEAVY AI PROCESSOR ---
-        serviceScope.launch {
-            // Ensure Sherpa is initialized before we start feeding it audio!
-            sherpaManager.initializeModels()
+            // --- COROUTINE 1: FAST AUDIO READER ---
+            launch {
+                val chunkBuffer = ByteArray(3200)
+                while (isActive && isListening) {
+                    if (isPausedByCall) {
+                        delay(500)
+                        continue
+                    }
 
-            for (chunk in audioChannel) {
-                if (!isActive || !isListening) break
-                val result = sherpaManager.processLiveAudio(chunk)
-                if (result != null) {
-                    val (cleanAudioBytes, speakerLabel) = result
-                    processCompletedSentence(cleanAudioBytes, speakerLabel)
+                    val read = audioRecord?.read(chunkBuffer, 0, chunkBuffer.size) ?: 0
+                    if (read < 0) {
+                        Log.w("AmbientService", "Mic hijacked. Waiting to recover...")
+                        pauseMic()
+                        delay(2000)
+                        resumeMic()
+                        continue
+                    }
+
+                    if (read > 0) {
+                        // Send to channel instantly, do not block the mic!
+                        audioChannel.send(chunkBuffer.copyOfRange(0, read))
+                    }
+                }
+            }
+
+            // --- COROUTINE 2: HEAVY AI PROCESSOR ---
+            launch {
+                // Ensure Sherpa is initialized before we start feeding it audio!
+                sherpaManager.initializeModels()
+
+                for (chunk in audioChannel) {
+                    if (!isActive || !isListening) break
+                    val result = sherpaManager.processLiveAudio(chunk)
+                    if (result != null) {
+                        val (cleanAudioBytes, speakerLabel) = result
+                        processCompletedSentence(cleanAudioBytes, speakerLabel)
+                    }
                 }
             }
         }
@@ -217,7 +220,7 @@ class AmbientListeningService : Service() {
         audioRecord?.stop()
         audioRecord?.release()
         audioRecord = null
-        serviceScope.cancel()
+        listeningJob?.cancel()
     }
 
     override fun onDestroy() {

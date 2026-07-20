@@ -30,4 +30,7 @@ interface QueueDao {
 
     @Query("DELETE FROM api_queue WHERE id = :id")
     suspend fun deleteApiTask(id: Int): Int
+
+    @Query("DELETE FROM memory_queue WHERE status = 'failed' AND created_at < :thresholdTimestamp")
+    suspend fun deleteOldFailedMemories(thresholdTimestamp: Long): Int
 }
