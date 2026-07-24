@@ -60,7 +60,7 @@ class ChronosAgent @Inject constructor(
 
         try {
             val request = NimChatRequest(
-                model = "moonshotai/kimi-k2.6",
+                model = "mistralai/mistral-small-4-119b-2603",
                 messages = listOf(NimMessage(role = "system", content = systemPrompt)),
                 maxTokens = 256
             )

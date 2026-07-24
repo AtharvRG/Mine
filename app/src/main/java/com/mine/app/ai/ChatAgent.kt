@@ -67,25 +67,26 @@ class ChatAgent @Inject constructor(
         """.trimIndent()
 
 
-        // 5. Fetch recent chat history so Kimi remembers the flow of the conversation
+        // 5. Fetch recent chat history so Mistral remembers the flow of the conversation
         val startOfDay = com.mine.app.util.TimeUtils.getStartOfDayTimestamp()
         val recentHistory = chatDao.getRecentMessagesList(startOfDay, limit = 10).reversed().map {
             // --- FIX: Truncate historical messages to 500 chars so old essays don't crash the API! ---
             val safeContent = if (it.content.length > 500) it.content.take(500) + "..." else it.content
-            NimMessage(role = it.role, content = safeContent)
+            // Stored assistant replies use role "mine"; map to the API-valid "assistant" role
+            NimMessage(role = if (it.role == "mine") "assistant" else it.role, content = safeContent)
         }
 
-        // 6. Build the Request for Kimi K2.6
+        // 6. Build the Request for Mistral Small 4
         val messages = mutableListOf(NimMessage(role = "system", content = systemPrompt))
         messages.addAll(recentHistory) // History already includes the user's new message from Step 1
 
         val request = NimChatRequest(
-            model = "moonshotai/kimi-k2.6", // <-- Using Kimi!
+            model = "mistralai/mistral-small-4-119b-2603",
             messages = messages,
             maxTokens = 1024
         )
 
-        // 7. Call Kimi and Save Response
+        // 7. Call Mistral and Save Response
         val response = nimApi.getChatCompletion(apiKey, request)
         val aiReply = response.choices.firstOrNull()?.message?.content ?: "..."
 
