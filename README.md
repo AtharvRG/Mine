@@ -8,7 +8,7 @@ Mine is **single-user, zero-server, and fully open source**. All data stays on y
 
 ---
 
-## ✨ Core Pillars
+## Core Pillars
 
 1. **Ambient First** — The microphone is an input, not an interface. Turn it on, live your life, Mine remembers.
 2. **Zero Server** — No cloud backend. No telemetry. No accounts. Only your API keys, your SQLite database, your graph.
@@ -17,7 +17,7 @@ Mine is **single-user, zero-server, and fully open source**. All data stays on y
 
 ---
 
-## 🧠 How It Works
+## How It Works
 
 ```mermaid
 flowchart TD
@@ -46,7 +46,7 @@ flowchart TD
 
 ---
 
-## 🏗️ Component Stack
+## Component Stack
 
 | Layer | Technology | Purpose |
 |-------|-----------|---------|
@@ -63,7 +63,7 @@ flowchart TD
 
 ---
 
-## 📦 Project Structure
+## Project Structure
 
 ```
 app/
@@ -83,7 +83,7 @@ app/
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 - Android Studio (AGP 9.2.1 compatible)
@@ -132,7 +132,7 @@ On first launch, Mine walks you through:
 
 ---
 
-## 🔌 External Dependencies
+## External Dependencies
 
 - **NVIDIA NIM** — LLM inference (gpt-oss-120b, kimi-k2.6), embeddings (nv-embed-v1), and ASR (Riva Whisper via gRPC)
 - **Sherpa-ONNX** — On-device VAD (Silero), noise suppression (GTCRN), speaker ID (WeSpeaker/3D-Speaker)
@@ -143,7 +143,7 @@ On first launch, Mine walks you through:
 
 ---
 
-## 🔒 Privacy & Security
+## Privacy & Security
 
 - **On-device only:** All audio, transcripts, and the memory graph stay on your device.
 - **Encrypted at rest:** The SQLite database is SQLCipher-encrypted.
@@ -153,7 +153,7 @@ On first launch, Mine walks you through:
 
 ---
 
-## 🧭 Features
+## Features
 
 - **Ambient Listening** — Always-on mic capture with system event handling (yields to calls, resumes after).
 - **Nudge Talking** — Contextual memory surfacing via heads-up notifications with lock-screen direct reply.
@@ -165,7 +165,7 @@ On first launch, Mine walks you through:
 
 ---
 
-## 📚 Documentation
+## Documentation
 
 Full design documentation lives in [`Docs/`](../Mine1/Docs):
 
@@ -191,18 +191,18 @@ Full design documentation lives in [`Docs/`](../Mine1/Docs):
 
 ---
 
-## ⚠️ Status
+## Status
 
 > **This project is in a rough-wired, testing-mindset stage.** The system is functional end-to-end but has not yet been hardened for production. A robustness audit has been performed; known issues are tracked separately. Expect breaking changes as the codebase is decluttered and hardened.
 
 ---
 
-## 📄 License
+## License
 
 Open source. (License file to be added — MIT recommended.)
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 Contributing guidelines and issue templates will be added prior to the v1.0.0 release.
