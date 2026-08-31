@@ -1,15 +1,58 @@
-                                          *.iml
-.gradle
-/local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
-.DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
+# ─────────────────────────────────────────────────────────────
+# Android / Kotlin / Gradle .gitignore
+# ─────────────────────────────────────────────────────────────
+
+# Gradle build & cache directories
+.gradle/
+/build/
+/app/build/
+**/build/
+
+# Gradle wrapper artifacts (keep the jar + properties under gradle/wrapper)
+!gradle/wrapper/gradle-wrapper.jar
+!gradle/wrapper/gradle-wrapper.properties
+
+# Local configuration (SDK path, API keys, signing secrets)
 local.properties
+
+# Kotlin
+.kotlin/
+
+# Android build outputs
+*.apk
+*.aab
+*.ap_
+*.dex
+*.class
+
+# Native build artifacts
+.cxx/
+.externalNativeBuild/
+
+# Android captures (screenshot/recordings from Android Studio)
+/captures/
+
+# IntelliJ / Android Studio
+*.iml
+.idea/
+# Keep the IDE-level ignore so collaborators don't re-add these files
+!.idea/.gitignore
+
+# Crashlytics / analytics
+com_crashlytics_export_strings.xml
+
+# OS-generated files
+.DS_Store
+Thumbs.db
+
+# Logs / heap dumps / profiling
+*.log
+*.hprof
+
+# Keystores (signing credentials — never commit)
+*.jks
+*.keystore
+keystore.properties
+
+# Google Services config (project-specific, often contains secrets)
+google-services.json
