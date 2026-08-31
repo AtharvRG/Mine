@@ -167,7 +167,7 @@ On first launch, Mine walks you through:
 
 ## Documentation
 
-Full design documentation lives in [`Docs/`](../Mine1/Docs):
+Full design documentation lives in [`Docs/`](https://github.com/AtharvRG/mine/tree/blueprint):
 
 | # | Doc | Description |
 |---|-----|-------------|
