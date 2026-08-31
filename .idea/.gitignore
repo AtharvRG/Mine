@@ -1,3 +1,27 @@
-# Default ignored files
-/shelf/
-/workspace.xml
+# IntelliJ / Android Studio — per-user and machine-specific files
+# (Shared, project-level settings are tracked via the root .gitignore's
+#  `!.idea/.gitignore` exception; everything else under .idea/ is ignored.)
+
+# User-specific
+shelf/
+workspace.xml
+tasks.xml
+usage.statistics.xml
+dictionaries/
+
+# Sensitive / per-machine
+navEditor.xml
+assetWizardSettings.xml
+deploymentTargetSelector.xml
+deviceManager.xml
+modules.xml
+vcs.xml
+*.iml
+
+# Gradle / build caches managed by IDE
+.gradle/
+build/
+
+# Native
+.cxx/
+.externalNativeBuild/
