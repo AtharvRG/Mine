@@ -7,12 +7,30 @@ package com.anchor.mine.alarms
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.util.Log
+import com.anchor.mine.storage.AndroidStorage
+import com.anchor.mine.storage.DatabaseProvider
+import com.anchor.mine.storage.DbKeyProvider
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val action = intent.action ?: return
-        Log.i("MineBootReceiver", "Triggered by $action. Re-arming alarms...")
-        // In Step 6, we'll fetch pending Reminders from Storage and call AndroidAlarmScheduler.
+
+        val pendingResult = goAsync()
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val key = DbKeyProvider(context).getOrGenerateKey()
+                val db = DatabaseProvider.getHelper(context, key)
+                val storage = AndroidStorage(db)
+                val scheduler = AndroidAlarmScheduler(context)
+
+                val reminders = storage.getActiveReminders()
+                reminders.forEach { scheduler.schedule(it) }
+            } finally {
+                pendingResult.finish()
+            }
+        }
     }
 }
