@@ -4,7 +4,42 @@
 // Copyright (C) 2026 Mine Author
 // Part of Mine. See LICENSE in the repository root.
 
-This file tracks the `UiState` and `UiAction` definitions for every screen.
-The UI layer is dumb: it never touches the database, network, or alarms directly.
+The UI is entirely driven by `UiState` and emits `UiAction`. It never touches IO.
 
-*(To be populated in Step 6 when we wire the states)*
+## 1. Chat Screen
+**State:**
+- `messages`: List of chat messages (role, content)
+- `isProviderReady`: Boolean
+- `isLoading`: Boolean
+
+**Actions:**
+- `SendMessage(text)`
+- `ClearChat`
+
+## 2. Reminders Screen
+**State:**
+- `activeReminders`: List of scheduled items (id, text, time)
+- `testStatus`: String (e.g., "Waiting...", "Fired!")
+
+**Actions:**
+- `ScheduleIn(minutes, text)`
+- `CancelReminder(id)`
+- `RunSelfTest`
+
+## 3. Provider Settings
+**State:**
+- `endpoint`: String
+- `apiKey`: String
+- `model`: String
+- `statusMessage`: String
+
+**Actions:**
+- `SaveConfig(endpoint, key, model)`
+
+## 4. Debug Screen
+**State:**
+- `dbRowCount`: Int
+- `lastError`: String
+
+**Actions:**
+- `RefreshStats`
