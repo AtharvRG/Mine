@@ -24,3 +24,9 @@ sealed interface Resolution {
     data class Ambiguous(val options: List<Node>) : Resolution
     data object NotFound : Resolution
 }
+
+data class ChatMessage(
+    val id: String,
+    val role: String, // "system", "user", "assistant"
+    val content: String
+)

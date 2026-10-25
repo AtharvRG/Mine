@@ -4,6 +4,7 @@
 
 package com.anchor.core.storage
 
+import com.anchor.core.models.ChatMessage
 import com.anchor.core.models.Node
 import com.anchor.core.models.Proposal
 import com.anchor.core.models.RawEvent
@@ -15,6 +16,9 @@ interface Storage {
     // Raw logs
     suspend fun insertRawMessage(id: String, content: String)
     suspend fun getRawMessage(id: String): String?
+
+    // NEW: Fetch recent chat history
+    suspend fun getRecentMessages(limit: Int): List<ChatMessage>
 
     // Gateway operations
     suspend fun getActiveNodes(): List<Node>

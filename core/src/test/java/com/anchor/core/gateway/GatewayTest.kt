@@ -26,6 +26,9 @@ class GatewayTest {
         override suspend fun insertRawMessage(id: String, content: String) {}
         override suspend fun getRawMessage(id: String): String? = null
 
+        // ADDED THIS TO SATISFY THE NEW INTERFACE
+        override suspend fun getRecentMessages(limit: Int): List<ChatMessage> = emptyList()
+
         override suspend fun getActiveNodes(): List<Node> = nodes
         override suspend fun updateNodeStatus(nodeId: String, newStatus: String) {
             nodes = nodes.map { if (it.id == nodeId) it.copy(status = newStatus) else it }
