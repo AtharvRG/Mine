@@ -10,6 +10,7 @@ import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.background
@@ -36,6 +37,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
@@ -55,7 +57,7 @@ fun MineAppUI(viewModel: MainViewModel) {
     var selectedTab by remember { mutableIntStateOf(0) }
     val tabs = listOf("Chat", "Reminders", "Provider", "Debug")
 
-    Column(modifier = Modifier.fillMaxSize().padding(top = 32.dp)) {
+    Column(modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars)) {
         TabRow(selectedTabIndex = selectedTab) {
             tabs.forEachIndexed { index, title ->
                 Tab(selected = selectedTab == index, onClick = { selectedTab = index }, text = { Text(title) })
@@ -67,7 +69,7 @@ fun MineAppUI(viewModel: MainViewModel) {
                 0 -> ChatScreen(state) { viewModel.onAction(UiAction.SendMessage(it)) }
                 1 -> RemindersScreen(state, viewModel::onAction)
                 2 -> ProviderScreen(state) { ep, key, mod -> viewModel.onAction(UiAction.SaveProvider(ep, key, mod)) }
-                3 -> DebugScreen(state)
+                3 -> DebugScreen(state, viewModel::onAction)
             }
         }
     }
@@ -122,7 +124,10 @@ fun RemindersScreen(state: UiState, onAction: (UiAction) -> Unit) {
         Text("Active Reminders:")
         LazyColumn {
             items(state.activeReminders) { r ->
-                Text("ID: ${r.id} | ${r.text}")
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("ID: ${r.id.take(8)} | ${r.text}")
+                    Button(onClick = { onAction(UiAction.CancelReminder(r.id)) }) { Text("X") }
+                }
             }
         }
     }
@@ -151,8 +156,13 @@ fun ProviderScreen(state: UiState, onSave: (String, String, String) -> Unit) {
 }
 
 @Composable
-fun DebugScreen(state: UiState) {
+fun DebugScreen(state: UiState, onAction: (UiAction) -> Unit) {
     Column {
-        Text("Raw Log Rows: ${state.debugStats}")
+        Text("=== Storage Stats ===", style = MaterialTheme.typography.titleMedium)
+        Text(state.debugStats)
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(onClick = { onAction(UiAction.RunSelfTest) }) {
+            Text("Refresh Stats")
+        }
     }
 }

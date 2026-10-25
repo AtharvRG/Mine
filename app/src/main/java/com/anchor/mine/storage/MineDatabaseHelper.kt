@@ -9,7 +9,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.sqlite.db.SupportSQLiteOpenHelper
 import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
 
-class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(1) {
+class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(2) {
 
     override fun onConfigure(db: SupportSQLiteDatabase) {
         super.onConfigure(db)
@@ -27,7 +27,6 @@ class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(1) {
               model_ref TEXT, tokens_in INTEGER, tokens_out INTEGER, client_msg_id TEXT, attrs TEXT
             )
         """)
-        db.execSQL("CREATE INDEX idx_raw_message_ts ON raw_message(ts_utc)")
         db.execSQL("""
             CREATE TABLE raw_event (
               op_id TEXT PRIMARY KEY, ts_utc INTEGER, device_id TEXT, actor TEXT, op_type TEXT,
@@ -52,6 +51,12 @@ class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(1) {
             )
         """)
 
+        // ADDED FOR V2:
+        db.execSQL("CREATE TABLE reminder (id TEXT PRIMARY KEY, text TEXT NOT NULL, fire_at INTEGER NOT NULL)")
+        db.execSQL("CREATE INDEX idx_node_status_due ON node(status, due_at)")
+        db.execSQL("CREATE INDEX idx_raw_event_target ON raw_event(target_type, target_id)")
+        db.execSQL("CREATE INDEX idx_raw_message_ts ON raw_message(ts_utc)")
+
         // Triggers enforce append-only rule
         db.execSQL("""
             CREATE TRIGGER trg_raw_msg_no_update BEFORE UPDATE ON raw_message
@@ -71,7 +76,12 @@ class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(1) {
     }
 
     override fun onUpgrade(db: SupportSQLiteDatabase, oldVersion: Int, newVersion: Int) {
-        // Handled via Migration Snapshots later
+        if (oldVersion < 2) {
+            db.execSQL("CREATE TABLE IF NOT EXISTS reminder (id TEXT PRIMARY KEY, text TEXT NOT NULL, fire_at INTEGER NOT NULL)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS idx_node_status_due ON node(status, due_at)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS idx_raw_event_target ON raw_event(target_type, target_id)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS idx_raw_message_ts ON raw_message(ts_utc)")
+        }
     }
 }
 

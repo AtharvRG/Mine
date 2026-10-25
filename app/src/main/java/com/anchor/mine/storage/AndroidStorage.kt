@@ -23,18 +23,13 @@ class AndroidStorage(private val dbHelper: SupportSQLiteOpenHelper) : Storage {
     private var deviceId: String = ""
 
     init {
-        // Init table and fetch/create device_id
-        dbHelper.writableDatabase.execSQL(
-            "CREATE TABLE IF NOT EXISTS reminder (id TEXT PRIMARY KEY, text TEXT NOT NULL, fire_at INTEGER NOT NULL)"
-        )
-        dbHelper.writableDatabase.execSQL(
-            "CREATE TABLE IF NOT EXISTS proposal (id TEXT PRIMARY KEY, kind TEXT, intent TEXT, options TEXT)"
-        )
+        // We removed the CREATE TABLE reminder here; it now lives safely in MineDatabaseHelper.
+        // Device ID logic remains...
         dbHelper.readableDatabase.query("SELECT value FROM app_meta WHERE \"key\" = 'device_id'").use {
             if (it.moveToFirst()) deviceId = it.getString(0)
         }
         if (deviceId.isEmpty()) {
-            deviceId = UUID.randomUUID().toString()
+            deviceId = java.util.UUID.randomUUID().toString()
             dbHelper.writableDatabase.execSQL(
                 "INSERT INTO app_meta (\"key\", value) VALUES ('device_id', ?)", arrayOf(deviceId)
             )
@@ -125,6 +120,18 @@ class AndroidStorage(private val dbHelper: SupportSQLiteOpenHelper) : Storage {
         } finally {
             db.endTransaction()
         }
+    }
+
+    override suspend fun getDebugStats(): Map<String, String> = withContext(ioDispatcher) {
+        val stats = mutableMapOf<String, String>()
+        val db = dbHelper.readableDatabase
+        val tables = listOf("raw_message", "raw_event", "node", "edge", "reminder")
+        tables.forEach { table ->
+            db.query("SELECT COUNT(*) FROM $table").use {
+                if (it.moveToFirst()) stats["Rows in $table"] = it.getInt(0).toString()
+            }
+        }
+        stats
     }
 
     override suspend fun saveProposal(proposal: Proposal) = withContext(ioDispatcher) {

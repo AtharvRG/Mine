@@ -31,6 +31,5 @@ interface Storage {
     suspend fun saveReminder(reminder: Reminder)
     suspend fun getActiveReminders(): List<Reminder>
     suspend fun deleteReminder(id: String)
-
-
+    suspend fun getDebugStats(): Map<String, String>
 }

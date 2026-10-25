@@ -44,15 +44,26 @@ class ChatController(
             val ep = storage.getSetting("ep") ?: "https://api.openai.com/v1/chat/completions"
             val key = storage.getSetting("key") ?: ""
             val mod = storage.getSetting("mod") ?: "gpt-4o-mini"
+
+            // Format the debug stats map into a nice string
+            val statsMap = storage.getDebugStats()
+            val statsString = statsMap.entries.joinToString("\n") { "${it.key}: ${it.value}" }
+
             _state.update { it.copy(
                 activeReminders = storage.getActiveReminders(),
                 chatMessages = storage.getRecentMessages(30),
-                providerEndpoint = ep, providerKey = key, providerModel = mod
+                providerEndpoint = ep, providerKey = key, providerModel = mod,
+                debugStats = statsString
             )}
         }
     }
 
     fun onAction(action: UiAction) {
+        coroutineScope.launch {
+            val statsMap = storage.getDebugStats()
+            val statsString = if (statsMap.isEmpty()) "Rows: 0" else statsMap.entries.joinToString("\n") { "${it.key}: ${it.value}" }
+            _state.update { it.copy(debugStats = statsString) }
+        }
         when (action) {
             is UiAction.SendMessage -> handleSendMessage(action.text)
             is UiAction.Stop -> {
@@ -79,14 +90,22 @@ class ChatController(
                 val id = "test_${System.currentTimeMillis()}"
                 AlarmReceiver.lastFiredId = null
                 alarmScheduler.schedule(Reminder(id, "Self Test Fired!", System.currentTimeMillis() + 5000L))
-                
+
                 coroutineScope.launch {
                     var elapsed = 0
                     while (AlarmReceiver.lastFiredId != id && elapsed < 10000) {
                         kotlinx.coroutines.delay(500)
                         elapsed += 500
                     }
-                    _state.update { it.copy(selfTestStatus = if (AlarmReceiver.lastFiredId == id) "Fired Successfully!" else "Failed") }
+
+                    // Refresh the debug stats while we're at it!
+                    val statsMap = storage.getDebugStats()
+                    val statsString = statsMap.entries.joinToString("\n") { "${it.key}: ${it.value}" }
+
+                    _state.update { it.copy(
+                        selfTestStatus = if (AlarmReceiver.lastFiredId == id) "Fired Successfully!" else "Failed",
+                        debugStats = statsString
+                    ) }
                 }
             }
             // MISSING LOGIC ADDED BACK:

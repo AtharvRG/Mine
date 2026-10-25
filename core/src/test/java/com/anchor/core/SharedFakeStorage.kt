@@ -54,4 +54,5 @@ class SharedFakeStorage : Storage {
     }
     override suspend fun getActiveReminders(): List<Reminder> = reminders
     override suspend fun deleteReminder(id: String) { reminders.removeAll { it.id == id } }
+    override suspend fun getDebugStats(): Map<String, String> = emptyMap()
 }
