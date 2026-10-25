@@ -4,11 +4,17 @@
 
 package com.anchor.core.provider
 
+import kotlinx.coroutines.flow.Flow
+
 data class Target(
     val id: String,
     val key: String,
     val limitRpm: Int
 )
+
+interface HttpTransport {
+    suspend fun postStream(target: Target, body: String): Flow<String>
+}
 
 sealed interface StreamEvent {
     data class TextDelta(val text: String) : StreamEvent

@@ -1,45 +1,29 @@
 # UI Contract
 
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 Mine Author
+// Copyright (C) 2026 Mine contributors
 // Part of Mine. See LICENSE in the repository root.
 
-The UI is entirely driven by `UiState` and emits `UiAction`. It never touches IO.
+Every screen in Mine is mapped to `UiState` and `UiAction`. The UI is completely passive.
 
 ## 1. Chat Screen
-**State:**
-- `messages`: List of chat messages (role, content)
-- `isProviderReady`: Boolean
+**State (`ChatState`)**:
+- `messages`: List<ChatMessage>
 - `isLoading`: Boolean
-
-**Actions:**
-- `SendMessage(text)`
-- `ClearChat`
+  **Actions (`ChatAction`)**:
+- `SendMessage(text: String)`
+- `Stop` (Halts generation instantly)
 
 ## 2. Reminders Screen
-**State:**
-- `activeReminders`: List of scheduled items (id, text, time)
-- `testStatus`: String (e.g., "Waiting...", "Fired!")
-
-**Actions:**
-- `ScheduleIn(minutes, text)`
-- `CancelReminder(id)`
+**State (`RemindersState`)**:
+- `activeReminders`: List<Reminder>
+- `testStatus`: String
+  **Actions (`RemindersAction`)**:
 - `RunSelfTest`
+- `CancelReminder(id: String)`
 
 ## 3. Provider Settings
-**State:**
-- `endpoint`: String
-- `apiKey`: String
-- `model`: String
-- `statusMessage`: String
-
-**Actions:**
+**State (`ProviderState`)**:
+- `endpoint`, `apiKey`, `model`: String
+  **Actions (`ProviderAction`)**:
 - `SaveConfig(endpoint, key, model)`
-
-## 4. Debug Screen
-**State:**
-- `dbRowCount`: Int
-- `lastError`: String
-
-**Actions:**
-- `RefreshStats`

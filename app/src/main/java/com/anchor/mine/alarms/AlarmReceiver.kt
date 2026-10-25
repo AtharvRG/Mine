@@ -16,7 +16,11 @@ class AlarmReceiver : BroadcastReceiver() {
     companion object {
         // Static flag strictly so our instrumented test can verify firing
         // without needing a complex UI Automator notification scanner.
-        var lastFiredId: String? = null
+        var lastFiredId: String?
+            get() = com.anchor.core.alarms.AlarmReceiver.lastFiredId
+            set(value) {
+                com.anchor.core.alarms.AlarmReceiver.lastFiredId = value
+            }
     }
 
     override fun onReceive(context: Context, intent: Intent) {

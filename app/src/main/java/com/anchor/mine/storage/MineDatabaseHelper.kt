@@ -14,17 +14,12 @@ class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(1) {
     override fun onConfigure(db: SupportSQLiteDatabase) {
         super.onConfigure(db)
         db.enableWriteAheadLogging()
-        // Use the official Support API for foreign keys
-        if (!db.isReadOnly) {
-            db.setForeignKeyConstraintsEnabled(true)
-        }
-        // Use query() instead of execSQL() for PRAGMAs to satisfy SQLCipher
+        if (!db.isReadOnly) db.setForeignKeyConstraintsEnabled(true)
         db.query("PRAGMA secure_delete = ON").close()
     }
 
     override fun onCreate(db: SupportSQLiteDatabase) {
         db.execSQL("CREATE TABLE app_meta (\"key\" TEXT PRIMARY KEY, value TEXT NOT NULL)")
-
         db.execSQL("""
             CREATE TABLE raw_message (
               id TEXT PRIMARY KEY, device_id TEXT, ts_utc INTEGER, tz_offset_min INTEGER, day_key TEXT,
@@ -32,6 +27,7 @@ class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(1) {
               model_ref TEXT, tokens_in INTEGER, tokens_out INTEGER, client_msg_id TEXT, attrs TEXT
             )
         """)
+        db.execSQL("CREATE INDEX idx_raw_message_ts ON raw_message(ts_utc)")
         db.execSQL("""
             CREATE TABLE raw_event (
               op_id TEXT PRIMARY KEY, ts_utc INTEGER, device_id TEXT, actor TEXT, op_type TEXT,
@@ -57,7 +53,18 @@ class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(1) {
         """)
 
         // Triggers enforce append-only rule
-        db.execSQL("CREATE TRIGGER trg_raw_msg_no_update BEFORE UPDATE ON raw_message BEGIN SELECT RAISE(ABORT, 'raw_message is append-only'); END;")
+        db.execSQL("""
+            CREATE TRIGGER trg_raw_msg_no_update BEFORE UPDATE ON raw_message
+            BEGIN
+                SELECT RAISE(ABORT, 'raw_message is append-only except for redaction')
+                WHERE (OLD.redacted_at IS NOT NULL) 
+                   OR (NEW.redacted_at IS NULL)     
+                   OR (NEW.content IS NOT NULL)     
+                   OR (OLD.id != NEW.id)
+                   OR (OLD.role != NEW.role)
+                   OR (OLD.ts_utc != NEW.ts_utc);
+            END;
+        """)
         db.execSQL("CREATE TRIGGER trg_raw_msg_no_delete BEFORE DELETE ON raw_message BEGIN SELECT RAISE(ABORT, 'raw_message is append-only'); END;")
         db.execSQL("CREATE TRIGGER trg_raw_evt_no_update BEFORE UPDATE ON raw_event BEGIN SELECT RAISE(ABORT, 'raw_event is append-only'); END;")
         db.execSQL("CREATE TRIGGER trg_raw_evt_no_delete BEFORE DELETE ON raw_event BEGIN SELECT RAISE(ABORT, 'raw_event is append-only'); END;")

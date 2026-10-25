@@ -59,4 +59,17 @@ class WhichDinnerTest {
         assertTrue("Should be a clear winner due to exact time match", resolution is Resolution.ClearWinner)
         assertEquals("n1", (resolution as Resolution.ClearWinner).node.id)
     }
+
+    @Test
+    fun testUnrelatedHint_OneCandidate_NotFound() {
+        // Only one active item exists, but it has nothing to do with the hint
+        val resolution = resolver.resolve(IntentType.CANCEL, "cancel gym", null, listOf(dinnerTomorrow))
+        assertTrue("Must require textual overlap", resolution is Resolution.NotFound)
+    }
+
+    @Test
+    fun testUnrelatedHint_TwoCandidates_NotFound() {
+        val resolution = resolver.resolve(IntentType.CANCEL, "cancel gym", null, memoryGraph)
+        assertTrue("Must require textual overlap", resolution is Resolution.NotFound)
+    }
 }

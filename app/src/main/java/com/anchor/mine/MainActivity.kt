@@ -20,8 +20,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import com.anchor.core.ui.UiAction
+import com.anchor.core.ui.UiState
 
 class MainActivity : ComponentActivity() {
 
@@ -61,9 +64,9 @@ fun MineAppUI(viewModel: MainViewModel) {
 
         Box(modifier = Modifier.weight(1f).padding(16.dp)) {
             when (selectedTab) {
-                0 -> ChatScreen(state, viewModel::sendMessage)
-                1 -> RemindersScreen(state, viewModel::scheduleReminder, viewModel::runAlarmSelfTest)
-                2 -> ProviderScreen(state, viewModel::saveProvider)
+                0 -> ChatScreen(state) { viewModel.onAction(UiAction.SendMessage(it)) }
+                1 -> RemindersScreen(state, viewModel::onAction)
+                2 -> ProviderScreen(state) { ep, key, mod -> viewModel.onAction(UiAction.SaveProvider(ep, key, mod)) }
                 3 -> DebugScreen(state)
             }
         }
@@ -71,7 +74,7 @@ fun MineAppUI(viewModel: MainViewModel) {
 }
 
 @Composable
-fun ChatScreen(state: AppState, onSend: (String) -> Unit) {
+fun ChatScreen(state: UiState, onSend: (String) -> Unit) {
     var text by remember { mutableStateOf("") }
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -104,17 +107,17 @@ fun ChatScreen(state: AppState, onSend: (String) -> Unit) {
 }
 
 @Composable
-fun RemindersScreen(state: AppState, onSchedule: (Int, String) -> Unit, onSelfTest: () -> Unit) {
+fun RemindersScreen(state: UiState, onAction: (UiAction) -> Unit) {
     Column {
-        Button(onClick = { onSchedule(1, "Test reminder 1 min") }) {
+        Button(onClick = { onAction(UiAction.ScheduleIn(1, "Test reminder 1 min")) }) {
             Text("Set Reminder in 1 min")
         }
         Spacer(modifier = Modifier.height(16.dp))
-        Button(onClick = onSelfTest) {
+        Button(onClick = { onAction(UiAction.RunSelfTest) }) {
             Text("Run 5-sec Self Test")
         }
         Text("Test Status: ${state.selfTestStatus}")
-
+        
         Spacer(modifier = Modifier.height(16.dp))
         Text("Active Reminders:")
         LazyColumn {
@@ -126,14 +129,20 @@ fun RemindersScreen(state: AppState, onSchedule: (Int, String) -> Unit, onSelfTe
 }
 
 @Composable
-fun ProviderScreen(state: AppState, onSave: (String, String, String) -> Unit) {
+fun ProviderScreen(state: UiState, onSave: (String, String, String) -> Unit) {
     var ep by remember { mutableStateOf(state.providerEndpoint) }
     var key by remember { mutableStateOf(state.providerKey) }
     var mod by remember { mutableStateOf(state.providerModel) }
 
     Column {
         OutlinedTextField(value = ep, onValueChange = { ep = it }, label = { Text("Endpoint") }, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(value = key, onValueChange = { key = it }, label = { Text("API Key") }, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(
+            value = key,
+            onValueChange = { key = it },
+            label = { Text("API Key") },
+            visualTransformation = PasswordVisualTransformation(),
+            modifier = Modifier.fillMaxWidth()
+        )
         OutlinedTextField(value = mod, onValueChange = { mod = it }, label = { Text("Model") }, modifier = Modifier.fillMaxWidth())
         Button(onClick = { onSave(ep, key, mod) }) {
             Text("Save")
@@ -142,7 +151,7 @@ fun ProviderScreen(state: AppState, onSave: (String, String, String) -> Unit) {
 }
 
 @Composable
-fun DebugScreen(state: AppState) {
+fun DebugScreen(state: UiState) {
     Column {
         Text("Raw Log Rows: ${state.debugStats}")
     }

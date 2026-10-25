@@ -69,13 +69,20 @@ class Resolver {
         val hintLower = hint.lowercase(Locale.getDefault())
         val titleLower = node.title.lowercase(Locale.getDefault())
 
+        val hintWords = hintLower.replace("'", "").split(" ", "-", "_").filter { it.length > 2 }
+        val titleWords = titleLower.replace("'", "").split(" ", "-", "_")
+
+        // BATCH 1 FIX: Must have a real textual overlap to even be considered.
+        val hasTextOverlap = titleLower.contains(hintLower) || hintLower.contains(titleLower) ||
+            hintWords.any { hw -> titleWords.any { tw -> tw.contains(hw) } }
+
+        if (!hasTextOverlap) return 0.0
+
         // 1. Text Match (Blueprint max 0.35)
         if (titleLower.contains(hintLower) || hintLower.contains(titleLower)) {
             score += 0.35
         } else {
             // Partial word overlap
-            val hintWords = hintLower.replace("'", "").split(" ", "-", "_").filter { it.length > 2 }
-            val titleWords = titleLower.replace("'", "").split(" ", "-", "_")
             val matches = hintWords.count { hintWord -> titleWords.any { it.contains(hintWord) } }
 
             if (hintWords.isNotEmpty()) {
