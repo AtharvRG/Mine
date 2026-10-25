@@ -9,7 +9,7 @@ plugins {
 
 android {
     namespace = "com.anchor.mine"
-    compileSdk = 35
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.anchor.mine"
@@ -50,10 +50,15 @@ dependencies {
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.material3:material3")
 
-    // SQLCipher and Room (using raw SQLite for now since we'll configure FTS5)
+    // Modern SQLCipher + AndroidX SQLite
     implementation("net.zetetic:sqlcipher-android:4.19.1")
     implementation("androidx.sqlite:sqlite:2.4.0")
 
+    // Testing
     testImplementation("junit:junit:4.13.2")
+    androidTestImplementation("junit:junit:4.13.2") // THIS FIXES THE JUNIT ERRORS
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    androidTestImplementation("androidx.test:runner:1.6.2")
+
     debugImplementation("androidx.compose.ui:ui-tooling")
 }
