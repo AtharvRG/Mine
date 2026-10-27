@@ -55,6 +55,7 @@ class ChatController(
         when (action) {
             is UiAction.SendMessage -> {
                 if (_state.value.isChatLoading || _state.value.providerKey.isBlank()) return
+                // Synchronously set loading state to prevent double-send race conditions
                 _state.update { it.copy(isChatLoading = true) }
                 handleSendMessage(action.text)
             }
@@ -78,10 +79,10 @@ class ChatController(
                 val id = "test_${System.currentTimeMillis()}"
                 val fireAt = clock.now() + 10000L
                 val reminder = Reminder(id, "Self Test Fired!", fireAt)
-                
+
                 storage.saveReminder(reminder)
                 alarmScheduler.schedule(reminder)
-                
+
                 var elapsed = 0
                 while (alarmScheduler.lastFiredId.value != id && elapsed < 12000) {
                     delay(500)
@@ -112,7 +113,7 @@ class ChatController(
                     loops++
                     val payload = buildJsonPayload(pack)
                     val target = Target(_state.value.providerEndpoint, _state.value.providerKey, 50)
-                    
+
                     val botId = "a_${UUID.randomUUID()}"
                     val botResponse = java.lang.StringBuilder()
                     var lastUpdate = clock.now()
@@ -125,9 +126,9 @@ class ChatController(
                         } else if (event is StreamEvent.TextDelta) {
                             botResponse.append(event.text)
                             if (clock.now() - lastUpdate > 100) {
-                                // TASK 2: Prevent JSON flashing (handles whitespace bypass)
                                 val trimmed = botResponse.toString().trimStart()
-                                val display = if (trimmed.startsWith("{") || trimmed.startsWith("```")) "Thinking..." else botResponse.toString()
+                                // Strict JSON flashing prevention: hide entirely while streaming raw JSON
+                                val display = if (trimmed.startsWith("{") || trimmed.startsWith("```") || trimmed.startsWith("[")) "Thinking..." else botResponse.toString()
                                 updateLastMessage(botId, display)
                                 lastUpdate = clock.now()
                             }
@@ -136,56 +137,53 @@ class ChatController(
 
                     val rawBot = botResponse.toString()
                     val envelope = EnvelopeParser.parse(rawBot)
-                    
+
                     if (envelope != null) {
                         var sysContext = ""
                         var humanResult = envelope.reply
-                        var hasCommitted = false // TASK 1: Track if we committed anything
+                        var hasCommitted = false
 
                         envelope.calls.forEach { call ->
                             val result = gateway.executeTool(call, executedCalls)
                             sysContext += "Tool Result: " + when(result) {
                                 is ToolResult.Committed -> {
-                                    hasCommitted = true // TASK 1: Mark for turn termination
+                                    hasCommitted = true
                                     storage.getActiveReminders().forEach { alarmScheduler.schedule(it) }
                                     humanResult += "\n[Done: ${result.message}] (Undo: ${result.undoToken})"
                                     "Committed. ${result.message}"
                                 }
                                 is ToolResult.Ambiguous -> {
                                     humanResult += "\n[Clarify: ${result.message}]"
-                                    "Ambiguous. Ask the user, then call confirm_change. ID: ${result.proposalId}, Options: ${result.options}"
+                                    "Ambiguous. Ask the user, then call confirm_change. ID: ${result.proposalId}, Options: ${result.options.joinToString()}"
                                 }
                                 is ToolResult.NotFound -> "Not Found. Ask user to clarify."
                                 is ToolResult.Error -> "Error: ${result.reason}"
                             } + "\n"
                         }
-                        
-                        // TASK 2: Never fall back to rawBot if envelope is valid
+
                         val cleanText = if (envelope.reply.isBlank() && envelope.calls.isEmpty()) {
                             "Acknowledged."
                         } else {
                             humanResult.trim().ifBlank { "Executed tools silently." }
                         }
-                        
+
                         updateLastMessage(botId, cleanText)
                         storage.insertRawMessage(botId, "assistant", cleanText)
-                        
+
                         pack = pack + ChatMessage(botId, "assistant", cleanText)
                         pack = pack + ChatMessage("sys_${UUID.randomUUID()}", "system", sysContext)
-                        
+
                         if (loops == 4) {
                             val limitMsg = "Loop limit reached."
                             updateLastMessage("a_${UUID.randomUUID()}", limitMsg)
                             storage.insertRawMessage("a_${UUID.randomUUID()}", "assistant", limitMsg)
                             turnComplete = true
                         }
-                        
-                        // TASK 1: Safely terminate the turn if any tool committed, preventing hallucinated follow-ups
+
                         if (envelope.calls.isEmpty() || hasCommitted) {
                             turnComplete = true
                         }
                     } else {
-                        // TASK 2: Only show raw text if it wasn't valid JSON at all
                         val finalTxt = rawBot.ifBlank { "..." }
                         updateLastMessage(botId, finalTxt)
                         storage.insertRawMessage(botId, "assistant", finalTxt)
@@ -205,7 +203,7 @@ class ChatController(
                             storage.insertRawMessage(last.id, "assistant", intContent)
                         }
                     }
-                    throw e
+                    throw e // MUST rethrow CancellationException
                 }
                 _state.update { it.copy(chatMessages = it.chatMessages + ChatMessage("err_${UUID.randomUUID()}", "system", "Error: ${e.message}")) }
             } finally {
@@ -215,15 +213,21 @@ class ChatController(
     }
 
     private fun buildJsonPayload(pack: List<ChatMessage>): String {
-        // ITEM 2: Ultra-strict prompt preventing lazy acknowledgements
-        val instruction = """You are MineAI. Answer normally UNLESS the user mentions an appointment, plan, task, commitment, or deadline (even without a time). In those cases, you MUST include a propose_change CREATE call. Do not just acknowledge. The app generates the save confirmation, so do not claim you saved it unless you issue a tool call.
-You must use Envelope Mode JSON: {"reply":"...","calls":[{"tool":"propose_change","args":{"intent":"CREATE","title":"...","due_text":"..."}}]}
+        val instruction = """You are MineAI, a personal companion. You must use Envelope Mode JSON for EVERY reply: {"reply":"text to user","calls":[{"tool":"...","args":{...}}]}
+Tools:
+- propose_change (intent: CREATE|CANCEL|COMPLETE, hint: target text, due_text: e.g. 'tomorrow at 4pm', 'tonight', 'next monday' or omit if no time). Use when user states an appointment, plan, task, commitment.
+- schedule_reminder (target_ref: node id, when_text: time).
+- confirm_change (proposal: proposal id, choice: option id). Use when Ambiguous.
+- undo (token: u_123456).
+
 Examples:
-CREATE with time: {"tool":"propose_change","args":{"intent":"CREATE", "title":"Dinner with Shyam", "due_text":"tomorrow at 4pm"}}
-CREATE without time: {"tool":"propose_change","args":{"intent":"CREATE", "title":"Buy milk"}}
+CREATE: {"tool":"propose_change","args":{"intent":"CREATE", "title":"Buy milk", "due_text": "tomorrow at 4pm"}}
 CANCEL: {"tool":"propose_change","args":{"intent":"CANCEL", "hint":"dinner"}}
-CONFIRM: When a tool result is Ambiguous, ask the user, then call: {"tool":"confirm_change","args":{"proposal":"p_123456","choice":"n_abcdef"}}
+COMPLETE: {"tool":"propose_change","args":{"intent":"COMPLETE", "hint":"report"}}
 UNDO: {"tool":"undo","args":{"token":"u_123456"}}
+CONFIRM: {"tool":"confirm_change","args":{"proposal":"p_123456","choice":"n_abc"}}
+
+CRITICAL: The app generates save confirmations. Do NOT say "Done" or "Saved" unless you issue a tool call.
 """
         val messages = mutableListOf<com.anchor.core.provider.RequestMessage>()
         messages.add(com.anchor.core.provider.RequestMessage("system", instruction))

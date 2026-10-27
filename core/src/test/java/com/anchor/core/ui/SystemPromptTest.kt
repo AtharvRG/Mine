@@ -32,10 +32,10 @@ class SystemPromptTest {
         val storage = SharedFakeStorage()
         storage.settings["key"] = "test-key"
         val clock = FakeClock(1000L)
-        
+
         var interceptedPayload = ""
         var callCount = 0
-        
+
         val fakeTransport = object : HttpTransport {
             override suspend fun postStream(target: Target, body: String): Flow<String> = flow {
                 interceptedPayload = body
@@ -58,13 +58,14 @@ class SystemPromptTest {
         )
 
         controller.onAction(UiAction.SendMessage("I have a dinner with Shyam at 4 pm tomorrow"))
-        
-        // 1. Verify Prompt Assertions (Item 2a)
-        assertTrue(interceptedPayload.contains("MUST include a propose_change CREATE call"))
-        assertTrue(interceptedPayload.contains("do not claim you saved it unless you issue a tool call"))
-        assertTrue(interceptedPayload.contains("CREATE without time"))
 
-        // 2. Verify End-to-End Creation (Item 2b)
+        // 1. Verify Prompt Assertions (Matches the updated Phase 5 stricter prompt, avoiding JSON escape conflicts)
+        assertTrue(interceptedPayload.contains("Use when user states an appointment, plan, task, commitment"))
+        assertTrue(interceptedPayload.contains("unless you issue a tool call"))
+        assertTrue(interceptedPayload.contains("confirm_change"))
+        assertTrue(interceptedPayload.contains("schedule_reminder"))
+
+        // 2. Verify End-to-End Creation
         assertEquals(1, storage.getActiveNodes().size)
         assertEquals("Dinner with Shyam", storage.getActiveNodes()[0].title)
     }

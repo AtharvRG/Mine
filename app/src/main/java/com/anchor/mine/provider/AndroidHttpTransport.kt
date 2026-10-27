@@ -15,12 +15,11 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.runInterruptible
-import kotlinx.coroutines.withContext
 import java.net.HttpURLConnection
 import java.net.URL
 
 class AndroidHttpTransport : HttpTransport {
-    override suspend fun postStream(target: Target, body: String): Flow<String> = withContext(Dispatchers.IO) {
+    override suspend fun postStream(target: Target, body: String): Flow<String> = flow {
         val connection = URL(target.id).openConnection() as HttpURLConnection
         connection.requestMethod = "POST"
         connection.setRequestProperty("Content-Type", "application/json")
@@ -42,21 +41,16 @@ class AndroidHttpTransport : HttpTransport {
                 throw Exception("Provider error: $err")
             }
 
-            // Connection successful! Return the lazy flow for streaming
-            return@withContext flow {
-                connection.inputStream.bufferedReader().use { reader ->
-                    while (currentCoroutineContext().isActive) {
-                        // Item 12: Will immediately throw CancellationException on Stop
-                        val line = runInterruptible { reader.readLine() } ?: break
-                        if (line.isNotBlank()) emit(line)
-                    }
+            connection.inputStream.bufferedReader().use { reader ->
+                while (currentCoroutineContext().isActive) {
+                    val line = runInterruptible { reader.readLine() } ?: break
+                    if (line.isNotBlank()) emit(line)
                 }
-            }.flowOn(Dispatchers.IO)
-
-        } catch (e: Exception) {
-            if (e is CancellationException) throw e
+            }
+        } finally {
+            // Disconnect in finally guarantees the socket is severed instantly on coroutine cancellation,
+            // unblocking readLine() immediately.
             connection.disconnect()
-            throw e
         }
-    }
+    }.flowOn(Dispatchers.IO) // Entire flow runs on IO, making thread-safety clean
 }
