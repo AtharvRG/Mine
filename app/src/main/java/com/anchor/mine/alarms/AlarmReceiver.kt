@@ -26,19 +26,24 @@ class AlarmReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val id = intent.getStringExtra("EXTRA_ID") ?: return
         val text = intent.getStringExtra("EXTRA_TEXT") ?: "Reminder"
-        val pendingResult = goAsync()
+        
+        // Safely acquire Wakelock/Timeout context (fails gracefully in unit tests)
+        val pendingResult = try { goAsync() } catch (_: Exception) { null }
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
+                // If storage failed to init (e.g. Keystore corruption), await() throws.
+                // The catch block below intercepts it instantly. (Fail fast, no hang).
                 val storage = (context.applicationContext as MineApp).sharedStorage.await()
+                
+                // BP 30: Must check ALL pending reminders, not just future ones
                 val pending = storage.getPendingReminders()
                 
-                // Item 3: Removed bypass. Must exist in DB.
+                // BP 30: If the node was closed or alarm cancelled, the row won't exist. Suppress.
                 if (pending.none { it.id == id }) return@launch
 
                 GlobalAlarmState.lastFired.value = id
                 lastFiredId = id
-                com.anchor.core.alarms.AlarmReceiver.lastFiredId = id
 
                 val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
                 val channelId = "mine_reminders_v1"
@@ -59,9 +64,9 @@ class AlarmReceiver : BroadcastReceiver() {
                 manager.notify(id.hashCode(), notification)
                 storage.deleteReminder(id) // Mark done
             } catch (_: Exception) {
-                // Init failed or deferred threw exception, fail fast
+                // Init failed or DB locked, fail fast
             } finally {
-                pendingResult.finish()
+                pendingResult?.finish()
             }
         }
     }

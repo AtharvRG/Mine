@@ -4,7 +4,6 @@
 
 package com.anchor.core.alarms
 
-object AlarmReceiver {
-    @Volatile
-    var lastFiredId: String? = null
-}
+// This file is deliberately left empty.
+// The core AlarmReceiver hack was deleted per Phase 4 requirements.
+// Real alarms belong in the Android layer.
