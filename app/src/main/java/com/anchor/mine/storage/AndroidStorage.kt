@@ -209,4 +209,26 @@ class AndroidStorage(private val dbHelper: SupportSQLiteOpenHelper) : Storage {
             db.setTransactionSuccessful()
         } finally { db.endTransaction() }
     }
+
+    override suspend fun createReminderAndCommit(reminder: Reminder, event: RawEvent) = withContext(ioDispatcher) {
+        val db = dbHelper.writableDatabase
+        db.beginTransaction()
+        try {
+            db.execSQL("INSERT OR REPLACE INTO reminder (id, text, fire_at) VALUES (?, ?, ?)", arrayOf<Any>(reminder.id, reminder.text, reminder.fireAtMillis))
+            db.execSQL("INSERT INTO raw_event (op_id, target_id, op_type, target_type, ts_utc, device_id, actor, before_json, after_json) VALUES (?, ?, ?, ?, ?, ?, 'chat_ai', ?, ?)",
+                arrayOf<Any?>(event.opId, event.targetId, event.opType, event.targetType, System.currentTimeMillis(), deviceId, event.beforeJson, event.afterJson))
+            db.setTransactionSuccessful()
+        } finally { db.endTransaction() }
+    }
+
+    override suspend fun deleteReminderAndCommit(reminderId: String, event: RawEvent) = withContext(ioDispatcher) {
+        val db = dbHelper.writableDatabase
+        db.beginTransaction()
+        try {
+            db.execSQL("DELETE FROM reminder WHERE id = ?", arrayOf(reminderId))
+            db.execSQL("INSERT INTO raw_event (op_id, target_id, op_type, target_type, ts_utc, device_id, actor, undo_of, before_json, after_json) VALUES (?, ?, ?, ?, ?, ?, 'user', ?, ?, ?)",
+                arrayOf<Any?>(event.opId, event.targetId, event.opType, event.targetType, System.currentTimeMillis(), deviceId, event.undoOf, event.beforeJson, event.afterJson))
+            db.setTransactionSuccessful()
+        } finally { db.endTransaction() }
+    }
 }

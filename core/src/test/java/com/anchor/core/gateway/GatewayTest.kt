@@ -130,6 +130,30 @@ class GatewayTest {
     }
 
     @Test
+    fun testGateway_ScheduleReminder_CreatesAndUndoes() = kotlinx.coroutines.runBlocking {
+        val fakeStorage = SharedFakeStorage().apply {
+            activeNodes = mutableListOf(Node("n1", "task", "Buy milk", "active"))
+        }
+        val gateway = Gateway(fakeStorage, Resolver(), DateResolver(clock), clock)
+
+        val scheduleCall = ToolCall("schedule_reminder", mapOf("target_ref" to "n1", "when_text" to "tomorrow at 5pm"))
+        val result = gateway.executeTool(scheduleCall)
+
+        assertTrue(result is ToolResult.Committed)
+        val commit = result as ToolResult.Committed
+        assertEquals("r_n1", commit.targetId)
+        
+        assertEquals(1, fakeStorage.reminders.size)
+        assertEquals("Buy milk", fakeStorage.reminders[0].text)
+
+        val undoCall = ToolCall("undo", mapOf("token" to commit.undoToken))
+        val undoResult = gateway.executeTool(undoCall)
+        
+        assertTrue(undoResult is ToolResult.Committed)
+        assertEquals(0, fakeStorage.reminders.size)
+    }
+
+    @Test
     fun testDateResolver_AmPmEnforcement() {
         val fakeClock = FakeClock(1700000000000L)
         val resolver = DateResolver(fakeClock)

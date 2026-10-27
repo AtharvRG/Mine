@@ -26,27 +26,46 @@ class Gateway(
         val callHash = call.tool + args.toString()
         if (!executedCalls.add(callHash)) return ToolResult.Error("Duplicate tool call ignored")
 
-        if (call.tool == "undo") return handleUndo(args["token"] ?: "")
-        if (call.tool == "confirm_change") return handleConfirmChange(args["proposal"] ?: "", args["choice"] ?: "")
-        if (call.tool != "propose_change") return ToolResult.Error("Tool not supported yet")
-        
-        val intentStr = args["intent"]?.uppercase() ?: return ToolResult.Error("Missing intent")
-        val intent = try { IntentType.valueOf(intentStr) } catch(e: Exception) { return ToolResult.Error("Unknown intent") }
-        val hint = args["hint"] ?: args["title"] ?: ""
-        val dueText = args["due_text"]
-        
-        val targetTimeMillis = if (dueText.isNullOrBlank()) null else {
-            dateResolver.parse(dueText) ?: return ToolResult.Error("Could not understand the time '$dueText'. Ask the user to clarify.")
-        }
+        return when (call.tool) {
+            "undo" -> handleUndo(args["token"] ?: "")
+            "confirm_change" -> handleConfirmChange(args["proposal"] ?: "", args["choice"] ?: "")
+            "schedule_reminder" -> handleScheduleReminder(args["target_ref"] ?: "", args["when_text"] ?: "")
+            "propose_change" -> {
+                val intentStr = args["intent"]?.uppercase() ?: return ToolResult.Error("Missing intent")
+                val intent = try { IntentType.valueOf(intentStr) } catch(e: Exception) { return ToolResult.Error("Unknown intent") }
+                val hint = args["hint"] ?: args["title"] ?: ""
+                val dueText = args["due_text"]
+                
+                val targetTimeMillis = if (dueText.isNullOrBlank()) null else {
+                    dateResolver.parse(dueText) ?: return ToolResult.Error("Could not understand the time '$dueText'. Ask the user to clarify.")
+                }
 
-        return when (intent) {
-            IntentType.CREATE -> {
-                if (hint.isBlank()) return ToolResult.Error("Title cannot be blank")
-                handleCreate(hint, args["type"] ?: "task", targetTimeMillis)
+                when (intent) {
+                    IntentType.CREATE -> {
+                        if (hint.isBlank()) return ToolResult.Error("Title cannot be blank")
+                        handleCreate(hint, args["type"] ?: "task", targetTimeMillis)
+                    }
+                    IntentType.CANCEL, IntentType.COMPLETE -> handleResolveChange(intent, hint, targetTimeMillis)
+                    else -> ToolResult.Error("$intent not supported yet")
+                }
             }
-            IntentType.CANCEL, IntentType.COMPLETE -> handleResolveChange(intent, hint, targetTimeMillis)
-            else -> ToolResult.Error("$intent not supported yet")
+            else -> ToolResult.Error("Tool not supported yet")
         }
+    }
+
+    private suspend fun handleScheduleReminder(targetRef: String, whenText: String): ToolResult {
+        val fireAt = dateResolver.parse(whenText) ?: return ToolResult.Error("Could not understand the time '$whenText'. Ask the user to clarify.")
+        val node = if (targetRef.isNotBlank()) storage.getNode(targetRef) else null
+        val title = node?.title ?: "Reminder"
+        val rId = if (node != null) "r_${node.id}" else "r_${UUID.randomUUID().toString().take(8)}"
+        
+        val reminder = Reminder(rId, title, fireAt)
+        val uId = "u_${UUID.randomUUID().toString().take(6)}"
+        
+        val event = RawEvent(uId, "SCHEDULE", "reminder", rId, afterJson = json.encodeToString(reminder))
+        storage.createReminderAndCommit(reminder, event)
+        
+        return ToolResult.Committed("SCHEDULE", rId, "Reminder set for ${dateResolver.format(fireAt)}", uId)
     }
 
     private suspend fun handleConfirmChange(proposalId: String, choice: String): ToolResult {
@@ -55,7 +74,7 @@ class Gateway(
 
         val nodeId = proposal.optionsIds.find { it == choice } ?: return ToolResult.Error("Invalid choice")
         val node = storage.getNode(nodeId) ?: return ToolResult.Error("Node not found")
-        if (node.status != "active") return ToolResult.Error("Node is no longer active")
+        if (node.status != "active" && node.status != "in_progress") return ToolResult.Error("Node is no longer active")
 
         storage.consumeProposal(proposalId)
 
@@ -79,15 +98,15 @@ class Gateway(
         val nId = "n_${UUID.randomUUID().toString().take(8)}"
         val now = clock.now()
         val node = Node(nId, type, title, "active", dueAt, createdAt = now, updatedAt = now)
-        val reminder = dueAt?.let { Reminder("r_$nId", title, it) }
         
-        val afterJson = json.encodeToString(NodeStateSnapshot(node, reminder))
+        // BP 30: Propose change creates node only. Alarms require schedule_reminder.
+        val afterJson = json.encodeToString(NodeStateSnapshot(node, null))
         val uId = "u_${UUID.randomUUID().toString().take(6)}"
         val event = RawEvent(uId, IntentType.CREATE.name, "node", nId, afterJson = afterJson)
         
-        storage.createNodeAndCommit(node, event, reminder)
+        storage.createNodeAndCommit(node, event, null)
         
-        val timeStr = if (dueAt != null) ". Reminder set for ${dateResolver.format(dueAt)}" else ""
+        val timeStr = if (dueAt != null) " (Due: ${dateResolver.format(dueAt)})" else ""
         return ToolResult.Committed(IntentType.CREATE.name, nId, "Created: $title$timeStr", uId)
     }
 
@@ -128,22 +147,27 @@ class Gateway(
 
     private suspend fun handleUndo(token: String): ToolResult {
         if (storage.hasUndo(token)) return ToolResult.Error("Already undone")
-        
         val event = storage.getEvent(token) ?: return ToolResult.Error("Undo token not found")
         val afterJson = event.afterJson ?: return ToolResult.Error("No after_json found")
-        
+        val newEventId = "u_${UUID.randomUUID().toString().take(6)}"
+
+        if (event.targetType == "reminder") {
+            if (event.opType == "SCHEDULE") {
+                val undoEvent = RawEvent(newEventId, "UNDO_SCHEDULE", "reminder", event.targetId, undoOf = token, beforeJson = afterJson, afterJson = null)
+                storage.deleteReminderAndCommit(event.targetId, undoEvent)
+                return ToolResult.Committed("UNDO", event.targetId, "Removed reminder", newEventId)
+            }
+            return ToolResult.Error("Undo for this reminder operation not supported")
+        }
+
         val currentNode = storage.getNode(event.targetId) ?: return ToolResult.Error("Node missing")
         val currentReminder = storage.getPendingReminders().find { it.id == "r_${event.targetId}" }
         val currentSnapshot = NodeStateSnapshot(currentNode, currentReminder)
-        
         val expectedAfterSnapshot = try { json.decodeFromString<NodeStateSnapshot>(afterJson) } catch (e: Exception) { return ToolResult.Error("Corrupted JSON") }
         
         if (currentSnapshot != expectedAfterSnapshot) return ToolResult.Error("Node state has changed, cannot undo")
         
-        val newEventId = "u_${UUID.randomUUID().toString().take(6)}"
-        
         if (event.opType == "CREATE") {
-            // Undo a CREATE: Mark cancelled, remove reminder
             val cancelledNode = currentNode.copy(status = "cancelled", closedAt = clock.now(), updatedAt = clock.now())
             val undoEvent = RawEvent(newEventId, "UNDO_CREATE", "node", currentNode.id, undoOf = token, beforeJson = afterJson, afterJson = json.encodeToString(NodeStateSnapshot(cancelledNode, null)))
             storage.updateNodeAndCommit(cancelledNode, undoEvent, "r_${currentNode.id}")

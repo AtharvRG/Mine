@@ -97,4 +97,15 @@ class SharedFakeStorage : Storage {
         }
         loggedEvents.add(event)
     }
+
+    override suspend fun createReminderAndCommit(reminder: Reminder, event: RawEvent) {
+        reminders.removeAll { it.id == reminder.id }
+        reminders.add(reminder)
+        loggedEvents.add(event)
+    }
+
+    override suspend fun deleteReminderAndCommit(reminderId: String, event: RawEvent) {
+        reminders.removeAll { it.id == reminderId }
+        loggedEvents.add(event)
+    }
 }

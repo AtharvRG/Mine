@@ -42,4 +42,6 @@ interface Storage {
     suspend fun createNodeAndCommit(node: Node, event: RawEvent, reminder: Reminder?)
     suspend fun updateNodeAndCommit(node: Node, event: RawEvent, deleteReminderId: String?)
     suspend fun undoChangeAndCommit(node: Node, event: RawEvent, restoreReminder: Reminder?)
+    suspend fun createReminderAndCommit(reminder: Reminder, event: RawEvent)
+    suspend fun deleteReminderAndCommit(reminderId: String, event: RawEvent)
 }
