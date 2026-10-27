@@ -4,17 +4,18 @@
 
 package com.anchor.core.storage
 
-import com.anchor.core.alarms.Reminder
 import com.anchor.core.models.ChatMessage
 import com.anchor.core.models.Node
 import com.anchor.core.models.Proposal
 import com.anchor.core.models.RawEvent
+import com.anchor.core.models.Reminder
 import kotlinx.coroutines.CoroutineDispatcher
 
 interface Storage {
     val ioDispatcher: CoroutineDispatcher
 
     suspend fun insertRawMessage(id: String, role: String, content: String)
+    suspend fun redactMessage(id: String)
     suspend fun getRawMessage(id: String): String?
     suspend fun getRecentMessages(limit: Int): List<ChatMessage>
 
@@ -22,14 +23,23 @@ interface Storage {
     suspend fun saveSetting(key: String, value: String)
 
     suspend fun getActiveNodes(): List<Node>
-    suspend fun updateNodeStatus(nodeId: String, newStatus: String)
-    suspend fun logEvent(event: RawEvent)
-    suspend fun commitChange(node: Node?, event: RawEvent, reminder: Reminder?)
+    suspend fun getActiveReminders(): List<Reminder>
+    suspend fun getPendingReminders(): List<Reminder>
 
     suspend fun saveProposal(proposal: Proposal)
+    suspend fun getProposal(id: String): Proposal?
+    suspend fun consumeProposal(id: String)
 
     suspend fun saveReminder(reminder: Reminder)
-    suspend fun getActiveReminders(): List<Reminder>
     suspend fun deleteReminder(id: String)
     suspend fun getDebugStats(): Map<String, String>
+
+    suspend fun getNode(id: String): Node?
+    suspend fun getEvent(opId: String): RawEvent?
+    suspend fun hasUndo(token: String): Boolean
+
+    // Purely Transactional Gateways
+    suspend fun createNodeAndCommit(node: Node, event: RawEvent, reminder: Reminder?)
+    suspend fun updateNodeAndCommit(node: Node, event: RawEvent, deleteReminderId: String?)
+    suspend fun undoChangeAndCommit(node: Node, event: RawEvent, restoreReminder: Reminder?)
 }

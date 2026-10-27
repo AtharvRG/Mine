@@ -6,7 +6,6 @@ package com.anchor.core.provider
 
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.serialization.json.Json
 import kotlinx.coroutines.CancellationException
@@ -17,36 +16,18 @@ class ProviderOrchestrator(
 ) {
     private val jsonParser = Json { ignoreUnknownKeys = true; isLenient = true }
 
-    suspend fun chat(chain: List<Target>, prompt: String): Flow<StreamEvent> {
-        val target = chain.firstOrNull { limiter.canRequest(it.key, it.limitRpm) }
-            ?: throw Exception("queue_message: All targets in cooldown or over limit")
-
+    suspend fun chat(chain: List<Target>, prompt: String): Flow<StreamEvent> = flow {
+        val target = chain.firstOrNull { limiter.canRequest(it.key, it.limitRpm) } ?: throw Exception("All targets in cooldown")
         limiter.recordRequest(target.key)
-
-        return try {
-            val rawStream = transport.postStream(target, prompt)
-            normalize(rawStream).catch { e ->
-                if (e is Http429Exception) {
-                    // Fallback if 429 is thrown during streaming
-                    limiter.apply429Cooldown(target.key, e.retryAfterSeconds)
-                    val remainingChain = chain.dropWhile { it.key == target.key }
-                    if (remainingChain.isNotEmpty()) {
-                        emitAll(chat(remainingChain, prompt))
-                    } else {
-                        throw Exception("Stream interrupted by 429, fallbacks exhausted")
-                    }
-                } else {
-                    throw e
-                }
-            }
+        try {
+            emitAll(normalize(transport.postStream(target, prompt)))
         } catch (e: Http429Exception) {
             limiter.apply429Cooldown(target.key, e.retryAfterSeconds)
             val remainingChain = chain.dropWhile { it.key == target.key }
             if (remainingChain.isNotEmpty()) {
-                chat(remainingChain, prompt)
-            } else {
-                throw Exception("queue_message: Fallbacks exhausted")
-            }
+                emit(StreamEvent.Clear) // Tell UI to wipe partial string
+                emitAll(chat(remainingChain, prompt))
+            } else throw Exception("Fallbacks exhausted")
         }
     }
 

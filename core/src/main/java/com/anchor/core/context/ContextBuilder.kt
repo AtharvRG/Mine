@@ -9,7 +9,6 @@ import com.anchor.core.storage.Storage
 import kotlinx.coroutines.withContext
 
 class ContextBuilder(private val storage: Storage) {
-    private fun estimateTokens(text: String): Int = (text.length / 3.5).toInt()
 
     suspend fun buildPack(): List<ChatMessage> = withContext(storage.ioDispatcher) {
         val pack = mutableListOf<ChatMessage>()
@@ -26,8 +25,9 @@ class ContextBuilder(private val storage: Storage) {
         var currentChars = 0
         val includedHistory = mutableListOf<ChatMessage>()
 
-        // Walk backwards so we definitely get the newest messages, until budget fills
+        // Walk backwards, skipping redacted messages entirely from context pack
         for (msg in recentHistory.reversed()) {
+            if (msg.content == null) continue // Item 4
             val msgChars = msg.content.length
             if (currentChars + msgChars <= allowedChatChars) {
                 includedHistory.add(0, msg)

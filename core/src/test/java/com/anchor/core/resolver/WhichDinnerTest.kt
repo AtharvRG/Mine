@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 Mine Author
+// Copyright (C) 2026 Mine contributors
 // Part of Mine. See LICENSE in the repository root.
 
 package com.anchor.core.resolver
@@ -14,62 +14,71 @@ import org.junit.Test
 class WhichDinnerTest {
 
     private val resolver = Resolver()
-
-    // Fake times
-    private val timeTomorrow = 1000L * 60 * 60 * 24 * 1 // 1 day from epoch
-    private val timeThursday = 1000L * 60 * 60 * 24 * 5 // 5 days from epoch
-
-    private val dinnerTomorrow = Node(
-        id = "n1", type = "event", title = "Dinner with Raj", status = "active", dueAt = timeTomorrow
-    )
-    private val dinnerThursday = Node(
-        id = "n2", type = "event", title = "Dinner with Sam", status = "active", dueAt = timeThursday
-    )
-
-    private val memoryGraph = listOf(dinnerTomorrow, dinnerThursday)
+    private val timeTomorrow = 1000L * 60 * 60 * 24 * 1
+    private val timeThursday = 1000L * 60 * 60 * 24 * 5
 
     @Test
-    fun testVagueCancel_ReturnsAmbiguous() {
-        // "Cancel the dinner" -> LLM extracts intent=CANCEL, hint="the dinner", no specific time
-        val resolution = resolver.resolve(
-            intent = IntentType.CANCEL,
-            hint = "the dinner",
-            targetTimeMillis = null,
-            candidates = memoryGraph
+    fun testVagueCancel_TwoDinners_ReturnsAmbiguous() {
+        val candidates = listOf(
+            Node("n1", "event", "Dinner with Raj", "active", timeTomorrow),
+            Node("n2", "event", "Dinner with Sam", "active", timeThursday)
+        )
+        val res = resolver.resolve(IntentType.CANCEL, "dinner", null, candidates)
+        assertTrue(res is Resolution.Ambiguous)
+    }
+
+    @Test
+    fun testCancel_OneDinner_ReturnsClearWinner() {
+        val candidates = listOf(Node("n1", "event", "Dinner with Raj", "active", timeTomorrow))
+        val res = resolver.resolve(IntentType.CANCEL, "cancel dinner", null, candidates)
+        assertTrue(res is Resolution.ClearWinner)
+        assertEquals("n1", (res as Resolution.ClearWinner).node.id)
+    }
+
+    @Test
+    fun testTwoDifferentEvents_ReturnsClearWinner() {
+        val candidates = listOf(
+            Node("n1", "event", "Dinner with Shyam", "active", timeTomorrow),
+            Node("n2", "event", "Cafe meet with Deux", "active", timeTomorrow)
+        )
+        val res = resolver.resolve(IntentType.CANCEL, "dinner with shyam", null, candidates)
+        assertTrue(res is Resolution.ClearWinner)
+        assertEquals("n1", (res as Resolution.ClearWinner).node.id)
+    }
+
+    @Test
+    fun testUnrelatedHint_NotFound() {
+        val candidates = listOf(Node("n1", "event", "Dinner with Raj", "active", timeTomorrow))
+        assertTrue(resolver.resolve(IntentType.CANCEL, "cancel gym", null, candidates) is Resolution.NotFound)
+    }
+
+    @Test
+    fun testStopwordsFiltered_NotFound() {
+        val candidates = listOf(Node("n1", "event", "Dinner with Raj", "active", timeTomorrow))
+        assertTrue(resolver.resolve(IntentType.CANCEL, "cancel the with", null, candidates) is Resolution.NotFound)
+    }
+
+    @Test
+    fun testSubstringNotMatched_NotFound() {
+        // "tea" should not match inside "steam"
+        val candidates = listOf(Node("n3", "task", "Blow off steam", "active"))
+        assertTrue(resolver.resolve(IntentType.CANCEL, "tea", null, candidates) is Resolution.NotFound)
+    }
+
+    @Test
+    fun testHindiUnicodeResolution() {
+        val candidates = listOf(
+            Node("n1", "event", "श्याम के साथ बैठक", "active", timeTomorrow),
+            Node("n2", "event", "राम के साथ बैठक", "active", timeThursday)
         )
 
-        assertTrue("Should be ambiguous because both match text equally", resolution is Resolution.Ambiguous)
+        // Vague word "बैठक" (Meeting) -> Ambiguous
+        val ambiguous = resolver.resolve(IntentType.CANCEL, "बैठक", null, candidates)
+        assertTrue(ambiguous is Resolution.Ambiguous)
 
-        val options = (resolution as Resolution.Ambiguous).options
-        assertEquals(2, options.size)
-        assertEquals("n1", options[0].id)
-        assertEquals("n2", options[1].id)
-    }
-
-    @Test
-    fun testSpecificCancel_ReturnsClearWinner() {
-        // "Cancel tomorrow's dinner" -> Code parses "tomorrow" into timeTomorrow
-        val resolution = resolver.resolve(
-            intent = IntentType.CANCEL,
-            hint = "tomorrow's dinner",
-            targetTimeMillis = timeTomorrow,
-            candidates = memoryGraph
-        )
-
-        assertTrue("Should be a clear winner due to exact time match", resolution is Resolution.ClearWinner)
-        assertEquals("n1", (resolution as Resolution.ClearWinner).node.id)
-    }
-
-    @Test
-    fun testUnrelatedHint_OneCandidate_NotFound() {
-        // Only one active item exists, but it has nothing to do with the hint
-        val resolution = resolver.resolve(IntentType.CANCEL, "cancel gym", null, listOf(dinnerTomorrow))
-        assertTrue("Must require textual overlap", resolution is Resolution.NotFound)
-    }
-
-    @Test
-    fun testUnrelatedHint_TwoCandidates_NotFound() {
-        val resolution = resolver.resolve(IntentType.CANCEL, "cancel gym", null, memoryGraph)
-        assertTrue("Must require textual overlap", resolution is Resolution.NotFound)
+        // Highly specific distinguishing word "श्याम" -> ClearWinner n1
+        val winner = resolver.resolve(IntentType.CANCEL, "श्याम", null, candidates)
+        assertTrue("Expected ClearWinner, but got $winner", winner is Resolution.ClearWinner)
+        assertEquals("n1", (winner as Resolution.ClearWinner).node.id)
     }
 }

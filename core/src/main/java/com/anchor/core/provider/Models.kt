@@ -20,6 +20,7 @@ sealed interface StreamEvent {
     data class TextDelta(val text: String) : StreamEvent
     data class ToolCallStart(val index: Int, val name: String) : StreamEvent
     data class Finish(val reason: String) : StreamEvent
+    data object Clear : StreamEvent
 }
 
 class Http429Exception(val retryAfterSeconds: Int? = null) : Exception("Rate limited")

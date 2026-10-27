@@ -46,7 +46,7 @@ class ContextBuilderTest {
 
         // Ensure System prompt has the nodes
         val sysMsg = pack.first { it.role == "system" }
-        assertTrue(sysMsg.content.contains("Buy milk"))
+        assertTrue(sysMsg.content?.contains("Buy milk") == true)
 
         // Ensure last message is the new user message
         assertEquals("What did I say?", pack.last().content)

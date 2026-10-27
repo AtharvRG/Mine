@@ -4,8 +4,8 @@
 
 package com.anchor.core.ui
 
-import com.anchor.core.alarms.Reminder
 import com.anchor.core.models.ChatMessage
+import com.anchor.core.models.Reminder
 
 data class UiState(
     val chatMessages: List<ChatMessage> = emptyList(),
@@ -15,7 +15,8 @@ data class UiState(
     val providerEndpoint: String = "",
     val providerKey: String = "",
     val providerModel: String = "",
-    val debugStats: String = "Rows: 0"
+    val debugStats: String = "Rows: 0",
+    val globalError: String? = null
 )
 
 sealed interface UiAction {
@@ -23,7 +24,8 @@ sealed interface UiAction {
     data object Stop : UiAction
     data class CancelReminder(val id: String) : UiAction
     data object RunSelfTest : UiAction
+    data object RefreshStats : UiAction
     data class SaveProvider(val endpoint: String, val key: String, val model: String) : UiAction
-    // MISSING ACTION ADDED BACK:
-    data class ScheduleIn(val minutes: Int, val text: String) : UiAction 
+
+    data class ScheduleIn(val minutes: Int, val text: String) : UiAction
 }

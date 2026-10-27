@@ -4,27 +4,25 @@
 
 package com.anchor.core.ui
 
-import com.anchor.core.alarms.AlarmReceiver
 import com.anchor.core.alarms.AlarmScheduler
-import com.anchor.core.alarms.Reminder
 import com.anchor.core.context.ContextBuilder
 import com.anchor.core.gateway.EnvelopeParser
 import com.anchor.core.gateway.Gateway
 import com.anchor.core.models.ChatMessage
+import com.anchor.core.models.Reminder
 import com.anchor.core.models.ToolResult
-import com.anchor.core.provider.ChatRequest
 import com.anchor.core.provider.ProviderOrchestrator
-import com.anchor.core.provider.RequestMessage
 import com.anchor.core.provider.StreamEvent
 import com.anchor.core.provider.Target
 import com.anchor.core.storage.Storage
+import com.anchor.core.time.Clock
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
+import java.util.UUID
 
 class ChatController(
     private val storage: Storage,
@@ -32,178 +30,215 @@ class ChatController(
     private val contextBuilder: ContextBuilder,
     private val gateway: Gateway,
     private val alarmScheduler: AlarmScheduler,
-    private val coroutineScope: CoroutineScope
+    private val coroutineScope: CoroutineScope,
+    private val defaultDispatcher: CoroutineDispatcher,
+    private val clock: Clock
 ) {
     private val _state = MutableStateFlow(UiState())
     val state: StateFlow<UiState> = _state.asStateFlow()
-
     private var currentStreamJob: Job? = null
 
     init {
-        coroutineScope.launch {
-            val ep = storage.getSetting("ep") ?: "https://api.openai.com/v1/chat/completions"
-            val key = storage.getSetting("key") ?: ""
-            val mod = storage.getSetting("mod") ?: "gpt-4o-mini"
-
-            // Format the debug stats map into a nice string
-            val statsMap = storage.getDebugStats()
-            val statsString = statsMap.entries.joinToString("\n") { "${it.key}: ${it.value}" }
-
+        coroutineScope.launch(defaultDispatcher) {
             _state.update { it.copy(
                 activeReminders = storage.getActiveReminders(),
                 chatMessages = storage.getRecentMessages(30),
-                providerEndpoint = ep, providerKey = key, providerModel = mod,
-                debugStats = statsString
+                providerEndpoint = storage.getSetting("ep") ?: "https://api.openai.com/v1/chat/completions",
+                providerKey = storage.getSetting("key") ?: "",
+                providerModel = storage.getSetting("mod") ?: "gpt-4o-mini",
+                debugStats = storage.getDebugStats().entries.joinToString("\n") { e -> "${e.key}: ${e.value}" }
             )}
         }
     }
 
     fun onAction(action: UiAction) {
-        coroutineScope.launch {
-            val statsMap = storage.getDebugStats()
-            val statsString = if (statsMap.isEmpty()) "Rows: 0" else statsMap.entries.joinToString("\n") { "${it.key}: ${it.value}" }
-            _state.update { it.copy(debugStats = statsString) }
-        }
         when (action) {
-            is UiAction.SendMessage -> handleSendMessage(action.text)
+            is UiAction.SendMessage -> {
+                if (_state.value.isChatLoading || _state.value.providerKey.isBlank()) return
+                _state.update { it.copy(isChatLoading = true) }
+                handleSendMessage(action.text)
+            }
             is UiAction.Stop -> {
                 currentStreamJob?.cancel()
                 _state.update { it.copy(isChatLoading = false) }
             }
-            is UiAction.SaveProvider -> {
-                coroutineScope.launch {
-                    storage.saveSetting("ep", action.endpoint)
-                    storage.saveSetting("key", action.key)
-                    storage.saveSetting("mod", action.model)
-                    _state.update { it.copy(providerEndpoint = action.endpoint, providerKey = action.key, providerModel = action.model) }
-                }
+            is UiAction.SaveProvider -> coroutineScope.launch(defaultDispatcher) {
+                storage.saveSetting("ep", action.endpoint)
+                storage.saveSetting("key", action.key)
+                storage.saveSetting("mod", action.model)
+                _state.update { it.copy(providerEndpoint = action.endpoint, providerKey = action.key, providerModel = action.model) }
             }
-            is UiAction.CancelReminder -> {
-                coroutineScope.launch {
-                    storage.deleteReminder(action.id)
-                    alarmScheduler.cancel(action.id)
-                    _state.update { it.copy(activeReminders = storage.getActiveReminders()) }
-                }
+            is UiAction.CancelReminder -> coroutineScope.launch(defaultDispatcher) {
+                storage.deleteReminder(action.id)
+                alarmScheduler.cancel(action.id)
+                _state.update { it.copy(activeReminders = storage.getActiveReminders()) }
             }
-            is UiAction.RunSelfTest -> {
-                _state.update { it.copy(selfTestStatus = "Armed for 5 seconds...") }
+            is UiAction.RunSelfTest -> coroutineScope.launch(defaultDispatcher) {
+                _state.update { it.copy(selfTestStatus = "Armed for 10 seconds...") }
                 val id = "test_${System.currentTimeMillis()}"
-                AlarmReceiver.lastFiredId = null
-                alarmScheduler.schedule(Reminder(id, "Self Test Fired!", System.currentTimeMillis() + 5000L))
-
-                coroutineScope.launch {
-                    var elapsed = 0
-                    while (AlarmReceiver.lastFiredId != id && elapsed < 10000) {
-                        kotlinx.coroutines.delay(500)
-                        elapsed += 500
-                    }
-
-                    // Refresh the debug stats while we're at it!
-                    val statsMap = storage.getDebugStats()
-                    val statsString = statsMap.entries.joinToString("\n") { "${it.key}: ${it.value}" }
-
-                    _state.update { it.copy(
-                        selfTestStatus = if (AlarmReceiver.lastFiredId == id) "Fired Successfully!" else "Failed",
-                        debugStats = statsString
-                    ) }
-                }
-            }
-            // MISSING LOGIC ADDED BACK:
-            is UiAction.ScheduleIn -> {
-                val id = "r_${System.currentTimeMillis()}"
-                val fireAt = System.currentTimeMillis() + (action.minutes * 60 * 1000L)
-                val reminder = Reminder(id, action.text, fireAt)
+                val fireAt = clock.now() + 10000L
+                val reminder = Reminder(id, "Self Test Fired!", fireAt)
                 
+                storage.saveReminder(reminder)
                 alarmScheduler.schedule(reminder)
-                coroutineScope.launch {
-                    storage.saveReminder(reminder)
-                    _state.update { it.copy(activeReminders = storage.getActiveReminders()) }
+                
+                var elapsed = 0
+                while (alarmScheduler.lastFiredId.value != id && elapsed < 12000) {
+                    delay(500)
+                    elapsed += 500
                 }
+                _state.update { it.copy(selfTestStatus = if (alarmScheduler.lastFiredId.value == id) "Fired in ${elapsed/1000}s" else "Failed") }
             }
+            is UiAction.RefreshStats -> coroutineScope.launch(defaultDispatcher) {
+                _state.update { it.copy(debugStats = storage.getDebugStats().entries.joinToString("\n") { e -> "${e.key}: ${e.value}" }) }
+            }
+            is UiAction.ScheduleIn -> {}
         }
     }
 
     private fun handleSendMessage(text: String) {
-        if (state.value.isChatLoading || state.value.providerKey.isBlank()) return
-
-        currentStreamJob = coroutineScope.launch {
-            val userMsgId = "u_${System.currentTimeMillis()}"
-            storage.insertRawMessage(userMsgId, "user", text)
-            _state.update { it.copy(chatMessages = storage.getRecentMessages(30), isChatLoading = true) }
-
+        currentStreamJob = coroutineScope.launch(defaultDispatcher) {
             try {
-                val pack = contextBuilder.buildPack()
-                val payload = buildJsonPayload(pack)
-                val target = Target(state.value.providerEndpoint, state.value.providerKey, 50)
+                val userMsgId = "u_${UUID.randomUUID()}"
+                storage.insertRawMessage(userMsgId, "user", text)
+                refreshUI()
 
-                var rawResponse = ""
-                var lastUpdate = System.currentTimeMillis()
+                var pack = contextBuilder.buildPack()
+                var turnComplete = false
+                var loops = 0
+                val executedCalls = mutableSetOf<String>()
 
-                val botId = "a_${System.currentTimeMillis()}"
-                _state.update { it.copy(chatMessages = it.chatMessages + ChatMessage(botId, "assistant", "")) }
+                while (!turnComplete && loops < 4) {
+                    loops++
+                    val payload = buildJsonPayload(pack)
+                    val target = Target(_state.value.providerEndpoint, _state.value.providerKey, 50)
+                    
+                    val botId = "a_${UUID.randomUUID()}"
+                    val botResponse = java.lang.StringBuilder()
+                    var lastUpdate = clock.now()
 
-                orchestrator.chat(listOf(target), payload).collect { event ->
-                    if (event is StreamEvent.TextDelta) {
-                        rawResponse += event.text
-                        // Throttle UI updates to 100ms
-                        if (System.currentTimeMillis() - lastUpdate > 100) {
-                            updateLastMessage(botId, rawResponse)
-                            lastUpdate = System.currentTimeMillis()
+                    _state.update { it.copy(chatMessages = it.chatMessages + ChatMessage(botId, "assistant", "")) }
+
+                    orchestrator.chat(listOf(target), payload).collect { event ->
+                        if (event is StreamEvent.Clear) {
+                            botResponse.clear()
+                        } else if (event is StreamEvent.TextDelta) {
+                            botResponse.append(event.text)
+                            if (clock.now() - lastUpdate > 100) {
+                                // TASK 2: Prevent JSON flashing (handles whitespace bypass)
+                                val trimmed = botResponse.toString().trimStart()
+                                val display = if (trimmed.startsWith("{") || trimmed.startsWith("```")) "Thinking..." else botResponse.toString()
+                                updateLastMessage(botId, display)
+                                lastUpdate = clock.now()
+                            }
                         }
+                    }
+
+                    val rawBot = botResponse.toString()
+                    val envelope = EnvelopeParser.parse(rawBot)
+                    
+                    if (envelope != null) {
+                        var sysContext = ""
+                        var humanResult = envelope.reply
+                        var hasCommitted = false // TASK 1: Track if we committed anything
+
+                        envelope.calls.forEach { call ->
+                            val result = gateway.executeTool(call, executedCalls)
+                            sysContext += "Tool Result: " + when(result) {
+                                is ToolResult.Committed -> {
+                                    hasCommitted = true // TASK 1: Mark for turn termination
+                                    storage.getActiveReminders().forEach { alarmScheduler.schedule(it) }
+                                    humanResult += "\n[Done: ${result.message}] (Undo: ${result.undoToken})"
+                                    "Committed. ${result.message}"
+                                }
+                                is ToolResult.Ambiguous -> {
+                                    humanResult += "\n[Clarify: ${result.message}]"
+                                    "Ambiguous. Ask the user, then call confirm_change. ID: ${result.proposalId}, Options: ${result.options}"
+                                }
+                                is ToolResult.NotFound -> "Not Found. Ask user to clarify."
+                                is ToolResult.Error -> "Error: ${result.reason}"
+                            } + "\n"
+                        }
+                        
+                        // TASK 2: Never fall back to rawBot if envelope is valid
+                        val cleanText = if (envelope.reply.isBlank() && envelope.calls.isEmpty()) {
+                            "Acknowledged."
+                        } else {
+                            humanResult.trim().ifBlank { "Executed tools silently." }
+                        }
+                        
+                        updateLastMessage(botId, cleanText)
+                        storage.insertRawMessage(botId, "assistant", cleanText)
+                        
+                        pack = pack + ChatMessage(botId, "assistant", cleanText)
+                        pack = pack + ChatMessage("sys_${UUID.randomUUID()}", "system", sysContext)
+                        
+                        if (loops == 4) {
+                            val limitMsg = "Loop limit reached."
+                            updateLastMessage("a_${UUID.randomUUID()}", limitMsg)
+                            storage.insertRawMessage("a_${UUID.randomUUID()}", "assistant", limitMsg)
+                            turnComplete = true
+                        }
+                        
+                        // TASK 1: Safely terminate the turn if any tool committed, preventing hallucinated follow-ups
+                        if (envelope.calls.isEmpty() || hasCommitted) {
+                            turnComplete = true
+                        }
+                    } else {
+                        // TASK 2: Only show raw text if it wasn't valid JSON at all
+                        val finalTxt = rawBot.ifBlank { "..." }
+                        updateLastMessage(botId, finalTxt)
+                        storage.insertRawMessage(botId, "assistant", finalTxt)
+                        turnComplete = true
                     }
                 }
-
-                // Process Envelope Mode (Gateway)
-                val envelope = EnvelopeParser.parse(rawResponse)
-                val finalText = if (envelope != null) {
-                    var out = envelope.reply
-                    envelope.calls.forEach { call ->
-                        val result = gateway.executeTool(call)
-                        if (result is ToolResult.Committed) {
-                            // If a reminder was created by D-100, schedule the real OS alarm
-                            storage.getActiveReminders().forEach { alarmScheduler.schedule(it) }
-                            out += "\n[Done: ${result.message}]"
-                        } else if (result is ToolResult.Ambiguous) {
-                            out += "\n[Clarify: ${result.message} -> ${result.options}]"
+                refreshUI()
+            } catch (e: Exception) {
+                if (e is CancellationException) {
+                    val msgs = _state.value.chatMessages
+                    val last = msgs.lastOrNull()
+                    if (last?.role == "assistant") {
+                        if (last.content.isNullOrBlank()) _state.update { it.copy(chatMessages = msgs.dropLast(1)) }
+                        else {
+                            val intContent = last.content + " [Interrupted]"
+                            updateLastMessage(last.id, intContent)
+                            storage.insertRawMessage(last.id, "assistant", intContent)
                         }
                     }
-                    out
-                } else rawResponse
-
-                storage.insertRawMessage(botId, "assistant", finalText)
-                _state.update { it.copy(chatMessages = storage.getRecentMessages(30), activeReminders = storage.getActiveReminders(), isChatLoading = false) }
-
-            } catch (e: Exception) {
-                if (e is CancellationException) throw e
-                _state.update { it.copy(isChatLoading = false, chatMessages = it.chatMessages + ChatMessage("err", "system", "Error: ${e.message}")) }
+                    throw e
+                }
+                _state.update { it.copy(chatMessages = it.chatMessages + ChatMessage("err_${UUID.randomUUID()}", "system", "Error: ${e.message}")) }
+            } finally {
+                _state.update { it.copy(isChatLoading = false) }
             }
         }
     }
 
     private fun buildJsonPayload(pack: List<ChatMessage>): String {
-        // Tweak the instruction so the AI knows EXACTLY what text to use for the date
-        val instruction = "You must use Envelope Mode JSON: {\"reply\":\"Got it!\",\"calls\":[{\"tool\":\"propose_change\",\"args\":{\"intent\":\"CREATE\",\"title\":\"Task name\",\"due_text\":\"in 2 minutes\"}}]}"
-        
+        // ITEM 2: Ultra-strict prompt preventing lazy acknowledgements
+        val instruction = """You are MineAI. Answer normally UNLESS the user mentions an appointment, plan, task, commitment, or deadline (even without a time). In those cases, you MUST include a propose_change CREATE call. Do not just acknowledge. The app generates the save confirmation, so do not claim you saved it unless you issue a tool call.
+You must use Envelope Mode JSON: {"reply":"...","calls":[{"tool":"propose_change","args":{"intent":"CREATE","title":"...","due_text":"..."}}]}
+Examples:
+CREATE with time: {"tool":"propose_change","args":{"intent":"CREATE", "title":"Dinner with Shyam", "due_text":"tomorrow at 4pm"}}
+CREATE without time: {"tool":"propose_change","args":{"intent":"CREATE", "title":"Buy milk"}}
+CANCEL: {"tool":"propose_change","args":{"intent":"CANCEL", "hint":"dinner"}}
+CONFIRM: When a tool result is Ambiguous, ask the user, then call: {"tool":"confirm_change","args":{"proposal":"p_123456","choice":"n_abcdef"}}
+UNDO: {"tool":"undo","args":{"token":"u_123456"}}
+"""
         val messages = mutableListOf<com.anchor.core.provider.RequestMessage>()
         messages.add(com.anchor.core.provider.RequestMessage("system", instruction))
-        
-        pack.forEach { 
-            messages.add(com.anchor.core.provider.RequestMessage(it.role, it.content))
-        }
-        
-        val request = com.anchor.core.provider.ChatRequest(
-            model = state.value.providerModel,
-            stream = true,
-            messages = messages
-        )
-        
-        return kotlinx.serialization.json.Json.encodeToString(request)
+        pack.filter { it.content != null }.forEach { messages.add(com.anchor.core.provider.RequestMessage(it.role, it.content!!)) }
+        return kotlinx.serialization.json.Json.encodeToString(com.anchor.core.provider.ChatRequest(_state.value.providerModel, true, messages))
     }
 
     private fun updateLastMessage(id: String, content: String) {
-        val msgs = state.value.chatMessages.toMutableList()
+        val msgs = _state.value.chatMessages.toMutableList()
         val idx = msgs.indexOfLast { it.id == id }
         if (idx != -1) msgs[idx] = ChatMessage(id, "assistant", content)
-        _state.value = state.value.copy(chatMessages = msgs)
+        _state.value = _state.value.copy(chatMessages = msgs)
+    }
+
+    private suspend fun refreshUI() {
+        _state.update { it.copy(chatMessages = storage.getRecentMessages(30), activeReminders = storage.getActiveReminders()) }
     }
 }

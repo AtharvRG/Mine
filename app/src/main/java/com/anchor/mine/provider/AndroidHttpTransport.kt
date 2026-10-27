@@ -7,14 +7,17 @@ package com.anchor.mine.provider
 import com.anchor.core.provider.Http429Exception
 import com.anchor.core.provider.HttpTransport
 import com.anchor.core.provider.Target
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.runInterruptible
 import kotlinx.coroutines.withContext
 import java.net.HttpURLConnection
 import java.net.URL
-import kotlinx.coroutines.CancellationException
 
 class AndroidHttpTransport : HttpTransport {
     override suspend fun postStream(target: Target, body: String): Flow<String> = withContext(Dispatchers.IO) {
@@ -42,8 +45,9 @@ class AndroidHttpTransport : HttpTransport {
             // Connection successful! Return the lazy flow for streaming
             return@withContext flow {
                 connection.inputStream.bufferedReader().use { reader ->
-                    while (true) {
-                        val line = reader.readLine() ?: break
+                    while (currentCoroutineContext().isActive) {
+                        // Item 12: Will immediately throw CancellationException on Stop
+                        val line = runInterruptible { reader.readLine() } ?: break
                         if (line.isNotBlank()) emit(line)
                     }
                 }

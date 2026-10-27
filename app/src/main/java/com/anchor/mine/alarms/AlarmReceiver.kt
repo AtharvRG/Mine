@@ -12,52 +12,54 @@ import android.content.Context
 import android.content.Intent
 import androidx.core.app.NotificationCompat
 import com.anchor.mine.MainActivity
-import com.anchor.mine.storage.DatabaseProvider
-import com.anchor.mine.storage.DbKeyProvider
+import com.anchor.mine.MineApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 class AlarmReceiver : BroadcastReceiver() {
-
     companion object {
-        var lastFiredId: String? = null // Kept purely for the instrumented test
+        @Volatile
+        var lastFiredId: String? = null
     }
 
     override fun onReceive(context: Context, intent: Intent) {
         val id = intent.getStringExtra("EXTRA_ID") ?: return
         val text = intent.getStringExtra("EXTRA_TEXT") ?: "Reminder"
-        lastFiredId = id
-
-        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        val channelId = "mine_reminders_v1"
-        manager.createNotificationChannel(NotificationChannel(channelId, "Reminders", NotificationManager.IMPORTANCE_HIGH))
-
-        val openIntent = Intent(context, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-        }
-        val pendingOpen = PendingIntent.getActivity(context, id.hashCode(), openIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-
-        val notification = NotificationCompat.Builder(context, channelId)
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setContentTitle("Mine")
-            .setContentText(text)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setContentIntent(pendingOpen)
-            .setAutoCancel(true)
-            .build()
-
-        manager.notify(id.hashCode(), notification)
-
-        // Mark done by removing from operational table
         val pendingResult = goAsync()
+
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val key = DbKeyProvider(context).getOrGenerateKey()
-                val db = DatabaseProvider.getHelper(context, key).writableDatabase
-                db.execSQL("DELETE FROM reminder WHERE id = ?", arrayOf(id))
-            } catch (e: Exception) {
-                // Ignore DB errors during broadcast
+                val storage = (context.applicationContext as MineApp).sharedStorage.await()
+                val pending = storage.getPendingReminders()
+                
+                // Item 3: Removed bypass. Must exist in DB.
+                if (pending.none { it.id == id }) return@launch
+
+                GlobalAlarmState.lastFired.value = id
+                lastFiredId = id
+                com.anchor.core.alarms.AlarmReceiver.lastFiredId = id
+
+                val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                val channelId = "mine_reminders_v1"
+                manager.createNotificationChannel(NotificationChannel(channelId, "Reminders", NotificationManager.IMPORTANCE_HIGH))
+
+                val openIntent = Intent(context, MainActivity::class.java).apply { flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK }
+                val pendingOpen = PendingIntent.getActivity(context, id.hashCode(), openIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+
+                val notification = NotificationCompat.Builder(context, channelId)
+                    .setSmallIcon(android.R.drawable.ic_dialog_info) 
+                    .setContentTitle("Mine")
+                    .setContentText(text)
+                    .setPriority(NotificationCompat.PRIORITY_HIGH)
+                    .setContentIntent(pendingOpen)
+                    .setAutoCancel(true)
+                    .build()
+
+                manager.notify(id.hashCode(), notification)
+                storage.deleteReminder(id) // Mark done
+            } catch (_: Exception) {
+                // Init failed or deferred threw exception, fail fast
             } finally {
                 pendingResult.finish()
             }

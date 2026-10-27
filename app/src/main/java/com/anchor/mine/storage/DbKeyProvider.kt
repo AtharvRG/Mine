@@ -42,8 +42,17 @@ class DbKeyProvider(private val context: Context) {
             val iv = cipher.iv
             val encrypted = cipher.doFinal(rawKey)
 
-            // Store IV length (1 byte), IV, and encrypted payload
-            keyFile.writeBytes(byteArrayOf(iv.size.toByte()) + iv + encrypted)
+            // Atomic write using a temporary file and sync
+            val tmpFile = File(context.filesDir, "$FILE_NAME.tmp")
+            java.io.FileOutputStream(tmpFile).use { fos ->
+                fos.write(byteArrayOf(iv.size.toByte()))
+                fos.write(iv)
+                fos.write(encrypted)
+                fos.fd.sync() // Ensure it hits the disk
+            }
+            if (!tmpFile.renameTo(keyFile)) {
+                throw IllegalStateException("Failed to commit database key to disk")
+            }
             return rawKey
         }
 

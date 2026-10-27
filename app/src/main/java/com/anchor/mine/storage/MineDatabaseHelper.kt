@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 Mine Author
+// Copyright (C) 2026 Mine contributors
 // Part of Mine. See LICENSE in the repository root.
 
 package com.anchor.mine.storage
@@ -9,7 +9,8 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.sqlite.db.SupportSQLiteOpenHelper
 import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
 
-class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(2) {
+// BUMPED to Version 4 for FTS5 and Strict Redaction Triggers
+class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(4) {
 
     override fun onConfigure(db: SupportSQLiteDatabase) {
         super.onConfigure(db)
@@ -50,47 +51,122 @@ class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(2) {
               created_at INTEGER, updated_at INTEGER, deleted_at INTEGER
             )
         """)
+        db.execSQL("""
+            CREATE TABLE soul_fact (
+              id TEXT PRIMARY KEY, device_id TEXT NOT NULL, category TEXT NOT NULL, statement TEXT NOT NULL,
+              attrs TEXT, confidence REAL NOT NULL DEFAULT 0.7, source TEXT NOT NULL, origin TEXT NOT NULL,
+              status TEXT NOT NULL, pinned_core INTEGER NOT NULL DEFAULT 0, sensitive INTEGER NOT NULL DEFAULT 0,
+              local_only INTEGER NOT NULL DEFAULT 0, hlc TEXT NOT NULL, valid_from INTEGER, valid_to INTEGER,
+              supersedes TEXT, source_msg_ids TEXT, extractor_version TEXT, last_confirmed_at INTEGER,
+              created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, deleted_at INTEGER
+            )
+        """)
+        db.execSQL("""
+            CREATE TABLE msg_chunk (
+              id TEXT PRIMARY KEY, day_key TEXT NOT NULL, ts_start INTEGER NOT NULL, ts_end INTEGER NOT NULL,
+              msg_ids TEXT NOT NULL, text TEXT NOT NULL, extractor_version TEXT NOT NULL
+            )
+        """)
 
-        // ADDED FOR V2:
         db.execSQL("CREATE TABLE reminder (id TEXT PRIMARY KEY, text TEXT NOT NULL, fire_at INTEGER NOT NULL)")
+        db.execSQL("CREATE TABLE proposal (id TEXT PRIMARY KEY, kind TEXT NOT NULL, intent TEXT NOT NULL, options TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'open', created_at INTEGER NOT NULL)")
+
         db.execSQL("CREATE INDEX idx_node_status_due ON node(status, due_at)")
         db.execSQL("CREATE INDEX idx_raw_event_target ON raw_event(target_type, target_id)")
         db.execSQL("CREATE INDEX idx_raw_message_ts ON raw_message(ts_utc)")
 
-        // Triggers enforce append-only rule
+        // FTS5 Tables
+        db.execSQL("CREATE VIRTUAL TABLE node_fts USING fts5(title, body, content='node', content_rowid='rowid')")
+        db.execSQL("CREATE VIRTUAL TABLE soul_fts USING fts5(statement, content='soul_fact', content_rowid='rowid')")
+        db.execSQL("CREATE VIRTUAL TABLE msg_chunk_fts USING fts5(text, content='msg_chunk', content_rowid='rowid')")
+
+        createTriggers(db)
+    }
+
+    override fun onUpgrade(db: SupportSQLiteDatabase, oldVersion: Int, newVersion: Int) {
+        if (oldVersion < 2) {
+            db.execSQL("CREATE TABLE IF NOT EXISTS reminder (id TEXT PRIMARY KEY, text TEXT NOT NULL, fire_at INTEGER NOT NULL)")
+            db.execSQL("CREATE TABLE IF NOT EXISTS proposal (id TEXT PRIMARY KEY, kind TEXT NOT NULL, intent TEXT NOT NULL, options TEXT NOT NULL, created_at INTEGER NOT NULL)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS idx_node_status_due ON node(status, due_at)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS idx_raw_event_target ON raw_event(target_type, target_id)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS idx_raw_message_ts ON raw_message(ts_utc)")
+        }
+        if (oldVersion < 3) {
+            // Check if column exists before adding to prevent crashes if partially applied
+            val cursor = db.query("PRAGMA table_info(proposal)")
+            var hasStatus = false
+            while (cursor.moveToNext()) { if (cursor.getString(1) == "status") hasStatus = true }
+            cursor.close()
+            if (!hasStatus) {
+                db.execSQL("ALTER TABLE proposal ADD COLUMN status TEXT NOT NULL DEFAULT 'open'")
+            }
+        }
+        if (oldVersion < 4) {
+            db.execSQL("""
+                CREATE TABLE IF NOT EXISTS soul_fact (
+                  id TEXT PRIMARY KEY, device_id TEXT NOT NULL, category TEXT NOT NULL, statement TEXT NOT NULL,
+                  attrs TEXT, confidence REAL NOT NULL DEFAULT 0.7, source TEXT NOT NULL, origin TEXT NOT NULL,
+                  status TEXT NOT NULL, pinned_core INTEGER NOT NULL DEFAULT 0, sensitive INTEGER NOT NULL DEFAULT 0,
+                  local_only INTEGER NOT NULL DEFAULT 0, hlc TEXT NOT NULL, valid_from INTEGER, valid_to INTEGER,
+                  supersedes TEXT, source_msg_ids TEXT, extractor_version TEXT, last_confirmed_at INTEGER,
+                  created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, deleted_at INTEGER
+                )
+            """)
+            db.execSQL("""
+                CREATE TABLE IF NOT EXISTS msg_chunk (
+                  id TEXT PRIMARY KEY, day_key TEXT NOT NULL, ts_start INTEGER NOT NULL, ts_end INTEGER NOT NULL,
+                  msg_ids TEXT NOT NULL, text TEXT NOT NULL, extractor_version TEXT NOT NULL
+                )
+            """)
+            db.execSQL("CREATE VIRTUAL TABLE IF NOT EXISTS node_fts USING fts5(title, body, content='node', content_rowid='rowid')")
+            db.execSQL("CREATE VIRTUAL TABLE IF NOT EXISTS soul_fts USING fts5(statement, content='soul_fact', content_rowid='rowid')")
+            db.execSQL("CREATE VIRTUAL TABLE IF NOT EXISTS msg_chunk_fts USING fts5(text, content='msg_chunk', content_rowid='rowid')")
+
+            // Recreate triggers to enforce exact strictness
+            db.execSQL("DROP TRIGGER IF EXISTS trg_raw_msg_no_update")
+            db.execSQL("DROP TRIGGER IF EXISTS trg_raw_msg_no_delete")
+            db.execSQL("DROP TRIGGER IF EXISTS trg_raw_evt_no_update")
+            db.execSQL("DROP TRIGGER IF EXISTS trg_raw_evt_no_delete")
+            createTriggers(db)
+        }
+    }
+
+    private fun createTriggers(db: SupportSQLiteDatabase) {
         db.execSQL("""
             CREATE TRIGGER trg_raw_msg_no_update BEFORE UPDATE ON raw_message
             BEGIN
                 SELECT RAISE(ABORT, 'raw_message is append-only except for redaction')
-                WHERE (OLD.redacted_at IS NOT NULL) 
-                   OR (NEW.redacted_at IS NULL)     
-                   OR (NEW.content IS NOT NULL)     
-                   OR (OLD.id != NEW.id)
-                   OR (OLD.role != NEW.role)
-                   OR (OLD.ts_utc != NEW.ts_utc);
+                WHERE OLD.redacted_at IS NOT NULL 
+                   OR NEW.redacted_at IS NULL 
+                   OR NEW.content IS NOT NULL 
+                   OR OLD.id != NEW.id
+                   OR OLD.device_id != NEW.device_id
+                   OR OLD.ts_utc != NEW.ts_utc
+                   OR OLD.tz_offset_min != NEW.tz_offset_min
+                   OR OLD.day_key != NEW.day_key
+                   OR OLD.role != NEW.role
+                   OR IFNULL(OLD.reasoning, '') != IFNULL(NEW.reasoning, '')
+                   OR IFNULL(OLD.tags, '') != IFNULL(NEW.tags, '')
+                   OR IFNULL(OLD.persona_id, '') != IFNULL(NEW.persona_id, '')
+                   OR IFNULL(OLD.model_ref, '') != IFNULL(NEW.model_ref, '')
+                   OR IFNULL(OLD.tokens_in, 0) != IFNULL(NEW.tokens_in, 0)
+                   OR IFNULL(OLD.tokens_out, 0) != IFNULL(NEW.tokens_out, 0)
+                   OR IFNULL(OLD.client_msg_id, '') != IFNULL(NEW.client_msg_id, '')
+                   OR IFNULL(OLD.attrs, '') != IFNULL(NEW.attrs, '');
             END;
         """)
         db.execSQL("CREATE TRIGGER trg_raw_msg_no_delete BEFORE DELETE ON raw_message BEGIN SELECT RAISE(ABORT, 'raw_message is append-only'); END;")
         db.execSQL("CREATE TRIGGER trg_raw_evt_no_update BEFORE UPDATE ON raw_event BEGIN SELECT RAISE(ABORT, 'raw_event is append-only'); END;")
         db.execSQL("CREATE TRIGGER trg_raw_evt_no_delete BEFORE DELETE ON raw_event BEGIN SELECT RAISE(ABORT, 'raw_event is append-only'); END;")
     }
-
-    override fun onUpgrade(db: SupportSQLiteDatabase, oldVersion: Int, newVersion: Int) {
-        if (oldVersion < 2) {
-            db.execSQL("CREATE TABLE IF NOT EXISTS reminder (id TEXT PRIMARY KEY, text TEXT NOT NULL, fire_at INTEGER NOT NULL)")
-            db.execSQL("CREATE INDEX IF NOT EXISTS idx_node_status_due ON node(status, due_at)")
-            db.execSQL("CREATE INDEX IF NOT EXISTS idx_raw_event_target ON raw_event(target_type, target_id)")
-            db.execSQL("CREATE INDEX IF NOT EXISTS idx_raw_message_ts ON raw_message(ts_utc)")
-        }
-    }
 }
 
 object DatabaseProvider {
-    fun getHelper(context: Context, password: ByteArray): SupportSQLiteOpenHelper {
+    fun getHelper(context: Context, password: ByteArray, dbName: String = "mine_encrypted.db"): SupportSQLiteOpenHelper {
         System.loadLibrary("sqlcipher")
         val factory = SupportOpenHelperFactory(password)
         val configuration = SupportSQLiteOpenHelper.Configuration.builder(context)
-            .name("mine_encrypted.db")
+            .name(dbName)
             .callback(MineDatabaseCallback())
             .build()
         return factory.create(configuration)

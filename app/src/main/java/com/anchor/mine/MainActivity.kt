@@ -57,6 +57,13 @@ fun MineAppUI(viewModel: MainViewModel) {
     var selectedTab by remember { mutableIntStateOf(0) }
     val tabs = listOf("Chat", "Reminders", "Provider", "Debug")
 
+    if (state.globalError != null) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) {
+            Text("Fatal Error\n\n${state.globalError}", color = MaterialTheme.colorScheme.error)
+        }
+        return
+    }
+
     Column(modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars)) {
         TabRow(selectedTabIndex = selectedTab) {
             tabs.forEachIndexed { index, title ->
@@ -68,7 +75,8 @@ fun MineAppUI(viewModel: MainViewModel) {
             when (selectedTab) {
                 0 -> ChatScreen(state) { viewModel.onAction(UiAction.SendMessage(it)) }
                 1 -> RemindersScreen(state, viewModel::onAction)
-                2 -> ProviderScreen(state) { ep, key, mod -> viewModel.onAction(UiAction.SaveProvider(ep, key, mod)) }
+                // Item 7: Using 'key' forces recomposition when DB loads
+                2 -> key(state.providerEndpoint) { ProviderScreen(state) { ep, k, m -> viewModel.onAction(UiAction.SaveProvider(ep, k, m)) } }
                 3 -> DebugScreen(state, viewModel::onAction)
             }
         }
@@ -86,8 +94,11 @@ fun ChatScreen(state: UiState, onSend: (String) -> Unit) {
                 val align = if (isUser) Modifier.padding(start = 32.dp) else Modifier.padding(end = 32.dp)
                 val color = if (isUser) Color.Blue.copy(alpha = 0.1f) else Color.Gray.copy(alpha = 0.1f)
 
+                // Item 4: Show [redacted]
+                val textContent = msg.content ?: "[redacted]"
+
                 Text(
-                    text = "${msg.role.uppercase()}: ${msg.content}",
+                    text = "${msg.role.uppercase()}: $textContent",
                     modifier = Modifier.fillMaxWidth().then(align).padding(4.dp).background(color).padding(8.dp)
                 )
             }
@@ -161,7 +172,7 @@ fun DebugScreen(state: UiState, onAction: (UiAction) -> Unit) {
         Text("=== Storage Stats ===", style = MaterialTheme.typography.titleMedium)
         Text(state.debugStats)
         Spacer(modifier = Modifier.height(16.dp))
-        Button(onClick = { onAction(UiAction.RunSelfTest) }) {
+        Button(onClick = { onAction(UiAction.RefreshStats) }) {
             Text("Refresh Stats")
         }
     }

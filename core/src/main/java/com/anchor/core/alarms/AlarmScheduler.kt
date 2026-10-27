@@ -4,13 +4,11 @@
 
 package com.anchor.core.alarms
 
-data class Reminder(
-    val id: String,
-    val text: String,
-    val fireAtMillis: Long
-)
+import com.anchor.core.models.Reminder
+import kotlinx.coroutines.flow.StateFlow
 
 interface AlarmScheduler {
+    val lastFiredId: StateFlow<String?>
     fun schedule(reminder: Reminder)
     fun cancel(reminderId: String)
 }

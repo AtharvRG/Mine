@@ -5,8 +5,8 @@
 package com.anchor.mine.storage
 
 import androidx.sqlite.db.SupportSQLiteOpenHelper
-import com.anchor.core.alarms.Reminder
 import com.anchor.core.models.*
+import com.anchor.core.models.Reminder
 import com.anchor.core.storage.Storage
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -23,8 +23,6 @@ class AndroidStorage(private val dbHelper: SupportSQLiteOpenHelper) : Storage {
     private var deviceId: String = ""
 
     init {
-        // We removed the CREATE TABLE reminder here; it now lives safely in MineDatabaseHelper.
-        // Device ID logic remains...
         dbHelper.readableDatabase.query("SELECT value FROM app_meta WHERE \"key\" = 'device_id'").use {
             if (it.moveToFirst()) deviceId = it.getString(0)
         }
@@ -49,18 +47,30 @@ class AndroidStorage(private val dbHelper: SupportSQLiteOpenHelper) : Storage {
         )
     }
 
+    override suspend fun redactMessage(id: String) = withContext(ioDispatcher) {
+        // Redaction triggers strictly require content=NULL and redacted_at=NOT NULL
+        val db = dbHelper.writableDatabase
+        db.beginTransaction()
+        try {
+            db.execSQL("UPDATE raw_message SET content = NULL, redacted_at = ? WHERE id = ?", arrayOf<Any>(System.currentTimeMillis(), id))
+            db.execSQL("INSERT INTO raw_event (op_id, target_id, op_type, target_type, ts_utc, device_id, actor) VALUES (?, ?, 'REDACT', 'message', ?, ?, 'user')",
+                arrayOf<Any>(java.util.UUID.randomUUID().toString(), id, System.currentTimeMillis(), deviceId))
+            db.setTransactionSuccessful()
+        } finally { db.endTransaction() }
+    }
+
     override suspend fun getRawMessage(id: String): String? = withContext(ioDispatcher) {
         dbHelper.readableDatabase.query("SELECT content FROM raw_message WHERE id = ?", arrayOf(id)).use {
-            if (it.moveToFirst()) it.getString(0) else null
+            if (it.moveToFirst()) if (it.isNull(0)) null else it.getString(0) else null
         }
     }
 
     override suspend fun getRecentMessages(limit: Int): List<ChatMessage> = withContext(ioDispatcher) {
         val list = mutableListOf<ChatMessage>()
-        // Batch 1: Query newest N, then reverse so they are chronological
         dbHelper.readableDatabase.query("SELECT id, role, content FROM raw_message ORDER BY ts_utc DESC LIMIT ?", arrayOf(limit)).use {
             while (it.moveToNext()) {
-                list.add(ChatMessage(it.getString(0), it.getString(1), it.getString(2)))
+                val content = if (it.isNull(2)) null else it.getString(2)
+                list.add(ChatMessage(it.getString(0), it.getString(1), content))
             }
         }
         list.reversed()
@@ -78,48 +88,52 @@ class AndroidStorage(private val dbHelper: SupportSQLiteOpenHelper) : Storage {
 
     override suspend fun getActiveNodes(): List<Node> = withContext(ioDispatcher) {
         val list = mutableListOf<Node>()
-        dbHelper.readableDatabase.query("SELECT id, type, title, status, due_at FROM node WHERE status = 'active'").use {
+        dbHelper.readableDatabase.query("SELECT id, type, title, status, due_at, created_at, updated_at, closed_at FROM node WHERE status = 'active' OR status = 'in_progress' OR status = 'paused'").use {
             while (it.moveToNext()) {
-                list.add(Node(it.getString(0), it.getString(1), it.getString(2), it.getString(3), if (it.isNull(4)) null else it.getLong(4)))
+                list.add(Node(it.getString(0), it.getString(1), it.getString(2), it.getString(3),
+                    if (it.isNull(4)) null else it.getLong(4), it.getLong(5), it.getLong(6), if (it.isNull(7)) null else it.getLong(7)))
             }
         }
         list
     }
 
-    override suspend fun updateNodeStatus(nodeId: String, newStatus: String) = withContext(ioDispatcher) {
-        dbHelper.writableDatabase.execSQL(
-            "UPDATE node SET status = ?, updated_at = ? WHERE id = ?",
-            arrayOf<Any?>(newStatus, System.currentTimeMillis(), nodeId)
-        )
-    }
-
-    override suspend fun logEvent(event: RawEvent) = withContext(ioDispatcher) {
-        dbHelper.writableDatabase.execSQL(
-            "INSERT INTO raw_event (op_id, target_id, op_type, target_type, ts_utc, device_id, actor, undo_of) VALUES (?, ?, ?, ?, ?, ?, 'chat_ai', ?)",
-            arrayOf<Any?>(event.opId, event.targetId, event.opType, event.targetType, System.currentTimeMillis(), deviceId, event.undoOf)
-        )
-    }
-
-    // ITEM 11: One SQLite Transaction for Gateway
-    override suspend fun commitChange(node: Node?, event: RawEvent, reminder: Reminder?) = withContext(ioDispatcher) {
-        val db = dbHelper.writableDatabase
-        db.beginTransaction()
-        try {
-            if (node != null) {
-                db.execSQL("INSERT OR REPLACE INTO node (id, device_id, type, title, status, due_at, origin, hlc, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 'extracted', '', ?, ?)",
-                    arrayOf<Any?>(node.id, deviceId, node.type, node.title, node.status, node.dueAt, System.currentTimeMillis(), System.currentTimeMillis()))
-            }
-            if (reminder != null) {
-                db.execSQL("INSERT OR REPLACE INTO reminder (id, text, fire_at) VALUES (?, ?, ?)",
-                    arrayOf<Any>(reminder.id, reminder.text, reminder.fireAtMillis))
-            }
-            db.execSQL("INSERT INTO raw_event (op_id, target_id, op_type, target_type, ts_utc, device_id, actor, undo_of) VALUES (?, ?, ?, ?, ?, ?, 'chat_ai', ?)",
-                arrayOf<Any?>(event.opId, event.targetId, event.opType, event.targetType, System.currentTimeMillis(), deviceId, event.undoOf))
-
-            db.setTransactionSuccessful()
-        } finally {
-            db.endTransaction()
+    override suspend fun getActiveReminders(): List<Reminder> = withContext(ioDispatcher) {
+        val list = mutableListOf<Reminder>()
+        dbHelper.readableDatabase.query("SELECT id, text, fire_at FROM reminder WHERE fire_at > ?", arrayOf(System.currentTimeMillis())).use {
+            while (it.moveToNext()) { list.add(Reminder(it.getString(0), it.getString(1), it.getLong(2))) }
         }
+        list
+    }
+
+    override suspend fun getPendingReminders(): List<Reminder> = withContext(ioDispatcher) {
+        val list = mutableListOf<Reminder>()
+        dbHelper.readableDatabase.query("SELECT id, text, fire_at FROM reminder").use {
+            while (it.moveToNext()) list.add(Reminder(it.getString(0), it.getString(1), it.getLong(2)))
+        }
+        list
+    }
+
+    override suspend fun saveProposal(proposal: Proposal) = withContext(ioDispatcher) {
+        dbHelper.writableDatabase.execSQL("INSERT OR REPLACE INTO proposal (id, kind, intent, options, status, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+            arrayOf<Any>(proposal.id, proposal.kind, proposal.intent.name, proposal.optionsIds.joinToString(","), proposal.status, System.currentTimeMillis()))
+    }
+
+    override suspend fun getProposal(id: String): Proposal? = withContext(ioDispatcher) {
+        dbHelper.readableDatabase.query("SELECT kind, intent, options, status FROM proposal WHERE id = ?", arrayOf(id)).use {
+            if (it.moveToFirst()) Proposal(id, it.getString(0), IntentType.valueOf(it.getString(1)), it.getString(2).split(","), it.getString(3)) else null
+        }
+    }
+
+    override suspend fun consumeProposal(id: String) = withContext(ioDispatcher) {
+        dbHelper.writableDatabase.execSQL("UPDATE proposal SET status = 'consumed' WHERE id = ?", arrayOf(id))
+    }
+
+    override suspend fun saveReminder(reminder: Reminder) = withContext(ioDispatcher) {
+        dbHelper.writableDatabase.execSQL("INSERT OR REPLACE INTO reminder (id, text, fire_at) VALUES (?, ?, ?)", arrayOf<Any>(reminder.id, reminder.text, reminder.fireAtMillis))
+    }
+
+    override suspend fun deleteReminder(id: String) = withContext(ioDispatcher) {
+        dbHelper.writableDatabase.execSQL("DELETE FROM reminder WHERE id = ?", arrayOf(id))
     }
 
     override suspend fun getDebugStats(): Map<String, String> = withContext(ioDispatcher) {
@@ -134,24 +148,65 @@ class AndroidStorage(private val dbHelper: SupportSQLiteOpenHelper) : Storage {
         stats
     }
 
-    override suspend fun saveProposal(proposal: Proposal) = withContext(ioDispatcher) {
-        dbHelper.writableDatabase.execSQL("INSERT OR REPLACE INTO proposal (id, kind, intent, options) VALUES (?, ?, ?, ?)",
-            arrayOf<Any?>(proposal.id, proposal.kind, proposal.intent.name, proposal.optionsIds.joinToString(",")))
-    }
-
-    override suspend fun saveReminder(reminder: Reminder) = withContext(ioDispatcher) {
-        dbHelper.writableDatabase.execSQL("INSERT OR REPLACE INTO reminder (id, text, fire_at) VALUES (?, ?, ?)", arrayOf<Any>(reminder.id, reminder.text, reminder.fireAtMillis))
-    }
-
-    override suspend fun getActiveReminders(): List<Reminder> = withContext(ioDispatcher) {
-        val list = mutableListOf<Reminder>()
-        dbHelper.readableDatabase.query("SELECT id, text, fire_at FROM reminder WHERE fire_at > ?", arrayOf(System.currentTimeMillis())).use {
-            while (it.moveToNext()) { list.add(Reminder(it.getString(0), it.getString(1), it.getLong(2))) }
+    override suspend fun getNode(id: String): Node? = withContext(ioDispatcher) {
+        dbHelper.readableDatabase.query("SELECT type, title, status, due_at, created_at, updated_at, closed_at FROM node WHERE id = ?", arrayOf(id)).use {
+            if (it.moveToFirst()) Node(id, it.getString(0), it.getString(1), it.getString(2),
+                if (it.isNull(3)) null else it.getLong(3), it.getLong(4), it.getLong(5),
+                if (it.isNull(6)) null else it.getLong(6)) else null
         }
-        list
     }
 
-    override suspend fun deleteReminder(id: String) = withContext(ioDispatcher) {
-        dbHelper.writableDatabase.execSQL("DELETE FROM reminder WHERE id = ?", arrayOf(id))
+    override suspend fun getEvent(opId: String): RawEvent? = withContext(ioDispatcher) {
+        dbHelper.readableDatabase.query("SELECT op_type, target_type, target_id, undo_of, before_json, after_json FROM raw_event WHERE op_id = ?", arrayOf(opId)).use {
+            if (it.moveToFirst()) RawEvent(opId, it.getString(0), it.getString(1), it.getString(2),
+                if(it.isNull(3)) null else it.getString(3),
+                if(it.isNull(4)) null else it.getString(4),
+                if(it.isNull(5)) null else it.getString(5)) else null
+        }
+    }
+
+    override suspend fun hasUndo(token: String): Boolean = withContext(ioDispatcher) {
+        dbHelper.readableDatabase.query("SELECT COUNT(*) FROM raw_event WHERE undo_of = ?", arrayOf(token)).use {
+            if (it.moveToFirst()) it.getInt(0) > 0 else false
+        }
+    }
+
+    override suspend fun createNodeAndCommit(node: Node, event: RawEvent, reminder: Reminder?) = withContext(ioDispatcher) {
+        val db = dbHelper.writableDatabase
+        db.beginTransaction()
+        try {
+            db.execSQL("INSERT INTO node (id, device_id, type, title, status, due_at, origin, hlc, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 'extracted', '', ?, ?)",
+                arrayOf<Any?>(node.id, deviceId, node.type, node.title, node.status, node.dueAt, node.createdAt, node.updatedAt))
+            reminder?.let { db.execSQL("INSERT INTO reminder (id, text, fire_at) VALUES (?, ?, ?)", arrayOf<Any>(it.id, it.text, it.fireAtMillis)) }
+            db.execSQL("INSERT INTO raw_event (op_id, target_id, op_type, target_type, ts_utc, device_id, actor, before_json, after_json) VALUES (?, ?, ?, ?, ?, ?, 'chat_ai', ?, ?)",
+                arrayOf<Any?>(event.opId, event.targetId, event.opType, event.targetType, System.currentTimeMillis(), deviceId, event.beforeJson, event.afterJson))
+            db.setTransactionSuccessful()
+        } finally { db.endTransaction() }
+    }
+
+    override suspend fun updateNodeAndCommit(node: Node, event: RawEvent, deleteReminderId: String?) = withContext(ioDispatcher) {
+        val db = dbHelper.writableDatabase
+        db.beginTransaction()
+        try {
+            db.execSQL("UPDATE node SET status = ?, closed_at = ?, updated_at = ? WHERE id = ?",
+                arrayOf<Any?>(node.status, node.closedAt, node.updatedAt, node.id))
+            deleteReminderId?.let { db.execSQL("DELETE FROM reminder WHERE id = ?", arrayOf(it)) }
+            db.execSQL("INSERT INTO raw_event (op_id, target_id, op_type, target_type, ts_utc, device_id, actor, before_json, after_json) VALUES (?, ?, ?, ?, ?, ?, 'chat_ai', ?, ?)",
+                arrayOf<Any?>(event.opId, event.targetId, event.opType, event.targetType, System.currentTimeMillis(), deviceId, event.beforeJson, event.afterJson))
+            db.setTransactionSuccessful()
+        } finally { db.endTransaction() }
+    }
+
+    override suspend fun undoChangeAndCommit(node: Node, event: RawEvent, restoreReminder: Reminder?) = withContext(ioDispatcher) {
+        val db = dbHelper.writableDatabase
+        db.beginTransaction()
+        try {
+            db.execSQL("UPDATE node SET status = ?, closed_at = ?, updated_at = ? WHERE id = ?",
+                arrayOf<Any?>(node.status, node.closedAt, node.updatedAt, node.id))
+            restoreReminder?.let { db.execSQL("INSERT OR REPLACE INTO reminder (id, text, fire_at) VALUES (?, ?, ?)", arrayOf<Any>(it.id, it.text, it.fireAtMillis)) }
+            db.execSQL("INSERT INTO raw_event (op_id, target_id, op_type, target_type, ts_utc, device_id, actor, undo_of, before_json, after_json) VALUES (?, ?, ?, ?, ?, ?, 'user', ?, ?, ?)",
+                arrayOf<Any?>(event.opId, event.targetId, event.opType, event.targetType, System.currentTimeMillis(), deviceId, event.undoOf, event.beforeJson, event.afterJson))
+            db.setTransactionSuccessful()
+        } finally { db.endTransaction() }
     }
 }

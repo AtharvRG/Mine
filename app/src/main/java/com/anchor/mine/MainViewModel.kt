@@ -12,12 +12,13 @@ import com.anchor.core.gateway.Gateway
 import com.anchor.core.provider.ProviderOrchestrator
 import com.anchor.core.provider.RateLimiter
 import com.anchor.core.resolver.Resolver
+import com.anchor.core.time.DateResolver
+import com.anchor.core.time.SystemClock
 import com.anchor.core.ui.ChatController
 import com.anchor.core.ui.UiAction
 import com.anchor.core.ui.UiState
 import com.anchor.mine.alarms.AndroidAlarmScheduler
 import com.anchor.mine.provider.AndroidHttpTransport
-import com.anchor.mine.storage.AndroidStorage
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -31,20 +32,24 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     init {
         viewModelScope.launch {
-            val app = application as MineApp
-            app.storage.collect { storage ->
-                if (storage != null) {
-                    val limiter = RateLimiter { System.currentTimeMillis() }
-                    val orchestrator = ProviderOrchestrator(limiter, AndroidHttpTransport())
-                    val gateway = Gateway(storage, Resolver())
+            try {
+                val app = application as MineApp
+                val storage = app.sharedStorage.await() // Can throw if keys/DB corrupt
+                val limiter = RateLimiter { System.currentTimeMillis() }
+                val orchestrator = ProviderOrchestrator(limiter, AndroidHttpTransport())
+                val clock = SystemClock()
+                val gateway = Gateway(storage, Resolver(), DateResolver(clock), clock)
 
-                    controller = ChatController(
-                        storage, orchestrator, ContextBuilder(storage),
-                        gateway, AndroidAlarmScheduler(application), viewModelScope
-                    )
+                controller = ChatController(
+                    storage, orchestrator, ContextBuilder(storage),
+                    gateway, AndroidAlarmScheduler(application),
+                    viewModelScope, kotlinx.coroutines.Dispatchers.Default, SystemClock()
+                )
 
-                    controller!!.state.collect { _state.value = it }
-                }
+                controller!!.state.collect { _state.value = it }
+            } catch (e: Exception) {
+                // UI will intercept this and display a fatal error instead of hanging/crashing.
+                _state.value = _state.value.copy(globalError = "Storage failed: ${e.message}")
             }
         }
     }
