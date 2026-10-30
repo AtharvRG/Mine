@@ -24,4 +24,4 @@ dependencyResolutionManagement {
 }
 rootProject.name = "Mine"
 include(":app", ":core")
-include(":core")
+// F2: Removed duplicate include(":core")

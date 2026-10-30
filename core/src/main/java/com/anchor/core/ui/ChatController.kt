@@ -167,24 +167,27 @@ class ChatController(
                                     "Committed. ${result.message}"
                                 }
                                 is ToolResult.Ambiguous -> {
-                                    // A6: End turn on Ambiguous so UI handles choice selection via Chips
                                     turnComplete = true
-                                    "Ambiguous. UI will ask user. ID: ${result.proposalId}"
+                                    "Ambiguous. UI will ask user. ID: ${result.proposalId}, Options: ${result.options.joinToString()}"
                                 }
-                                is ToolResult.NotFound -> "Not Found."
+                                is ToolResult.NotFound -> "Not Found. Ask user to clarify."
                                 is ToolResult.Data -> "Search Results:\n${result.text}"
                                 is ToolResult.Error -> "Error: ${result.reason}"
                             } + "\n"
                         }
                         
-                        // A15: Store exactly what the model replied, do not pollute it with [Done...] UI hacks.
-                        // The React UI will render the receipts natively from the operation log.
-                        val cleanText = envelope.reply.trim().ifBlank { "Acknowledged." }
+                        // A15 & A3: Store ONLY what the model said. No [Done] UI hacks.
+                        val cleanText = envelope.reply.trim().ifBlank { "Executed tools silently." }
                         updateLastMessage(botId, cleanText)
                         storage.insertRawMessage(botId, "assistant", cleanText)
                         
                         pack = pack + ChatMessage(botId, "assistant", cleanText)
-                        pack = pack + ChatMessage("sys_${UUID.randomUUID()}", "user", sysContext)
+                        
+                        // A11: Send tool results as a "user" role message to prevent provider rejection 
+                        // of mid-conversation "system" messages.
+                        if (sysContext.isNotBlank()) {
+                            pack = pack + ChatMessage("sys_${UUID.randomUUID()}", "user", "System feedback to AI: $sysContext")
+                        }
                         
                         // A11: Loop limit logic fixed
                         if (!turnComplete && loops == 4) {
