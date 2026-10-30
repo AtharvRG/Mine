@@ -46,6 +46,10 @@ interface Storage {
     suspend fun getProactiveState(): com.anchor.core.models.ProactiveState
     suspend fun saveProactiveState(state: com.anchor.core.models.ProactiveState)
 
+    suspend fun getReliabilityState(): com.anchor.core.models.ReliabilityState
+    suspend fun saveReliabilityState(state: com.anchor.core.models.ReliabilityState)
+    suspend fun recordReminderFire(fire: com.anchor.core.models.ReminderFire)
+
     // Purely Transactional Gateways
     suspend fun createNodeAndCommit(node: Node, event: RawEvent, reminder: Reminder?)
     suspend fun updateNodeAndCommit(node: Node, event: RawEvent, deleteReminderId: String?)

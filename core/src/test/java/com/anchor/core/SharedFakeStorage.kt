@@ -18,12 +18,17 @@ class SharedFakeStorage : Storage {
     var reminders = mutableListOf<Reminder>()
     var settings = mutableMapOf<String, String>()
     var proactiveState = ProactiveState()
+    var reliabilityState = com.anchor.core.models.ReliabilityState()
+    val reminderFires = mutableListOf<com.anchor.core.models.ReminderFire>()
 
     val loggedEvents = mutableListOf<RawEvent>()
     val savedProposals = mutableListOf<Proposal>()
 
     override suspend fun getProactiveState(): ProactiveState = proactiveState
     override suspend fun saveProactiveState(state: ProactiveState) { proactiveState = state }
+    override suspend fun getReliabilityState(): com.anchor.core.models.ReliabilityState = reliabilityState
+    override suspend fun saveReliabilityState(state: com.anchor.core.models.ReliabilityState) { reliabilityState = state }
+    override suspend fun recordReminderFire(fire: com.anchor.core.models.ReminderFire) { reminderFires.add(fire) }
 
     override suspend fun insertRawMessage(id: String, role: String, content: String) {
         messages.add(ChatMessage(id, role, content))

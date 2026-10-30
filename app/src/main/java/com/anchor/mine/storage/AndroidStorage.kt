@@ -309,4 +309,31 @@ class AndroidStorage(private val dbHelper: SupportSQLiteOpenHelper) : Storage {
             arrayOf<Any?>(state.openThreadMsgId, state.threadOpenedAt, state.backoffStep, state.lastSentAt, state.lastContactAt, state.pausedUntil, state.silentDays, state.sentToday, state.fuseTrippedAt, state.dayKey)
         )
     }
+
+    override suspend fun getReliabilityState(): ReliabilityState = withContext(ioDispatcher) {
+        dbHelper.readableDatabase.query("SELECT last_check_at, score, sweeper_heartbeat, p95_latency_ms FROM reliability_state WHERE id = 1").use {
+            if (it.moveToFirst()) {
+                ReliabilityState(
+                    lastCheckAt = if (it.isNull(0)) null else it.getLong(0),
+                    score = if (it.isNull(1)) null else it.getString(1),
+                    sweeperHeartbeat = if (it.isNull(2)) null else it.getLong(2),
+                    p95LatencyMs = if (it.isNull(3)) null else it.getInt(3)
+                )
+            } else ReliabilityState()
+        }
+    }
+
+    override suspend fun saveReliabilityState(state: ReliabilityState) = withContext(ioDispatcher) {
+        dbHelper.writableDatabase.execSQL(
+            "INSERT OR REPLACE INTO reliability_state (id, last_check_at, score, sweeper_heartbeat, p95_latency_ms) VALUES (1, ?, ?, ?, ?)",
+            arrayOf<Any?>(state.lastCheckAt, state.score, state.sweeperHeartbeat, state.p95LatencyMs)
+        )
+    }
+
+    override suspend fun recordReminderFire(fire: ReminderFire) = withContext(ioDispatcher) {
+        dbHelper.writableDatabase.execSQL(
+            "INSERT INTO reminder_fire (id, reminder_id, fired_at, scheduled_for, latency_ms, outcome) VALUES (?, ?, ?, ?, ?, ?)",
+            arrayOf<Any?>(fire.id, fire.reminderId, fire.firedAt, fire.scheduledFor, fire.latencyMs, fire.outcome)
+        )
+    }
 }

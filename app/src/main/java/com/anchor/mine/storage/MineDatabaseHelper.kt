@@ -9,8 +9,8 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.sqlite.db.SupportSQLiteOpenHelper
 import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
 
-// BUMPED to Version 7 for Nudge Engine and Check-in State
-class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(7) {
+// BUMPED to Version 8 for Reliability and Stats
+class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(8) {
 
     override fun onConfigure(db: SupportSQLiteDatabase) {
         super.onConfigure(db)
@@ -80,6 +80,12 @@ class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(7) {
         db.execSQL("CREATE TABLE nudge_pool (id TEXT PRIMARY KEY, trigger_type TEXT NOT NULL, subject_refs TEXT, score REAL NOT NULL, created_at INTEGER NOT NULL, expires_at INTEGER NOT NULL)")
         db.execSQL("CREATE TABLE nudge_hold (node_id TEXT NOT NULL, trigger_type TEXT NOT NULL, until_ts INTEGER NOT NULL, PRIMARY KEY (node_id, trigger_type))")
         db.execSQL("CREATE TABLE checkin_state (kind TEXT NOT NULL, day_key TEXT NOT NULL, status TEXT NOT NULL, msg_id TEXT, scheduled_for INTEGER, delivered_at INTEGER, PRIMARY KEY (kind, day_key))")
+        db.execSQL("CREATE TABLE signal_log (id TEXT PRIMARY KEY, ts_utc INTEGER NOT NULL, kind TEXT NOT NULL, subject TEXT, value REAL, attrs TEXT)")
+        db.execSQL("CREATE TABLE learned_pref (key TEXT NOT NULL, scope TEXT NOT NULL, value_json TEXT NOT NULL, samples INTEGER NOT NULL, confidence REAL NOT NULL, locked INTEGER NOT NULL DEFAULT 0, updated_at INTEGER NOT NULL, PRIMARY KEY (key, scope))")
+        db.execSQL("CREATE TABLE reliability_state (id INTEGER PRIMARY KEY CHECK (id = 1), last_check_at INTEGER, score TEXT, issues_json TEXT, sweeper_heartbeat INTEGER, last_force_stop_detected INTEGER, p95_latency_ms INTEGER)")
+        db.execSQL("CREATE TABLE diag_log (ts INTEGER NOT NULL, level TEXT NOT NULL, tag TEXT NOT NULL, msg TEXT NOT NULL)")
+        db.execSQL("CREATE TABLE reminder_fire (id TEXT PRIMARY KEY, reminder_id TEXT NOT NULL, fired_at INTEGER NOT NULL, scheduled_for INTEGER NOT NULL, latency_ms INTEGER NOT NULL, outcome TEXT NOT NULL, delivery TEXT, reason_json TEXT, opener_source TEXT)")
+        db.execSQL("CREATE TABLE alarm_registry (reminder_id TEXT PRIMARY KEY, request_code INTEGER NOT NULL, api TEXT NOT NULL, registered_for INTEGER NOT NULL, registered_at INTEGER NOT NULL)")
 
         db.execSQL("CREATE INDEX idx_node_status_due ON node(status, due_at)")
         db.execSQL("CREATE INDEX idx_raw_event_target ON raw_event(target_type, target_id)")
@@ -138,6 +144,14 @@ class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(7) {
             db.execSQL("CREATE TABLE IF NOT EXISTS nudge_pool (id TEXT PRIMARY KEY, trigger_type TEXT NOT NULL, subject_refs TEXT, score REAL NOT NULL, created_at INTEGER NOT NULL, expires_at INTEGER NOT NULL)")
             db.execSQL("CREATE TABLE IF NOT EXISTS nudge_hold (node_id TEXT NOT NULL, trigger_type TEXT NOT NULL, until_ts INTEGER NOT NULL, PRIMARY KEY (node_id, trigger_type))")
             db.execSQL("CREATE TABLE IF NOT EXISTS checkin_state (kind TEXT NOT NULL, day_key TEXT NOT NULL, status TEXT NOT NULL, msg_id TEXT, scheduled_for INTEGER, delivered_at INTEGER, PRIMARY KEY (kind, day_key))")
+        }
+        if (oldVersion < 8) {
+            db.execSQL("CREATE TABLE IF NOT EXISTS signal_log (id TEXT PRIMARY KEY, ts_utc INTEGER NOT NULL, kind TEXT NOT NULL, subject TEXT, value REAL, attrs TEXT)")
+            db.execSQL("CREATE TABLE IF NOT EXISTS learned_pref (key TEXT NOT NULL, scope TEXT NOT NULL, value_json TEXT NOT NULL, samples INTEGER NOT NULL, confidence REAL NOT NULL, locked INTEGER NOT NULL DEFAULT 0, updated_at INTEGER NOT NULL, PRIMARY KEY (key, scope))")
+            db.execSQL("CREATE TABLE IF NOT EXISTS reliability_state (id INTEGER PRIMARY KEY CHECK (id = 1), last_check_at INTEGER, score TEXT, issues_json TEXT, sweeper_heartbeat INTEGER, last_force_stop_detected INTEGER, p95_latency_ms INTEGER)")
+            db.execSQL("CREATE TABLE IF NOT EXISTS diag_log (ts INTEGER NOT NULL, level TEXT NOT NULL, tag TEXT NOT NULL, msg TEXT NOT NULL)")
+            db.execSQL("CREATE TABLE IF NOT EXISTS reminder_fire (id TEXT PRIMARY KEY, reminder_id TEXT NOT NULL, fired_at INTEGER NOT NULL, scheduled_for INTEGER NOT NULL, latency_ms INTEGER NOT NULL, outcome TEXT NOT NULL, delivery TEXT, reason_json TEXT, opener_source TEXT)")
+            db.execSQL("CREATE TABLE IF NOT EXISTS alarm_registry (reminder_id TEXT PRIMARY KEY, request_code INTEGER NOT NULL, api TEXT NOT NULL, registered_for INTEGER NOT NULL, registered_at INTEGER NOT NULL)")
         }
         
         // Always recreate triggers safely on any upgrade
