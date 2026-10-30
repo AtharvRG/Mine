@@ -36,10 +36,33 @@ class AndroidStorage(private val dbHelper: SupportSQLiteOpenHelper) : Storage {
 
     override suspend fun insertRawMessage(id: String, role: String, content: String) = withContext(ioDispatcher) {
         val ts = System.currentTimeMillis()
-        val tzOffset = TimeZone.getDefault().getOffset(ts) / 60000
+        
+        var ruleStartMinute = 240 // Default 4 AM
+        var tzId = TimeZone.getDefault().id
+        
+        // BP 50: Apply the day_rule in force at the message timestamp
+        dbHelper.readableDatabase.query("SELECT start_minute, tz_id FROM day_rule WHERE effective_from <= ? ORDER BY effective_from DESC LIMIT 1", arrayOf(ts)).use {
+            if (it.moveToFirst()) {
+                ruleStartMinute = it.getInt(0)
+                tzId = it.getString(1)
+            }
+        }
+
+        val tz = TimeZone.getTimeZone(tzId)
+        val tzOffset = tz.getOffset(ts) / 60000
         val localTs = ts + (tzOffset * 60000L)
-        val rolloverAdjusted = localTs - (4 * 3600 * 1000L) // 4 AM rollover
-        val dayKey = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply { timeZone = TimeZone.getTimeZone("UTC") }.format(Date(rolloverAdjusted))
+        val rolloverAdjusted = localTs - (ruleStartMinute * 60000L)
+        var dayKey = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply { timeZone = TimeZone.getTimeZone("UTC") }.format(Date(rolloverAdjusted))
+
+        // BP 11: day_key is monotonic (never earlier than the previous message's day_key)
+        dbHelper.readableDatabase.query("SELECT day_key FROM raw_message ORDER BY ts_utc DESC LIMIT 1").use {
+            if (it.moveToFirst()) {
+                val lastDayKey = it.getString(0)
+                if (dayKey < lastDayKey) {
+                    dayKey = lastDayKey
+                }
+            }
+        }
 
         dbHelper.writableDatabase.execSQL(
             "INSERT INTO raw_message (id, device_id, ts_utc, tz_offset_min, day_key, role, content) VALUES (?, ?, ?, ?, ?, ?, ?)",

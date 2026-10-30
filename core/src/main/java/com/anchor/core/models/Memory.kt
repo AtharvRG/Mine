@@ -52,3 +52,13 @@ data class Proposal(
     val optionsIds: List<String>,
     val status: String = "open" // Item 1e
 )
+
+@Serializable
+data class DayRule(
+    val id: String,
+    val effectiveFrom: Long,
+    val startMinute: Int,
+    val endMinute: Int,
+    val tzId: String,
+    val createdAt: Long
+)

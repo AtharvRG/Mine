@@ -146,4 +146,24 @@ class AndroidStorageTest {
         } catch (_: Exception) { threw = true }
         assertTrue("Double redaction must abort", threw)
     }
+
+    @Test
+    fun testMonotonicDayKey_PreventsTimeTravel() = kotlinx.coroutines.runBlocking {
+        val db = dbHelper.writableDatabase
+        
+        // 1. Manually insert a message with a "future" day_key (simulating clock was far ahead)
+        db.execSQL(
+            "INSERT INTO raw_message (id, device_id, ts_utc, tz_offset_min, day_key, role, content) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            arrayOf<Any>("msg_future", "test_dev", System.currentTimeMillis() - 10000, 0, "2099-12-31", "user", "Future")
+        )
+        
+        // 2. Insert a normal message via AndroidStorage (clock is now back to reality)
+        storage.insertRawMessage("msg_present", "user", "Present")
+        
+        // 3. Verify the new message was forced to inherit the future day_key to maintain monotonicity
+        dbHelper.readableDatabase.query("SELECT day_key FROM raw_message WHERE id = 'msg_present'").use {
+            org.junit.Assert.assertTrue(it.moveToFirst())
+            org.junit.Assert.assertEquals("2099-12-31", it.getString(0))
+        }
+    }
 }

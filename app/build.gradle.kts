@@ -56,6 +56,9 @@ dependencies {
     implementation("net.zetetic:sqlcipher-android:4.19.1")
     implementation("androidx.sqlite:sqlite:2.4.0")
 
+    // Bouncy Castle for Argon2id Export Encryption
+    implementation("org.bouncycastle:bcprov-jdk18on:1.78.1")
+
     // Testing
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("junit:junit:4.13.2") // THIS FIXES THE JUNIT ERRORS

@@ -9,8 +9,8 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.sqlite.db.SupportSQLiteOpenHelper
 import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
 
-// BUMPED to Version 4 for FTS5 and Strict Redaction Triggers
-class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(4) {
+// BUMPED to Version 5 for Day Boundaries and Export Log
+class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(5) {
 
     override fun onConfigure(db: SupportSQLiteDatabase) {
         super.onConfigure(db)
@@ -67,19 +67,24 @@ class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(4) {
               msg_ids TEXT NOT NULL, text TEXT NOT NULL, extractor_version TEXT NOT NULL
             )
         """)
-
+        
         db.execSQL("CREATE TABLE reminder (id TEXT PRIMARY KEY, text TEXT NOT NULL, fire_at INTEGER NOT NULL)")
         db.execSQL("CREATE TABLE proposal (id TEXT PRIMARY KEY, kind TEXT NOT NULL, intent TEXT NOT NULL, options TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'open', created_at INTEGER NOT NULL)")
+        
+        // V5 Tables
+        db.execSQL("CREATE TABLE day_rule (id TEXT PRIMARY KEY, effective_from INTEGER NOT NULL, start_minute INTEGER NOT NULL, end_minute INTEGER NOT NULL, tz_id TEXT NOT NULL, created_at INTEGER NOT NULL)")
+        db.execSQL("CREATE TABLE day_block (day_key TEXT NOT NULL, idx INTEGER NOT NULL, start_msg_id TEXT NOT NULL, start_ts INTEGER NOT NULL, end_ts INTEGER NOT NULL, msg_count INTEGER NOT NULL, part_of_day TEXT, PRIMARY KEY (day_key, idx))")
+        db.execSQL("CREATE TABLE export_log (id TEXT PRIMARY KEY, ts INTEGER NOT NULL, kind TEXT NOT NULL, options_json TEXT, counts_json TEXT, bytes INTEGER, verified INTEGER, note TEXT)")
 
         db.execSQL("CREATE INDEX idx_node_status_due ON node(status, due_at)")
         db.execSQL("CREATE INDEX idx_raw_event_target ON raw_event(target_type, target_id)")
         db.execSQL("CREATE INDEX idx_raw_message_ts ON raw_message(ts_utc)")
-
+        
         // FTS5 Tables
         db.execSQL("CREATE VIRTUAL TABLE node_fts USING fts5(title, body, content='node', content_rowid='rowid')")
         db.execSQL("CREATE VIRTUAL TABLE soul_fts USING fts5(statement, content='soul_fact', content_rowid='rowid')")
         db.execSQL("CREATE VIRTUAL TABLE msg_chunk_fts USING fts5(text, content='msg_chunk', content_rowid='rowid')")
-
+        
         createTriggers(db)
     }
 
@@ -92,14 +97,11 @@ class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(4) {
             db.execSQL("CREATE INDEX IF NOT EXISTS idx_raw_message_ts ON raw_message(ts_utc)")
         }
         if (oldVersion < 3) {
-            // Check if column exists before adding to prevent crashes if partially applied
             val cursor = db.query("PRAGMA table_info(proposal)")
             var hasStatus = false
             while (cursor.moveToNext()) { if (cursor.getString(1) == "status") hasStatus = true }
             cursor.close()
-            if (!hasStatus) {
-                db.execSQL("ALTER TABLE proposal ADD COLUMN status TEXT NOT NULL DEFAULT 'open'")
-            }
+            if (!hasStatus) db.execSQL("ALTER TABLE proposal ADD COLUMN status TEXT NOT NULL DEFAULT 'open'")
         }
         if (oldVersion < 4) {
             db.execSQL("""
@@ -121,13 +123,17 @@ class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(4) {
             db.execSQL("CREATE VIRTUAL TABLE IF NOT EXISTS node_fts USING fts5(title, body, content='node', content_rowid='rowid')")
             db.execSQL("CREATE VIRTUAL TABLE IF NOT EXISTS soul_fts USING fts5(statement, content='soul_fact', content_rowid='rowid')")
             db.execSQL("CREATE VIRTUAL TABLE IF NOT EXISTS msg_chunk_fts USING fts5(text, content='msg_chunk', content_rowid='rowid')")
-
-            // Recreate triggers to enforce exact strictness
+            
             db.execSQL("DROP TRIGGER IF EXISTS trg_raw_msg_no_update")
             db.execSQL("DROP TRIGGER IF EXISTS trg_raw_msg_no_delete")
             db.execSQL("DROP TRIGGER IF EXISTS trg_raw_evt_no_update")
             db.execSQL("DROP TRIGGER IF EXISTS trg_raw_evt_no_delete")
             createTriggers(db)
+        }
+        if (oldVersion < 5) {
+            db.execSQL("CREATE TABLE IF NOT EXISTS day_rule (id TEXT PRIMARY KEY, effective_from INTEGER NOT NULL, start_minute INTEGER NOT NULL, end_minute INTEGER NOT NULL, tz_id TEXT NOT NULL, created_at INTEGER NOT NULL)")
+            db.execSQL("CREATE TABLE IF NOT EXISTS day_block (day_key TEXT NOT NULL, idx INTEGER NOT NULL, start_msg_id TEXT NOT NULL, start_ts INTEGER NOT NULL, end_ts INTEGER NOT NULL, msg_count INTEGER NOT NULL, part_of_day TEXT, PRIMARY KEY (day_key, idx))")
+            db.execSQL("CREATE TABLE IF NOT EXISTS export_log (id TEXT PRIMARY KEY, ts INTEGER NOT NULL, kind TEXT NOT NULL, options_json TEXT, counts_json TEXT, bytes INTEGER, verified INTEGER, note TEXT)")
         }
     }
 
