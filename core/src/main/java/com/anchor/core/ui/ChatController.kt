@@ -266,8 +266,32 @@ CRITICAL: Do NOT say "Done" or "Saved" unless you issue a tool call.
         _state.value = _state.value.copy(chatMessages = msgs)
     }
 
+    private suspend fun reconcileAlarms() {
+        val pending = storage.getPendingReminders()
+        val registered = storage.getRegisteredAlarms()
+        
+        val pendingIds = pending.map { it.id }.toSet()
+        val registeredIds = registered.toSet()
+        
+        val toCancel = registeredIds - pendingIds
+        val toSchedule = pendingIds - registeredIds
+        
+        toCancel.forEach { id ->
+            alarmScheduler.cancel(id)
+            storage.deleteRegisteredAlarm(id)
+        }
+        
+        toSchedule.forEach { id ->
+            val r = pending.find { it.id == id }
+            if (r != null) {
+                alarmScheduler.schedule(r)
+                storage.saveRegisteredAlarm(id, id.hashCode())
+            }
+        }
+    }
+
     private suspend fun refreshUI() {
-        storage.getActiveReminders().forEach { alarmScheduler.schedule(it) }
+        reconcileAlarms()
         _state.update { it.copy(
             chatMessages = storage.getRecentMessages(30), 
             activeReminders = storage.getActiveReminders(),

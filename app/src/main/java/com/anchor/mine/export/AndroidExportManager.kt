@@ -30,9 +30,9 @@ class AndroidExportManager(
 ) : ExportManager {
 
     override suspend fun exportTo(file: File, passphrase: String, includeApiKeys: Boolean, includeEmbeddings: Boolean): ExportStats = withContext(Dispatchers.IO) {
-        val rand = SecureRandom()
+        if (passphrase.length < 8) throw IllegalArgumentException("Passphrase too weak (minimum 8 characters)")
         
-        // 1. Generate Parameters & Keys
+        val rand = SecureRandom()
         val salt = ByteArray(16).apply { rand.nextBytes(this) }
         val wrapNonce = ByteArray(12).apply { rand.nextBytes(this) }
         val noncePrefix = ByteArray(8).apply { rand.nextBytes(this) }
@@ -41,20 +41,19 @@ class AndroidExportManager(
         val kek = generateKek(passphrase, salt)
         val wrappedDek = wrapKey(dek, kek, wrapNonce)
         
-        // 2. Build Header
         val headerBuf = ByteBuffer.allocate(106)
         headerBuf.put("MNEX".toByteArray())
-        headerBuf.putShort(1) // version
-        val flags = (1) // bit0 = gzip
+        headerBuf.putShort(1) 
+        val flags = 1 // bit0 = gzip. includeEmbeddings ignored in v1 as vector DB isn't serialized yet.
         headerBuf.putShort(flags.toShort())
-        headerBuf.put(1) // kdf_id = 1 (argon2id)
+        headerBuf.put(1) // kdf_id = 1
         headerBuf.putInt(65536) // memory
         headerBuf.putInt(3) // iterations
         headerBuf.put(1) // parallelism
         headerBuf.put(salt)
         headerBuf.put(wrapNonce)
         headerBuf.put(wrappedDek)
-        headerBuf.putInt(1024 * 1024) // 1 MiB chunk size
+        headerBuf.putInt(1024 * 1024) 
         headerBuf.put(noncePrefix)
         
         val headerBytes = headerBuf.array()
@@ -83,16 +82,15 @@ class AndroidExportManager(
                             }
                             writer.write(manifest.toString() + "\n")
                             
-                            // C3: Export ALL derived/raw user data, including settings, rules, and reminders
-                            messages = exportTable(db, "raw_message", writer)
-                            events = exportTable(db, "raw_event", writer)
-                            nodes = exportTable(db, "node", writer)
-                            exportTable(db, "edge", writer)
-                            exportTable(db, "soul_fact", writer)
-                            exportTable(db, "app_meta", writer)
-                            exportTable(db, "day_rule", writer)
-                            exportTable(db, "reminder", writer)
-                            exportTable(db, "proposal", writer)
+                            messages = exportTable(db, "raw_message", writer, includeApiKeys)
+                            events = exportTable(db, "raw_event", writer, includeApiKeys)
+                            nodes = exportTable(db, "node", writer, includeApiKeys)
+                            exportTable(db, "edge", writer, includeApiKeys)
+                            exportTable(db, "soul_fact", writer, includeApiKeys)
+                            exportTable(db, "app_meta", writer, includeApiKeys)
+                            exportTable(db, "day_rule", writer, includeApiKeys)
+                            exportTable(db, "reminder", writer, includeApiKeys)
+                            exportTable(db, "proposal", writer, includeApiKeys)
                             
                             writer.flush()
                             val footer = buildJsonObject {
@@ -107,7 +105,6 @@ class AndroidExportManager(
                 }
             }
             
-            // 3. Verify before finalizing
             val stats = verifyOrImportInternal(tmpFile, passphrase, isImport = false)
             if (!stats.verified) throw SecurityException("Verification of written export failed")
             
@@ -146,47 +143,78 @@ class AndroidExportManager(
             val salt = ByteArray(16).apply { buf.get(this) }
             val wrapNonce = ByteArray(12).apply { buf.get(this) }
             val wrappedDek = ByteArray(48).apply { buf.get(this) }
-            buf.int // chunkSize
+            buf.int 
             val noncePrefix = ByteArray(8).apply { buf.get(this) }
             
             val headerHash = MessageDigest.getInstance("SHA-256").digest(headerBytes)
             
             val kek = generateKek(passphrase, salt, mem, iters, par)
-            val dek = unwrapKey(wrappedDek, kek, wrapNonce) // Throws if wrong passphrase
+            val dek = unwrapKey(wrappedDek, kek, wrapNonce) 
             
             var msgCount = 0
             var nodeCount = 0
             var eventCount = 0
             
-            ChunkedAesInputStream(fis, dek, noncePrefix, headerHash).use { chunkedIn ->
-                GZIPInputStream(chunkedIn).use { gzipIn ->
-                    BufferedReader(InputStreamReader(gzipIn, Charsets.UTF_8)).use { reader ->
-                        var line: String?
-                        while (reader.readLine().also { line = it } != null) {
-                            if (line!!.isBlank()) continue
-                            val obj = Json.parseToJsonElement(line!!).jsonObject
-                            when (obj["t"]?.jsonPrimitive?.content) {
-                                "raw_message" -> msgCount++
-                                "node" -> nodeCount++
-                                "raw_event" -> eventCount++
-                            }
-                        }
+            val db = if (isImport) dbHelper.writableDatabase else null
+            
+            try {
+                if (isImport) {
+                    db?.beginTransaction()
+                    listOf("raw_message", "raw_event", "node", "edge", "soul_fact", "app_meta", "day_rule", "reminder", "proposal").forEach {
+                        db?.execSQL("DELETE FROM $it")
                     }
                 }
                 
-                // BP 15: Truncation check
-                if (!chunkedIn.isFinalSeen) throw SecurityException("Truncated or tampered file: missing final flag")
+                ChunkedAesInputStream(fis, dek, noncePrefix, headerHash).use { chunkedIn ->
+                    GZIPInputStream(chunkedIn).use { gzipIn ->
+                        BufferedReader(InputStreamReader(gzipIn, Charsets.UTF_8)).use { reader ->
+                            var line: String?
+                            while (reader.readLine().also { line = it } != null) {
+                                if (line!!.isBlank()) continue
+                                val obj = Json.parseToJsonElement(line!!).jsonObject
+                                val type = obj["t"]?.jsonPrimitive?.content
+                                val data = obj["d"]?.jsonObject
+                                
+                                when (type) {
+                                    "raw_message" -> msgCount++
+                                    "node" -> nodeCount++
+                                    "raw_event" -> eventCount++
+                                }
+                                
+                                if (isImport && type != null && data != null && type != "manifest" && type != "footer") {
+                                    val cols = data.keys.joinToString(",") { "\"$it\"" }
+                                    val placeholders = data.keys.joinToString(",") { "?" }
+                                    val vals = data.values.map { 
+                                        if (it is JsonNull) null else it.jsonPrimitive.content 
+                                    }.toTypedArray()
+                                    db?.execSQL("INSERT INTO $type ($cols) VALUES ($placeholders)", vals)
+                                }
+                            }
+                        }
+                    }
+                    if (!chunkedIn.isFinalSeen) throw SecurityException("Truncated or tampered file: missing final flag")
+                }
+                
+                if (isImport) db?.setTransactionSuccessful()
+            } finally {
+                if (isImport) db?.endTransaction()
             }
             
             return ExportStats(msgCount, nodeCount, eventCount, verified = true)
         }
     }
 
-    private fun exportTable(db: SupportSQLiteDatabase, table: String, writer: Writer): Int {
+    private fun exportTable(db: SupportSQLiteDatabase, table: String, writer: Writer, includeApiKeys: Boolean): Int {
         var count = 0
         db.query("SELECT * FROM $table").use { cursor ->
             val cols = cursor.columnNames
             while (cursor.moveToNext()) {
+                // C3: Filter API keys if requested
+                if (table == "app_meta" && !includeApiKeys) {
+                    val key = cursor.getString(cursor.getColumnIndexOrThrow("key"))
+                    if (key == "ep" || key == "key" || key == "mod") continue
+                }
+                
                 val map = mutableMapOf<String, JsonElement>()
                 for (i in cols.indices) {
                     if (!cursor.isNull(i)) {
@@ -229,7 +257,7 @@ class AndroidExportManager(
     private fun unwrapKey(wrapped: ByteArray, kek: ByteArray, nonce: ByteArray): ByteArray {
         val cipher = Cipher.getInstance("AES/GCM/NoPadding")
         cipher.init(Cipher.DECRYPT_MODE, SecretKeySpec(kek, "AES"), GCMParameterSpec(128, nonce))
-        return cipher.doFinal(wrapped) // Throws AEADBadTagException on wrong passphrase
+        return cipher.doFinal(wrapped) 
     }
 }
 
@@ -295,11 +323,19 @@ class ChunkedAesInputStream(
     }
 
     override fun read(b: ByteArray, off: Int, len: Int): Int {
-        if (pos >= buffer.size && !loadNextChunk()) return -1
-        val toRead = minOf(len, buffer.size - pos)
-        System.arraycopy(buffer, pos, b, off, toRead)
-        pos += toRead
-        return toRead
+        // C4: Loop until data or EOF, handling empty decrypted chunks if they occur
+        var totalRead = 0
+        while (totalRead < len) {
+            if (pos >= buffer.size) {
+                if (!loadNextChunk()) break
+                if (buffer.isEmpty()) continue // Skip empty chunks
+            }
+            val toRead = minOf(len - totalRead, buffer.size - pos)
+            System.arraycopy(buffer, pos, b, off + totalRead, toRead)
+            pos += toRead
+            totalRead += toRead
+        }
+        return if (totalRead == 0 && isFinalSeen) -1 else totalRead
     }
 
     private fun loadNextChunk(): Boolean {
@@ -323,8 +359,6 @@ class ChunkedAesInputStream(
             r += c
         }
 
-        // BP 15: "the final chunk carries the final flag, so truncation is detected"
-        // Try decrypting as NOT final first.
         try {
             buffer = decrypt(cipherBuf, false)
         } catch (e: AEADBadTagException) {

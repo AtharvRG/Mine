@@ -60,4 +60,8 @@ interface Storage {
     suspend fun undoChangeAndCommit(node: Node, event: RawEvent, restoreReminder: Reminder?)
     suspend fun createReminderAndCommit(reminder: Reminder, event: RawEvent)
     suspend fun deleteReminderAndCommit(reminderId: String, event: RawEvent)
+
+    suspend fun getRegisteredAlarms(): List<String>
+    suspend fun saveRegisteredAlarm(reminderId: String, requestCode: Int)
+    suspend fun deleteRegisteredAlarm(reminderId: String)
 }

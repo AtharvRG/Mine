@@ -144,4 +144,10 @@ class SharedFakeStorage : Storage {
         }
         return results.take(limit)
     }
+
+    private val registeredAlarms = mutableSetOf<String>()
+    
+    override suspend fun getRegisteredAlarms(): List<String> = registeredAlarms.toList()
+    override suspend fun saveRegisteredAlarm(reminderId: String, requestCode: Int) { registeredAlarms.add(reminderId) }
+    override suspend fun deleteRegisteredAlarm(reminderId: String) { registeredAlarms.remove(reminderId) }
 }

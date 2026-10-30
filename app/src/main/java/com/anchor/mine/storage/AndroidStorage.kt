@@ -382,4 +382,25 @@ class AndroidStorage(private val dbHelper: SupportSQLiteOpenHelper) : Storage {
             arrayOf<Any?>(fire.id, fire.reminderId, fire.firedAt, fire.scheduledFor, fire.latencyMs, fire.outcome)
         )
     }
+
+    override suspend fun getRegisteredAlarms(): List<String> = withContext(ioDispatcher) {
+        val list = mutableListOf<String>()
+        dbHelper.readableDatabase.query("SELECT reminder_id FROM alarm_registry").use {
+            while (it.moveToNext()) {
+                list.add(it.getString(0))
+            }
+        }
+        list
+    }
+
+    override suspend fun saveRegisteredAlarm(reminderId: String, requestCode: Int) = withContext(ioDispatcher) {
+        dbHelper.writableDatabase.execSQL(
+            "INSERT OR REPLACE INTO alarm_registry (reminder_id, request_code, api, registered_for, registered_at) VALUES (?, ?, 'alarm_clock', 0, ?)",
+            arrayOf<Any>(reminderId, requestCode, System.currentTimeMillis())
+        )
+    }
+
+    override suspend fun deleteRegisteredAlarm(reminderId: String) = withContext(ioDispatcher) {
+        dbHelper.writableDatabase.execSQL("DELETE FROM alarm_registry WHERE reminder_id = ?", arrayOf(reminderId))
+    }
 }
