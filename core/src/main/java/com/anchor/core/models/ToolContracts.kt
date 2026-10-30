@@ -9,6 +9,7 @@ sealed interface ToolResult {
     data class Ambiguous(val proposalId: String, val message: String, val options: List<String>) : ToolResult
     data class NotFound(val hint: String) : ToolResult
     data class Error(val reason: String) : ToolResult
+    data class Data(val text: String) : ToolResult
 }
 
 data class RawEvent(

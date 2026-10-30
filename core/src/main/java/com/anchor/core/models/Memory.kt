@@ -62,3 +62,23 @@ data class DayRule(
     val tzId: String,
     val createdAt: Long
 )
+
+@Serializable
+data class SoulFact(
+    val id: String,
+    val category: String,
+    val statement: String,
+    val confidence: Double,
+    val source: String,
+    val origin: String,
+    val status: String,
+    val createdAt: Long
+)
+
+@Serializable
+data class SearchResult(
+    val id: String,
+    val kind: String,
+    val title: String,
+    val details: String
+)

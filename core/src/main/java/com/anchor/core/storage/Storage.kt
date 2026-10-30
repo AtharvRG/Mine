@@ -9,6 +9,8 @@ import com.anchor.core.models.Node
 import com.anchor.core.models.Proposal
 import com.anchor.core.models.RawEvent
 import com.anchor.core.models.Reminder
+import com.anchor.core.models.SearchResult
+import com.anchor.core.models.SoulFact
 import kotlinx.coroutines.CoroutineDispatcher
 
 interface Storage {
@@ -33,6 +35,9 @@ interface Storage {
     suspend fun saveReminder(reminder: Reminder)
     suspend fun deleteReminder(id: String)
     suspend fun getDebugStats(): Map<String, String>
+
+    suspend fun saveSoulFact(fact: SoulFact)
+    suspend fun searchMemoryFts(query: String, limit: Int): List<SearchResult>
 
     suspend fun getNode(id: String): Node?
     suspend fun getEvent(opId: String): RawEvent?

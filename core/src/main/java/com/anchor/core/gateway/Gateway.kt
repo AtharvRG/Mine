@@ -27,6 +27,22 @@ class Gateway(
         if (!executedCalls.add(callHash)) return ToolResult.Error("Duplicate tool call ignored")
 
         return when (call.tool) {
+            "search_memory" -> {
+                val query = args["query"] ?: ""
+                val limit = args["limit"]?.toIntOrNull() ?: 6
+                val results = storage.searchMemoryFts(query, limit)
+                val text = if (results.isEmpty()) "No results found." else results.joinToString("\n") { "${it.id} | ${it.kind} | ${it.title} | ${it.details}" }
+                ToolResult.Data(text)
+            }
+            "soul_propose" -> {
+                val statement = args["statement"] ?: return ToolResult.Error("Missing statement")
+                val category = args["category"] ?: "other"
+                val confidence = args["confidence"]?.toDoubleOrNull() ?: 0.7
+                val sId = "s_${UUID.randomUUID().toString().take(8)}"
+                val fact = SoulFact(sId, category, statement, confidence, "chat_ai", "extracted", "proposed", clock.now())
+                storage.saveSoulFact(fact)
+                ToolResult.Committed("CREATE", sId, "Proposed to Soul: $statement", "u_${UUID.randomUUID().toString().take(6)}")
+            }
             "undo" -> handleUndo(args["token"] ?: "")
             "confirm_change" -> handleConfirmChange(args["proposal"] ?: "", args["choice"] ?: "")
             "schedule_reminder" -> handleScheduleReminder(args["target_ref"] ?: "", args["when_text"] ?: "")

@@ -163,4 +163,29 @@ class GatewayTest {
         assertNotNull("With am/pm should parse", resolver.parse("at 5pm"))
         assertNotNull("With am/pm should parse", resolver.parse("tomorrow at 5am"))
     }
+
+    @Test
+    fun testGateway_SearchMemory_And_SoulPropose() = kotlinx.coroutines.runBlocking {
+        val fakeStorage = com.anchor.core.SharedFakeStorage().apply {
+            activeNodes = mutableListOf(com.anchor.core.models.Node("n1", "task", "Buy apples", "active"))
+            soulFacts = mutableListOf(com.anchor.core.models.SoulFact("s1", "diet", "Hates bananas", 0.9, "chat", "extracted", "active", 100))
+        }
+        val gateway = Gateway(fakeStorage, com.anchor.core.resolver.Resolver(), com.anchor.core.time.DateResolver(com.anchor.core.time.SystemClock()), com.anchor.core.time.SystemClock())
+
+        // 1. Search Memory
+        val searchCall = com.anchor.core.gateway.ToolCall("search_memory", mapOf("query" to "apples"))
+        val searchResult = gateway.executeTool(searchCall)
+        
+        org.junit.Assert.assertTrue(searchResult is com.anchor.core.models.ToolResult.Data)
+        val dataResult = searchResult as com.anchor.core.models.ToolResult.Data
+        org.junit.Assert.assertTrue(dataResult.text.contains("Buy apples"))
+
+        // 2. Soul Propose
+        val proposeCall = com.anchor.core.gateway.ToolCall("soul_propose", mapOf("statement" to "Likes oranges", "category" to "diet"))
+        val proposeResult = gateway.executeTool(proposeCall)
+        
+        org.junit.Assert.assertTrue(proposeResult is com.anchor.core.models.ToolResult.Committed)
+        org.junit.Assert.assertEquals(2, fakeStorage.soulFacts.size)
+        org.junit.Assert.assertEquals("Likes oranges", fakeStorage.soulFacts[1].statement)
+    }
 }

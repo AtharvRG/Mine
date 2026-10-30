@@ -152,6 +152,10 @@ class ChatController(
                                     humanResult += "\n[Done: ${result.message}] (Undo: ${result.undoToken})"
                                     "Committed. ${result.message}"
                                 }
+                                is ToolResult.Data -> {
+                                    humanResult += "\n[Searched memory]"
+                                    "Search Results:\n${result.text}"
+                                }
                                 is ToolResult.Ambiguous -> {
                                     humanResult += "\n[Clarify: ${result.message}]"
                                     "Ambiguous. Ask the user, then call confirm_change. ID: ${result.proposalId}, Options: ${result.options.joinToString()}"
@@ -219,6 +223,8 @@ Tools:
 - schedule_reminder (target_ref: node id, when_text: time).
 - confirm_change (proposal: proposal id, choice: option id). Use when Ambiguous.
 - undo (token: u_123456).
+- search_memory (query: string, limit: int).
+- soul_propose (statement: string, category: string). Use when you notice facts, constraints, or preferences about the user.
 
 Examples:
 CREATE: {"tool":"propose_change","args":{"intent":"CREATE", "title":"Buy milk", "due_text": "tomorrow at 4pm"}}
@@ -226,6 +232,7 @@ CANCEL: {"tool":"propose_change","args":{"intent":"CANCEL", "hint":"dinner"}}
 COMPLETE: {"tool":"propose_change","args":{"intent":"COMPLETE", "hint":"report"}}
 UNDO: {"tool":"undo","args":{"token":"u_123456"}}
 CONFIRM: {"tool":"confirm_change","args":{"proposal":"p_123456","choice":"n_abc"}}
+SOUL: {"tool":"soul_propose","args":{"statement":"Is diabetic","category":"health"}}
 
 CRITICAL: The app generates save confirmations. Do NOT say "Done" or "Saved" unless you issue a tool call.
 """

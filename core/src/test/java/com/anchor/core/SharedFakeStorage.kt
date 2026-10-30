@@ -108,4 +108,20 @@ class SharedFakeStorage : Storage {
         reminders.removeAll { it.id == reminderId }
         loggedEvents.add(event)
     }
+
+    var soulFacts = mutableListOf<SoulFact>()
+
+    override suspend fun saveSoulFact(fact: SoulFact) { soulFacts.add(fact) }
+    override suspend fun searchMemoryFts(query: String, limit: Int): List<SearchResult> {
+        val results = mutableListOf<SearchResult>()
+        if (query.isBlank()) return results
+        
+        activeNodes.filter { it.title.contains(query, ignoreCase = true) }.forEach {
+            results.add(SearchResult(it.id, it.type, it.title, ""))
+        }
+        soulFacts.filter { it.statement.contains(query, ignoreCase = true) }.forEach {
+            results.add(SearchResult(it.id, "soul_fact", it.category, it.statement))
+        }
+        return results.take(limit)
+    }
 }

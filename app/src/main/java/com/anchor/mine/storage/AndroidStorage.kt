@@ -254,4 +254,33 @@ class AndroidStorage(private val dbHelper: SupportSQLiteOpenHelper) : Storage {
             db.setTransactionSuccessful()
         } finally { db.endTransaction() }
     }
+
+    override suspend fun saveSoulFact(fact: SoulFact) = withContext(ioDispatcher) {
+        dbHelper.writableDatabase.execSQL(
+            "INSERT OR REPLACE INTO soul_fact (id, device_id, category, statement, confidence, source, origin, status, hlc, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, '', ?, ?)",
+            arrayOf<Any>(fact.id, deviceId, fact.category, fact.statement, fact.confidence, fact.source, fact.origin, fact.status, fact.createdAt, fact.createdAt)
+        )
+    }
+
+    override suspend fun searchMemoryFts(query: String, limit: Int): List<SearchResult> = withContext(ioDispatcher) {
+        val results = mutableListOf<SearchResult>()
+        if (query.isBlank()) return@withContext results
+        
+        // Strip SQL injection chars and format for FTS5 prefix match
+        val sanitized = query.replace("\"", "").replace("'", "")
+        val matchQuery = "\"$sanitized\"*"
+        
+        // FTS5 content_rowid exposes the internal hidden rowid. We must map it back to the ULID text ID.
+        dbHelper.readableDatabase.query("SELECT id, type, title, body FROM node WHERE rowid IN (SELECT rowid FROM node_fts WHERE node_fts MATCH ? LIMIT ?)", arrayOf<Any>(matchQuery, limit)).use {
+            while (it.moveToNext()) {
+                results.add(SearchResult(it.getString(0), it.getString(1), it.getString(2), it.getString(3) ?: ""))
+            }
+        }
+        dbHelper.readableDatabase.query("SELECT id, category, statement FROM soul_fact WHERE rowid IN (SELECT rowid FROM soul_fts WHERE soul_fts MATCH ? LIMIT ?)", arrayOf<Any>(matchQuery, limit)).use {
+            while (it.moveToNext()) {
+                results.add(SearchResult(it.getString(0), "soul_fact", it.getString(1), it.getString(2)))
+            }
+        }
+        results.take(limit)
+    }
 }

@@ -9,8 +9,8 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.sqlite.db.SupportSQLiteOpenHelper
 import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
 
-// BUMPED to Version 5 for Day Boundaries and Export Log
-class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(5) {
+// BUMPED to Version 6 for FTS5 Sync Triggers
+class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(6) {
 
     override fun onConfigure(db: SupportSQLiteDatabase) {
         super.onConfigure(db)
@@ -71,7 +71,6 @@ class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(5) {
         db.execSQL("CREATE TABLE reminder (id TEXT PRIMARY KEY, text TEXT NOT NULL, fire_at INTEGER NOT NULL)")
         db.execSQL("CREATE TABLE proposal (id TEXT PRIMARY KEY, kind TEXT NOT NULL, intent TEXT NOT NULL, options TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'open', created_at INTEGER NOT NULL)")
         
-        // V5 Tables
         db.execSQL("CREATE TABLE day_rule (id TEXT PRIMARY KEY, effective_from INTEGER NOT NULL, start_minute INTEGER NOT NULL, end_minute INTEGER NOT NULL, tz_id TEXT NOT NULL, created_at INTEGER NOT NULL)")
         db.execSQL("CREATE TABLE day_block (day_key TEXT NOT NULL, idx INTEGER NOT NULL, start_msg_id TEXT NOT NULL, start_ts INTEGER NOT NULL, end_ts INTEGER NOT NULL, msg_count INTEGER NOT NULL, part_of_day TEXT, PRIMARY KEY (day_key, idx))")
         db.execSQL("CREATE TABLE export_log (id TEXT PRIMARY KEY, ts INTEGER NOT NULL, kind TEXT NOT NULL, options_json TEXT, counts_json TEXT, bytes INTEGER, verified INTEGER, note TEXT)")
@@ -80,7 +79,6 @@ class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(5) {
         db.execSQL("CREATE INDEX idx_raw_event_target ON raw_event(target_type, target_id)")
         db.execSQL("CREATE INDEX idx_raw_message_ts ON raw_message(ts_utc)")
         
-        // FTS5 Tables
         db.execSQL("CREATE VIRTUAL TABLE node_fts USING fts5(title, body, content='node', content_rowid='rowid')")
         db.execSQL("CREATE VIRTUAL TABLE soul_fts USING fts5(statement, content='soul_fact', content_rowid='rowid')")
         db.execSQL("CREATE VIRTUAL TABLE msg_chunk_fts USING fts5(text, content='msg_chunk', content_rowid='rowid')")
@@ -104,42 +102,39 @@ class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(5) {
             if (!hasStatus) db.execSQL("ALTER TABLE proposal ADD COLUMN status TEXT NOT NULL DEFAULT 'open'")
         }
         if (oldVersion < 4) {
-            db.execSQL("""
-                CREATE TABLE IF NOT EXISTS soul_fact (
-                  id TEXT PRIMARY KEY, device_id TEXT NOT NULL, category TEXT NOT NULL, statement TEXT NOT NULL,
-                  attrs TEXT, confidence REAL NOT NULL DEFAULT 0.7, source TEXT NOT NULL, origin TEXT NOT NULL,
-                  status TEXT NOT NULL, pinned_core INTEGER NOT NULL DEFAULT 0, sensitive INTEGER NOT NULL DEFAULT 0,
-                  local_only INTEGER NOT NULL DEFAULT 0, hlc TEXT NOT NULL, valid_from INTEGER, valid_to INTEGER,
-                  supersedes TEXT, source_msg_ids TEXT, extractor_version TEXT, last_confirmed_at INTEGER,
-                  created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, deleted_at INTEGER
-                )
-            """)
-            db.execSQL("""
-                CREATE TABLE IF NOT EXISTS msg_chunk (
-                  id TEXT PRIMARY KEY, day_key TEXT NOT NULL, ts_start INTEGER NOT NULL, ts_end INTEGER NOT NULL,
-                  msg_ids TEXT NOT NULL, text TEXT NOT NULL, extractor_version TEXT NOT NULL
-                )
-            """)
+            db.execSQL("CREATE TABLE IF NOT EXISTS soul_fact (id TEXT PRIMARY KEY, device_id TEXT NOT NULL, category TEXT NOT NULL, statement TEXT NOT NULL, attrs TEXT, confidence REAL NOT NULL DEFAULT 0.7, source TEXT NOT NULL, origin TEXT NOT NULL, status TEXT NOT NULL, pinned_core INTEGER NOT NULL DEFAULT 0, sensitive INTEGER NOT NULL DEFAULT 0, local_only INTEGER NOT NULL DEFAULT 0, hlc TEXT NOT NULL, valid_from INTEGER, valid_to INTEGER, supersedes TEXT, source_msg_ids TEXT, extractor_version TEXT, last_confirmed_at INTEGER, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, deleted_at INTEGER)")
+            db.execSQL("CREATE TABLE IF NOT EXISTS msg_chunk (id TEXT PRIMARY KEY, day_key TEXT NOT NULL, ts_start INTEGER NOT NULL, ts_end INTEGER NOT NULL, msg_ids TEXT NOT NULL, text TEXT NOT NULL, extractor_version TEXT NOT NULL)")
             db.execSQL("CREATE VIRTUAL TABLE IF NOT EXISTS node_fts USING fts5(title, body, content='node', content_rowid='rowid')")
             db.execSQL("CREATE VIRTUAL TABLE IF NOT EXISTS soul_fts USING fts5(statement, content='soul_fact', content_rowid='rowid')")
             db.execSQL("CREATE VIRTUAL TABLE IF NOT EXISTS msg_chunk_fts USING fts5(text, content='msg_chunk', content_rowid='rowid')")
-            
             db.execSQL("DROP TRIGGER IF EXISTS trg_raw_msg_no_update")
             db.execSQL("DROP TRIGGER IF EXISTS trg_raw_msg_no_delete")
             db.execSQL("DROP TRIGGER IF EXISTS trg_raw_evt_no_update")
             db.execSQL("DROP TRIGGER IF EXISTS trg_raw_evt_no_delete")
-            createTriggers(db)
         }
         if (oldVersion < 5) {
             db.execSQL("CREATE TABLE IF NOT EXISTS day_rule (id TEXT PRIMARY KEY, effective_from INTEGER NOT NULL, start_minute INTEGER NOT NULL, end_minute INTEGER NOT NULL, tz_id TEXT NOT NULL, created_at INTEGER NOT NULL)")
             db.execSQL("CREATE TABLE IF NOT EXISTS day_block (day_key TEXT NOT NULL, idx INTEGER NOT NULL, start_msg_id TEXT NOT NULL, start_ts INTEGER NOT NULL, end_ts INTEGER NOT NULL, msg_count INTEGER NOT NULL, part_of_day TEXT, PRIMARY KEY (day_key, idx))")
             db.execSQL("CREATE TABLE IF NOT EXISTS export_log (id TEXT PRIMARY KEY, ts INTEGER NOT NULL, kind TEXT NOT NULL, options_json TEXT, counts_json TEXT, bytes INTEGER, verified INTEGER, note TEXT)")
         }
+        if (oldVersion < 6) {
+            // Drop old triggers to ensure fresh setup
+            db.execSQL("DROP TRIGGER IF EXISTS trg_node_fts_insert")
+            db.execSQL("DROP TRIGGER IF EXISTS trg_node_fts_delete")
+            db.execSQL("DROP TRIGGER IF EXISTS trg_node_fts_update")
+            db.execSQL("DROP TRIGGER IF EXISTS trg_soul_fts_insert")
+            db.execSQL("DROP TRIGGER IF EXISTS trg_soul_fts_delete")
+            db.execSQL("DROP TRIGGER IF EXISTS trg_soul_fts_update")
+        }
+        
+        // Always recreate triggers safely on any upgrade
+        createTriggers(db)
     }
 
     private fun createTriggers(db: SupportSQLiteDatabase) {
+        // Core Immutable Triggers
         db.execSQL("""
-            CREATE TRIGGER trg_raw_msg_no_update BEFORE UPDATE ON raw_message
+            CREATE TRIGGER IF NOT EXISTS trg_raw_msg_no_update BEFORE UPDATE ON raw_message
             BEGIN
                 SELECT RAISE(ABORT, 'raw_message is append-only except for redaction')
                 WHERE OLD.redacted_at IS NOT NULL 
@@ -161,9 +156,18 @@ class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(5) {
                    OR IFNULL(OLD.attrs, '') != IFNULL(NEW.attrs, '');
             END;
         """)
-        db.execSQL("CREATE TRIGGER trg_raw_msg_no_delete BEFORE DELETE ON raw_message BEGIN SELECT RAISE(ABORT, 'raw_message is append-only'); END;")
-        db.execSQL("CREATE TRIGGER trg_raw_evt_no_update BEFORE UPDATE ON raw_event BEGIN SELECT RAISE(ABORT, 'raw_event is append-only'); END;")
-        db.execSQL("CREATE TRIGGER trg_raw_evt_no_delete BEFORE DELETE ON raw_event BEGIN SELECT RAISE(ABORT, 'raw_event is append-only'); END;")
+        db.execSQL("CREATE TRIGGER IF NOT EXISTS trg_raw_msg_no_delete BEFORE DELETE ON raw_message BEGIN SELECT RAISE(ABORT, 'raw_message is append-only'); END;")
+        db.execSQL("CREATE TRIGGER IF NOT EXISTS trg_raw_evt_no_update BEFORE UPDATE ON raw_event BEGIN SELECT RAISE(ABORT, 'raw_event is append-only'); END;")
+        db.execSQL("CREATE TRIGGER IF NOT EXISTS trg_raw_evt_no_delete BEFORE DELETE ON raw_event BEGIN SELECT RAISE(ABORT, 'raw_event is append-only'); END;")
+        
+        // FTS5 Synchronization Triggers
+        db.execSQL("CREATE TRIGGER IF NOT EXISTS trg_node_fts_insert AFTER INSERT ON node BEGIN INSERT INTO node_fts (rowid, title, body) VALUES (new.rowid, new.title, new.body); END;")
+        db.execSQL("CREATE TRIGGER IF NOT EXISTS trg_node_fts_delete AFTER DELETE ON node BEGIN INSERT INTO node_fts (node_fts, rowid, title, body) VALUES ('delete', old.rowid, old.title, old.body); END;")
+        db.execSQL("CREATE TRIGGER IF NOT EXISTS trg_node_fts_update AFTER UPDATE ON node BEGIN INSERT INTO node_fts (node_fts, rowid, title, body) VALUES ('delete', old.rowid, old.title, old.body); INSERT INTO node_fts (rowid, title, body) VALUES (new.rowid, new.title, new.body); END;")
+        
+        db.execSQL("CREATE TRIGGER IF NOT EXISTS trg_soul_fts_insert AFTER INSERT ON soul_fact BEGIN INSERT INTO soul_fts (rowid, statement) VALUES (new.rowid, new.statement); END;")
+        db.execSQL("CREATE TRIGGER IF NOT EXISTS trg_soul_fts_delete AFTER DELETE ON soul_fact BEGIN INSERT INTO soul_fts (soul_fts, rowid, statement) VALUES ('delete', old.rowid, old.statement); END;")
+        db.execSQL("CREATE TRIGGER IF NOT EXISTS trg_soul_fts_update AFTER UPDATE ON soul_fact BEGIN INSERT INTO soul_fts (soul_fts, rowid, statement) VALUES ('delete', old.rowid, old.statement); INSERT INTO soul_fts (rowid, statement) VALUES (new.rowid, new.statement); END;")
     }
 }
 
