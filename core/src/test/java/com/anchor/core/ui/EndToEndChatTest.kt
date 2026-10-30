@@ -21,8 +21,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -37,19 +37,14 @@ class EndToEndChatTest {
         val clock = FakeClock(1000L)
         
         var turnCount = 0
-        var extractedProposalId = ""
         val fakeTransport = object : HttpTransport {
             override suspend fun postStream(target: Target, body: String): Flow<String> = flow {
                 turnCount++
                 if (turnCount == 1) {
                     emit("""data: {"choices":[{"delta":{"content":"```json\n{\"reply\":\"I see two.\",\"calls\":[{\"tool\":\"propose_change\",\"args\":{\"intent\":\"CANCEL\",\"hint\":\"the dinner\"}}]}\n```"}}]}""")
                 } else if (turnCount == 2) {
-                    // Extract ID dynamically from what Controller passed into body (context pack)
-                    val pIdMatch = Regex("ID: (p_[a-zA-Z0-9-]+)").find(body)
-                    extractedProposalId = pIdMatch?.groupValues?.get(1) ?: ""
-                    emit("""data: {"choices":[{"delta":{"content":"Which dinner?"}}]}""")
-                } else if (turnCount == 3) {
-                    emit("""data: {"choices":[{"delta":{"content":"{\"reply\":\"Canceling Raj.\",\"calls\":[{\"tool\":\"confirm_change\",\"args\":{\"proposal\":\"$extractedProposalId\",\"choice\":\"n_tomo\"}}]}"}}]}""")
+                    val pId = storage.savedProposals.first().id
+                    emit("""data: {"choices":[{"delta":{"content":"{\"reply\":\"Canceling Raj.\",\"calls\":[{\"tool\":\"confirm_change\",\"args\":{\"proposal\":\"$pId\",\"choice\":\"n_tomo\"}}]}"}}]}""")
                 }
                 emit("data: [DONE]")
             }
@@ -63,22 +58,24 @@ class EndToEndChatTest {
         }
         
         val controller = ChatController(
-            storage, orchestrator, ContextBuilder(storage), 
+            storage, orchestrator, ContextBuilder(storage, clock, DateResolver(clock)), 
             Gateway(storage, Resolver(), DateResolver(clock), clock), 
             scheduler, TestScope(UnconfinedTestDispatcher()), UnconfinedTestDispatcher(), clock
         )
 
         // User: "Cancel the dinner"
-        controller.onAction(UiAction.SendMessage("Cancel the dinner"))
-        assertEquals(2, turnCount) // Took 2 provider calls to complete the tool loop
+        controller.onAction(UiAction.UpdateDraft("Cancel the dinner"))
+        controller.onAction(UiAction.SendMessage)
+        assertEquals(1, turnCount) // Ambiguous ends turn immediately so UI can display choice selection
         
         // Verify node wasn't deleted, and a proposal was made
         assertEquals(2, storage.getActiveNodes().size)
         assertEquals(1, storage.savedProposals.size)
 
         // User: "Raj"
-        controller.onAction(UiAction.SendMessage("Raj"))
-        assertEquals(3, turnCount) // Fix 1: stops immediately after commit
+        controller.onAction(UiAction.UpdateDraft("Raj"))
+        controller.onAction(UiAction.SendMessage)
+        assertEquals(2, turnCount) // Confirm change executed and turn completed
         
         // Verify only Raj was cancelled
         val active = storage.getActiveNodes()

@@ -40,8 +40,12 @@ class Gateway(
                 val confidence = args["confidence"]?.toDoubleOrNull() ?: 0.7
                 val sId = "s_${UUID.randomUUID().toString().take(8)}"
                 val fact = SoulFact(sId, category, statement, confidence, "chat_ai", "extracted", "proposed", clock.now())
-                storage.saveSoulFact(fact)
-                ToolResult.Committed("CREATE", sId, "Proposed to Soul: $statement", "u_${UUID.randomUUID().toString().take(6)}")
+                
+                val uId = "u_${UUID.randomUUID().toString().take(6)}"
+                val event = RawEvent(uId, "CREATE", "soul_fact", sId, afterJson = json.encodeToString(fact))
+                storage.createSoulFactAndCommit(fact, event)
+                
+                ToolResult.Committed("CREATE", sId, "Proposed to Soul: $statement", uId)
             }
             "undo" -> handleUndo(args["token"] ?: "")
             "confirm_change" -> handleConfirmChange(args["proposal"] ?: "", args["choice"] ?: "")
@@ -72,6 +76,12 @@ class Gateway(
     private suspend fun handleScheduleReminder(targetRef: String, whenText: String): ToolResult {
         val fireAt = dateResolver.parse(whenText) ?: return ToolResult.Error("Could not understand the time '$whenText'. Ask the user to clarify.")
         val node = if (targetRef.isNotBlank()) storage.getNode(targetRef) else null
+        
+        // A8: Reject bad target refs silently making orphan "Reminder"s
+        if (targetRef.isNotBlank() && node == null) {
+            return ToolResult.Error("Target node not found for reference '$targetRef'")
+        }
+        
         val title = node?.title ?: "Reminder"
         val rId = if (node != null) "r_${node.id}" else "r_${UUID.randomUUID().toString().take(8)}"
         

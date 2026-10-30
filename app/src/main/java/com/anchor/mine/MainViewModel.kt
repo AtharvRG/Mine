@@ -40,10 +40,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 val clock = SystemClock()
                 val gateway = Gateway(storage, Resolver(), DateResolver(clock), clock)
 
+                val contextBuilder = ContextBuilder(storage, clock, DateResolver(clock))
                 controller = ChatController(
-                    storage, orchestrator, ContextBuilder(storage),
+                    storage, orchestrator, contextBuilder,
                     gateway, AndroidAlarmScheduler(application),
-                    viewModelScope, kotlinx.coroutines.Dispatchers.Default, SystemClock()
+                    viewModelScope, kotlinx.coroutines.Dispatchers.Default, clock
                 )
 
                 controller!!.state.collect { _state.value = it }

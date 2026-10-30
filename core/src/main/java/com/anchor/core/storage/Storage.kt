@@ -37,6 +37,7 @@ interface Storage {
     suspend fun getDebugStats(): Map<String, String>
 
     suspend fun saveSoulFact(fact: SoulFact)
+    suspend fun createSoulFactAndCommit(fact: SoulFact, event: RawEvent)
     suspend fun searchMemoryFts(query: String, limit: Int): List<SearchResult>
 
     suspend fun getNode(id: String): Node?

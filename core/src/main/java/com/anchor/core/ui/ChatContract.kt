@@ -16,16 +16,18 @@ data class UiState(
     val providerKey: String = "",
     val providerModel: String = "",
     val debugStats: String = "Rows: 0",
-    val globalError: String? = null
+    val globalError: String? = null,
+    val composerDraft: String = "",
+    val connectionError: String? = null
 )
 
 sealed interface UiAction {
-    data class SendMessage(val text: String) : UiAction
+    data class UpdateDraft(val text: String) : UiAction
+    data object SendMessage : UiAction
     data object Stop : UiAction
     data class CancelReminder(val id: String) : UiAction
     data object RunSelfTest : UiAction
     data object RefreshStats : UiAction
     data class SaveProvider(val endpoint: String, val key: String, val model: String) : UiAction
-
-    data class ScheduleIn(val minutes: Int, val text: String) : UiAction
+    data class ScheduleIn(val minutes: Int, val text: String) : UiAction 
 }

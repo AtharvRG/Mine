@@ -7,6 +7,7 @@ package com.anchor.core.gateway
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 
@@ -45,13 +46,23 @@ object EnvelopeParser {
     }
 
     fun resolveArgs(call: ToolCall): Map<String, String> {
-        return call.args.mapValues { (_, element) ->
-            if (element is JsonPrimitive) {
-                if (element.isString) element.content
-                else element.contentOrNull ?: "null"
+        val result = mutableMapOf<String, String>()
+        call.args.forEach { (k, element) ->
+            if (element is JsonNull) return@forEach
+            
+            val strVal = if (element is JsonPrimitive) {
+                if (element.isString) element.content else element.contentOrNull
             } else {
                 element.toString()
             }
+            
+            if (strVal != null) {
+                val normalized = strVal.trim().lowercase()
+                if (normalized !in listOf("null", "none", "n/a", "")) {
+                    result[k] = strVal
+                }
+            }
         }
+        return result
     }
 }

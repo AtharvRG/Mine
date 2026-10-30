@@ -47,10 +47,8 @@ class TurnCompletionTest {
                 if (callCount == 1) {
                     emit("""data: {"choices":[{"delta":{"content":"```json\n{\"reply\":\"I see two.\",\"calls\":[{\"tool\":\"propose_change\",\"args\":{\"intent\":\"CANCEL\",\"hint\":\"the dinner\"}}]}\n```"}}]}""")
                 } else if (callCount == 2) {
-                    emit("""data: {"choices":[{"delta":{"content":"{\"reply\":\"Which dinner?\",\"calls\":[]}"}}]}""")
-                } else if (callCount == 3) {
                     val pId = storage.savedProposals.first().id
-                    // TASK 1 TEST: This commit should end the turn, preventing a 4th call
+                    // TASK 1 TEST: This commit should end the turn, preventing a 3rd call
                     emit("""data: {"choices":[{"delta":{"content":"{\"reply\":\"Canceling Raj.\",\"calls\":[{\"tool\":\"confirm_change\",\"args\":{\"proposal\":\"$pId\",\"choice\":\"n_tomo\"}}]}"}}]}""")
                 } else {
                     emit("""data: {"choices":[{"delta":{"content":"{\"reply\":\"FAIL: LLM should not be called again!\",\"calls\":[]}"}}]}""")
@@ -60,17 +58,19 @@ class TurnCompletionTest {
         }
 
         val controller = ChatController(
-            storage, ProviderOrchestrator(RateLimiter { clock.now() }, fakeTransport), ContextBuilder(storage),
+            storage, ProviderOrchestrator(RateLimiter { clock.now() }, fakeTransport), ContextBuilder(storage, clock, DateResolver(clock)),
             Gateway(storage, Resolver(), DateResolver(clock), clock),
             object : AlarmScheduler { override val lastFiredId = MutableStateFlow<String?>(null); override fun schedule(reminder: Reminder) {}; override fun cancel(reminderId: String) {} },
             TestScope(UnconfinedTestDispatcher()), UnconfinedTestDispatcher(), clock
         )
 
-        controller.onAction(UiAction.SendMessage("Cancel the dinner"))
-        assertEquals(2, callCount) // Ambiguous -> Ask User -> Loop Ends
+        controller.onAction(UiAction.UpdateDraft("Cancel the dinner"))
+        controller.onAction(UiAction.SendMessage)
+        assertEquals(1, callCount) // Ambiguous -> Ask User -> Loop Ends
 
-        controller.onAction(UiAction.SendMessage("Raj"))
-        assertEquals(3, callCount) // User Answers -> Commit -> Loop Ends
+        controller.onAction(UiAction.UpdateDraft("Raj"))
+        controller.onAction(UiAction.SendMessage)
+        assertEquals(2, callCount) // User Answers -> Commit -> Loop Ends
         
         val active = storage.getActiveNodes()
         assertEquals("Exactly one node cancelled", 1, active.size)
@@ -91,13 +91,14 @@ class TurnCompletionTest {
         }
 
         val controller = ChatController(
-            storage, ProviderOrchestrator(RateLimiter { clock.now() }, fakeTransport), ContextBuilder(storage),
+            storage, ProviderOrchestrator(RateLimiter { clock.now() }, fakeTransport), ContextBuilder(storage, clock, DateResolver(clock)),
             Gateway(storage, Resolver(), DateResolver(clock), clock),
             object : AlarmScheduler { override val lastFiredId = MutableStateFlow<String?>(null); override fun schedule(reminder: Reminder) {}; override fun cancel(reminderId: String) {} },
             TestScope(UnconfinedTestDispatcher()), UnconfinedTestDispatcher(), clock
         )
 
-        controller.onAction(UiAction.SendMessage("Hello"))
+        controller.onAction(UiAction.UpdateDraft("Hello"))
+        controller.onAction(UiAction.SendMessage)
         
         val lastMsg = storage.messages.last().content!!
         assertEquals("Got it", lastMsg)
@@ -126,13 +127,14 @@ class TurnCompletionTest {
         }
 
         val controller = ChatController(
-            storage, ProviderOrchestrator(RateLimiter { clock.now() }, fakeTransport), ContextBuilder(storage),
+            storage, ProviderOrchestrator(RateLimiter { clock.now() }, fakeTransport), ContextBuilder(storage, clock, DateResolver(clock)),
             Gateway(storage, Resolver(), DateResolver(clock), clock),
             object : AlarmScheduler { override val lastFiredId = MutableStateFlow<String?>(null); override fun schedule(reminder: Reminder) {}; override fun cancel(reminderId: String) {} },
             TestScope(UnconfinedTestDispatcher()), UnconfinedTestDispatcher(), clock
         )
 
-        controller.onAction(UiAction.SendMessage("Cancel milk and also do an error"))
+        controller.onAction(UiAction.UpdateDraft("Cancel milk and also do an error"))
+        controller.onAction(UiAction.SendMessage)
         assertEquals("Mixed envelope with a Commit should end turn", 1, callCount)
     }
 }

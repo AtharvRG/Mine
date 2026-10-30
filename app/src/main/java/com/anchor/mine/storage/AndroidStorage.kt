@@ -256,10 +256,21 @@ class AndroidStorage(private val dbHelper: SupportSQLiteOpenHelper) : Storage {
     }
 
     override suspend fun saveSoulFact(fact: SoulFact) = withContext(ioDispatcher) {
-        dbHelper.writableDatabase.execSQL(
-            "INSERT OR REPLACE INTO soul_fact (id, device_id, category, statement, confidence, source, origin, status, hlc, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, '', ?, ?)",
-            arrayOf<Any>(fact.id, deviceId, fact.category, fact.statement, fact.confidence, fact.source, fact.origin, fact.status, fact.createdAt, fact.createdAt)
-        )
+        // Obsolete stub, use createSoulFactAndCommit
+    }
+
+    override suspend fun createSoulFactAndCommit(fact: SoulFact, event: RawEvent) = withContext(ioDispatcher) {
+        val db = dbHelper.writableDatabase
+        db.beginTransaction()
+        try {
+            db.execSQL(
+                "INSERT OR REPLACE INTO soul_fact (id, device_id, category, statement, confidence, source, origin, status, hlc, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, '', ?, ?)",
+                arrayOf<Any>(fact.id, deviceId, fact.category, fact.statement, fact.confidence, fact.source, fact.origin, fact.status, fact.createdAt, fact.createdAt)
+            )
+            db.execSQL("INSERT INTO raw_event (op_id, target_id, op_type, target_type, ts_utc, device_id, actor, before_json, after_json) VALUES (?, ?, ?, ?, ?, ?, 'chat_ai', ?, ?)",
+                arrayOf<Any?>(event.opId, event.targetId, event.opType, event.targetType, System.currentTimeMillis(), deviceId, event.beforeJson, event.afterJson))
+            db.setTransactionSuccessful()
+        } finally { db.endTransaction() }
     }
 
     override suspend fun searchMemoryFts(query: String, limit: Int): List<SearchResult> = withContext(ioDispatcher) {

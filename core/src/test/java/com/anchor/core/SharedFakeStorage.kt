@@ -120,7 +120,13 @@ class SharedFakeStorage : Storage {
 
     var soulFacts = mutableListOf<SoulFact>()
 
-    override suspend fun saveSoulFact(fact: SoulFact) { soulFacts.add(fact) }
+    override suspend fun saveSoulFact(fact: SoulFact) {}
+    
+    override suspend fun createSoulFactAndCommit(fact: SoulFact, event: RawEvent) {
+        soulFacts.removeAll { it.id == fact.id }
+        soulFacts.add(fact)
+        loggedEvents.add(event)
+    }
     override suspend fun searchMemoryFts(query: String, limit: Int): List<SearchResult> {
         val results = mutableListOf<SearchResult>()
         if (query.isBlank()) return results

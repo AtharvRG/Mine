@@ -73,7 +73,7 @@ fun MineAppUI(viewModel: MainViewModel) {
 
         Box(modifier = Modifier.weight(1f).padding(16.dp)) {
             when (selectedTab) {
-                0 -> ChatScreen(state) { viewModel.onAction(UiAction.SendMessage(it)) }
+                0 -> ChatScreen(state, viewModel::onAction)
                 1 -> RemindersScreen(state, viewModel::onAction)
                 // Item 7: Using 'key' forces recomposition when DB loads
                 2 -> key(state.providerEndpoint) { ProviderScreen(state) { ep, k, m -> viewModel.onAction(UiAction.SaveProvider(ep, k, m)) } }
@@ -84,17 +84,18 @@ fun MineAppUI(viewModel: MainViewModel) {
 }
 
 @Composable
-fun ChatScreen(state: UiState, onSend: (String) -> Unit) {
-    var text by remember { mutableStateOf("") }
-
+fun ChatScreen(state: UiState, onAction: (UiAction) -> Unit) {
     Column(modifier = Modifier.fillMaxSize()) {
+        val connErr = state.connectionError
+        if (connErr != null) {
+            Text(connErr, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(8.dp))
+        }
         LazyColumn(modifier = Modifier.weight(1f)) {
             items(state.chatMessages) { msg ->
                 val isUser = msg.role == "user"
                 val align = if (isUser) Modifier.padding(start = 32.dp) else Modifier.padding(end = 32.dp)
                 val color = if (isUser) Color.Blue.copy(alpha = 0.1f) else Color.Gray.copy(alpha = 0.1f)
 
-                // Item 4: Show [redacted]
                 val textContent = msg.content ?: "[redacted]"
 
                 Text(
@@ -108,11 +109,11 @@ fun ChatScreen(state: UiState, onSend: (String) -> Unit) {
         }
         Row(modifier = Modifier.fillMaxWidth()) {
             OutlinedTextField(
-                value = text,
-                onValueChange = { text = it },
+                value = state.composerDraft,
+                onValueChange = { onAction(UiAction.UpdateDraft(it)) },
                 modifier = Modifier.weight(1f)
             )
-            Button(onClick = { if (text.isNotBlank()) { onSend(text); text = "" } }) {
+            Button(onClick = { if (state.composerDraft.isNotBlank()) onAction(UiAction.SendMessage) }) {
                 Text("Send")
             }
         }

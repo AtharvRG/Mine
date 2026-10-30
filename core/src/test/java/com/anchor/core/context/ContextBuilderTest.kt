@@ -7,6 +7,8 @@ package com.anchor.core.context
 import com.anchor.core.SharedFakeStorage
 import com.anchor.core.models.ChatMessage
 import com.anchor.core.models.Node
+import com.anchor.core.time.DateResolver
+import com.anchor.core.time.FakeClock
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -30,7 +32,8 @@ class ContextBuilderTest {
             activeNodes = nodes.toMutableList()
         }
 
-        val builder = ContextBuilder(storage)
+        val clock = FakeClock(1000L)
+        val builder = ContextBuilder(storage, clock, DateResolver(clock))
         val pack = builder.buildPack()
 
         // 1 for system, N for history

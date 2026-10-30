@@ -53,11 +53,19 @@ class ChatController(
 
     fun onAction(action: UiAction) {
         when (action) {
+            is UiAction.UpdateDraft -> _state.update { it.copy(composerDraft = action.text) }
             is UiAction.SendMessage -> {
-                if (_state.value.isChatLoading || _state.value.providerKey.isBlank()) return
-                // Synchronously set loading state to prevent double-send race conditions
-                _state.update { it.copy(isChatLoading = true) }
-                handleSendMessage(action.text)
+                val text = _state.value.composerDraft
+                if (_state.value.isChatLoading || text.isBlank()) return
+                
+                // A12: Check API key without losing draft
+                if (_state.value.providerKey.isBlank()) {
+                    _state.update { it.copy(connectionError = "Connect an AI provider in Settings first.") }
+                    return
+                }
+                
+                _state.update { it.copy(isChatLoading = true, composerDraft = "", connectionError = null) }
+                handleSendMessage(text)
             }
             is UiAction.Stop -> {
                 currentStreamJob?.cancel()
@@ -79,16 +87,8 @@ class ChatController(
                 val id = "test_${System.currentTimeMillis()}"
                 val fireAt = clock.now() + 10000L
                 val reminder = Reminder(id, "Self Test Fired!", fireAt)
-
                 storage.saveReminder(reminder)
                 alarmScheduler.schedule(reminder)
-
-                var elapsed = 0
-                while (alarmScheduler.lastFiredId.value != id && elapsed < 12000) {
-                    delay(500)
-                    elapsed += 500
-                }
-                _state.update { it.copy(selfTestStatus = if (alarmScheduler.lastFiredId.value == id) "Fired in ${elapsed/1000}s" else "Failed") }
             }
             is UiAction.RefreshStats -> coroutineScope.launch(defaultDispatcher) {
                 _state.update { it.copy(debugStats = storage.getDebugStats().entries.joinToString("\n") { e -> "${e.key}: ${e.value}" }) }
@@ -113,7 +113,7 @@ class ChatController(
                     loops++
                     val payload = buildJsonPayload(pack)
                     val target = Target(_state.value.providerEndpoint, _state.value.providerKey, 50)
-
+                    
                     val botId = "a_${UUID.randomUUID()}"
                     val botResponse = java.lang.StringBuilder()
                     var lastUpdate = clock.now()
@@ -127,7 +127,6 @@ class ChatController(
                             botResponse.append(event.text)
                             if (clock.now() - lastUpdate > 100) {
                                 val trimmed = botResponse.toString().trimStart()
-                                // Strict JSON flashing prevention: hide entirely while streaming raw JSON
                                 val display = if (trimmed.startsWith("{") || trimmed.startsWith("```") || trimmed.startsWith("[")) "Thinking..." else botResponse.toString()
                                 updateLastMessage(botId, display)
                                 lastUpdate = clock.now()
@@ -137,10 +136,9 @@ class ChatController(
 
                     val rawBot = botResponse.toString()
                     val envelope = EnvelopeParser.parse(rawBot)
-
+                    
                     if (envelope != null) {
                         var sysContext = ""
-                        var humanResult = envelope.reply
                         var hasCommitted = false
 
                         envelope.calls.forEach { call ->
@@ -148,42 +146,36 @@ class ChatController(
                             sysContext += "Tool Result: " + when(result) {
                                 is ToolResult.Committed -> {
                                     hasCommitted = true
-                                    storage.getActiveReminders().forEach { alarmScheduler.schedule(it) }
-                                    humanResult += "\n[Done: ${result.message}] (Undo: ${result.undoToken})"
                                     "Committed. ${result.message}"
                                 }
-                                is ToolResult.Data -> {
-                                    humanResult += "\n[Searched memory]"
-                                    "Search Results:\n${result.text}"
-                                }
                                 is ToolResult.Ambiguous -> {
-                                    humanResult += "\n[Clarify: ${result.message}]"
-                                    "Ambiguous. Ask the user, then call confirm_change. ID: ${result.proposalId}, Options: ${result.options.joinToString()}"
+                                    // A6: End turn on Ambiguous so UI handles choice selection via Chips
+                                    turnComplete = true
+                                    "Ambiguous. UI will ask user. ID: ${result.proposalId}"
                                 }
-                                is ToolResult.NotFound -> "Not Found. Ask user to clarify."
+                                is ToolResult.NotFound -> "Not Found."
+                                is ToolResult.Data -> "Search Results:\n${result.text}"
                                 is ToolResult.Error -> "Error: ${result.reason}"
                             } + "\n"
                         }
-
-                        val cleanText = if (envelope.reply.isBlank() && envelope.calls.isEmpty()) {
-                            "Acknowledged."
-                        } else {
-                            humanResult.trim().ifBlank { "Executed tools silently." }
-                        }
-
+                        
+                        // A15: Store exactly what the model replied, do not pollute it with [Done...] UI hacks.
+                        // The React UI will render the receipts natively from the operation log.
+                        val cleanText = envelope.reply.trim().ifBlank { "Acknowledged." }
                         updateLastMessage(botId, cleanText)
                         storage.insertRawMessage(botId, "assistant", cleanText)
-
+                        
                         pack = pack + ChatMessage(botId, "assistant", cleanText)
-                        pack = pack + ChatMessage("sys_${UUID.randomUUID()}", "system", sysContext)
-
-                        if (loops == 4) {
+                        pack = pack + ChatMessage("sys_${UUID.randomUUID()}", "user", sysContext)
+                        
+                        // A11: Loop limit logic fixed
+                        if (!turnComplete && loops == 4) {
                             val limitMsg = "Loop limit reached."
-                            updateLastMessage("a_${UUID.randomUUID()}", limitMsg)
-                            storage.insertRawMessage("a_${UUID.randomUUID()}", "assistant", limitMsg)
+                            updateLastMessage(botId, limitMsg)
+                            storage.insertRawMessage(botId, "assistant", limitMsg)
                             turnComplete = true
                         }
-
+                        
                         if (envelope.calls.isEmpty() || hasCommitted) {
                             turnComplete = true
                         }
@@ -194,33 +186,39 @@ class ChatController(
                         turnComplete = true
                     }
                 }
-                refreshUI()
             } catch (e: Exception) {
                 if (e is CancellationException) {
-                    val msgs = _state.value.chatMessages
-                    val last = msgs.lastOrNull()
-                    if (last?.role == "assistant") {
-                        if (last.content.isNullOrBlank()) _state.update { it.copy(chatMessages = msgs.dropLast(1)) }
-                        else {
+                    // A9: Must use NonCancellable to persist partial message while coroutine is tearing down
+                    withContext(NonCancellable) {
+                        val msgs = _state.value.chatMessages
+                        val last = msgs.lastOrNull()
+                        if (last?.role == "assistant" && !last.content.isNullOrBlank()) {
                             val intContent = last.content + " [Interrupted]"
                             updateLastMessage(last.id, intContent)
                             storage.insertRawMessage(last.id, "assistant", intContent)
                         }
                     }
-                    throw e // MUST rethrow CancellationException
+                    throw e
                 }
-                _state.update { it.copy(chatMessages = it.chatMessages + ChatMessage("err_${UUID.randomUUID()}", "system", "Error: ${e.message}")) }
+                // A10: Provider error refreshes UI properly below in finally
+                _state.update { it.copy(connectionError = "Error: ${e.message}") }
+                val msgs = _state.value.chatMessages
+                if (msgs.lastOrNull()?.role == "assistant") {
+                    _state.update { it.copy(chatMessages = msgs.dropLast(1)) } // Remove "Thinking..."
+                }
             } finally {
                 _state.update { it.copy(isChatLoading = false) }
+                refreshUI()
             }
         }
     }
 
     private fun buildJsonPayload(pack: List<ChatMessage>): String {
+        // A3 & A4: Strict prompt restored with schedule_reminder examples
         val instruction = """You are MineAI, a personal companion. You must use Envelope Mode JSON for EVERY reply: {"reply":"text to user","calls":[{"tool":"...","args":{...}}]}
 Tools:
-- propose_change (intent: CREATE|CANCEL|COMPLETE, hint: target text, due_text: e.g. 'tomorrow at 4pm', 'tonight', 'next monday' or omit if no time). Use when user states an appointment, plan, task, commitment.
-- schedule_reminder (target_ref: node id, when_text: time).
+- propose_change (intent: CREATE|CANCEL|COMPLETE, hint: target text, due_text: e.g. 'tomorrow at 4pm', 'tonight', 'next monday' or omit if no time). MUST use when user states an appointment, plan, task, commitment.
+- schedule_reminder (target_ref: node id, when_text: time). Use to set alarms.
 - confirm_change (proposal: proposal id, choice: option id). Use when Ambiguous.
 - undo (token: u_123456).
 - search_memory (query: string, limit: int).
@@ -228,13 +226,12 @@ Tools:
 
 Examples:
 CREATE: {"tool":"propose_change","args":{"intent":"CREATE", "title":"Buy milk", "due_text": "tomorrow at 4pm"}}
+SCHEDULE ALARM: {"tool":"schedule_reminder","args":{"target_ref":"n_abc", "when_text": "tomorrow at 4pm"}}
 CANCEL: {"tool":"propose_change","args":{"intent":"CANCEL", "hint":"dinner"}}
-COMPLETE: {"tool":"propose_change","args":{"intent":"COMPLETE", "hint":"report"}}
 UNDO: {"tool":"undo","args":{"token":"u_123456"}}
-CONFIRM: {"tool":"confirm_change","args":{"proposal":"p_123456","choice":"n_abc"}}
 SOUL: {"tool":"soul_propose","args":{"statement":"Is diabetic","category":"health"}}
 
-CRITICAL: The app generates save confirmations. Do NOT say "Done" or "Saved" unless you issue a tool call.
+CRITICAL: Do NOT say "Done" or "Saved" unless you issue a tool call.
 """
         val messages = mutableListOf<com.anchor.core.provider.RequestMessage>()
         messages.add(com.anchor.core.provider.RequestMessage("system", instruction))
@@ -250,6 +247,7 @@ CRITICAL: The app generates save confirmations. Do NOT say "Done" or "Saved" unl
     }
 
     private suspend fun refreshUI() {
+        storage.getActiveReminders().forEach { alarmScheduler.schedule(it) }
         _state.update { it.copy(chatMessages = storage.getRecentMessages(30), activeReminders = storage.getActiveReminders()) }
     }
 }

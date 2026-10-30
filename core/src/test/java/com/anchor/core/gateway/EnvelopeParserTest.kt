@@ -5,18 +5,19 @@
 package com.anchor.core.gateway
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Test
 
 class EnvelopeParserTest {
     @Test
-    fun testMessyOutputs() {
+    fun testMessyOutputs_And_NullDropping() {
         val messy = """
             Here is what I found:
             ```json
             {
               "reply": "Got it.",
-              "calls": [ { "tool": "propose_change", "args": { "intent": "CREATE", "minutes": 2, "nullVal": null } } ]
+              "calls": [ { "tool": "propose_change", "args": { "intent": "CREATE", "minutes": 2, "nullVal": null, "strNull": "null", "empty": "" } } ]
             }
             ```
             Hope that helps!
@@ -28,7 +29,11 @@ class EnvelopeParserTest {
         
         val args = EnvelopeParser.resolveArgs(envelope.calls[0])
         assertEquals("CREATE", args["intent"])
-        assertEquals("2", args["minutes"]) // Number safely converted to String
-        assertEquals("null", args["nullVal"]) // Null safely handled
+        assertEquals("2", args["minutes"])
+        
+        // A1: Nulls, "null", and empty strings must be completely dropped
+        assertFalse(args.containsKey("nullVal"))
+        assertFalse(args.containsKey("strNull"))
+        assertFalse(args.containsKey("empty"))
     }
 }

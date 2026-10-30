@@ -22,6 +22,9 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -51,19 +54,24 @@ class SystemPromptTest {
         }
 
         val controller = ChatController(
-            storage, ProviderOrchestrator(RateLimiter { clock.now() }, fakeTransport), ContextBuilder(storage),
+            storage, ProviderOrchestrator(RateLimiter { clock.now() }, fakeTransport), ContextBuilder(storage, clock, DateResolver(clock)),
             Gateway(storage, Resolver(), DateResolver(clock), clock),
             object : AlarmScheduler { override val lastFiredId = MutableStateFlow<String?>(null); override fun schedule(reminder: Reminder) {}; override fun cancel(reminderId: String) {} },
             TestScope(UnconfinedTestDispatcher()), UnconfinedTestDispatcher(), clock
         )
 
-        controller.onAction(UiAction.SendMessage("I have a dinner with Shyam at 4 pm tomorrow"))
+        controller.onAction(UiAction.UpdateDraft("I have a dinner with Shyam at 4 pm tomorrow"))
+        controller.onAction(UiAction.SendMessage)
 
-        // 1. Verify Prompt Assertions (Matches the updated Phase 5 stricter prompt, avoiding JSON escape conflicts)
-        assertTrue(interceptedPayload.contains("Use when user states an appointment, plan, task, commitment"))
-        assertTrue(interceptedPayload.contains("unless you issue a tool call"))
-        assertTrue(interceptedPayload.contains("confirm_change"))
-        assertTrue(interceptedPayload.contains("schedule_reminder"))
+        // 1. Verify Prompt Assertions using parsed JSON to avoid escape conflicts
+        val requestJson = kotlinx.serialization.json.Json.parseToJsonElement(interceptedPayload).jsonObject
+        val messagesArr = requestJson["messages"]?.jsonArray
+        val sysMsg = messagesArr?.firstOrNull()?.jsonObject?.get("content")?.jsonPrimitive?.content ?: ""
+
+        assertTrue(sysMsg.contains("MUST use when user states an appointment, plan, task, commitment"))
+        assertTrue(sysMsg.contains("unless you issue a tool call"))
+        assertTrue(sysMsg.contains("confirm_change"))
+        assertTrue(sysMsg.contains("schedule_reminder"))
 
         // 2. Verify End-to-End Creation
         assertEquals(1, storage.getActiveNodes().size)
