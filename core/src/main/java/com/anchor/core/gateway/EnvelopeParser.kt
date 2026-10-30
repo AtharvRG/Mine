@@ -39,7 +39,9 @@ object EnvelopeParser {
         if (start == -1 || end == -1) return null
 
         return try {
-            json.decodeFromString<ToolEnvelope>(clean.substring(start, end + 1))
+            val parsed = json.decodeFromString<ToolEnvelope>(clean.substring(start, end + 1))
+            // B8: Reject empty JSON objects like {"foo":1}
+            if (parsed.reply.isBlank() && parsed.calls.isEmpty()) null else parsed
         } catch (_: Exception) {
             null
         }

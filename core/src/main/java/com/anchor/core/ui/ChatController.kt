@@ -95,6 +95,20 @@ class ChatController(
                 _state.update { it.copy(debugStats = storage.getDebugStats().entries.joinToString("\n") { e -> "${e.key}: ${e.value}" }) }
             }
             is UiAction.ScheduleIn -> {}
+            is UiAction.Undo -> coroutineScope.launch(defaultDispatcher) {
+                // D-033: Chip taps call gateway directly. Instant, no LLM.
+                val call = com.anchor.core.gateway.ToolCall("undo", mapOf("token" to action.token))
+                gateway.executeTool(call)
+                refreshUI()
+            }
+            is UiAction.ConfirmProposal -> coroutineScope.launch(defaultDispatcher) {
+                val call = com.anchor.core.gateway.ToolCall("confirm_change", mapOf("proposal" to action.proposalId, "choice" to action.choiceId))
+                gateway.executeTool(call)
+                refreshUI()
+            }
+            is UiAction.LoadDay -> {
+                // Future UI integration for endless scrolling day pagination
+            }
         }
     }
 

@@ -30,4 +30,7 @@ sealed interface UiAction {
     data object RefreshStats : UiAction
     data class SaveProvider(val endpoint: String, val key: String, val model: String) : UiAction
     data class ScheduleIn(val minutes: Int, val text: String) : UiAction 
+    data class Undo(val token: String) : UiAction
+    data class ConfirmProposal(val proposalId: String, val choiceId: String) : UiAction
+    data class LoadDay(val dayKey: String) : UiAction
 }

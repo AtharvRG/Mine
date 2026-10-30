@@ -83,11 +83,16 @@ class AndroidExportManager(
                             }
                             writer.write(manifest.toString() + "\n")
                             
+                            // C3: Export ALL derived/raw user data, including settings, rules, and reminders
                             messages = exportTable(db, "raw_message", writer)
                             events = exportTable(db, "raw_event", writer)
                             nodes = exportTable(db, "node", writer)
                             exportTable(db, "edge", writer)
                             exportTable(db, "soul_fact", writer)
+                            exportTable(db, "app_meta", writer)
+                            exportTable(db, "day_rule", writer)
+                            exportTable(db, "reminder", writer)
+                            exportTable(db, "proposal", writer)
                             
                             writer.flush()
                             val footer = buildJsonObject {
