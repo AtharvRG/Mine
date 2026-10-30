@@ -88,11 +88,16 @@ class SharedFakeStorage : Storage {
         loggedEvents.add(event)
     }
 
-    override suspend fun updateNodeAndCommit(node: Node, event: RawEvent, deleteReminderId: String?) {
+    override suspend fun getOpenProposals(): List<Proposal> = savedProposals.filter { it.status == "open" }
+    override suspend fun getActiveSoulFacts(): List<SoulFact> = soulFacts.filter { it.status == "active" || it.status == "pinned" }
+
+    override suspend fun updateNodeAndCommit(node: Node, event: RawEvent, deleteReminderId: String?, upsertReminder: Reminder?) {
         activeNodes.removeAll { it.id == node.id }
         activeNodes.add(node)
-        if (deleteReminderId != null) {
-            reminders.removeAll { it.id == deleteReminderId }
+        if (deleteReminderId != null) reminders.removeAll { it.id == deleteReminderId }
+        if (upsertReminder != null) {
+            reminders.removeAll { it.id == upsertReminder.id }
+            reminders.add(upsertReminder)
         }
         loggedEvents.add(event)
     }

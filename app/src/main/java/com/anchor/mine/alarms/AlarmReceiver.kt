@@ -25,6 +25,7 @@ class AlarmReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         val id = intent.getStringExtra("EXTRA_ID") ?: return
+        val text = intent.getStringExtra("EXTRA_TEXT") ?: "Reminder"
         
         // Safely acquire Wakelock/Timeout context (fails gracefully in unit tests)
         val pendingResult = try { goAsync() } catch (_: Exception) { null }
@@ -65,7 +66,21 @@ class AlarmReceiver : BroadcastReceiver() {
                 manager.notify(id.hashCode(), notification)
                 storage.deleteReminder(id) // Mark done
             } catch (_: Exception) {
-                // Init failed or DB locked, fail fast
+                // A4: If storage fails (locked out, crash), do NOT fail silent.
+                // Fall back to a blind notification instantly so the user doesn't miss the alarm.
+                val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                val channelId = "mine_reminders_v1"
+                manager.createNotificationChannel(NotificationChannel(channelId, "Reminders", NotificationManager.IMPORTANCE_HIGH))
+
+                val notification = NotificationCompat.Builder(context, channelId)
+                    .setSmallIcon(android.R.drawable.ic_dialog_info) 
+                    .setContentTitle("Mine (Fallback)")
+                    .setContentText(text)
+                    .setPriority(NotificationCompat.PRIORITY_HIGH)
+                    .setAutoCancel(true)
+                    .build()
+
+                manager.notify(id.hashCode(), notification)
             } finally {
                 pendingResult?.finish()
             }

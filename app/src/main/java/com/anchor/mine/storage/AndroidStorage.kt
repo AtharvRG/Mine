@@ -151,6 +151,26 @@ class AndroidStorage(private val dbHelper: SupportSQLiteOpenHelper) : Storage {
         dbHelper.writableDatabase.execSQL("UPDATE proposal SET status = 'consumed' WHERE id = ?", arrayOf(id))
     }
 
+    override suspend fun getOpenProposals(): List<Proposal> = withContext(ioDispatcher) {
+        val list = mutableListOf<Proposal>()
+        dbHelper.readableDatabase.query("SELECT id, kind, intent, options, status FROM proposal WHERE status = 'open'").use {
+            while (it.moveToNext()) {
+                list.add(Proposal(it.getString(0), it.getString(1), IntentType.valueOf(it.getString(2)), it.getString(3).split(","), it.getString(4)))
+            }
+        }
+        list
+    }
+
+    override suspend fun getActiveSoulFacts(): List<SoulFact> = withContext(ioDispatcher) {
+        val list = mutableListOf<SoulFact>()
+        dbHelper.readableDatabase.query("SELECT id, category, statement, confidence, source, origin, status, created_at FROM soul_fact WHERE status = 'active' OR status = 'pinned'").use {
+            while (it.moveToNext()) {
+                list.add(SoulFact(it.getString(0), it.getString(1), it.getString(2), it.getDouble(3), it.getString(4), it.getString(5), it.getString(6), it.getLong(7)))
+            }
+        }
+        list
+    }
+
     override suspend fun saveReminder(reminder: Reminder) = withContext(ioDispatcher) {
         dbHelper.writableDatabase.execSQL("INSERT OR REPLACE INTO reminder (id, text, fire_at) VALUES (?, ?, ?)", arrayOf<Any>(reminder.id, reminder.text, reminder.fireAtMillis))
     }
@@ -207,15 +227,22 @@ class AndroidStorage(private val dbHelper: SupportSQLiteOpenHelper) : Storage {
         } finally { db.endTransaction() }
     }
 
-    override suspend fun updateNodeAndCommit(node: Node, event: RawEvent, deleteReminderId: String?) = withContext(ioDispatcher) {
+    override suspend fun updateNodeAndCommit(node: Node, event: RawEvent, deleteReminderId: String?, upsertReminder: Reminder?) = withContext(ioDispatcher) {
         val db = dbHelper.writableDatabase
         db.beginTransaction()
         try {
-            db.execSQL("UPDATE node SET status = ?, closed_at = ?, updated_at = ? WHERE id = ?",
-                arrayOf<Any?>(node.status, node.closedAt, node.updatedAt, node.id))
+            db.execSQL("UPDATE node SET status = ?, due_at = ?, closed_at = ?, updated_at = ? WHERE id = ?",
+                arrayOf<Any?>(node.status, node.dueAt, node.closedAt, node.updatedAt, node.id))
+            
             deleteReminderId?.let { db.execSQL("DELETE FROM reminder WHERE id = ?", arrayOf(it)) }
+            
+            upsertReminder?.let { 
+                db.execSQL("INSERT OR REPLACE INTO reminder (id, text, fire_at) VALUES (?, ?, ?)", arrayOf<Any>(it.id, it.text, it.fireAtMillis)) 
+            }
+            
             db.execSQL("INSERT INTO raw_event (op_id, target_id, op_type, target_type, ts_utc, device_id, actor, before_json, after_json) VALUES (?, ?, ?, ?, ?, ?, 'chat_ai', ?, ?)",
                 arrayOf<Any?>(event.opId, event.targetId, event.opType, event.targetType, System.currentTimeMillis(), deviceId, event.beforeJson, event.afterJson))
+            
             db.setTransactionSuccessful()
         } finally { db.endTransaction() }
     }

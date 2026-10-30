@@ -43,6 +43,7 @@ class ChatController(
             _state.update { it.copy(
                 activeReminders = storage.getActiveReminders(),
                 chatMessages = storage.getRecentMessages(30),
+                openProposals = storage.getOpenProposals(),
                 providerEndpoint = storage.getSetting("ep") ?: "https://api.openai.com/v1/chat/completions",
                 providerKey = storage.getSetting("key") ?: "",
                 providerModel = storage.getSetting("mod") ?: "gpt-4o-mini",
@@ -109,6 +110,7 @@ class ChatController(
             is UiAction.LoadDay -> {
                 // Future UI integration for endless scrolling day pagination
             }
+            UiAction.ResetDatabase -> {}
         }
     }
 
@@ -263,7 +265,11 @@ CRITICAL: Do NOT say "Done" or "Saved" unless you issue a tool call.
 
     private suspend fun refreshUI() {
         storage.getActiveReminders().forEach { alarmScheduler.schedule(it) }
-        _state.update { it.copy(chatMessages = storage.getRecentMessages(30), activeReminders = storage.getActiveReminders()) }
+        _state.update { it.copy(
+            chatMessages = storage.getRecentMessages(30), 
+            activeReminders = storage.getActiveReminders(),
+            openProposals = storage.getOpenProposals()
+        ) }
     }
 
     private fun extractReplyFromJsonStream(jsonStream: String): String {

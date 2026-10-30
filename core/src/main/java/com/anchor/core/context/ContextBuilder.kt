@@ -22,14 +22,23 @@ class ContextBuilder(
         // A5: Inject current time context
         val nowStr = dateResolver.format(clock.now())
 
-        val activeNodes = storage.getActiveNodes().filter { it.status == "active" || it.status == "in_progress" }
+        val activeNodes = storage.getActiveNodes()
         val nodesText = if (activeNodes.isEmpty()) "No active items."
         else activeNodes.joinToString("\n") { 
             val due = if (it.dueAt != null) "Due: ${dateResolver.format(it.dueAt)}" else "No time"
             "${it.id} | ${it.type} | ${it.title} | $due" 
         }
 
-        pack.add(ChatMessage("sys", "system", "$systemRules\n\nNow: $nowStr\n\nActive Items:\n$nodesText"))
+        // A1 & A6: Inject open proposals and soul facts into context so the LLM isn't blind
+        val openProposals = storage.getOpenProposals()
+        val proposalsText = if (openProposals.isEmpty()) "No open proposals."
+        else openProposals.joinToString("\n") { "Proposal ${it.id} (${it.intent}): Needs clarification. Options: ${it.optionsIds.joinToString()}" }
+
+        val soulFacts = storage.getActiveSoulFacts()
+        val soulText = if (soulFacts.isEmpty()) "No soul facts."
+        else soulFacts.joinToString("\n") { "${it.category}: ${it.statement}" }
+
+        pack.add(ChatMessage("sys", "system", "$systemRules\n\nNow: $nowStr\n\nSoul:\n$soulText\n\nActive Items:\n$nodesText\n\nPending Clarifications:\n$proposalsText"))
 
         val recentHistory = storage.getRecentMessages(30)
         // B12: Use 2.0 chars per token for safer Hindi/Unicode handling budget

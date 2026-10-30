@@ -49,13 +49,25 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
                 controller!!.state.collect { _state.value = it }
             } catch (e: Exception) {
-                // UI will intercept this and display a fatal error instead of hanging/crashing.
-                _state.value = _state.value.copy(globalError = "Storage failed: ${e.message}")
+                val msg = if (e.message == "KEYSTORE_LOST") {
+                    "Keystore key lost. The database cannot be decrypted. You must reset the app."
+                } else {
+                    "Storage failed: ${e.message}"
+                }
+                _state.value = _state.value.copy(globalError = msg)
             }
         }
     }
 
     fun onAction(action: UiAction) {
+        if (action is UiAction.ResetDatabase) {
+            val ctx = getApplication<Application>().applicationContext
+            ctx.deleteDatabase("mine_encrypted.db")
+            java.io.File(ctx.filesDir, "wrapped_db.key").delete()
+            // Force crash to restart fresh (or you can elegantly reload the activity)
+            android.os.Process.killProcess(android.os.Process.myPid())
+            return
+        }
         controller?.onAction(action)
     }
 }

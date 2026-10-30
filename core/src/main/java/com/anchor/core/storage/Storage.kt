@@ -51,9 +51,12 @@ interface Storage {
     suspend fun saveReliabilityState(state: com.anchor.core.models.ReliabilityState)
     suspend fun recordReminderFire(fire: com.anchor.core.models.ReminderFire)
 
+    suspend fun getOpenProposals(): List<Proposal>
+    suspend fun getActiveSoulFacts(): List<SoulFact>
+
     // Purely Transactional Gateways
     suspend fun createNodeAndCommit(node: Node, event: RawEvent, reminder: Reminder?)
-    suspend fun updateNodeAndCommit(node: Node, event: RawEvent, deleteReminderId: String?)
+    suspend fun updateNodeAndCommit(node: Node, event: RawEvent, deleteReminderId: String?, upsertReminder: Reminder? = null)
     suspend fun undoChangeAndCommit(node: Node, event: RawEvent, restoreReminder: Reminder?)
     suspend fun createReminderAndCommit(reminder: Reminder, event: RawEvent)
     suspend fun deleteReminderAndCommit(reminderId: String, event: RawEvent)

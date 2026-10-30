@@ -11,6 +11,7 @@ data class UiState(
     val chatMessages: List<ChatMessage> = emptyList(),
     val isChatLoading: Boolean = false,
     val activeReminders: List<Reminder> = emptyList(),
+    val openProposals: List<com.anchor.core.models.Proposal> = emptyList(),
     val selfTestStatus: String = "Idle",
     val providerEndpoint: String = "",
     val providerKey: String = "",
@@ -33,4 +34,5 @@ sealed interface UiAction {
     data class Undo(val token: String) : UiAction
     data class ConfirmProposal(val proposalId: String, val choiceId: String) : UiAction
     data class LoadDay(val dayKey: String) : UiAction
+    data object ResetDatabase : UiAction
 }

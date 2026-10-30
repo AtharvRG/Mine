@@ -59,7 +59,13 @@ fun MineAppUI(viewModel: MainViewModel) {
 
     if (state.globalError != null) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) {
-            Text("Fatal Error\n\n${state.globalError}", color = MaterialTheme.colorScheme.error)
+            Column(horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) {
+                Text("Fatal Error\n\n${state.globalError}", color = MaterialTheme.colorScheme.error)
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(onClick = { viewModel.onAction(UiAction.ResetDatabase) }) {
+                    Text("Reset Database")
+                }
+            }
         }
         return
     }
