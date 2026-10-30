@@ -137,6 +137,10 @@ class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(8) {
             db.execSQL("DROP TRIGGER IF EXISTS trg_soul_fts_insert")
             db.execSQL("DROP TRIGGER IF EXISTS trg_soul_fts_delete")
             db.execSQL("DROP TRIGGER IF EXISTS trg_soul_fts_update")
+            
+            // A16: Actually rebuild the FTS tables so existing data becomes searchable
+            db.execSQL("INSERT INTO node_fts (rowid, title, body) SELECT rowid, title, body FROM node")
+            db.execSQL("INSERT INTO soul_fts (rowid, statement) SELECT rowid, statement FROM soul_fact")
         }
         if (oldVersion < 7) {
             db.execSQL("CREATE TABLE IF NOT EXISTS proactive_state (id INTEGER PRIMARY KEY CHECK (id = 1), open_thread_msg_id TEXT, thread_opened_at INTEGER, backoff_step INTEGER NOT NULL DEFAULT 0, last_sent_at INTEGER, last_contact_at INTEGER, paused_until INTEGER, silent_days INTEGER NOT NULL DEFAULT 0, sent_today INTEGER NOT NULL DEFAULT 0, fuse_tripped_at INTEGER, day_key TEXT)")

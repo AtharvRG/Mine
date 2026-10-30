@@ -4,13 +4,14 @@
 
 package com.anchor.core.provider
 
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class RateLimiterTest {
     @Test
-    fun testLimiterMath() {
+    fun testLimiterMath() = runBlocking {
         var clock = 1000L
         val limiter = RateLimiter { clock }
 

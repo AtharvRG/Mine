@@ -53,7 +53,7 @@ class Gateway(
             "propose_change" -> {
                 val intentStr = args["intent"]?.uppercase() ?: return ToolResult.Error("Missing intent")
                 val intent = try { IntentType.valueOf(intentStr) } catch(e: Exception) { return ToolResult.Error("Unknown intent") }
-                val hint = args["hint"] ?: args["title"] ?: ""
+                val hint = (args["hint"] ?: args["title"] ?: "").take(200) // B3: Length cap
                 val dueText = args["due_text"]
                 
                 val targetTimeMillis = if (dueText.isNullOrBlank()) null else {
@@ -63,9 +63,21 @@ class Gateway(
                 when (intent) {
                     IntentType.CREATE -> {
                         if (hint.isBlank()) return ToolResult.Error("Title cannot be blank")
-                        handleCreate(hint, args["type"] ?: "task", targetTimeMillis)
+                        // B3: Validate Type
+                        val type = (args["type"] ?: "task").lowercase()
+                        val validTypes = listOf("task", "event", "note", "habit")
+                        val safeType = if (type in validTypes) type else "task"
+                        
+                        // B4: Deduplicate
+                        val active = storage.getActiveNodes()
+                        val duplicate = active.find { it.title.equals(hint, ignoreCase = true) && it.status != "done" && it.status != "cancelled" }
+                        if (duplicate != null) {
+                            return ToolResult.Error("An active item named '${duplicate.title}' already exists.")
+                        }
+                        
+                        handleCreate(hint, safeType, targetTimeMillis)
                     }
-                    IntentType.CANCEL, IntentType.COMPLETE -> handleResolveChange(intent, hint, targetTimeMillis)
+                    IntentType.CANCEL, IntentType.COMPLETE, IntentType.UPDATE, IntentType.RESCHEDULE -> handleResolveChange(intent, hint, targetTimeMillis)
                     else -> ToolResult.Error("$intent not supported yet")
                 }
             }
@@ -150,10 +162,13 @@ class Gateway(
             is Resolution.ClearWinner -> {
                 val oldNode = resolution.node
                 val now = clock.now()
-                val newNode = oldNode.copy(
-                    status = if (intent == IntentType.CANCEL) "cancelled" else "done",
-                    closedAt = now, updatedAt = now
-                )
+                // B6: Map UPDATE and RESCHEDULE explicitly
+                val newNode = when (intent) {
+                    IntentType.CANCEL -> oldNode.copy(status = "cancelled", closedAt = now, updatedAt = now)
+                    IntentType.COMPLETE -> oldNode.copy(status = "done", closedAt = now, updatedAt = now)
+                    IntentType.RESCHEDULE -> oldNode.copy(dueAt = targetTimeMillis ?: oldNode.dueAt, updatedAt = now)
+                    else -> oldNode.copy(updatedAt = now) // UPDATE (generic edit, currently unmapped fields)
+                }
                 
                 val remId = "r_${oldNode.id}"
                 val activeRems = storage.getPendingReminders()

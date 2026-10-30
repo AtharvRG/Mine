@@ -68,8 +68,9 @@ class ChatController(
                 handleSendMessage(text)
             }
             is UiAction.Stop -> {
+                // B10: Cancel job, but do NOT set isChatLoading = false here.
+                // The finally block of handleSendMessage will do it, preventing job overlap.
                 currentStreamJob?.cancel()
-                _state.update { it.copy(isChatLoading = false) }
             }
             is UiAction.SaveProvider -> coroutineScope.launch(defaultDispatcher) {
                 storage.saveSetting("ep", action.endpoint)
@@ -126,8 +127,9 @@ class ChatController(
                         } else if (event is StreamEvent.TextDelta) {
                             botResponse.append(event.text)
                             if (clock.now() - lastUpdate > 100) {
-                                val trimmed = botResponse.toString().trimStart()
-                                val display = if (trimmed.startsWith("{") || trimmed.startsWith("```") || trimmed.startsWith("[")) "Thinking..." else botResponse.toString()
+                                // B7: Incremental streaming of JSON 'reply' field natively
+                                val currentText = botResponse.toString()
+                                val display = extractReplyFromJsonStream(currentText)
                                 updateLastMessage(botId, display)
                                 lastUpdate = clock.now()
                             }
@@ -214,10 +216,9 @@ class ChatController(
     }
 
     private fun buildJsonPayload(pack: List<ChatMessage>): String {
-        // A3 & A4: Strict prompt restored with schedule_reminder examples
         val instruction = """You are MineAI, a personal companion. You must use Envelope Mode JSON for EVERY reply: {"reply":"text to user","calls":[{"tool":"...","args":{...}}]}
 Tools:
-- propose_change (intent: CREATE|CANCEL|COMPLETE, hint: target text, due_text: e.g. 'tomorrow at 4pm', 'tonight', 'next monday' or omit if no time). MUST use when user states an appointment, plan, task, commitment.
+- propose_change (intent: CREATE|CANCEL|COMPLETE|UPDATE|RESCHEDULE, hint: target text, due_text: e.g. 'tomorrow at 4pm', 'tonight', 'next monday' or omit if no time). MUST use when user states an appointment, plan, task, commitment.
 - schedule_reminder (target_ref: node id, when_text: time). Use to set alarms.
 - confirm_change (proposal: proposal id, choice: option id). Use when Ambiguous.
 - undo (token: u_123456).
@@ -227,9 +228,9 @@ Tools:
 Examples:
 CREATE: {"tool":"propose_change","args":{"intent":"CREATE", "title":"Buy milk", "due_text": "tomorrow at 4pm"}}
 SCHEDULE ALARM: {"tool":"schedule_reminder","args":{"target_ref":"n_abc", "when_text": "tomorrow at 4pm"}}
-CANCEL: {"tool":"propose_change","args":{"intent":"CANCEL", "hint":"dinner"}}
+RESCHEDULE: {"tool":"propose_change","args":{"intent":"RESCHEDULE", "hint":"dinner", "due_text":"6pm"}}
 UNDO: {"tool":"undo","args":{"token":"u_123456"}}
-SOUL: {"tool":"soul_propose","args":{"statement":"Is diabetic","category":"health"}}
+SOUL: {"tool":"soul_propose","args":{"statement":"Prefers morning workouts","category":"habits_routines"}}
 
 CRITICAL: Do NOT say "Done" or "Saved" unless you issue a tool call.
 """
@@ -249,5 +250,22 @@ CRITICAL: Do NOT say "Done" or "Saved" unless you issue a tool call.
     private suspend fun refreshUI() {
         storage.getActiveReminders().forEach { alarmScheduler.schedule(it) }
         _state.update { it.copy(chatMessages = storage.getRecentMessages(30), activeReminders = storage.getActiveReminders()) }
+    }
+
+    private fun extractReplyFromJsonStream(jsonStream: String): String {
+        val replyMarker = "\"reply\":\""
+        val start = jsonStream.indexOf(replyMarker)
+        if (start == -1) return "Thinking..."
+        
+        val textStart = start + replyMarker.length
+        var end = jsonStream.indexOf("\"", textStart)
+        while (end != -1 && jsonStream[end - 1] == '\\') {
+            end = jsonStream.indexOf("\"", end + 1)
+        }
+        
+        if (end == -1) {
+            return jsonStream.substring(textStart).replace("\\\"", "\"").replace("\\n", "\n")
+        }
+        return jsonStream.substring(textStart, end).replace("\\\"", "\"").replace("\\n", "\n")
     }
 }

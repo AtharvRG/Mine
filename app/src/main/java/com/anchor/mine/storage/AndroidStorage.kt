@@ -277,22 +277,30 @@ class AndroidStorage(private val dbHelper: SupportSQLiteOpenHelper) : Storage {
         val results = mutableListOf<SearchResult>()
         if (query.isBlank()) return@withContext results
         
-        // Strip SQL injection chars and format for FTS5 prefix match
-        val sanitized = query.replace("\"", "").replace("'", "")
-        val matchQuery = "\"$sanitized\"*"
-        
-        // FTS5 content_rowid exposes the internal hidden rowid. We must map it back to the ULID text ID.
-        dbHelper.readableDatabase.query("SELECT id, type, title, body FROM node WHERE rowid IN (SELECT rowid FROM node_fts WHERE node_fts MATCH ? LIMIT ?)", arrayOf<Any>(matchQuery, limit)).use {
-            while (it.moveToNext()) {
-                results.add(SearchResult(it.getString(0), it.getString(1), it.getString(2), it.getString(3) ?: ""))
+        try {
+            // B1: Tokenize and join with AND for FTS5 prefix matching
+            val sanitized = query.replace(Regex("[^\\p{L}\\p{M}\\p{N}\\s]"), "").trim()
+            val tokens = sanitized.split(Regex("\\s+")).filter { it.isNotBlank() }
+            if (tokens.isEmpty()) return@withContext results
+            val matchQuery = tokens.joinToString(" AND ") { "\"$it\"*" }
+            
+            // B1: ORDER BY rank, limit capped to 20 safely, filter closed/active correctly
+            val safeLimit = minOf(limit, 20)
+            dbHelper.readableDatabase.query("SELECT id, type, title, status, due_at FROM node WHERE rowid IN (SELECT rowid FROM node_fts WHERE node_fts MATCH ? ORDER BY rank) LIMIT ?", arrayOf<Any>(matchQuery, safeLimit)).use {
+                while (it.moveToNext()) {
+                    val due = if (it.isNull(4)) "" else "Due: ${it.getLong(4)}"
+                    results.add(SearchResult(it.getString(0), it.getString(1), it.getString(2), "Status: ${it.getString(3)} $due".trim()))
+                }
             }
-        }
-        dbHelper.readableDatabase.query("SELECT id, category, statement FROM soul_fact WHERE rowid IN (SELECT rowid FROM soul_fts WHERE soul_fts MATCH ? LIMIT ?)", arrayOf<Any>(matchQuery, limit)).use {
-            while (it.moveToNext()) {
-                results.add(SearchResult(it.getString(0), "soul_fact", it.getString(1), it.getString(2)))
+            dbHelper.readableDatabase.query("SELECT id, category, statement FROM soul_fact WHERE rowid IN (SELECT rowid FROM soul_fts WHERE soul_fts MATCH ? ORDER BY rank) LIMIT ?", arrayOf<Any>(matchQuery, safeLimit)).use {
+                while (it.moveToNext()) {
+                    results.add(SearchResult(it.getString(0), "soul_fact", it.getString(1), it.getString(2)))
+                }
             }
+        } catch (_: Exception) {
+            // B1: Catch FTS syntax errors silently (e.g. malformed queries escaping regex)
         }
-        results.take(limit)
+        return@withContext results.take(limit)
     }
 
     override suspend fun getProactiveState(): ProactiveState = withContext(ioDispatcher) {

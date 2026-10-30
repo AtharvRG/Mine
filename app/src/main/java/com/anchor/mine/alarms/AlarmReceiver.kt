@@ -25,7 +25,6 @@ class AlarmReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         val id = intent.getStringExtra("EXTRA_ID") ?: return
-        val text = intent.getStringExtra("EXTRA_TEXT") ?: "Reminder"
         
         // Safely acquire Wakelock/Timeout context (fails gracefully in unit tests)
         val pendingResult = try { goAsync() } catch (_: Exception) { null }
@@ -38,9 +37,10 @@ class AlarmReceiver : BroadcastReceiver() {
                 
                 // BP 30: Must check ALL pending reminders, not just future ones
                 val pending = storage.getPendingReminders()
+                val rem = pending.find { it.id == id } ?: return@launch
                 
-                // BP 30: If the node was closed or alarm cancelled, the row won't exist. Suppress.
-                if (pending.none { it.id == id }) return@launch
+                // B15: Use text from DB row
+                val safeText = rem.text
 
                 GlobalAlarmState.lastFired.value = id
                 lastFiredId = id
@@ -49,13 +49,14 @@ class AlarmReceiver : BroadcastReceiver() {
                 val channelId = "mine_reminders_v1"
                 manager.createNotificationChannel(NotificationChannel(channelId, "Reminders", NotificationManager.IMPORTANCE_HIGH))
 
-                val openIntent = Intent(context, MainActivity::class.java).apply { flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK }
+                // B15: Removed FLAG_ACTIVITY_CLEAR_TASK to prevent killing active chats
+                val openIntent = Intent(context, MainActivity::class.java).apply { flags = Intent.FLAG_ACTIVITY_NEW_TASK }
                 val pendingOpen = PendingIntent.getActivity(context, id.hashCode(), openIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
 
                 val notification = NotificationCompat.Builder(context, channelId)
                     .setSmallIcon(android.R.drawable.ic_dialog_info) 
                     .setContentTitle("Mine")
-                    .setContentText(text)
+                    .setContentText(safeText)
                     .setPriority(NotificationCompat.PRIORITY_HIGH)
                     .setContentIntent(pendingOpen)
                     .setAutoCancel(true)

@@ -32,7 +32,8 @@ class ContextBuilder(
         pack.add(ChatMessage("sys", "system", "$systemRules\n\nNow: $nowStr\n\nActive Items:\n$nodesText"))
 
         val recentHistory = storage.getRecentMessages(30)
-        val allowedChatChars = (1500 * 3.5).toInt()
+        // B12: Use 2.0 chars per token for safer Hindi/Unicode handling budget
+        val allowedChatChars = (1500 * 2.0).toInt()
         var currentChars = 0
         val includedHistory = mutableListOf<ChatMessage>()
 

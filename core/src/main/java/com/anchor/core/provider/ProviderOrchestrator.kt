@@ -17,13 +17,20 @@ class ProviderOrchestrator(
     private val jsonParser = Json { ignoreUnknownKeys = true; isLenient = true }
 
     suspend fun chat(chain: List<Target>, prompt: String): Flow<StreamEvent> = flow {
-        val target = chain.firstOrNull { limiter.canRequest(it.key, it.limitRpm) } ?: throw Exception("All targets in cooldown")
-        limiter.recordRequest(target.key)
+        var target: Target? = null
+        for (t in chain) {
+            if (limiter.canRequest(t.key, t.limitRpm)) {
+                target = t
+                break
+            }
+        }
+        val validTarget = target ?: throw Exception("All targets in cooldown")
+        limiter.recordRequest(validTarget.key)
         try {
-            emitAll(normalize(transport.postStream(target, prompt)))
+            emitAll(normalize(transport.postStream(validTarget, prompt)))
         } catch (e: Http429Exception) {
-            limiter.apply429Cooldown(target.key, e.retryAfterSeconds)
-            val remainingChain = chain.dropWhile { it.key == target.key }
+            limiter.apply429Cooldown(validTarget.key, e.retryAfterSeconds)
+            val remainingChain = chain.dropWhile { it.key == validTarget.key }
             if (remainingChain.isNotEmpty()) {
                 emit(StreamEvent.Clear) // Tell UI to wipe partial string
                 emitAll(chat(remainingChain, prompt))
@@ -33,8 +40,9 @@ class ProviderOrchestrator(
 
     private fun normalize(rawStream: Flow<String>): Flow<StreamEvent> = flow {
         rawStream.collect { line ->
-            if (line.startsWith("data: ")) {
-                val data = line.removePrefix("data: ").trim()
+            // B13: Accepts with or without space
+            if (line.startsWith("data:")) {
+                val data = line.substring(5).trim()
                 if (data == "[DONE]") {
                     emit(StreamEvent.Finish("stop"))
                 } else if (data.isNotEmpty()) {

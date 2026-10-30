@@ -26,10 +26,10 @@ class DateResolver(private val clock: Clock) {
         val logicalCal = absCal.clone() as Calendar
         if (isLateNight) logicalCal.add(Calendar.DAY_OF_YEAR, -1)
         
-        if (text == "in an hour") return now + 3_600_000L
-        if (text == "in half an hour") return now + 1_800_000L
-        Regex("""^in (\d+)\s*(min|minute|minutes)$""").find(text)?.let { return now + it.groupValues[1].toLong() * 60_000L }
-        Regex("""^in (\d+)\s*(hour|hours)$""").find(text)?.let { return now + it.groupValues[1].toLong() * 3_600_000L }
+        if (text == "in an hour" || text == "in 1 hr" || text == "in 1 hour") return now + 3_600_000L
+        if (text == "in half an hour" || text == "in 30 mins") return now + 1_800_000L
+        Regex("""^in (\d+)\s*(min|minute|minutes|mins)$""").find(text)?.let { return now + it.groupValues[1].toLong() * 60_000L }
+        Regex("""^in (\d+)\s*(hr|hour|hours)$""").find(text)?.let { return now + it.groupValues[1].toLong() * 3_600_000L }
         Regex("""^in (\d+)\s*(day|days)$""").find(text)?.let { return now + it.groupValues[1].toLong() * 86_400_000L }
 
         val timeRegex = Regex("""(\d{1,2})(?::(\d{2}))?\s*(am|pm)""")
@@ -60,6 +60,9 @@ class DateResolver(private val clock: Clock) {
             val min = match.groupValues[2].takeIf { it.isNotEmpty() }?.toInt() ?: 0
             val ampm = match.groupValues[3]
             
+            // B14: Validate HR/MIN boundaries
+            if (hr !in 1..12 || min !in 0..59) return null
+
             if (hr == 12 && ampm == "am") hr = 0
             else if (hr < 12 && ampm == "pm") hr += 12
             
@@ -75,6 +78,9 @@ class DateResolver(private val clock: Clock) {
             val min = match.groupValues[2].takeIf { it.isNotEmpty() }?.toInt() ?: 0
             val ampm = match.groupValues[3]
             
+            // B14: Validate HR/MIN boundaries
+            if (hr !in 1..12 || min !in 0..59) return null
+
             if (hr == 12 && ampm == "am") hr = 0
             else if (hr < 12 && ampm == "pm") hr += 12
             
@@ -96,6 +102,9 @@ class DateResolver(private val clock: Clock) {
             val min = match.groupValues[2].takeIf { it.isNotEmpty() }?.toInt() ?: 0
             val ampm = match.groupValues[3]
             
+            // B14: Validate HR/MIN boundaries
+            if (hr !in 1..12 || min !in 0..59) return null
+
             if (hr == 12 && ampm == "am") hr = 0
             else if (hr < 12 && ampm == "pm") hr += 12
             

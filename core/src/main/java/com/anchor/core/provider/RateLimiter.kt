@@ -4,42 +4,33 @@
 
 package com.anchor.core.provider
 
-class RateLimiter(private val clock: () -> Long) {
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
-    // In a real app, this state would be persisted to storage
+class RateLimiter(private val clock: () -> Long) {
     private val keyTimestamps = mutableMapOf<String, MutableList<Long>>()
     private val keyCooldowns = mutableMapOf<String, Long>()
+    private val mutex = Mutex()
 
-    fun canRequest(key: String, limit: Int): Boolean {
+    suspend fun canRequest(key: String, limit: Int): Boolean = mutex.withLock {
         val now = clock()
-
-        // 1. Check Cooldown
-        if (keyCooldowns.getOrDefault(key, 0L) > now) {
-            return false
-        }
-
-        // 2. Sliding Window (Last 60 seconds)
+        if (keyCooldowns.getOrDefault(key, 0L) > now) return false
         val stamps = keyTimestamps.getOrPut(key) { mutableListOf() }
         stamps.removeAll { now - it > 60_000 }
-
-        // Blueprint 40 (3.5): Hard ceiling of 50 RPM per model/key
-        val hardCeiling = minOf(limit, 50)
-
-        return stamps.size < hardCeiling
+        return stamps.size < minOf(limit, 50)
     }
 
-    fun recordRequest(key: String) {
+    suspend fun recordRequest(key: String) = mutex.withLock {
         keyTimestamps.getOrPut(key) { mutableListOf() }.add(clock())
     }
 
-    fun apply429Cooldown(key: String, retryAfterSeconds: Int? = null) {
-        // Blueprint 40 (3.6): Max of (15 mins, Retry-After)
+    suspend fun apply429Cooldown(key: String, retryAfterSeconds: Int? = null) = mutex.withLock {
         val requestedMin = (retryAfterSeconds ?: 0) / 60
         val cooldownMin = maxOf(15, requestedMin)
         keyCooldowns[key] = clock() + (cooldownMin * 60 * 1000L)
     }
 
-    fun getCooldownExpiry(key: String): Long? {
+    suspend fun getCooldownExpiry(key: String): Long? = mutex.withLock {
         val expiry = keyCooldowns[key]
         return if (expiry != null && expiry > clock()) expiry else null
     }
