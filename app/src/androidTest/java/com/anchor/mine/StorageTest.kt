@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 Mine Author
+// Copyright (C) 2026 Mine contributors
 // Part of Mine. See LICENSE in the repository root.
 
 package com.anchor.mine.storage
