@@ -17,9 +17,13 @@ class SharedFakeStorage : Storage {
     var messages = mutableListOf<ChatMessage>()
     var reminders = mutableListOf<Reminder>()
     var settings = mutableMapOf<String, String>()
+    var proactiveState = ProactiveState()
 
     val loggedEvents = mutableListOf<RawEvent>()
     val savedProposals = mutableListOf<Proposal>()
+
+    override suspend fun getProactiveState(): ProactiveState = proactiveState
+    override suspend fun saveProactiveState(state: ProactiveState) { proactiveState = state }
 
     override suspend fun insertRawMessage(id: String, role: String, content: String) {
         messages.add(ChatMessage(id, role, content))

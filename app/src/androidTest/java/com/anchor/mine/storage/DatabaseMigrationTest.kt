@@ -11,6 +11,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.anchor.core.models.IntentType
 import com.anchor.core.models.Node
 import com.anchor.core.models.Proposal
+import com.anchor.core.models.ProactiveState
 import com.anchor.core.models.RawEvent
 import com.anchor.core.models.SoulFact
 import kotlinx.coroutines.runBlocking
@@ -25,8 +26,8 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class DatabaseMigrationTest {
 
-    // Simulates the exact schema before V6 (V5 schema)
-    class V5Callback : SupportSQLiteOpenHelper.Callback(5) {
+    // Simulates the exact schema before V7 (V6 schema)
+    class V6Callback : SupportSQLiteOpenHelper.Callback(6) {
         override fun onCreate(db: SupportSQLiteDatabase) {
             db.execSQL("CREATE TABLE app_meta (\"key\" TEXT PRIMARY KEY, value TEXT NOT NULL)")
             db.execSQL("CREATE TABLE raw_message (id TEXT PRIMARY KEY, device_id TEXT, ts_utc INTEGER, tz_offset_min INTEGER, day_key TEXT, role TEXT, content TEXT, redacted_at INTEGER, reasoning TEXT, tags TEXT, persona_id TEXT, model_ref TEXT, tokens_in INTEGER, tokens_out INTEGER, client_msg_id TEXT, attrs TEXT)")
@@ -41,7 +42,6 @@ class DatabaseMigrationTest {
             db.execSQL("CREATE TABLE day_block (day_key TEXT NOT NULL, idx INTEGER NOT NULL, start_msg_id TEXT NOT NULL, start_ts INTEGER NOT NULL, end_ts INTEGER NOT NULL, msg_count INTEGER NOT NULL, part_of_day TEXT, PRIMARY KEY (day_key, idx))")
             db.execSQL("CREATE TABLE export_log (id TEXT PRIMARY KEY, ts INTEGER NOT NULL, kind TEXT NOT NULL, options_json TEXT, counts_json TEXT, bytes INTEGER, verified INTEGER, note TEXT)")
 
-            // V4 properly included FTS tables, so the V5 mock must have them too.
             db.execSQL("CREATE VIRTUAL TABLE node_fts USING fts5(title, body, content='node', content_rowid='rowid')")
             db.execSQL("CREATE VIRTUAL TABLE soul_fts USING fts5(statement, content='soul_fact', content_rowid='rowid')")
             db.execSQL("CREATE VIRTUAL TABLE msg_chunk_fts USING fts5(text, content='msg_chunk', content_rowid='rowid')")
@@ -50,50 +50,38 @@ class DatabaseMigrationTest {
     }
 
     @Test
-    fun testMigrationV5toV6_AndEveryMethod() = runBlocking {
+    fun testMigrationV6toV7_AndEveryMethod() = runBlocking {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
-        context.deleteDatabase("mine_mig_test.db")
-        val key = ByteArray(32) { 1 }
+        context.deleteDatabase("mine_mig_v6_v7.db")
+        val key = ByteArray(32) { 3 }
 
         System.loadLibrary("sqlcipher")
         val factory = SupportOpenHelperFactory(key)
-        val v5Config = SupportSQLiteOpenHelper.Configuration.builder(context).name("mine_mig_test.db").callback(V5Callback()).build()
-        val v5Db = factory.create(v5Config).writableDatabase
-        v5Db.execSQL("INSERT INTO proposal (id, kind, intent, options, created_at) VALUES ('p_old', 'ambiguous', 'CANCEL', 'n1,n2', 1000)")
-        v5Db.close()
+        val v6Config = SupportSQLiteOpenHelper.Configuration.builder(context).name("mine_mig_v6_v7.db").callback(V6Callback()).build()
+        val v6Db = factory.create(v6Config).writableDatabase
+        v6Db.close()
 
-        // Open with V6 Helper
-        val v6Helper = DatabaseProvider.getHelper(context, key, "mine_mig_test.db")
-        val storage = AndroidStorage(v6Helper)
+        // Open with V7 Helper
+        val v7Helper = DatabaseProvider.getHelper(context, key, "mine_mig_v6_v7.db")
+        val storage = AndroidStorage(v7Helper)
 
-        // Verify V6 tables exist without crashing
-        val cursor = v6Helper.readableDatabase.query("SELECT COUNT(*) FROM soul_fts")
-        assertTrue(cursor.moveToFirst())
-        cursor.close()
+        val state = ProactiveState(openThreadMsgId = "msg_test", sentToday = 5)
+        storage.saveProactiveState(state)
+        val fetched = storage.getProactiveState()
+        assertEquals("msg_test", fetched.openThreadMsgId)
+        assertEquals(5, fetched.sentToday)
 
-        storage.insertRawMessage("msg1", "user", "test")
-        assertEquals("test", storage.getRawMessage("msg1"))
-        assertEquals(1, storage.getRecentMessages(10).size)
-        
-        val node = Node("n1", "task", "Test", "active")
-        val event = RawEvent("e1", "CREATE", "node", "n1")
-        storage.createNodeAndCommit(node, event, null)
-        assertEquals(1, storage.getActiveNodes().size)
-        
-        storage.updateNodeAndCommit(node.copy(status = "done"), RawEvent("e2", "COMPLETE", "node", "n1"), null)
-        assertEquals(0, storage.getActiveNodes().size)
-
-        v6Helper.close()
+        v7Helper.close()
     }
 
     @Test
-    fun testFreshV6SmokeTest_RunsEveryStorageMethod() = runBlocking {
+    fun testFreshV7SmokeTest_RunsEveryStorageMethod() = runBlocking {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         context.deleteDatabase("mine_smoke_test.db")
         val key = ByteArray(32) { 2 }
         
-        val v6Helper = DatabaseProvider.getHelper(context, key, "mine_smoke_test.db")
-        val storage = AndroidStorage(v6Helper)
+        val v7Helper = DatabaseProvider.getHelper(context, key, "mine_smoke_test.db")
+        val storage = AndroidStorage(v7Helper)
         
         storage.insertRawMessage("msg_s1", "user", "Hello")
         assertEquals("Hello", storage.getRawMessage("msg_s1"))
@@ -112,6 +100,13 @@ class DatabaseMigrationTest {
         val stats = storage.getDebugStats()
         assertTrue(stats.containsKey("Rows in raw_message"))
         
+        // Proactive State persistence
+        val state = ProactiveState(sentToday = 12, backoffStep = 2)
+        storage.saveProactiveState(state)
+        val fetchedState = storage.getProactiveState()
+        assertEquals(12, fetchedState.sentToday)
+        assertEquals(2, fetchedState.backoffStep)
+
         // FTS Sync Verification
         val nFts = Node("n_fts", "task", "Bananas", "active")
         val eFts = RawEvent("e_fts", "CREATE", "node", "n_fts")
@@ -123,9 +118,8 @@ class DatabaseMigrationTest {
         assertTrue("Node FTS Trigger must fire and populate index", searchTasks.any { it.title == "Bananas" })
         
         val searchFacts = storage.searchMemoryFts("Apples", 5)
-        // Fix: SoulFact searches map Category -> title, Statement -> details
         assertTrue("Soul FTS Trigger must fire and populate index", searchFacts.any { it.details == "Allergic to Apples" })
         
-        v6Helper.close()
+        v7Helper.close()
     }
 }

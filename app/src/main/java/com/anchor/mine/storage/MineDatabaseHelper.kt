@@ -9,8 +9,8 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.sqlite.db.SupportSQLiteOpenHelper
 import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
 
-// BUMPED to Version 6 for FTS5 Sync Triggers
-class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(6) {
+// BUMPED to Version 7 for Nudge Engine and Check-in State
+class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(7) {
 
     override fun onConfigure(db: SupportSQLiteDatabase) {
         super.onConfigure(db)
@@ -75,6 +75,12 @@ class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(6) {
         db.execSQL("CREATE TABLE day_block (day_key TEXT NOT NULL, idx INTEGER NOT NULL, start_msg_id TEXT NOT NULL, start_ts INTEGER NOT NULL, end_ts INTEGER NOT NULL, msg_count INTEGER NOT NULL, part_of_day TEXT, PRIMARY KEY (day_key, idx))")
         db.execSQL("CREATE TABLE export_log (id TEXT PRIMARY KEY, ts INTEGER NOT NULL, kind TEXT NOT NULL, options_json TEXT, counts_json TEXT, bytes INTEGER, verified INTEGER, note TEXT)")
 
+        db.execSQL("CREATE TABLE proactive_state (id INTEGER PRIMARY KEY CHECK (id = 1), open_thread_msg_id TEXT, thread_opened_at INTEGER, backoff_step INTEGER NOT NULL DEFAULT 0, last_sent_at INTEGER, last_contact_at INTEGER, paused_until INTEGER, silent_days INTEGER NOT NULL DEFAULT 0, sent_today INTEGER NOT NULL DEFAULT 0, fuse_tripped_at INTEGER, day_key TEXT)")
+        db.execSQL("CREATE TABLE nudge_log (id TEXT PRIMARY KEY, ts_utc INTEGER NOT NULL, trigger_type TEXT NOT NULL, subject_refs TEXT, score REAL, threshold REAL, gates_json TEXT, decision TEXT NOT NULL, delivery TEXT, msg_id TEXT, text_source TEXT, outcome TEXT, latency_ms INTEGER, reason_json TEXT)")
+        db.execSQL("CREATE TABLE nudge_pool (id TEXT PRIMARY KEY, trigger_type TEXT NOT NULL, subject_refs TEXT, score REAL NOT NULL, created_at INTEGER NOT NULL, expires_at INTEGER NOT NULL)")
+        db.execSQL("CREATE TABLE nudge_hold (node_id TEXT NOT NULL, trigger_type TEXT NOT NULL, until_ts INTEGER NOT NULL, PRIMARY KEY (node_id, trigger_type))")
+        db.execSQL("CREATE TABLE checkin_state (kind TEXT NOT NULL, day_key TEXT NOT NULL, status TEXT NOT NULL, msg_id TEXT, scheduled_for INTEGER, delivered_at INTEGER, PRIMARY KEY (kind, day_key))")
+
         db.execSQL("CREATE INDEX idx_node_status_due ON node(status, due_at)")
         db.execSQL("CREATE INDEX idx_raw_event_target ON raw_event(target_type, target_id)")
         db.execSQL("CREATE INDEX idx_raw_message_ts ON raw_message(ts_utc)")
@@ -125,6 +131,13 @@ class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(6) {
             db.execSQL("DROP TRIGGER IF EXISTS trg_soul_fts_insert")
             db.execSQL("DROP TRIGGER IF EXISTS trg_soul_fts_delete")
             db.execSQL("DROP TRIGGER IF EXISTS trg_soul_fts_update")
+        }
+        if (oldVersion < 7) {
+            db.execSQL("CREATE TABLE IF NOT EXISTS proactive_state (id INTEGER PRIMARY KEY CHECK (id = 1), open_thread_msg_id TEXT, thread_opened_at INTEGER, backoff_step INTEGER NOT NULL DEFAULT 0, last_sent_at INTEGER, last_contact_at INTEGER, paused_until INTEGER, silent_days INTEGER NOT NULL DEFAULT 0, sent_today INTEGER NOT NULL DEFAULT 0, fuse_tripped_at INTEGER, day_key TEXT)")
+            db.execSQL("CREATE TABLE IF NOT EXISTS nudge_log (id TEXT PRIMARY KEY, ts_utc INTEGER NOT NULL, trigger_type TEXT NOT NULL, subject_refs TEXT, score REAL, threshold REAL, gates_json TEXT, decision TEXT NOT NULL, delivery TEXT, msg_id TEXT, text_source TEXT, outcome TEXT, latency_ms INTEGER, reason_json TEXT)")
+            db.execSQL("CREATE TABLE IF NOT EXISTS nudge_pool (id TEXT PRIMARY KEY, trigger_type TEXT NOT NULL, subject_refs TEXT, score REAL NOT NULL, created_at INTEGER NOT NULL, expires_at INTEGER NOT NULL)")
+            db.execSQL("CREATE TABLE IF NOT EXISTS nudge_hold (node_id TEXT NOT NULL, trigger_type TEXT NOT NULL, until_ts INTEGER NOT NULL, PRIMARY KEY (node_id, trigger_type))")
+            db.execSQL("CREATE TABLE IF NOT EXISTS checkin_state (kind TEXT NOT NULL, day_key TEXT NOT NULL, status TEXT NOT NULL, msg_id TEXT, scheduled_for INTEGER, delivered_at INTEGER, PRIMARY KEY (kind, day_key))")
         }
         
         // Always recreate triggers safely on any upgrade

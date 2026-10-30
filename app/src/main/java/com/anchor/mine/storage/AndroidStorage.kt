@@ -283,4 +283,30 @@ class AndroidStorage(private val dbHelper: SupportSQLiteOpenHelper) : Storage {
         }
         results.take(limit)
     }
+
+    override suspend fun getProactiveState(): ProactiveState = withContext(ioDispatcher) {
+        dbHelper.readableDatabase.query("SELECT open_thread_msg_id, thread_opened_at, backoff_step, last_sent_at, last_contact_at, paused_until, silent_days, sent_today, fuse_tripped_at, day_key FROM proactive_state WHERE id = 1").use {
+            if (it.moveToFirst()) {
+                ProactiveState(
+                    openThreadMsgId = if (it.isNull(0)) null else it.getString(0),
+                    threadOpenedAt = if (it.isNull(1)) null else it.getLong(1),
+                    backoffStep = it.getInt(2),
+                    lastSentAt = if (it.isNull(3)) null else it.getLong(3),
+                    lastContactAt = if (it.isNull(4)) null else it.getLong(4),
+                    pausedUntil = if (it.isNull(5)) null else it.getLong(5),
+                    silentDays = it.getInt(6),
+                    sentToday = it.getInt(7),
+                    fuseTrippedAt = if (it.isNull(8)) null else it.getLong(8),
+                    dayKey = if (it.isNull(9)) null else it.getString(9)
+                )
+            } else ProactiveState()
+        }
+    }
+
+    override suspend fun saveProactiveState(state: ProactiveState) = withContext(ioDispatcher) {
+        dbHelper.writableDatabase.execSQL(
+            "INSERT OR REPLACE INTO proactive_state (id, open_thread_msg_id, thread_opened_at, backoff_step, last_sent_at, last_contact_at, paused_until, silent_days, sent_today, fuse_tripped_at, day_key) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            arrayOf<Any?>(state.openThreadMsgId, state.threadOpenedAt, state.backoffStep, state.lastSentAt, state.lastContactAt, state.pausedUntil, state.silentDays, state.sentToday, state.fuseTrippedAt, state.dayKey)
+        )
+    }
 }

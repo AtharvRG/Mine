@@ -43,6 +43,9 @@ interface Storage {
     suspend fun getEvent(opId: String): RawEvent?
     suspend fun hasUndo(token: String): Boolean
 
+    suspend fun getProactiveState(): com.anchor.core.models.ProactiveState
+    suspend fun saveProactiveState(state: com.anchor.core.models.ProactiveState)
+
     // Purely Transactional Gateways
     suspend fun createNodeAndCommit(node: Node, event: RawEvent, reminder: Reminder?)
     suspend fun updateNodeAndCommit(node: Node, event: RawEvent, deleteReminderId: String?)
