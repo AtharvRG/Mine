@@ -37,7 +37,8 @@ class AndroidHttpTransport : HttpTransport {
                 throw Http429Exception(retryAfter)
             }
             if (code !in 200..299) {
-                val err = connection.errorStream?.bufferedReader()?.readText() ?: "HTTP $code"
+                // B13: Cap the error body to 500 characters so Cloudflare/Nginx HTML pages don't blow up the UI State
+                val err = connection.errorStream?.bufferedReader()?.use { it.readText().take(500) } ?: "HTTP $code"
                 throw Exception("Provider error: $err")
             }
 

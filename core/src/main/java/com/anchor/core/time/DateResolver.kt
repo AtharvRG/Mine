@@ -119,5 +119,18 @@ class DateResolver(private val clock: Clock) {
         return null // Never guess
     }
 
+    fun getLogicalDayStart(timeMillis: Long, rolloverMinuteOfDay: Int): Long {
+        val cal = Calendar.getInstance().apply { timeInMillis = timeMillis }
+        val currentMin = cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE)
+        if (currentMin < rolloverMinuteOfDay) {
+            cal.add(Calendar.DAY_OF_YEAR, -1)
+        }
+        cal.set(Calendar.HOUR_OF_DAY, rolloverMinuteOfDay / 60)
+        cal.set(Calendar.MINUTE, rolloverMinuteOfDay % 60)
+        cal.set(Calendar.SECOND, 0)
+        cal.set(Calendar.MILLISECOND, 0)
+        return cal.timeInMillis
+    }
+
     fun format(timeMillis: Long): String = SimpleDateFormat("EEE d MMM h:mm a", Locale.getDefault()).format(timeMillis)
 }

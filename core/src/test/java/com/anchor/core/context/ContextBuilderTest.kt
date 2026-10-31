@@ -33,7 +33,9 @@ class ContextBuilderTest {
         }
 
         val clock = FakeClock(1000L)
-        val builder = ContextBuilder(storage, clock, DateResolver(clock))
+        val dateResolver = DateResolver(clock)
+        val checkinBuilder = com.anchor.core.nudge.CheckinBuilder(storage, clock, dateResolver)
+        val builder = ContextBuilder(storage, clock, dateResolver, checkinBuilder)
         val pack = builder.buildPack()
 
         // 1 for system, N for history

@@ -51,7 +51,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 val gateway = Gateway(loadedStorage, Resolver(), DateResolver(clock), clock)
                 reliabilityManager = ReliabilityManager(loadedStorage, clock)
 
-                val contextBuilder = ContextBuilder(loadedStorage, clock, DateResolver(clock))
+                val dateResolver = DateResolver(clock)
+                val checkinBuilder = com.anchor.core.nudge.CheckinBuilder(loadedStorage, clock, dateResolver)
+                val contextBuilder = ContextBuilder(loadedStorage, clock, dateResolver, checkinBuilder)
+                
                 controller = ChatController(
                     loadedStorage, orchestrator, contextBuilder,
                     gateway, AndroidAlarmScheduler(application),

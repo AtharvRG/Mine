@@ -19,5 +19,6 @@ data class RawEvent(
     val targetId: String,
     val undoOf: String? = null,
     val beforeJson: String? = null,
-    val afterJson: String? = null
+    val afterJson: String? = null,
+    val tsUtc: Long = 0L // B16: Track time for Undo expiration
 )

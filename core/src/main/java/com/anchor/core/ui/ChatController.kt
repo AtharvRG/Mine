@@ -262,7 +262,7 @@ Tools:
 - confirm_change (proposal: proposal id, choice: option id). Use when Ambiguous.
 - undo (token: u_123456).
 - search_memory (query: string, limit: int).
-- soul_propose (statement: string, category: string). Use when you notice facts, constraints, or preferences about the user.
+- soul_propose (statement: string, category: string). Use to record facts or preferences. Do NOT use sensitive categories (health, medical, legal) unless the user explicitly commands it.
 
 Examples:
 CREATE: {"tool":"propose_change","args":{"intent":"CREATE", "title":"Buy milk", "due_text": "tomorrow at 4pm"}}

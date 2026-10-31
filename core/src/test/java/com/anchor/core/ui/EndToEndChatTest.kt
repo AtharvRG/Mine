@@ -57,9 +57,13 @@ class EndToEndChatTest {
             override fun cancel(reminderId: String) {}
         }
         
+        val dateResolver = DateResolver(clock)
+        val checkinBuilder = com.anchor.core.nudge.CheckinBuilder(storage, clock, dateResolver)
+        val contextBuilder = ContextBuilder(storage, clock, dateResolver, checkinBuilder)
+        
         val controller = ChatController(
-            storage, orchestrator, ContextBuilder(storage, clock, DateResolver(clock)), 
-            Gateway(storage, Resolver(), DateResolver(clock), clock), 
+            storage, orchestrator, contextBuilder, 
+            Gateway(storage, Resolver(), dateResolver, clock), 
             scheduler, TestScope(UnconfinedTestDispatcher()), UnconfinedTestDispatcher(), clock
         )
 

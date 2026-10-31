@@ -6,29 +6,32 @@ package com.anchor.core.nudge
 
 import com.anchor.core.storage.Storage
 import com.anchor.core.time.Clock
+import com.anchor.core.time.DateResolver
 
-class CheckinBuilder(private val storage: Storage, private val clock: Clock) {
+class CheckinBuilder(private val storage: Storage, private val clock: Clock, private val dateResolver: DateResolver) {
     
-    // BP 32 (3.2): Code computes the facts block so the LLM doesn't hallucinate metrics.
     suspend fun buildMorningFacts(): String {
         val nodes = storage.getActiveNodes()
         val now = clock.now()
         
-        val dueToday = nodes.filter { it.dueAt != null && Math.abs(it.dueAt - now) < 86400000L }
-        val overdue = nodes.filter { it.dueAt != null && it.dueAt < now - 86400000L }
+        val rolloverMin = storage.getSetting("day_start_minute")?.toIntOrNull() ?: 240
+        val logicalTodayStart = dateResolver.getLogicalDayStart(now, rolloverMin)
+        val logicalTodayEnd = logicalTodayStart + 86400000L // +24 hours
+        
+        // B14: Use strict logical calendar day boundaries, not a rolling +/- 24h window
+        val dueToday = nodes.filter { it.dueAt != null && it.dueAt in logicalTodayStart until logicalTodayEnd }
+        val overdue = nodes.filter { it.dueAt != null && it.dueAt < logicalTodayStart }
         
         val builder = java.lang.StringBuilder()
-        builder.append("FACTS:\n")
+        builder.append("Today's Facts:\n")
         builder.append("- Due Today: ${dueToday.size}\n")
         if (overdue.isNotEmpty()) builder.append("- Overdue: ${overdue.size}\n")
         
         if (dueToday.isNotEmpty()) {
             builder.append("\nAgenda:\n")
             dueToday.sortedBy { it.dueAt }.take(5).forEach { 
-                builder.append("  * ${it.title}\n")
+                builder.append("  * ${it.title} (Due: ${dateResolver.format(it.dueAt!!)})\n")
             }
-        } else {
-            builder.append("\nAgenda: Empty\n")
         }
         
         return builder.toString()

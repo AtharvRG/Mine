@@ -231,11 +231,13 @@ class AndroidStorage(private val dbHelper: SupportSQLiteOpenHelper) : Storage {
     }
 
     override suspend fun getEvent(opId: String): RawEvent? = withContext(ioDispatcher) {
-        dbHelper.readableDatabase.query("SELECT op_type, target_type, target_id, undo_of, before_json, after_json FROM raw_event WHERE op_id = ?", arrayOf(opId)).use {
-            if (it.moveToFirst()) RawEvent(opId, it.getString(0), it.getString(1), it.getString(2),
-                if(it.isNull(3)) null else it.getString(3),
-                if(it.isNull(4)) null else it.getString(4),
-                if(it.isNull(5)) null else it.getString(5)) else null
+        // B16: Query ts_utc to enforce the 24-hour undo window
+        dbHelper.readableDatabase.query("SELECT op_type, target_type, target_id, undo_of, before_json, after_json, ts_utc FROM raw_event WHERE op_id = ?", arrayOf(opId)).use {
+            if (it.moveToFirst()) RawEvent(opId, it.getString(0), it.getString(1), it.getString(2), 
+                if(it.isNull(3)) null else it.getString(3), 
+                if(it.isNull(4)) null else it.getString(4), 
+                if(it.isNull(5)) null else it.getString(5),
+                it.getLong(6)) else null
         }
     }
 

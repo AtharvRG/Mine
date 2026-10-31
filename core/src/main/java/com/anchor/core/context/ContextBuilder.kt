@@ -13,7 +13,8 @@ import kotlinx.coroutines.withContext
 class ContextBuilder(
     private val storage: Storage,
     private val clock: Clock,
-    private val dateResolver: DateResolver
+    private val dateResolver: DateResolver,
+    private val checkinBuilder: com.anchor.core.nudge.CheckinBuilder
 ) {
     suspend fun buildPack(): List<ChatMessage> = withContext(storage.ioDispatcher) {
         val pack = mutableListOf<ChatMessage>()
@@ -38,7 +39,10 @@ class ContextBuilder(
         val soulText = if (soulFacts.isEmpty()) "No soul facts."
         else soulFacts.joinToString("\n") { "${it.category}: ${it.statement}" }
 
-        pack.add(ChatMessage("sys", "system", "$systemRules\n\nNow: $nowStr\n\nSoul:\n$soulText\n\nActive Items:\n$nodesText\n\nPending Clarifications:\n$proposalsText"))
+        // D1: Wire the CheckinBuilder into the prompt so the LLM knows the factual agenda
+        val checkinFacts = checkinBuilder.buildMorningFacts()
+
+        pack.add(ChatMessage("sys", "system", "$systemRules\n\nNow: $nowStr\n\n$checkinFacts\n\nSoul:\n$soulText\n\nActive Items:\n$nodesText\n\nPending Clarifications:\n$proposalsText"))
 
         val recentHistory = storage.getRecentMessages(30)
         // B12: Use 2.0 chars per token for safer Hindi/Unicode handling budget

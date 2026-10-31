@@ -44,7 +44,7 @@ class Gateway(
                 val fact = SoulFact(sId, category, statement, confidence, "chat_ai", "extracted", "proposed", clock.now())
                 
                 val uId = "u_${UUID.randomUUID().toString().take(6)}"
-                val event = RawEvent(uId, "CREATE", "soul_fact", sId, afterJson = json.encodeToString(fact))
+                val event = RawEvent(uId, "CREATE", "soul_fact", sId, afterJson = json.encodeToString(fact), tsUtc = clock.now())
                 storage.createSoulFactAndCommit(fact, event)
                 
                 ToolResult.Committed("CREATE", sId, "Proposed to Soul: $statement", uId)
@@ -104,7 +104,7 @@ class Gateway(
         val reminder = Reminder(rId, title, fireAt)
         val uId = "u_${UUID.randomUUID().toString().take(6)}"
         
-        val event = RawEvent(uId, "SCHEDULE", "reminder", rId, afterJson = json.encodeToString(reminder))
+        val event = RawEvent(uId, "SCHEDULE", "reminder", rId, afterJson = json.encodeToString(reminder), tsUtc = clock.now())
         storage.createReminderAndCommit(reminder, event)
         
         return ToolResult.Committed("SCHEDULE", rId, "Reminder set for ${dateResolver.format(fireAt)}", uId)
@@ -130,7 +130,7 @@ class Gateway(
         val afterJson = json.encodeToString(NodeStateSnapshot(newNode, null))
 
         val uId = "u_${UUID.randomUUID().toString().take(6)}"
-        val event = RawEvent(uId, proposal.intent.name, "node", newNode.id, beforeJson = beforeJson, afterJson = afterJson)
+        val event = RawEvent(uId, proposal.intent.name, "node", newNode.id, beforeJson = beforeJson, afterJson = afterJson, tsUtc = clock.now())
         
         // B5: Pass proposalId into the atomic transaction
         storage.updateNodeAndCommit(newNode, event, deleteReminderId = remId, upsertReminder = null, consumeProposalId = proposalId)
@@ -145,7 +145,7 @@ class Gateway(
         // BP 30: Propose change creates node only. Alarms require schedule_reminder.
         val afterJson = json.encodeToString(NodeStateSnapshot(node, null))
         val uId = "u_${UUID.randomUUID().toString().take(6)}"
-        val event = RawEvent(uId, IntentType.CREATE.name, "node", nId, afterJson = afterJson)
+        val event = RawEvent(uId, IntentType.CREATE.name, "node", nId, afterJson = afterJson, tsUtc = clock.now())
         
         storage.createNodeAndCommit(node, event, null)
         
@@ -192,7 +192,7 @@ class Gateway(
                 val afterJson = json.encodeToString(NodeStateSnapshot(newNode, newRem))
 
                 val uId = "u_${UUID.randomUUID().toString().take(6)}"
-                val event = RawEvent(uId, intent.name, "node", newNode.id, beforeJson = beforeJson, afterJson = afterJson)
+                val event = RawEvent(uId, intent.name, "node", newNode.id, beforeJson = beforeJson, afterJson = afterJson, tsUtc = clock.now())
                 
                 storage.updateNodeAndCommit(newNode, event, deleteReminderId, newRem)
                 return ToolResult.Committed(intent.name, newNode.id, "Applied ${intent.name}: ${newNode.title}", uId)
@@ -203,12 +203,18 @@ class Gateway(
     private suspend fun handleUndo(token: String): ToolResult {
         if (storage.hasUndo(token)) return ToolResult.Error("Already undone")
         val event = storage.getEvent(token) ?: return ToolResult.Error("Undo token not found")
+        
+        // B16: Enforce 24-hour limit on Undo operations
+        if (clock.now() - event.tsUtc > 24 * 3600 * 1000L) {
+            return ToolResult.Error("Cannot undo changes older than 24 hours.")
+        }
+        
         val afterJson = event.afterJson ?: return ToolResult.Error("No after_json found")
         val newEventId = "u_${UUID.randomUUID().toString().take(6)}"
 
         if (event.targetType == "reminder") {
             if (event.opType == "SCHEDULE") {
-                val undoEvent = RawEvent(newEventId, "UNDO_SCHEDULE", "reminder", event.targetId, undoOf = token, beforeJson = afterJson, afterJson = null)
+                val undoEvent = RawEvent(newEventId, "UNDO_SCHEDULE", "reminder", event.targetId, undoOf = token, beforeJson = afterJson, afterJson = null, tsUtc = clock.now())
                 storage.deleteReminderAndCommit(event.targetId, undoEvent)
                 return ToolResult.Committed("UNDO", event.targetId, "Removed reminder", newEventId)
             }
@@ -224,13 +230,13 @@ class Gateway(
         
         if (event.opType == "CREATE") {
             val cancelledNode = currentNode.copy(status = "cancelled", closedAt = clock.now(), updatedAt = clock.now())
-            val undoEvent = RawEvent(newEventId, "UNDO_CREATE", "node", currentNode.id, undoOf = token, beforeJson = afterJson, afterJson = json.encodeToString(NodeStateSnapshot(cancelledNode, null)))
+            val undoEvent = RawEvent(newEventId, "UNDO_CREATE", "node", currentNode.id, undoOf = token, beforeJson = afterJson, afterJson = json.encodeToString(NodeStateSnapshot(cancelledNode, null)), tsUtc = clock.now())
             storage.updateNodeAndCommit(cancelledNode, undoEvent, "r_${currentNode.id}")
             return ToolResult.Committed("UNDO", currentNode.id, "Removed: ${currentNode.title}", newEventId)
         } else {
             val beforeJson = event.beforeJson ?: return ToolResult.Error("No previous state to restore")
             val snapshot = try { json.decodeFromString<NodeStateSnapshot>(beforeJson) } catch (e: Exception) { return ToolResult.Error("Corrupted state") }
-            val undoEvent = RawEvent(newEventId, "UNDO", "node", snapshot.node.id, undoOf = token, beforeJson = afterJson, afterJson = beforeJson)
+            val undoEvent = RawEvent(newEventId, "UNDO", "node", snapshot.node.id, undoOf = token, beforeJson = afterJson, afterJson = beforeJson, tsUtc = clock.now())
             storage.undoChangeAndCommit(snapshot.node, undoEvent, snapshot.reminder)
             return ToolResult.Committed("UNDO", snapshot.node.id, "Restored: ${snapshot.node.title}", newEventId)
         }
