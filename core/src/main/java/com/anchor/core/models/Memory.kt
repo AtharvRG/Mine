@@ -22,7 +22,8 @@ data class Node(
 data class Reminder(
     val id: String,
     val text: String,
-    val fireAtMillis: Long
+    val fireAtMillis: Long,
+    val nodeId: String? = null // D5: Explicit relational tie to the Node
 )
 
 // Used for JSON serialization in RawEvent

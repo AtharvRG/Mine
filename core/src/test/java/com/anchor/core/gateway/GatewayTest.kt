@@ -11,6 +11,7 @@ import com.anchor.core.time.DateResolver
 import com.anchor.core.time.FakeClock
 import com.anchor.core.time.SystemClock
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.JsonPrimitive
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -32,7 +33,7 @@ class GatewayTest {
         val gateway = Gateway(fakeStorage, Resolver(), dateResolver, clock)
 
         // LLM calls: proposeChange(CANCEL, "tomorrow's dinner")
-        val toolCall = ToolCall("propose_change", mapOf("intent" to "CANCEL", "hint" to "tomorrow's dinner"))
+        val toolCall = ToolCall("propose_change", mapOf("intent" to JsonPrimitive("CANCEL"), "hint" to JsonPrimitive("tomorrow's dinner")))
         val result = gateway.executeTool(toolCall)
 
         assertTrue(result is ToolResult.Committed)
@@ -58,7 +59,7 @@ class GatewayTest {
         val gateway = Gateway(fakeStorage, Resolver(), dateResolver, clock)
 
         // LLM calls: proposeChange(CANCEL, "the dinner")
-        val toolCall = ToolCall("propose_change", mapOf("intent" to "CANCEL", "hint" to "the dinner"))
+        val toolCall = ToolCall("propose_change", mapOf("intent" to JsonPrimitive("CANCEL"), "hint" to JsonPrimitive("the dinner")))
         val result = gateway.executeTool(toolCall)
 
         assertTrue(result is ToolResult.Ambiguous)
@@ -81,13 +82,13 @@ class GatewayTest {
         }
         val gateway = Gateway(fakeStorage, Resolver(), dateResolver, clock)
 
-        val completeCall = ToolCall("propose_change", mapOf("intent" to "COMPLETE", "hint" to "Buy milk"))
+        val completeCall = ToolCall("propose_change", mapOf("intent" to JsonPrimitive("COMPLETE"), "hint" to JsonPrimitive("Buy milk")))
         val completeResult = gateway.executeTool(completeCall) as ToolResult.Committed
 
         assertEquals("done", fakeStorage.activeNodes[0].status)
 
         // Undo complete
-        val undoCall = ToolCall("undo", mapOf("token" to completeResult.undoToken))
+        val undoCall = ToolCall("undo", mapOf("token" to JsonPrimitive(completeResult.undoToken)))
         val undoResult = gateway.executeTool(undoCall)
 
         assertTrue(undoResult is ToolResult.Committed)
@@ -99,7 +100,7 @@ class GatewayTest {
         val fakeStorage = SharedFakeStorage()
         val gateway = Gateway(fakeStorage, Resolver(), dateResolver, clock)
 
-        val createCall = ToolCall("propose_change", mapOf("intent" to "CREATE", "hint" to "   "))
+        val createCall = ToolCall("propose_change", mapOf("intent" to JsonPrimitive("CREATE"), "hint" to JsonPrimitive("   ")))
         val result = gateway.executeTool(createCall)
 
         assertTrue(result is ToolResult.Error)
@@ -111,13 +112,13 @@ class GatewayTest {
         val fakeStorage = SharedFakeStorage()
         val gateway = Gateway(fakeStorage, Resolver(), dateResolver, clock)
 
-        val createCall = ToolCall("propose_change", mapOf("intent" to "CREATE", "hint" to "Buy groceries"))
+        val createCall = ToolCall("propose_change", mapOf("intent" to JsonPrimitive("CREATE"), "hint" to JsonPrimitive("Buy groceries")))
         val createResult = gateway.executeTool(createCall) as ToolResult.Committed
 
         assertEquals(1, fakeStorage.activeNodes.size)
         assertEquals("Buy groceries", fakeStorage.activeNodes[0].title)
 
-        val undoCall = ToolCall("undo", mapOf("token" to createResult.undoToken))
+        val undoCall = ToolCall("undo", mapOf("token" to JsonPrimitive(createResult.undoToken)))
         val undoResult = gateway.executeTool(undoCall)
 
         assertTrue(undoResult is ToolResult.Committed)
@@ -136,17 +137,17 @@ class GatewayTest {
         }
         val gateway = Gateway(fakeStorage, Resolver(), DateResolver(clock), clock)
 
-        val scheduleCall = ToolCall("schedule_reminder", mapOf("target_ref" to "n1", "when_text" to "tomorrow at 5pm"))
+        val scheduleCall = ToolCall("schedule_reminder", mapOf("target_ref" to JsonPrimitive("n1"), "when_text" to JsonPrimitive("tomorrow at 5pm")))
         val result = gateway.executeTool(scheduleCall)
 
         assertTrue(result is ToolResult.Committed)
         val commit = result as ToolResult.Committed
-        assertEquals("r_n1", commit.targetId)
+        assertTrue(commit.targetId.startsWith("rem_"))
         
         assertEquals(1, fakeStorage.reminders.size)
         assertEquals("Buy milk", fakeStorage.reminders[0].text)
 
-        val undoCall = ToolCall("undo", mapOf("token" to commit.undoToken))
+        val undoCall = ToolCall("undo", mapOf("token" to JsonPrimitive(commit.undoToken)))
         val undoResult = gateway.executeTool(undoCall)
         
         assertTrue(undoResult is ToolResult.Committed)
@@ -173,7 +174,7 @@ class GatewayTest {
         val gateway = Gateway(fakeStorage, com.anchor.core.resolver.Resolver(), com.anchor.core.time.DateResolver(com.anchor.core.time.SystemClock()), com.anchor.core.time.SystemClock())
 
         // 1. Search Memory
-        val searchCall = com.anchor.core.gateway.ToolCall("search_memory", mapOf("query" to "apples"))
+        val searchCall = com.anchor.core.gateway.ToolCall("search_memory", mapOf("query" to JsonPrimitive("apples")))
         val searchResult = gateway.executeTool(searchCall)
         
         org.junit.Assert.assertTrue(searchResult is com.anchor.core.models.ToolResult.Data)
@@ -181,7 +182,7 @@ class GatewayTest {
         org.junit.Assert.assertTrue(dataResult.text.contains("Buy apples"))
 
         // 2. Soul Propose
-        val proposeCall = com.anchor.core.gateway.ToolCall("soul_propose", mapOf("statement" to "Likes oranges", "category" to "diet"))
+        val proposeCall = com.anchor.core.gateway.ToolCall("soul_propose", mapOf("statement" to JsonPrimitive("Likes oranges"), "category" to JsonPrimitive("diet")))
         val proposeResult = gateway.executeTool(proposeCall)
         
         org.junit.Assert.assertTrue(proposeResult is com.anchor.core.models.ToolResult.Committed)
@@ -199,9 +200,9 @@ class GatewayTest {
         
         val node = com.anchor.core.models.Node("n1", "event", "Dinner", "active", 5000L)
         storage.activeNodes.add(node)
-        storage.reminders.add(com.anchor.core.models.Reminder("r_n1", "Dinner", 5000L))
+        storage.reminders.add(com.anchor.core.models.Reminder("r_n1", "Dinner", 5000L, nodeId = "n1"))
 
-        val rescheduleCall = com.anchor.core.gateway.ToolCall("propose_change", mapOf("intent" to "RESCHEDULE", "hint" to "Dinner", "due_text" to "in 20 minutes"))
+        val rescheduleCall = com.anchor.core.gateway.ToolCall("propose_change", mapOf("intent" to JsonPrimitive("RESCHEDULE"), "hint" to JsonPrimitive("Dinner"), "due_text" to JsonPrimitive("in 20 minutes")))
         
         val result = gateway.executeTool(rescheduleCall)
         org.junit.Assert.assertTrue(result is com.anchor.core.models.ToolResult.Committed)

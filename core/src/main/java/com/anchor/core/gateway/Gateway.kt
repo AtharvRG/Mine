@@ -99,9 +99,8 @@ class Gateway(
         }
         
         val title = node?.title ?: "Reminder"
-        val rId = if (node != null) "r_${node.id}" else "r_${UUID.randomUUID().toString().take(8)}"
-        
-        val reminder = Reminder(rId, title, fireAt)
+        val rId = "rem_${UUID.randomUUID().toString().take(8)}"
+        val reminder = Reminder(rId, title, fireAt, nodeId = node?.id)
         val uId = "u_${UUID.randomUUID().toString().take(6)}"
         
         val event = RawEvent(uId, "SCHEDULE", "reminder", rId, afterJson = json.encodeToString(reminder), tsUtc = clock.now())
@@ -175,18 +174,18 @@ class Gateway(
                     else -> oldNode.copy(updatedAt = now) // UPDATE
                 }
                 
-                val remId = "r_${oldNode.id}"
                 val activeRems = storage.getPendingReminders()
-                val oldRem = activeRems.find { it.id == remId }
+                // D5: Fetch cleanly by relational node ID, not by fragile string prefix
+                val oldRem = activeRems.find { it.nodeId == oldNode.id || it.id == "r_${oldNode.id}" }
+                val remId = oldRem?.id ?: "rem_${UUID.randomUUID().toString().take(8)}"
                 
-                // Keep old reminder on UPDATE. Recreate at new time on RESCHEDULE. Drop on CANCEL/COMPLETE.
                 val newRem = if (intent == IntentType.RESCHEDULE && targetTimeMillis != null) {
-                    Reminder(remId, newNode.title, targetTimeMillis)
+                    Reminder(remId, newNode.title, targetTimeMillis, newNode.id)
                 } else if (intent == IntentType.UPDATE) {
                     oldRem 
                 } else null
                 
-                val deleteReminderId = if (intent == IntentType.CANCEL || intent == IntentType.COMPLETE) remId else null
+                val deleteReminderId = if (intent == IntentType.CANCEL || intent == IntentType.COMPLETE) oldRem?.id else null
 
                 val beforeJson = json.encodeToString(NodeStateSnapshot(oldNode, oldRem))
                 val afterJson = json.encodeToString(NodeStateSnapshot(newNode, newRem))

@@ -111,12 +111,12 @@ class ChatController(
             }
             is UiAction.Undo -> coroutineScope.launch(defaultDispatcher) {
                 // D-033: Chip taps call gateway directly. Instant, no LLM.
-                val call = com.anchor.core.gateway.ToolCall("undo", mapOf("token" to action.token))
+                val call = com.anchor.core.gateway.ToolCall("undo", mapOf("token" to kotlinx.serialization.json.JsonPrimitive(action.token)))
                 gateway.executeTool(call)
                 refreshUI()
             }
             is UiAction.ConfirmProposal -> coroutineScope.launch(defaultDispatcher) {
-                val call = com.anchor.core.gateway.ToolCall("confirm_change", mapOf("proposal" to action.proposalId, "choice" to action.choiceId))
+                val call = com.anchor.core.gateway.ToolCall("confirm_change", mapOf("proposal" to kotlinx.serialization.json.JsonPrimitive(action.proposalId), "choice" to kotlinx.serialization.json.JsonPrimitive(action.choiceId)))
                 gateway.executeTool(call)
                 refreshUI()
             }
@@ -280,10 +280,14 @@ CRITICAL: Do NOT say "Done" or "Saved" unless you issue a tool call.
     }
 
     private fun updateLastMessage(id: String, content: String) {
-        val msgs = _state.value.chatMessages.toMutableList()
-        val idx = msgs.indexOfLast { it.id == id }
-        if (idx != -1) msgs[idx] = ChatMessage(id, "assistant", content)
-        _state.value = _state.value.copy(chatMessages = msgs)
+        // B9: Use the thread-safe StateFlow.update {} transaction block to prevent 
+        // concurrent typing inputs from being overwritten by incoming LLM network chunks.
+        _state.update { curr ->
+            val msgs = curr.chatMessages.toMutableList()
+            val idx = msgs.indexOfLast { it.id == id }
+            if (idx != -1) msgs[idx] = ChatMessage(id, "assistant", content)
+            curr.copy(chatMessages = msgs)
+        }
     }
 
     private suspend fun reconcileAlarms() {

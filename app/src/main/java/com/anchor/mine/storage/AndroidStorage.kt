@@ -126,16 +126,16 @@ class AndroidStorage(private val dbHelper: SupportSQLiteOpenHelper) : Storage {
 
     override suspend fun getActiveReminders(): List<Reminder> = withContext(ioDispatcher) {
         val list = mutableListOf<Reminder>()
-        dbHelper.readableDatabase.query("SELECT id, text, fire_at FROM reminder WHERE fire_at > ?", arrayOf(System.currentTimeMillis())).use {
-            while (it.moveToNext()) { list.add(Reminder(it.getString(0), it.getString(1), it.getLong(2))) }
+        dbHelper.readableDatabase.query("SELECT id, text, fire_at, node_id FROM reminder WHERE fire_at > ?", arrayOf(System.currentTimeMillis())).use {
+            while (it.moveToNext()) { list.add(Reminder(it.getString(0), it.getString(1), it.getLong(2), if(it.isNull(3)) null else it.getString(3))) }
         }
         list
     }
 
     override suspend fun getPendingReminders(): List<Reminder> = withContext(ioDispatcher) {
         val list = mutableListOf<Reminder>()
-        dbHelper.readableDatabase.query("SELECT id, text, fire_at FROM reminder").use {
-            while (it.moveToNext()) list.add(Reminder(it.getString(0), it.getString(1), it.getLong(2)))
+        dbHelper.readableDatabase.query("SELECT id, text, fire_at, node_id FROM reminder").use {
+            while (it.moveToNext()) list.add(Reminder(it.getString(0), it.getString(1), it.getLong(2), if(it.isNull(3)) null else it.getString(3)))
         }
         list
     }
@@ -203,7 +203,7 @@ class AndroidStorage(private val dbHelper: SupportSQLiteOpenHelper) : Storage {
     }
 
     override suspend fun saveReminder(reminder: Reminder) = withContext(ioDispatcher) {
-        dbHelper.writableDatabase.execSQL("INSERT OR REPLACE INTO reminder (id, text, fire_at) VALUES (?, ?, ?)", arrayOf<Any>(reminder.id, reminder.text, reminder.fireAtMillis))
+        dbHelper.writableDatabase.execSQL("INSERT OR REPLACE INTO reminder (id, node_id, text, fire_at) VALUES (?, ?, ?, ?)", arrayOf<Any?>(reminder.id, reminder.nodeId, reminder.text, reminder.fireAtMillis))
     }
 
     override suspend fun deleteReminder(id: String) = withContext(ioDispatcher) {
@@ -253,7 +253,7 @@ class AndroidStorage(private val dbHelper: SupportSQLiteOpenHelper) : Storage {
         try {
             db.execSQL("INSERT INTO node (id, device_id, type, title, status, due_at, origin, hlc, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 'extracted', '', ?, ?)",
                 arrayOf<Any?>(node.id, deviceId, node.type, node.title, node.status, node.dueAt, node.createdAt, node.updatedAt))
-            reminder?.let { db.execSQL("INSERT INTO reminder (id, text, fire_at) VALUES (?, ?, ?)", arrayOf<Any>(it.id, it.text, it.fireAtMillis)) }
+            reminder?.let { db.execSQL("INSERT OR REPLACE INTO reminder (id, node_id, text, fire_at) VALUES (?, ?, ?, ?)", arrayOf<Any?>(it.id, it.nodeId, it.text, it.fireAtMillis)) }
             db.execSQL("INSERT INTO raw_event (op_id, target_id, op_type, target_type, ts_utc, device_id, actor, before_json, after_json) VALUES (?, ?, ?, ?, ?, ?, 'chat_ai', ?, ?)",
                 arrayOf<Any?>(event.opId, event.targetId, event.opType, event.targetType, System.currentTimeMillis(), deviceId, event.beforeJson, event.afterJson))
             db.setTransactionSuccessful()
@@ -270,7 +270,7 @@ class AndroidStorage(private val dbHelper: SupportSQLiteOpenHelper) : Storage {
             deleteReminderId?.let { db.execSQL("DELETE FROM reminder WHERE id = ?", arrayOf(it)) }
             
             upsertReminder?.let { 
-                db.execSQL("INSERT OR REPLACE INTO reminder (id, text, fire_at) VALUES (?, ?, ?)", arrayOf<Any>(it.id, it.text, it.fireAtMillis)) 
+                db.execSQL("INSERT OR REPLACE INTO reminder (id, node_id, text, fire_at) VALUES (?, ?, ?, ?)", arrayOf<Any?>(it.id, it.nodeId, it.text, it.fireAtMillis)) 
             }
 
             // B5: Atomic Proposal Consumption
@@ -292,7 +292,7 @@ class AndroidStorage(private val dbHelper: SupportSQLiteOpenHelper) : Storage {
             // FIX: Restore due_at so rescheduled items roll back accurately
             db.execSQL("UPDATE node SET status = ?, due_at = ?, closed_at = ?, updated_at = ? WHERE id = ?",
                 arrayOf<Any?>(node.status, node.dueAt, node.closedAt, node.updatedAt, node.id))
-            restoreReminder?.let { db.execSQL("INSERT OR REPLACE INTO reminder (id, text, fire_at) VALUES (?, ?, ?)", arrayOf<Any>(it.id, it.text, it.fireAtMillis)) }
+            restoreReminder?.let { db.execSQL("INSERT OR REPLACE INTO reminder (id, node_id, text, fire_at) VALUES (?, ?, ?, ?)", arrayOf<Any?>(it.id, it.nodeId, it.text, it.fireAtMillis)) }
             db.execSQL("INSERT INTO raw_event (op_id, target_id, op_type, target_type, ts_utc, device_id, actor, undo_of, before_json, after_json) VALUES (?, ?, ?, ?, ?, ?, 'user', ?, ?, ?)",
                 arrayOf<Any?>(event.opId, event.targetId, event.opType, event.targetType, System.currentTimeMillis(), deviceId, event.undoOf, event.beforeJson, event.afterJson))
             db.setTransactionSuccessful()
@@ -303,7 +303,7 @@ class AndroidStorage(private val dbHelper: SupportSQLiteOpenHelper) : Storage {
         val db = dbHelper.writableDatabase
         db.beginTransaction()
         try {
-            db.execSQL("INSERT OR REPLACE INTO reminder (id, text, fire_at) VALUES (?, ?, ?)", arrayOf<Any>(reminder.id, reminder.text, reminder.fireAtMillis))
+            db.execSQL("INSERT OR REPLACE INTO reminder (id, node_id, text, fire_at) VALUES (?, ?, ?, ?)", arrayOf<Any?>(reminder.id, reminder.nodeId, reminder.text, reminder.fireAtMillis))
             db.execSQL("INSERT INTO raw_event (op_id, target_id, op_type, target_type, ts_utc, device_id, actor, before_json, after_json) VALUES (?, ?, ?, ?, ?, ?, 'chat_ai', ?, ?)",
                 arrayOf<Any?>(event.opId, event.targetId, event.opType, event.targetType, System.currentTimeMillis(), deviceId, event.beforeJson, event.afterJson))
             db.setTransactionSuccessful()

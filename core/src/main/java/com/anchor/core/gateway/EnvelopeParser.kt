@@ -21,13 +21,7 @@ data class ToolEnvelope(
 data class ToolCall(
     val tool: String,
     val args: Map<String, JsonElement> = emptyMap()
-) {
-    companion object {
-        operator fun invoke(tool: String, stringArgs: Map<String, String>): ToolCall {
-            return ToolCall(tool, stringArgs.mapValues { JsonPrimitive(it.value) })
-        }
-    }
-}
+)
 
 object EnvelopeParser {
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
