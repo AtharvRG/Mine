@@ -7,32 +7,43 @@ package com.anchor.core.ui
 import com.anchor.core.models.ChatMessage
 import com.anchor.core.models.Reminder
 
+data class ReceiptState(
+    val id: String,
+    val message: String,
+    val undoToken: String?
+)
+
 data class UiState(
     val chatMessages: List<ChatMessage> = emptyList(),
+    val receipts: List<ReceiptState> = emptyList(),
+    val openProposals: List<com.anchor.core.models.Proposal> = emptyList(),
+    val proposedSoulFacts: List<com.anchor.core.models.SoulFact> = emptyList(),
     val isChatLoading: Boolean = false,
     val activeReminders: List<Reminder> = emptyList(),
-    val openProposals: List<com.anchor.core.models.Proposal> = emptyList(),
     val selfTestStatus: String = "Idle",
     val providerEndpoint: String = "",
     val providerKey: String = "",
     val providerModel: String = "",
     val debugStats: String = "Rows: 0",
-    val globalError: String? = null,
     val composerDraft: String = "",
-    val connectionError: String? = null
+    val connectionError: String? = null,
+    val globalError: String? = null,
+    val showResetConfirm: Boolean = false
 )
 
 sealed interface UiAction {
     data class UpdateDraft(val text: String) : UiAction
     data object SendMessage : UiAction
     data object Stop : UiAction
-    data class CancelReminder(val id: String) : UiAction
-    data object RunSelfTest : UiAction
-    data object RefreshStats : UiAction
-    data class SaveProvider(val endpoint: String, val key: String, val model: String) : UiAction
-    data class ScheduleIn(val minutes: Int, val text: String) : UiAction 
     data class Undo(val token: String) : UiAction
     data class ConfirmProposal(val proposalId: String, val choiceId: String) : UiAction
+    data class AcceptSoulFact(val factId: String) : UiAction
+    data class RejectSoulFact(val factId: String) : UiAction
+    data class CancelReminder(val id: String) : UiAction
     data class LoadDay(val dayKey: String) : UiAction
-    data object ResetDatabase : UiAction
+    data class SaveProvider(val endpoint: String, val key: String, val model: String) : UiAction
+    data object RunSelfTest : UiAction
+    data object RefreshStats : UiAction
+    data object PromptResetDatabase : UiAction
+    data class ConfirmResetDatabase(val confirm: Boolean) : UiAction
 }

@@ -167,17 +167,21 @@ class Gateway(
                     IntentType.CANCEL -> oldNode.copy(status = "cancelled", closedAt = now, updatedAt = now)
                     IntentType.COMPLETE -> oldNode.copy(status = "done", closedAt = now, updatedAt = now)
                     IntentType.RESCHEDULE -> oldNode.copy(dueAt = targetTimeMillis ?: oldNode.dueAt, updatedAt = now)
-                    else -> oldNode.copy(updatedAt = now)
+                    else -> oldNode.copy(updatedAt = now) // UPDATE
                 }
                 
                 val remId = "r_${oldNode.id}"
                 val activeRems = storage.getPendingReminders()
                 val oldRem = activeRems.find { it.id == remId }
                 
-                // If rescheduling, actively recreate the reminder if it had one, or if we have a new target time
+                // Keep old reminder on UPDATE. Recreate at new time on RESCHEDULE. Drop on CANCEL/COMPLETE.
                 val newRem = if (intent == IntentType.RESCHEDULE && targetTimeMillis != null) {
                     Reminder(remId, newNode.title, targetTimeMillis)
+                } else if (intent == IntentType.UPDATE) {
+                    oldRem 
                 } else null
+                
+                val deleteReminderId = if (intent == IntentType.CANCEL || intent == IntentType.COMPLETE) remId else null
 
                 val beforeJson = json.encodeToString(NodeStateSnapshot(oldNode, oldRem))
                 val afterJson = json.encodeToString(NodeStateSnapshot(newNode, newRem))
@@ -185,8 +189,7 @@ class Gateway(
                 val uId = "u_${UUID.randomUUID().toString().take(6)}"
                 val event = RawEvent(uId, intent.name, "node", newNode.id, beforeJson = beforeJson, afterJson = afterJson)
                 
-                // Pass newRem to upsertReminder so the alarm isn't silently lost
-                storage.updateNodeAndCommit(newNode, event, deleteReminderId = remId, upsertReminder = newRem)
+                storage.updateNodeAndCommit(newNode, event, deleteReminderId, newRem)
                 return ToolResult.Committed(intent.name, newNode.id, "Applied ${intent.name}: ${newNode.title}", uId)
             }
         }

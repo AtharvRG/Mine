@@ -27,10 +27,12 @@ class ReliabilityManagerTest {
         // Reminder scheduled for 150,000L (future) -> Ignored
         storage.saveReminder(Reminder("r_future", "Future", 150000L))
 
-        manager.runSweeper()
+        val missed = manager.runSweeper()
 
         // Verify r_missed was swept and logged
-        assertEquals(2, storage.reminders.size)
+        assertEquals(1, missed.size)
+        assertEquals("r_missed", missed[0].id)
+        assertEquals(3, storage.reminders.size)
         assertEquals(1, storage.reminderFires.size)
         assertEquals("missed", storage.reminderFires[0].outcome)
         assertEquals("r_missed", storage.reminderFires[0].reminderId)

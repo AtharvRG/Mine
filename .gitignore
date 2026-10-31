@@ -65,3 +65,5 @@ captures/
 
 # OS specific files
 Thumbs.db
+
+.idea/deploymentTargetSelector.xml

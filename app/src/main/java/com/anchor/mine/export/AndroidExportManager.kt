@@ -160,7 +160,19 @@ class AndroidExportManager(
             try {
                 if (isImport) {
                     db?.beginTransaction()
-                    listOf("raw_message", "raw_event", "node", "edge", "soul_fact", "app_meta", "day_rule", "reminder", "proposal").forEach {
+                    // Drop triggers so we can wipe and restore the immutable tables natively
+                    db?.execSQL("DROP TRIGGER IF EXISTS trg_raw_msg_no_update")
+                    db?.execSQL("DROP TRIGGER IF EXISTS trg_raw_msg_no_delete")
+                    db?.execSQL("DROP TRIGGER IF EXISTS trg_raw_evt_no_update")
+                    db?.execSQL("DROP TRIGGER IF EXISTS trg_raw_evt_no_delete")
+                    db?.execSQL("DROP TRIGGER IF EXISTS trg_node_fts_insert")
+                    db?.execSQL("DROP TRIGGER IF EXISTS trg_node_fts_delete")
+                    db?.execSQL("DROP TRIGGER IF EXISTS trg_node_fts_update")
+                    db?.execSQL("DROP TRIGGER IF EXISTS trg_soul_fts_insert")
+                    db?.execSQL("DROP TRIGGER IF EXISTS trg_soul_fts_delete")
+                    db?.execSQL("DROP TRIGGER IF EXISTS trg_soul_fts_update")
+                    
+                    listOf("raw_message", "raw_event", "node", "edge", "soul_fact", "app_meta", "day_rule", "reminder", "proposal", "msg_chunk", "day_block", "node_fts", "soul_fts").forEach {
                         db?.execSQL("DELETE FROM $it")
                     }
                 }
@@ -195,7 +207,11 @@ class AndroidExportManager(
                     if (!chunkedIn.isFinalSeen) throw SecurityException("Truncated or tampered file: missing final flag")
                 }
                 
-                if (isImport) db?.setTransactionSuccessful()
+                if (isImport) {
+                    // Re-enable triggers
+                    com.anchor.mine.storage.MineDatabaseCallback.createTriggers(db!!)
+                    db.setTransactionSuccessful()
+                }
             } finally {
                 if (isImport) db?.endTransaction()
             }

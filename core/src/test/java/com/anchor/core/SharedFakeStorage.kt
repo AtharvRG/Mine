@@ -145,9 +145,15 @@ class SharedFakeStorage : Storage {
         return results.take(limit)
     }
 
-    private val registeredAlarms = mutableSetOf<String>()
+    private val registeredAlarms = mutableMapOf<String, Long>()
     
-    override suspend fun getRegisteredAlarms(): List<String> = registeredAlarms.toList()
-    override suspend fun saveRegisteredAlarm(reminderId: String, requestCode: Int) { registeredAlarms.add(reminderId) }
+    override suspend fun getRegisteredAlarms(): List<Pair<String, Long>> = registeredAlarms.map { it.key to it.value }
+    override suspend fun saveRegisteredAlarm(reminderId: String, requestCode: Int, registeredFor: Long) { registeredAlarms[reminderId] = registeredFor }
     override suspend fun deleteRegisteredAlarm(reminderId: String) { registeredAlarms.remove(reminderId) }
+    
+    override suspend fun getProposedSoulFacts(): List<SoulFact> = soulFacts.filter { it.status == "proposed" }
+    override suspend fun updateSoulFactStatus(id: String, status: String) {
+        val idx = soulFacts.indexOfFirst { it.id == id }
+        if (idx != -1) soulFacts[idx] = soulFacts[idx].copy(status = status)
+    }
 }

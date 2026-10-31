@@ -91,11 +91,19 @@ class ChatController(
                 val reminder = Reminder(id, "Self Test Fired!", fireAt)
                 storage.saveReminder(reminder)
                 alarmScheduler.schedule(reminder)
+                storage.saveRegisteredAlarm(id, id.hashCode(), fireAt)
+            }
+            is UiAction.AcceptSoulFact -> coroutineScope.launch(defaultDispatcher) {
+                storage.updateSoulFactStatus(action.factId, "active")
+                refreshUI()
+            }
+            is UiAction.RejectSoulFact -> coroutineScope.launch(defaultDispatcher) {
+                storage.updateSoulFactStatus(action.factId, "rejected")
+                refreshUI()
             }
             is UiAction.RefreshStats -> coroutineScope.launch(defaultDispatcher) {
                 _state.update { it.copy(debugStats = storage.getDebugStats().entries.joinToString("\n") { e -> "${e.key}: ${e.value}" }) }
             }
-            is UiAction.ScheduleIn -> {}
             is UiAction.Undo -> coroutineScope.launch(defaultDispatcher) {
                 // D-033: Chip taps call gateway directly. Instant, no LLM.
                 val call = com.anchor.core.gateway.ToolCall("undo", mapOf("token" to action.token))
@@ -110,7 +118,7 @@ class ChatController(
             is UiAction.LoadDay -> {
                 // Future UI integration for endless scrolling day pagination
             }
-            UiAction.ResetDatabase -> {}
+            else -> {}
         }
     }
 
@@ -157,13 +165,13 @@ class ChatController(
                     
                     if (envelope != null) {
                         var sysContext = ""
-                        var hasCommitted = false
+                        val turnReceipts = mutableListOf<ReceiptState>()
 
                         envelope.calls.forEach { call ->
                             val result = gateway.executeTool(call, executedCalls)
                             sysContext += "Tool Result: " + when(result) {
                                 is ToolResult.Committed -> {
-                                    hasCommitted = true
+                                    turnReceipts.add(ReceiptState(UUID.randomUUID().toString(), result.message, result.undoToken))
                                     "Committed. ${result.message}"
                                 }
                                 is ToolResult.Ambiguous -> {
@@ -176,12 +184,19 @@ class ChatController(
                             } + "\n"
                         }
                         
-                        // A15 & A3: Store ONLY what the model said. No [Done] UI hacks.
-                        val cleanText = envelope.reply.trim().ifBlank { "Executed tools silently." }
-                        updateLastMessage(botId, cleanText)
-                        storage.insertRawMessage(botId, "assistant", cleanText)
+                        // Push verified receipts to UI State natively instead of faking LLM prose
+                        _state.update { it.copy(receipts = it.receipts + turnReceipts) }
                         
-                        pack = pack + ChatMessage(botId, "assistant", cleanText)
+                        // Prevent empty Acknowledged message if we just spawned tools cleanly
+                        if (envelope.reply.isNotBlank() || turnReceipts.isEmpty()) {
+                            val cleanText = envelope.reply.trim().ifBlank { "..." }
+                            updateLastMessage(botId, cleanText)
+                            storage.insertRawMessage(botId, "assistant", cleanText)
+                            pack = pack + ChatMessage(botId, "assistant", cleanText)
+                        } else {
+                            // Drop the empty bot response from history completely if it only yielded structural receipts
+                            _state.update { it.copy(chatMessages = it.chatMessages.dropLast(1)) }
+                        }
                         
                         // A11: Send tool results as a "user" role message to prevent provider rejection 
                         // of mid-conversation "system" messages.
@@ -197,7 +212,7 @@ class ChatController(
                             turnComplete = true
                         }
                         
-                        if (envelope.calls.isEmpty() || hasCommitted) {
+                        if (envelope.calls.isEmpty() || turnReceipts.isNotEmpty()) {
                             turnComplete = true
                         }
                     } else {
@@ -270,22 +285,22 @@ CRITICAL: Do NOT say "Done" or "Saved" unless you issue a tool call.
         val pending = storage.getPendingReminders()
         val registered = storage.getRegisteredAlarms()
         
-        val pendingIds = pending.map { it.id }.toSet()
-        val registeredIds = registered.toSet()
+        val pendingMap = pending.associate { it.id to it.fireAtMillis }
+        val registeredMap = registered.associate { it.first to it.second }
         
-        val toCancel = registeredIds - pendingIds
-        val toSchedule = pendingIds - registeredIds
+        val toCancel = registeredMap.keys - pendingMap.keys
+        val toSchedule = pendingMap.filter { (id, fireAt) -> registeredMap[id] != fireAt }
         
         toCancel.forEach { id ->
             alarmScheduler.cancel(id)
             storage.deleteRegisteredAlarm(id)
         }
         
-        toSchedule.forEach { id ->
+        toSchedule.forEach { (id, fireAt) ->
             val r = pending.find { it.id == id }
             if (r != null) {
                 alarmScheduler.schedule(r)
-                storage.saveRegisteredAlarm(id, id.hashCode())
+                storage.saveRegisteredAlarm(id, id.hashCode(), fireAt)
             }
         }
     }
@@ -295,7 +310,8 @@ CRITICAL: Do NOT say "Done" or "Saved" unless you issue a tool call.
         _state.update { it.copy(
             chatMessages = storage.getRecentMessages(30), 
             activeReminders = storage.getActiveReminders(),
-            openProposals = storage.getOpenProposals()
+            openProposals = storage.getOpenProposals(),
+            proposedSoulFacts = storage.getProposedSoulFacts()
         ) }
     }
 

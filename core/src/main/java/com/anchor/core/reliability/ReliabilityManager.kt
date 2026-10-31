@@ -16,16 +16,15 @@ class ReliabilityManager(
 ) {
     // BP 42 (3.6): The Sweeper job. Finds armed reminders with fire_at in the past
     // and handles them as missed (recording the latency and cleaning up).
-    suspend fun runSweeper(): List<Reminder> {
+    suspend fun runSweeper(): List<com.anchor.core.models.Reminder> {
         val now = clock.now()
         val pending = storage.getPendingReminders()
         
-        // 60-second grace period before officially calling it "missed" by the sweeper
         val missed = pending.filter { it.fireAtMillis < now - 60000L }
         
         for (reminder in missed) {
-            val fire = ReminderFire(
-                id = "f_${UUID.randomUUID().toString().take(8)}",
+            val fire = com.anchor.core.models.ReminderFire(
+                id = "f_${java.util.UUID.randomUUID().toString().take(8)}",
                 reminderId = reminder.id,
                 firedAt = now,
                 scheduledFor = reminder.fireAtMillis,
@@ -33,13 +32,13 @@ class ReliabilityManager(
                 outcome = "missed"
             )
             storage.recordReminderFire(fire)
-            storage.deleteReminder(reminder.id)
+            // DO NOT DELETE the reminder here! 
+            // Allow the returned list to be broadcast to AlarmReceiver, which will handle notification and deletion safely.
         }
         
         val state = storage.getReliabilityState()
         storage.saveReliabilityState(state.copy(sweeperHeartbeat = now))
         
-        // A14: Return the missed reminders so the Android layer can notify the user BEFORE they vanish
         return missed
     }
 }

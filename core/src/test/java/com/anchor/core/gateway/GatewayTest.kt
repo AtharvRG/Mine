@@ -188,4 +188,29 @@ class GatewayTest {
         org.junit.Assert.assertEquals(2, fakeStorage.soulFacts.size)
         org.junit.Assert.assertEquals("Likes oranges", fakeStorage.soulFacts[1].statement)
     }
+
+    @Test
+    fun testGateway_Reschedule_UpdatesDueAt_And_Reminder() = kotlinx.coroutines.runBlocking {
+        val storage = com.anchor.core.SharedFakeStorage()
+        val clock = com.anchor.core.time.FakeClock(1000L)
+        val resolver = com.anchor.core.resolver.Resolver()
+        val dateResolver = com.anchor.core.time.DateResolver(clock)
+        val gateway = Gateway(storage, resolver, dateResolver, clock)
+        
+        val node = com.anchor.core.models.Node("n1", "event", "Dinner", "active", 5000L)
+        storage.activeNodes.add(node)
+        storage.reminders.add(com.anchor.core.models.Reminder("r_n1", "Dinner", 5000L))
+
+        val rescheduleCall = com.anchor.core.gateway.ToolCall("propose_change", mapOf("intent" to "RESCHEDULE", "hint" to "Dinner", "due_text" to "in 20 minutes"))
+        
+        val result = gateway.executeTool(rescheduleCall)
+        org.junit.Assert.assertTrue(result is com.anchor.core.models.ToolResult.Committed)
+        
+        // Assert Node time changed
+        org.junit.Assert.assertEquals(1000L + (20 * 60000L), storage.activeNodes[0].dueAt)
+        
+        // Assert Reminder was NOT deleted, but updated to new time
+        org.junit.Assert.assertEquals(1, storage.reminders.size)
+        org.junit.Assert.assertEquals(1000L + (20 * 60000L), storage.reminders[0].fireAtMillis)
+    }
 }

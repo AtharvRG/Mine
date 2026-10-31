@@ -60,10 +60,22 @@ fun MineAppUI(viewModel: MainViewModel) {
     if (state.globalError != null) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) {
             Column(horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) {
-                Text("Fatal Error\n\n${state.globalError}", color = MaterialTheme.colorScheme.error)
+                Text(if (state.globalError == "KEYSTORE_LOST") "Keystore Key Lost" else "Fatal Error", color = MaterialTheme.colorScheme.error)
                 Spacer(modifier = Modifier.height(16.dp))
-                Button(onClick = { viewModel.onAction(UiAction.ResetDatabase) }) {
-                    Text("Reset Database")
+                if (state.globalError == "KEYSTORE_LOST") {
+                    Text("The database cannot be decrypted. You must reset the app to continue.", modifier = Modifier.padding(16.dp))
+                    if (!state.showResetConfirm) {
+                        Button(onClick = { viewModel.onAction(UiAction.PromptResetDatabase) }) { Text("Reset Database") }
+                    } else {
+                        Text("Are you sure? This deletes everything.", color = MaterialTheme.colorScheme.error)
+                        Row {
+                            Button(onClick = { viewModel.onAction(UiAction.ConfirmResetDatabase(true)) }) { Text("Yes, Delete") }
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Button(onClick = { viewModel.onAction(UiAction.ConfirmResetDatabase(false)) }) { Text("Cancel") }
+                        }
+                    }
+                } else {
+                    Text(state.globalError!!)
                 }
             }
         }
@@ -119,8 +131,10 @@ fun ChatScreen(state: UiState, onAction: (UiAction) -> Unit) {
                 onValueChange = { onAction(UiAction.UpdateDraft(it)) },
                 modifier = Modifier.weight(1f)
             )
-            Button(onClick = { if (state.composerDraft.isNotBlank()) onAction(UiAction.SendMessage) }) {
-                Text("Send")
+            if (state.isChatLoading) {
+                Button(onClick = { onAction(UiAction.Stop) }) { Text("Stop") }
+            } else {
+                Button(onClick = { if (state.composerDraft.isNotBlank()) onAction(UiAction.SendMessage) }) { Text("Send") }
             }
         }
     }
@@ -129,10 +143,6 @@ fun ChatScreen(state: UiState, onAction: (UiAction) -> Unit) {
 @Composable
 fun RemindersScreen(state: UiState, onAction: (UiAction) -> Unit) {
     Column {
-        Button(onClick = { onAction(UiAction.ScheduleIn(1, "Test reminder 1 min")) }) {
-            Text("Set Reminder in 1 min")
-        }
-        Spacer(modifier = Modifier.height(16.dp))
         Button(onClick = { onAction(UiAction.RunSelfTest) }) {
             Text("Run 5-sec Self Test")
         }

@@ -53,6 +53,8 @@ interface Storage {
 
     suspend fun getOpenProposals(): List<Proposal>
     suspend fun getActiveSoulFacts(): List<SoulFact>
+    suspend fun getProposedSoulFacts(): List<SoulFact>
+    suspend fun updateSoulFactStatus(id: String, status: String)
 
     // Purely Transactional Gateways
     suspend fun createNodeAndCommit(node: Node, event: RawEvent, reminder: Reminder?)
@@ -61,7 +63,7 @@ interface Storage {
     suspend fun createReminderAndCommit(reminder: Reminder, event: RawEvent)
     suspend fun deleteReminderAndCommit(reminderId: String, event: RawEvent)
 
-    suspend fun getRegisteredAlarms(): List<String>
-    suspend fun saveRegisteredAlarm(reminderId: String, requestCode: Int)
+    suspend fun getRegisteredAlarms(): List<Pair<String, Long>>
+    suspend fun saveRegisteredAlarm(reminderId: String, requestCode: Int, registeredFor: Long)
     suspend fun deleteRegisteredAlarm(reminderId: String)
 }

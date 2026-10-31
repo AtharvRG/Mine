@@ -171,6 +171,20 @@ class AndroidStorage(private val dbHelper: SupportSQLiteOpenHelper) : Storage {
         list
     }
 
+    override suspend fun getProposedSoulFacts(): List<SoulFact> = withContext(ioDispatcher) {
+        val list = mutableListOf<SoulFact>()
+        dbHelper.readableDatabase.query("SELECT id, category, statement, confidence, source, origin, status, created_at FROM soul_fact WHERE status = 'proposed'").use {
+            while (it.moveToNext()) {
+                list.add(SoulFact(it.getString(0), it.getString(1), it.getString(2), it.getDouble(3), it.getString(4), it.getString(5), it.getString(6), it.getLong(7)))
+            }
+        }
+        list
+    }
+
+    override suspend fun updateSoulFactStatus(id: String, status: String) = withContext(ioDispatcher) {
+        dbHelper.writableDatabase.execSQL("UPDATE soul_fact SET status = ? WHERE id = ?", arrayOf(status, id))
+    }
+
     override suspend fun saveReminder(reminder: Reminder) = withContext(ioDispatcher) {
         dbHelper.writableDatabase.execSQL("INSERT OR REPLACE INTO reminder (id, text, fire_at) VALUES (?, ?, ?)", arrayOf<Any>(reminder.id, reminder.text, reminder.fireAtMillis))
     }
@@ -251,8 +265,9 @@ class AndroidStorage(private val dbHelper: SupportSQLiteOpenHelper) : Storage {
         val db = dbHelper.writableDatabase
         db.beginTransaction()
         try {
-            db.execSQL("UPDATE node SET status = ?, closed_at = ?, updated_at = ? WHERE id = ?",
-                arrayOf<Any?>(node.status, node.closedAt, node.updatedAt, node.id))
+            // FIX: Restore due_at so rescheduled items roll back accurately
+            db.execSQL("UPDATE node SET status = ?, due_at = ?, closed_at = ?, updated_at = ? WHERE id = ?",
+                arrayOf<Any?>(node.status, node.dueAt, node.closedAt, node.updatedAt, node.id))
             restoreReminder?.let { db.execSQL("INSERT OR REPLACE INTO reminder (id, text, fire_at) VALUES (?, ?, ?)", arrayOf<Any>(it.id, it.text, it.fireAtMillis)) }
             db.execSQL("INSERT INTO raw_event (op_id, target_id, op_type, target_type, ts_utc, device_id, actor, undo_of, before_json, after_json) VALUES (?, ?, ?, ?, ?, ?, 'user', ?, ?, ?)",
                 arrayOf<Any?>(event.opId, event.targetId, event.opType, event.targetType, System.currentTimeMillis(), deviceId, event.undoOf, event.beforeJson, event.afterJson))
@@ -383,20 +398,20 @@ class AndroidStorage(private val dbHelper: SupportSQLiteOpenHelper) : Storage {
         )
     }
 
-    override suspend fun getRegisteredAlarms(): List<String> = withContext(ioDispatcher) {
-        val list = mutableListOf<String>()
-        dbHelper.readableDatabase.query("SELECT reminder_id FROM alarm_registry").use {
+    override suspend fun getRegisteredAlarms(): List<Pair<String, Long>> = withContext(ioDispatcher) {
+        val list = mutableListOf<Pair<String, Long>>()
+        dbHelper.readableDatabase.query("SELECT reminder_id, registered_for FROM alarm_registry").use {
             while (it.moveToNext()) {
-                list.add(it.getString(0))
+                list.add(it.getString(0) to it.getLong(1))
             }
         }
         list
     }
 
-    override suspend fun saveRegisteredAlarm(reminderId: String, requestCode: Int) = withContext(ioDispatcher) {
+    override suspend fun saveRegisteredAlarm(reminderId: String, requestCode: Int, registeredFor: Long) = withContext(ioDispatcher) {
         dbHelper.writableDatabase.execSQL(
-            "INSERT OR REPLACE INTO alarm_registry (reminder_id, request_code, api, registered_for, registered_at) VALUES (?, ?, 'alarm_clock', 0, ?)",
-            arrayOf<Any>(reminderId, requestCode, System.currentTimeMillis())
+            "INSERT OR REPLACE INTO alarm_registry (reminder_id, request_code, api, registered_for, registered_at) VALUES (?, ?, 'alarm_clock', ?, ?)",
+            arrayOf<Any>(reminderId, requestCode, registeredFor, System.currentTimeMillis())
         )
     }
 

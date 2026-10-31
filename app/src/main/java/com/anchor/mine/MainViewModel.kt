@@ -58,10 +58,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     viewModelScope, Dispatchers.Default, clock
                 )
 
+                reliabilityManager.runSweeper().forEach { missedRem ->
+                    val intent = android.content.Intent(getApplication(), com.anchor.mine.alarms.AlarmReceiver::class.java).apply {
+                        putExtra("EXTRA_ID", missedRem.id)
+                        putExtra("EXTRA_TEXT", "Missed: ${missedRem.text}")
+                    }
+                    getApplication<Application>().sendBroadcast(intent)
+                }
+
                 controller!!.state.collect { _state.value = it }
             } catch (e: Exception) {
                 val msg = if (e.message == "KEYSTORE_LOST") {
-                    "Keystore key lost. The database cannot be decrypted. You must reset the app."
+                    "KEYSTORE_LOST"
                 } else {
                     "Storage failed: ${e.message}"
                 }
@@ -71,33 +79,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun onAction(action: UiAction) {
-        if (action is UiAction.ResetDatabase) {
-            val ctx = getApplication<Application>().applicationContext
-            ctx.deleteDatabase("mine_encrypted.db")
-            java.io.File(ctx.filesDir, "wrapped_db.key").delete()
-            // Force crash to restart fresh (or you can elegantly reload the activity)
-            android.os.Process.killProcess(android.os.Process.myPid())
+        if (action is UiAction.PromptResetDatabase) {
+            _state.value = _state.value.copy(showResetConfirm = true)
             return
         }
-        if (action is UiAction.RunSelfTest) {
-            viewModelScope.launch(Dispatchers.Default) {
-                val st = storage ?: return@launch
-                _state.update { it.copy(selfTestStatus = "Armed for 10 seconds...") }
-                val id = "test_${System.currentTimeMillis()}"
-                val fireAt = System.currentTimeMillis() + 10000L
-                val reminder = Reminder(id, "Self Test Fired!", fireAt)
-                st.saveReminder(reminder)
-                controller?.state?.value?.let { /* Trigger recompose */ }
-                
-                // Fire sweeper manually for testing purposes
-                val missed = reliabilityManager.runSweeper()
-                missed.forEach { missedRem ->
-                    val intent = Intent(getApplication(), AlarmReceiver::class.java).apply {
-                        putExtra("EXTRA_ID", missedRem.id)
-                        putExtra("EXTRA_TEXT", "Missed: ${missedRem.text}")
-                    }
-                    getApplication<Application>().sendBroadcast(intent)
-                }
+        if (action is UiAction.ConfirmResetDatabase) {
+            if (action.confirm) {
+                val ctx = getApplication<Application>().applicationContext
+                ctx.deleteDatabase("mine_encrypted.db")
+                java.io.File(ctx.filesDir, "wrapped_db.key").delete()
+                android.os.Process.killProcess(android.os.Process.myPid())
+            } else {
+                _state.value = _state.value.copy(showResetConfirm = false)
             }
             return
         }

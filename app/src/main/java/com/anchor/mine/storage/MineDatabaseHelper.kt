@@ -162,43 +162,43 @@ class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(8) {
         createTriggers(db)
     }
 
-    private fun createTriggers(db: SupportSQLiteDatabase) {
-        // Core Immutable Triggers
-        db.execSQL("""
-            CREATE TRIGGER IF NOT EXISTS trg_raw_msg_no_update BEFORE UPDATE ON raw_message
-            BEGIN
-                SELECT RAISE(ABORT, 'raw_message is append-only except for redaction')
-                WHERE OLD.redacted_at IS NOT NULL 
-                   OR NEW.redacted_at IS NULL 
-                   OR NEW.content IS NOT NULL 
-                   OR OLD.id != NEW.id
-                   OR OLD.device_id != NEW.device_id
-                   OR OLD.ts_utc != NEW.ts_utc
-                   OR OLD.tz_offset_min != NEW.tz_offset_min
-                   OR OLD.day_key != NEW.day_key
-                   OR OLD.role != NEW.role
-                   OR IFNULL(OLD.reasoning, '') != IFNULL(NEW.reasoning, '')
-                   OR IFNULL(OLD.tags, '') != IFNULL(NEW.tags, '')
-                   OR IFNULL(OLD.persona_id, '') != IFNULL(NEW.persona_id, '')
-                   OR IFNULL(OLD.model_ref, '') != IFNULL(NEW.model_ref, '')
-                   OR IFNULL(OLD.tokens_in, 0) != IFNULL(NEW.tokens_in, 0)
-                   OR IFNULL(OLD.tokens_out, 0) != IFNULL(NEW.tokens_out, 0)
-                   OR IFNULL(OLD.client_msg_id, '') != IFNULL(NEW.client_msg_id, '')
-                   OR IFNULL(OLD.attrs, '') != IFNULL(NEW.attrs, '');
-            END;
-        """)
-        db.execSQL("CREATE TRIGGER IF NOT EXISTS trg_raw_msg_no_delete BEFORE DELETE ON raw_message BEGIN SELECT RAISE(ABORT, 'raw_message is append-only'); END;")
-        db.execSQL("CREATE TRIGGER IF NOT EXISTS trg_raw_evt_no_update BEFORE UPDATE ON raw_event BEGIN SELECT RAISE(ABORT, 'raw_event is append-only'); END;")
-        db.execSQL("CREATE TRIGGER IF NOT EXISTS trg_raw_evt_no_delete BEFORE DELETE ON raw_event BEGIN SELECT RAISE(ABORT, 'raw_event is append-only'); END;")
-        
-        // FTS5 Synchronization Triggers
-        db.execSQL("CREATE TRIGGER IF NOT EXISTS trg_node_fts_insert AFTER INSERT ON node BEGIN INSERT INTO node_fts (rowid, title, body) VALUES (new.rowid, new.title, new.body); END;")
-        db.execSQL("CREATE TRIGGER IF NOT EXISTS trg_node_fts_delete AFTER DELETE ON node BEGIN INSERT INTO node_fts (node_fts, rowid, title, body) VALUES ('delete', old.rowid, old.title, old.body); END;")
-        db.execSQL("CREATE TRIGGER IF NOT EXISTS trg_node_fts_update AFTER UPDATE ON node BEGIN INSERT INTO node_fts (node_fts, rowid, title, body) VALUES ('delete', old.rowid, old.title, old.body); INSERT INTO node_fts (rowid, title, body) VALUES (new.rowid, new.title, new.body); END;")
-        
-        db.execSQL("CREATE TRIGGER IF NOT EXISTS trg_soul_fts_insert AFTER INSERT ON soul_fact BEGIN INSERT INTO soul_fts (rowid, statement) VALUES (new.rowid, new.statement); END;")
-        db.execSQL("CREATE TRIGGER IF NOT EXISTS trg_soul_fts_delete AFTER DELETE ON soul_fact BEGIN INSERT INTO soul_fts (soul_fts, rowid, statement) VALUES ('delete', old.rowid, old.statement); END;")
-        db.execSQL("CREATE TRIGGER IF NOT EXISTS trg_soul_fts_update AFTER UPDATE ON soul_fact BEGIN INSERT INTO soul_fts (soul_fts, rowid, statement) VALUES ('delete', old.rowid, old.statement); INSERT INTO soul_fts (rowid, statement) VALUES (new.rowid, new.statement); END;")
+    companion object {
+        fun createTriggers(db: SupportSQLiteDatabase) {
+            db.execSQL("""
+                CREATE TRIGGER IF NOT EXISTS trg_raw_msg_no_update BEFORE UPDATE ON raw_message
+                BEGIN
+                    SELECT RAISE(ABORT, 'raw_message is append-only except for redaction')
+                    WHERE OLD.redacted_at IS NOT NULL 
+                       OR NEW.redacted_at IS NULL 
+                       OR NEW.content IS NOT NULL 
+                       OR OLD.id != NEW.id
+                       OR OLD.device_id != NEW.device_id
+                       OR OLD.ts_utc != NEW.ts_utc
+                       OR OLD.tz_offset_min != NEW.tz_offset_min
+                       OR OLD.day_key != NEW.day_key
+                       OR OLD.role != NEW.role
+                       OR IFNULL(OLD.reasoning, '') != IFNULL(NEW.reasoning, '')
+                       OR IFNULL(OLD.tags, '') != IFNULL(NEW.tags, '')
+                       OR IFNULL(OLD.persona_id, '') != IFNULL(NEW.persona_id, '')
+                       OR IFNULL(OLD.model_ref, '') != IFNULL(NEW.model_ref, '')
+                       OR IFNULL(OLD.tokens_in, 0) != IFNULL(NEW.tokens_in, 0)
+                       OR IFNULL(OLD.tokens_out, 0) != IFNULL(NEW.tokens_out, 0)
+                       OR IFNULL(OLD.client_msg_id, '') != IFNULL(NEW.client_msg_id, '')
+                       OR IFNULL(OLD.attrs, '') != IFNULL(NEW.attrs, '');
+                END;
+            """)
+            db.execSQL("CREATE TRIGGER IF NOT EXISTS trg_raw_msg_no_delete BEFORE DELETE ON raw_message BEGIN SELECT RAISE(ABORT, 'raw_message is append-only'); END;")
+            db.execSQL("CREATE TRIGGER IF NOT EXISTS trg_raw_evt_no_update BEFORE UPDATE ON raw_event BEGIN SELECT RAISE(ABORT, 'raw_event is append-only'); END;")
+            db.execSQL("CREATE TRIGGER IF NOT EXISTS trg_raw_evt_no_delete BEFORE DELETE ON raw_event BEGIN SELECT RAISE(ABORT, 'raw_event is append-only'); END;")
+            
+            db.execSQL("CREATE TRIGGER IF NOT EXISTS trg_node_fts_insert AFTER INSERT ON node BEGIN INSERT INTO node_fts (rowid, title, body) VALUES (new.rowid, new.title, new.body); END;")
+            db.execSQL("CREATE TRIGGER IF NOT EXISTS trg_node_fts_delete AFTER DELETE ON node BEGIN INSERT INTO node_fts (node_fts, rowid, title, body) VALUES ('delete', old.rowid, old.title, old.body); END;")
+            db.execSQL("CREATE TRIGGER IF NOT EXISTS trg_node_fts_update AFTER UPDATE ON node BEGIN INSERT INTO node_fts (node_fts, rowid, title, body) VALUES ('delete', old.rowid, old.title, old.body); INSERT INTO node_fts (rowid, title, body) VALUES (new.rowid, new.title, new.body); END;")
+            
+            db.execSQL("CREATE TRIGGER IF NOT EXISTS trg_soul_fts_insert AFTER INSERT ON soul_fact BEGIN INSERT INTO soul_fts (rowid, statement) VALUES (new.rowid, new.statement); END;")
+            db.execSQL("CREATE TRIGGER IF NOT EXISTS trg_soul_fts_delete AFTER DELETE ON soul_fact BEGIN INSERT INTO soul_fts (soul_fts, rowid, statement) VALUES ('delete', old.rowid, old.statement); END;")
+            db.execSQL("CREATE TRIGGER IF NOT EXISTS trg_soul_fts_update AFTER UPDATE ON soul_fact BEGIN INSERT INTO soul_fts (soul_fts, rowid, statement) VALUES ('delete', old.rowid, old.statement); INSERT INTO soul_fts (rowid, statement) VALUES (new.rowid, new.statement); END;")
+        }
     }
 }
 
