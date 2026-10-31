@@ -27,7 +27,6 @@ class AndroidStorageTest {
     fun setup() {
         // Clear global state leaked from AlarmSelfTest
         com.anchor.mine.alarms.AlarmReceiver.lastFiredId = null
-        com.anchor.mine.alarms.GlobalAlarmState.lastFired.value = null
 
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         context.deleteDatabase("mine_test.db") // Isolated Test DB

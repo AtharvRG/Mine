@@ -21,7 +21,6 @@ class AlarmReceiverTest {
     @Before
     fun setup() {
         AlarmReceiver.lastFiredId = null
-        GlobalAlarmState.lastFired.value = null
     }
 
     @Test

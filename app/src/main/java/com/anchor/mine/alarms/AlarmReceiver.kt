@@ -43,7 +43,6 @@ class AlarmReceiver : BroadcastReceiver() {
                 // B15: Use text from DB row
                 val safeText = rem.text
 
-                GlobalAlarmState.lastFired.value = id
                 lastFiredId = id
 
                 val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager

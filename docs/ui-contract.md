@@ -1,9 +1,8 @@
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- Copyright (C) 2026 Mine contributors -->
+<!-- Part of Mine. See LICENSE in the repository root. -->
+
 # UI Contract
-
-// SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 Mine contributors
-// Part of Mine. See LICENSE in the repository root.
-
 Every screen in Mine is mapped to `UiState` and `UiAction`. The UI is completely passive. All logic, timing, and formatting are handled by the core module.
 
 ## 1. State (`UiState`)

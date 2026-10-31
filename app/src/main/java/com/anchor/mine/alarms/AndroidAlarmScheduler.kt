@@ -10,17 +10,35 @@ import android.content.Context
 import android.content.Intent
 import com.anchor.core.alarms.AlarmScheduler
 import com.anchor.core.models.Reminder
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 
-object GlobalAlarmState {
-    val lastFired = MutableStateFlow<String?>(null)
-}
+// D4: Removed redundant GlobalAlarmState holder. Using AlarmReceiver.lastFiredId directly.
 
 class AndroidAlarmScheduler(private val context: Context) : AlarmScheduler {
     private val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-    override val lastFiredId: StateFlow<String?> = GlobalAlarmState.lastFired.asStateFlow()
+
+    // Wire StateFlow directly to the single source of truth
+    private val _lastFiredId = MutableStateFlow<String?>(null)
+    override val lastFiredId: StateFlow<String?> = _lastFiredId.asStateFlow()
+
+    init {
+        // Simple polling observer for test environments to bridge BroadcastReceiver state
+        CoroutineScope(Dispatchers.Default).launch {
+            while (isActive) {
+                if (_lastFiredId.value != AlarmReceiver.lastFiredId) {
+                    _lastFiredId.value = AlarmReceiver.lastFiredId
+                }
+                delay(100)
+            }
+        }
+    }
 
     override fun schedule(reminder: Reminder) {
         val intent = Intent(context, AlarmReceiver::class.java).apply {

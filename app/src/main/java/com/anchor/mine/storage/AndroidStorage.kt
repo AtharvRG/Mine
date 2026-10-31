@@ -146,7 +146,9 @@ class AndroidStorage(private val dbHelper: SupportSQLiteOpenHelper) : Storage {
     }
 
     override suspend fun getProposal(id: String): Proposal? = withContext(ioDispatcher) {
-        dbHelper.readableDatabase.query("SELECT kind, intent, options, status FROM proposal WHERE id = ?", arrayOf(id)).use {
+        val expiryThreshold = System.currentTimeMillis() - (24 * 3600 * 1000L)
+        // B5: Enforce 24-hour expiry directly at the read level. If it's old, it doesn't exist to the Gateway.
+        dbHelper.readableDatabase.query("SELECT kind, intent, options, status FROM proposal WHERE id = ? AND created_at > ?", arrayOf<Any>(id, expiryThreshold)).use {
             if (it.moveToFirst()) Proposal(id, it.getString(0), IntentType.valueOf(it.getString(1)), it.getString(2).split(","), it.getString(3)) else null
         }
     }
