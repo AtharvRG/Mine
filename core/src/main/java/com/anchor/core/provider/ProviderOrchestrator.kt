@@ -6,7 +6,6 @@ package com.anchor.core.provider
 
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.emitAll
 import kotlinx.serialization.json.Json
 import kotlinx.coroutines.CancellationException
 
@@ -17,25 +16,38 @@ class ProviderOrchestrator(
     private val jsonParser = Json { ignoreUnknownKeys = true; isLenient = true }
 
     suspend fun chat(chain: List<Target>, prompt: String): Flow<StreamEvent> = flow {
-        var target: Target? = null
-        for (t in chain) {
-            if (limiter.canRequest(t.key, t.limitRpm)) {
-                target = t
-                break
+        var lastError: Exception? = null
+        
+        for (target in chain) {
+            if (!limiter.canRequest(target.key, target.limitRpm)) continue
+            
+            try {
+                limiter.recordRequest(target.key)
+                var emittedAnything = false
+                
+                // B13: Catch 5xx, Timeouts, and empty 200s, then fallback to next target!
+                normalize(transport.postStream(target, prompt)).collect { event ->
+                    emit(event)
+                    emittedAnything = true
+                }
+                
+                if (!emittedAnything) throw Exception("Empty response from provider")
+                
+                return@flow // Success! Turn completes.
+            } catch (e: Http429Exception) {
+                limiter.apply429Cooldown(target.key, e.retryAfterSeconds)
+                lastError = e
+                emit(StreamEvent.Clear)
+                continue // Try next fallback target
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e // Never swallow coroutine cancellation
+                lastError = e
+                emit(StreamEvent.Clear)
+                continue // 5xx, timeout, or parsing error -> Try next fallback target!
             }
         }
-        val validTarget = target ?: throw Exception("All targets in cooldown")
-        limiter.recordRequest(validTarget.key)
-        try {
-            emitAll(normalize(transport.postStream(validTarget, prompt)))
-        } catch (e: Http429Exception) {
-            limiter.apply429Cooldown(validTarget.key, e.retryAfterSeconds)
-            val remainingChain = chain.dropWhile { it.key == validTarget.key }
-            if (remainingChain.isNotEmpty()) {
-                emit(StreamEvent.Clear) // Tell UI to wipe partial string
-                emitAll(chat(remainingChain, prompt))
-            } else throw Exception("Fallbacks exhausted")
-        }
+        
+        throw Exception("All providers failed or in cooldown. Last error: ${lastError?.message ?: "Unknown"}")
     }
 
     private fun normalize(rawStream: Flow<String>): Flow<StreamEvent> = flow {

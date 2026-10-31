@@ -157,9 +157,22 @@ class AndroidStorage(private val dbHelper: SupportSQLiteOpenHelper) : Storage {
 
     override suspend fun getOpenProposals(): List<Proposal> = withContext(ioDispatcher) {
         val list = mutableListOf<Proposal>()
-        dbHelper.readableDatabase.query("SELECT id, kind, intent, options, status FROM proposal WHERE status = 'open'").use {
+        val expiryThreshold = System.currentTimeMillis() - (24 * 3600 * 1000L) // B5: 24h Expiry
+        dbHelper.readableDatabase.query("SELECT id, kind, intent, options, status FROM proposal WHERE status = 'open' AND created_at > ?", arrayOf(expiryThreshold)).use {
             while (it.moveToNext()) {
                 list.add(Proposal(it.getString(0), it.getString(1), IntentType.valueOf(it.getString(2)), it.getString(3).split(","), it.getString(4)))
+            }
+        }
+        list
+    }
+
+    override suspend fun getUrgentNodes(): List<Node> = withContext(ioDispatcher) {
+        val list = mutableListOf<Node>()
+        // G5: Fetch top 3 active tasks ordered by nearest deadline for the Home UI Priority List
+        dbHelper.readableDatabase.query("SELECT id, type, title, status, due_at, created_at, updated_at, closed_at FROM node WHERE status IN ('active', 'in_progress') ORDER BY due_at ASC LIMIT 3").use {
+            while (it.moveToNext()) {
+                list.add(Node(it.getString(0), it.getString(1), it.getString(2), it.getString(3), 
+                    if (it.isNull(4)) null else it.getLong(4), it.getLong(5), it.getLong(6), if (it.isNull(7)) null else it.getLong(7)))
             }
         }
         list

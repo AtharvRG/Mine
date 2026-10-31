@@ -88,7 +88,8 @@ class SharedFakeStorage : Storage {
         loggedEvents.add(event)
     }
 
-    override suspend fun getOpenProposals(): List<Proposal> = savedProposals.filter { it.status == "open" }
+    override suspend fun getOpenProposals(): List<Proposal> = savedProposals.filter { it.status == "open" && it.id.isNotBlank() /* Mock 24h filter */ }
+    override suspend fun getUrgentNodes(): List<Node> = activeNodes.sortedBy { it.dueAt ?: Long.MAX_VALUE }.take(3)
     override suspend fun getActiveSoulFacts(): List<SoulFact> = soulFacts.filter { it.status == "active" || it.status == "pinned" }
 
     override suspend fun updateNodeAndCommit(node: Node, event: RawEvent, deleteReminderId: String?, upsertReminder: Reminder?, consumeProposalId: String?) {

@@ -52,6 +52,7 @@ interface Storage {
     suspend fun recordReminderFire(fire: com.anchor.core.models.ReminderFire)
 
     suspend fun getOpenProposals(): List<Proposal>
+    suspend fun getUrgentNodes(): List<Node>
     suspend fun getActiveSoulFacts(): List<SoulFact>
     suspend fun getProposedSoulFacts(): List<SoulFact>
     suspend fun updateSoulFactStatus(id: String, status: String)

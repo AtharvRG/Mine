@@ -35,9 +35,11 @@ class Gateway(
                 ToolResult.Data(text)
             }
             "soul_propose" -> {
-                val statement = args["statement"] ?: return ToolResult.Error("Missing statement")
-                val category = args["category"] ?: "other"
+                // B3: Cap statement length
+                val statement = (args["statement"] ?: return ToolResult.Error("Missing statement")).take(500)
+                val category = (args["category"] ?: "other").take(100)
                 val confidence = args["confidence"]?.toDoubleOrNull() ?: 0.7
+                
                 val sId = "s_${UUID.randomUUID().toString().take(8)}"
                 val fact = SoulFact(sId, category, statement, confidence, "chat_ai", "extracted", "proposed", clock.now())
                 
@@ -53,25 +55,24 @@ class Gateway(
             "propose_change" -> {
                 val intentStr = args["intent"]?.uppercase() ?: return ToolResult.Error("Missing intent")
                 val intent = try { IntentType.valueOf(intentStr) } catch(e: Exception) { return ToolResult.Error("Unknown intent") }
-                val hint = (args["hint"] ?: args["title"] ?: "").take(200) // B3: Length cap
-                val dueText = args["due_text"]
                 
-                // Fetch user's actual day_rule start_minute from settings to pass to DateResolver
+                // B3: Hard cap LLM hallucinated lengths to prevent DB/UI bloat
+                val hint = (args["hint"] ?: args["title"] ?: "").take(200) 
+                val dueText = (args["due_text"] ?: "").take(100)
+                
                 val rolloverMin = storage.getSetting("day_start_minute")?.toIntOrNull() ?: 240
                 
-                val targetTimeMillis = if (dueText.isNullOrBlank()) null else {
+                val targetTimeMillis = if (dueText.isBlank()) null else {
                     dateResolver.parse(dueText, rolloverMin) ?: return ToolResult.Error("Could not understand the time '$dueText'. Ask the user to clarify.")
                 }
 
                 when (intent) {
                     IntentType.CREATE -> {
                         if (hint.isBlank()) return ToolResult.Error("Title cannot be blank")
-                        // B3: Validate Type
-                        val type = (args["type"] ?: "task").lowercase()
+                        val type = (args["type"] ?: "task").lowercase().take(50)
                         val validTypes = listOf("task", "event", "note", "habit")
                         val safeType = if (type in validTypes) type else "task"
                         
-                        // B4: Deduplicate
                         val active = storage.getActiveNodes()
                         val duplicate = active.find { it.title.equals(hint, ignoreCase = true) && it.status != "done" && it.status != "cancelled" }
                         if (duplicate != null) {

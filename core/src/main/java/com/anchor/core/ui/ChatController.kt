@@ -74,10 +74,15 @@ class ChatController(
                 currentStreamJob?.cancel()
             }
             is UiAction.SaveProvider -> coroutineScope.launch(defaultDispatcher) {
-                storage.saveSetting("ep", action.endpoint)
-                storage.saveSetting("key", action.key)
-                storage.saveSetting("mod", action.model)
-                _state.update { it.copy(providerEndpoint = action.endpoint, providerKey = action.key, providerModel = action.model) }
+                // B13: Aggressively trim whitespace and strip trailing paths that break HTTP POSTs
+                val ep = action.endpoint.trim().removeSuffix("/chat/completions").removeSuffix("/")
+                val key = action.key.trim()
+                val mod = action.model.trim()
+                
+                storage.saveSetting("ep", ep)
+                storage.saveSetting("key", key)
+                storage.saveSetting("mod", mod)
+                _state.update { it.copy(providerEndpoint = ep, providerKey = key, providerModel = mod) }
             }
             is UiAction.CancelReminder -> coroutineScope.launch(defaultDispatcher) {
                 storage.deleteReminder(action.id)
@@ -310,11 +315,16 @@ CRITICAL: Do NOT say "Done" or "Saved" unless you issue a tool call.
         val currentSize = _state.value.chatMessages.size
         val fetchCount = kotlin.math.max(30, currentSize)
         
+        val proposals = storage.getOpenProposals()
+        val soulFacts = storage.getProposedSoulFacts()
+        
         _state.update { it.copy(
             chatMessages = storage.getRecentMessages(fetchCount), 
             activeReminders = storage.getActiveReminders(),
-            openProposals = storage.getOpenProposals(),
-            proposedSoulFacts = storage.getProposedSoulFacts()
+            openProposals = proposals,
+            proposedSoulFacts = soulFacts,
+            inboxCount = proposals.size + soulFacts.size,
+            urgentItems = storage.getUrgentNodes()
         ) }
     }
 

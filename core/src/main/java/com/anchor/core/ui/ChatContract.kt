@@ -18,6 +18,8 @@ data class UiState(
     val receipts: List<ReceiptState> = emptyList(),
     val openProposals: List<com.anchor.core.models.Proposal> = emptyList(),
     val proposedSoulFacts: List<com.anchor.core.models.SoulFact> = emptyList(),
+    val inboxCount: Int = 0,
+    val urgentItems: List<com.anchor.core.models.Node> = emptyList(),
     val isChatLoading: Boolean = false,
     val activeReminders: List<Reminder> = emptyList(),
     val selfTestStatus: String = "Idle",
