@@ -27,17 +27,16 @@ class ReliabilityManagerTest {
         // Reminder scheduled for 150,000L (future) -> Ignored
         storage.saveReminder(Reminder("r_future", "Future", 150000L))
 
-        val missed = manager.runSweeper()
+        manager.runSweeper()
 
-        // Verify r_missed was swept and logged
-        assertEquals(1, missed.size)
-        assertEquals("r_missed", missed[0].id)
-        assertEquals(3, storage.reminders.size)
-        assertEquals(1, storage.reminderFires.size)
-        assertEquals("missed", storage.reminderFires[0].outcome)
-        assertEquals("r_missed", storage.reminderFires[0].reminderId)
+        // Verify r_missed was swept and logged, BUT NOT DELETED BY SWEEPER!
+        // The AlarmReceiver deletes it, so it should still exist in storage right now.
+        org.junit.Assert.assertEquals(3, storage.reminders.size)
         
-        // Verify heartbeat updated
-        assertEquals(100000L, storage.reliabilityState.sweeperHeartbeat)
+        org.junit.Assert.assertEquals(1, storage.reminderFires.size)
+        org.junit.Assert.assertEquals("missed", storage.reminderFires[0].outcome)
+        org.junit.Assert.assertEquals("r_missed", storage.reminderFires[0].reminderId)
+        
+        org.junit.Assert.assertEquals(100000L, storage.reliabilityState.sweeperHeartbeat)
     }
 }

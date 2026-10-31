@@ -141,12 +141,14 @@ class Gateway(
         val now = clock.now()
         val node = Node(nId, type, title, "active", dueAt, createdAt = now, updatedAt = now)
         
-        // BP 30: Propose change creates node only. Alarms require schedule_reminder.
-        val afterJson = json.encodeToString(NodeStateSnapshot(node, null))
+        // Fix: Auto-create the reminder inherently so the LLM doesn't have to call a separate tool
+        val reminder = dueAt?.let { Reminder("r_$nId", title, it, nId) }
+        
+        val afterJson = json.encodeToString(NodeStateSnapshot(node, reminder))
         val uId = "u_${UUID.randomUUID().toString().take(6)}"
         val event = RawEvent(uId, IntentType.CREATE.name, "node", nId, afterJson = afterJson, tsUtc = clock.now())
         
-        storage.createNodeAndCommit(node, event, null)
+        storage.createNodeAndCommit(node, event, reminder)
         
         val timeStr = if (dueAt != null) " (Due: ${dateResolver.format(dueAt)})" else ""
         return ToolResult.Committed(IntentType.CREATE.name, nId, "Created: $title$timeStr", uId)

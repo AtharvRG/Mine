@@ -107,6 +107,7 @@ class ChatController(
                 refreshUI()
             }
             is UiAction.RefreshStats -> coroutineScope.launch(defaultDispatcher) {
+                refreshUI()
                 _state.update { it.copy(debugStats = storage.getDebugStats().entries.joinToString("\n") { e -> "${e.key}: ${e.value}" }) }
             }
             is UiAction.Undo -> coroutineScope.launch(defaultDispatcher) {
@@ -146,7 +147,7 @@ class ChatController(
                     
                     val botId = "a_${UUID.randomUUID()}"
                     val botResponse = java.lang.StringBuilder()
-                    var lastUpdate = clock.now()
+                    var lastUpdate = 0L
 
                     _state.update { it.copy(chatMessages = it.chatMessages + ChatMessage(botId, "assistant", "")) }
 
@@ -335,7 +336,9 @@ CRITICAL: Do NOT say "Done" or "Saved" unless you issue a tool call.
     private fun extractReplyFromJsonStream(jsonStream: String): String {
         val replyMarker = "\"reply\":\""
         val start = jsonStream.indexOf(replyMarker)
-        if (start == -1) return "Thinking..."
+        if (start == -1) {
+            return if (jsonStream.trim().startsWith("{")) "Thinking..." else jsonStream
+        }
         
         val textStart = start + replyMarker.length
         var end = jsonStream.indexOf("\"", textStart)

@@ -26,7 +26,9 @@ import javax.crypto.spec.SecretKeySpec
 import kotlinx.serialization.json.*
 
 class AndroidExportManager(
-    private val dbHelper: SupportSQLiteOpenHelper
+    private val context: android.content.Context,
+    private val dbHelper: SupportSQLiteOpenHelper,
+    private val dbKey: ByteArray
 ) : ExportManager {
 
     override suspend fun exportTo(file: File, passphrase: String, includeApiKeys: Boolean, includeEmbeddings: Boolean): ExportStats = withContext(Dispatchers.IO) {
@@ -155,33 +157,21 @@ class AndroidExportManager(
             var nodeCount = 0
             var eventCount = 0
             
-            val db = if (isImport) dbHelper.writableDatabase else null
+            val tempDbName = "mine_import_temp.db"
+            var importHelper: SupportSQLiteOpenHelper? = null
+            var db: SupportSQLiteDatabase? = null
             
             try {
                 if (isImport) {
-                    db?.beginTransaction()
-                    // Drop triggers so we can wipe and restore the immutable tables natively
-                    db?.execSQL("DROP TRIGGER IF EXISTS trg_raw_msg_no_update")
-                    db?.execSQL("DROP TRIGGER IF EXISTS trg_raw_msg_no_delete")
-                    db?.execSQL("DROP TRIGGER IF EXISTS trg_raw_evt_no_update")
-                    db?.execSQL("DROP TRIGGER IF EXISTS trg_raw_evt_no_delete")
-                    db?.execSQL("DROP TRIGGER IF EXISTS trg_node_fts_insert")
-                    db?.execSQL("DROP TRIGGER IF EXISTS trg_node_fts_delete")
-                    db?.execSQL("DROP TRIGGER IF EXISTS trg_node_fts_update")
-                    db?.execSQL("DROP TRIGGER IF EXISTS trg_soul_fts_insert")
-                    db?.execSQL("DROP TRIGGER IF EXISTS trg_soul_fts_delete")
-                    db?.execSQL("DROP TRIGGER IF EXISTS trg_soul_fts_update")
-                    
-                    listOf("raw_message", "raw_event", "node", "edge", "soul_fact", "app_meta", "day_rule", "reminder", "proposal", "msg_chunk", "day_block", "node_fts", "soul_fts").forEach {
-                        db?.execSQL("DELETE FROM $it")
-                    }
+                    context.deleteDatabase(tempDbName)
+                    importHelper = com.anchor.mine.storage.DatabaseProvider.getHelper(context, dbKey, tempDbName)
+                    db = importHelper.writableDatabase
+                    db.beginTransaction()
                 }
                 
                 ChunkedAesInputStream(fis, dek, noncePrefix, headerHash).use { chunkedIn ->
                     GZIPInputStream(chunkedIn).use { gzipIn ->
-                        // C1: Compute SHA-256 line-by-line to avoid BufferedReader read-ahead corruption
                         val digestStream = MessageDigest.getInstance("SHA-256")
-                        
                         BufferedReader(InputStreamReader(gzipIn, Charsets.UTF_8)).use { reader ->
                             var line: String?
                             while (reader.readLine().also { line = it } != null) {
@@ -189,17 +179,13 @@ class AndroidExportManager(
                                 val obj = Json.parseToJsonElement(line!!).jsonObject
                                 val type = obj["t"]?.jsonPrimitive?.content
                                 
-                                // C1: Verify the footer hash BEFORE hashing the footer line itself
                                 if (type == "footer") {
                                     val expectedHash = obj["d"]?.jsonObject?.get("sha256")?.jsonPrimitive?.content
                                     val actualHash = digestStream.digest().joinToString("") { "%02x".format(it) }
-                                    if (expectedHash != actualHash) {
-                                        throw SecurityException("Data corruption: Footer hash mismatch")
-                                    }
+                                    if (expectedHash != actualHash) throw SecurityException("Data corruption: Footer hash mismatch")
                                     break
                                 }
 
-                                // Hash the exact UTF-8 bytes we wrote
                                 digestStream.update(line!!.toByteArray(Charsets.UTF_8))
                                 digestStream.update('\n'.code.toByte())
 
@@ -225,12 +211,28 @@ class AndroidExportManager(
                 }
                 
                 if (isImport) {
-                    // Re-enable triggers
-                    com.anchor.mine.storage.MineDatabaseCallback.createTriggers(db!!)
-                    db.setTransactionSuccessful()
+                    db?.setTransactionSuccessful()
                 }
             } finally {
-                if (isImport) db?.endTransaction()
+                if (isImport) {
+                    db?.endTransaction()
+                    importHelper?.close()
+                    
+                    // FILE SWAP: Safely overwrite the active DB file while it is closed
+                    dbHelper.close()
+                    
+                    val originalFile = context.getDatabasePath("mine_encrypted.db")
+                    val tempFile = context.getDatabasePath(tempDbName)
+                    
+                    tempFile.copyTo(originalFile, overwrite = true)
+                    
+                    // Nuke WAL and SHM files to prevent corruption from old cache
+                    context.getDatabasePath("mine_encrypted.db-wal").delete()
+                    context.getDatabasePath("mine_encrypted.db-shm").delete()
+                    tempFile.delete()
+                    context.getDatabasePath("mine_import_temp.db-wal").delete()
+                    context.getDatabasePath("mine_import_temp.db-shm").delete()
+                }
             }
             
             return ExportStats(msgCount, nodeCount, eventCount, verified = true)

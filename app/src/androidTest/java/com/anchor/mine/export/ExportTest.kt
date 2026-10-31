@@ -40,7 +40,8 @@ class ExportTest {
         val exportFile = File(context.cacheDir, "test_export.mnex")
         if (exportFile.exists()) exportFile.delete()
 
-        val manager = AndroidExportManager(dbHelper)
+        // Fix: Pass the required context and dbKey parameters to the updated constructor
+        val manager = AndroidExportManager(context, dbHelper, dbKey)
 
         // 1. Export and verify success
         val stats = manager.exportTo(exportFile, "strong_password123", false, false)

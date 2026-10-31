@@ -25,7 +25,7 @@ class MineApp : Application() {
                 val key = DbKeyProvider(this@MineApp).getOrGenerateKey()
                 val db = DatabaseProvider.getHelper(this@MineApp, key, "mine_encrypted.db")
                 sharedStorage.complete(AndroidStorage(db))
-                sharedExportManager.complete(com.anchor.mine.export.AndroidExportManager(db))
+                sharedExportManager.complete(com.anchor.mine.export.AndroidExportManager(this@MineApp, db, key))
             } catch (e: Exception) {
                 sharedStorage.completeExceptionally(e)
                 sharedExportManager.completeExceptionally(e)
