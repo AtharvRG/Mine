@@ -179,21 +179,38 @@ class AndroidExportManager(
                 
                 ChunkedAesInputStream(fis, dek, noncePrefix, headerHash).use { chunkedIn ->
                     GZIPInputStream(chunkedIn).use { gzipIn ->
+                        // C1: Compute SHA-256 line-by-line to avoid BufferedReader read-ahead corruption
+                        val digestStream = MessageDigest.getInstance("SHA-256")
+                        
                         BufferedReader(InputStreamReader(gzipIn, Charsets.UTF_8)).use { reader ->
                             var line: String?
                             while (reader.readLine().also { line = it } != null) {
                                 if (line!!.isBlank()) continue
                                 val obj = Json.parseToJsonElement(line!!).jsonObject
                                 val type = obj["t"]?.jsonPrimitive?.content
-                                val data = obj["d"]?.jsonObject
                                 
+                                // C1: Verify the footer hash BEFORE hashing the footer line itself
+                                if (type == "footer") {
+                                    val expectedHash = obj["d"]?.jsonObject?.get("sha256")?.jsonPrimitive?.content
+                                    val actualHash = digestStream.digest().joinToString("") { "%02x".format(it) }
+                                    if (expectedHash != actualHash) {
+                                        throw SecurityException("Data corruption: Footer hash mismatch")
+                                    }
+                                    break
+                                }
+
+                                // Hash the exact UTF-8 bytes we wrote
+                                digestStream.update(line!!.toByteArray(Charsets.UTF_8))
+                                digestStream.update('\n'.code.toByte())
+
+                                val data = obj["d"]?.jsonObject
                                 when (type) {
                                     "raw_message" -> msgCount++
                                     "node" -> nodeCount++
                                     "raw_event" -> eventCount++
                                 }
                                 
-                                if (isImport && type != null && data != null && type != "manifest" && type != "footer") {
+                                if (isImport && type != null && data != null && type != "manifest") {
                                     val cols = data.keys.joinToString(",") { "\"$it\"" }
                                     val placeholders = data.keys.joinToString(",") { "?" }
                                     val vals = data.values.map { 

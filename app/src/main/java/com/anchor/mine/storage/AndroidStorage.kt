@@ -71,13 +71,17 @@ class AndroidStorage(private val dbHelper: SupportSQLiteOpenHelper) : Storage {
     }
 
     override suspend fun redactMessage(id: String) = withContext(ioDispatcher) {
-        // Redaction triggers strictly require content=NULL and redacted_at=NOT NULL
         val db = dbHelper.writableDatabase
         db.beginTransaction()
         try {
             db.execSQL("UPDATE raw_message SET content = NULL, redacted_at = ? WHERE id = ?", arrayOf<Any>(System.currentTimeMillis(), id))
             db.execSQL("INSERT INTO raw_event (op_id, target_id, op_type, target_type, ts_utc, device_id, actor) VALUES (?, ?, 'REDACT', 'message', ?, ?, 'user')",
                 arrayOf<Any>(java.util.UUID.randomUUID().toString(), id, System.currentTimeMillis(), deviceId))
+            
+            // B17: Delete any derived msg_chunk containing this message.
+            // The FTS5 AFTER DELETE trigger will automatically scrub the FTS index!
+            db.execSQL("DELETE FROM msg_chunk WHERE msg_ids LIKE ?", arrayOf("%\"$id\"%"))
+            
             db.setTransactionSuccessful()
         } finally { db.endTransaction() }
     }
@@ -241,7 +245,7 @@ class AndroidStorage(private val dbHelper: SupportSQLiteOpenHelper) : Storage {
         } finally { db.endTransaction() }
     }
 
-    override suspend fun updateNodeAndCommit(node: Node, event: RawEvent, deleteReminderId: String?, upsertReminder: Reminder?) = withContext(ioDispatcher) {
+    override suspend fun updateNodeAndCommit(node: Node, event: RawEvent, deleteReminderId: String?, upsertReminder: Reminder?, consumeProposalId: String?) = withContext(ioDispatcher) {
         val db = dbHelper.writableDatabase
         db.beginTransaction()
         try {
@@ -252,6 +256,11 @@ class AndroidStorage(private val dbHelper: SupportSQLiteOpenHelper) : Storage {
             
             upsertReminder?.let { 
                 db.execSQL("INSERT OR REPLACE INTO reminder (id, text, fire_at) VALUES (?, ?, ?)", arrayOf<Any>(it.id, it.text, it.fireAtMillis)) 
+            }
+
+            // B5: Atomic Proposal Consumption
+            consumeProposalId?.let {
+                db.execSQL("UPDATE proposal SET status = 'consumed' WHERE id = ?", arrayOf(it))
             }
             
             db.execSQL("INSERT INTO raw_event (op_id, target_id, op_type, target_type, ts_utc, device_id, actor, before_json, after_json) VALUES (?, ?, ?, ?, ?, ?, 'chat_ai', ?, ?)",

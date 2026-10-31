@@ -58,7 +58,7 @@ interface Storage {
 
     // Purely Transactional Gateways
     suspend fun createNodeAndCommit(node: Node, event: RawEvent, reminder: Reminder?)
-    suspend fun updateNodeAndCommit(node: Node, event: RawEvent, deleteReminderId: String?, upsertReminder: Reminder? = null)
+    suspend fun updateNodeAndCommit(node: Node, event: RawEvent, deleteReminderId: String?, upsertReminder: Reminder? = null, consumeProposalId: String? = null)
     suspend fun undoChangeAndCommit(node: Node, event: RawEvent, restoreReminder: Reminder?)
     suspend fun createReminderAndCommit(reminder: Reminder, event: RawEvent)
     suspend fun deleteReminderAndCommit(reminderId: String, event: RawEvent)

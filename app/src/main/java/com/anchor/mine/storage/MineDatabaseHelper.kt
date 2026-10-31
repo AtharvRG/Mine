@@ -90,6 +90,8 @@ class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(8) {
         db.execSQL("CREATE INDEX idx_node_status_due ON node(status, due_at)")
         db.execSQL("CREATE INDEX idx_raw_event_target ON raw_event(target_type, target_id)")
         db.execSQL("CREATE INDEX idx_raw_message_ts ON raw_message(ts_utc)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS idx_raw_message_day ON raw_message(day_key, ts_utc)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS idx_reminder_fire ON reminder(fire_at)")
         
         db.execSQL("CREATE VIRTUAL TABLE node_fts USING fts5(title, body, content='node', content_rowid='rowid')")
         db.execSQL("CREATE VIRTUAL TABLE soul_fts USING fts5(statement, content='soul_fact', content_rowid='rowid')")
@@ -156,6 +158,8 @@ class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(8) {
             db.execSQL("CREATE TABLE IF NOT EXISTS diag_log (ts INTEGER NOT NULL, level TEXT NOT NULL, tag TEXT NOT NULL, msg TEXT NOT NULL)")
             db.execSQL("CREATE TABLE IF NOT EXISTS reminder_fire (id TEXT PRIMARY KEY, reminder_id TEXT NOT NULL, fired_at INTEGER NOT NULL, scheduled_for INTEGER NOT NULL, latency_ms INTEGER NOT NULL, outcome TEXT NOT NULL, delivery TEXT, reason_json TEXT, opener_source TEXT)")
             db.execSQL("CREATE TABLE IF NOT EXISTS alarm_registry (reminder_id TEXT PRIMARY KEY, request_code INTEGER NOT NULL, api TEXT NOT NULL, registered_for INTEGER NOT NULL, registered_at INTEGER NOT NULL)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS idx_raw_message_day ON raw_message(day_key, ts_utc)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS idx_reminder_fire ON reminder(fire_at)")
         }
         
         // Always recreate triggers safely on any upgrade

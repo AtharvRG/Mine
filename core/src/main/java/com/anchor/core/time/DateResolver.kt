@@ -9,7 +9,7 @@ import java.util.Calendar
 import java.util.Locale
 
 class DateResolver(private val clock: Clock) {
-    fun parse(dueText: String?): Long? {
+    fun parse(dueText: String?, rolloverMinuteOfDay: Int = 240): Long? {
         if (dueText == null) return null
         val text = dueText.lowercase(Locale.getDefault()).trim()
         val now = clock.now()
@@ -21,8 +21,10 @@ class DateResolver(private val clock: Clock) {
             set(Calendar.MILLISECOND, 0)
         }
         
-        // Logical user day base (4am rollover for words like "tomorrow", "tonight")
-        val isLateNight = absCal.get(Calendar.HOUR_OF_DAY) < 4
+        // B14: Use dynamic rolloverMinuteOfDay instead of hardcoded 4AM
+        val currentMinuteOfDay = absCal.get(Calendar.HOUR_OF_DAY) * 60 + absCal.get(Calendar.MINUTE)
+        val isLateNight = currentMinuteOfDay < rolloverMinuteOfDay
+        
         val logicalCal = absCal.clone() as Calendar
         if (isLateNight) logicalCal.add(Calendar.DAY_OF_YEAR, -1)
         

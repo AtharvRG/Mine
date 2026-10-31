@@ -1,0 +1,27 @@
+[33m278740b[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmaster[m[33m)[m core: implement pure UI state actions, import stability, and alarm syncing
+[33m45be6da[m core: implement alarm registry reconciliation and true SQLite import
+[33mefcafb0[m core: separate receipts from LLM output, wire sweeper notifications, and clean build files
+[33me32e5f1[m core: resolve critical state visibility, reschedule alarm drop, and keystore recovery
+[33m3b06f13[m docs: finalize UI contract and export completeness
+[33mc6b7188[m core: implement massive correctness fixes from Section B audit
+[33m68b6cfe[m core: resolve crucial bugs A1 through A12 and A15
+[33m4fb49de[m docs: finalize ui-contract and normalize copyright headers
+[33m0836a1f[m reliability: schema V8, stats tables, and sweeper implementation
+[33m0bb5b25[m proactive: nudge engine gates, backoff mechanics, and check-in facts
+[33mab73b58[m knowledge: FTS5 retrieval, sync triggers, and Soul proposals
+[33maa0810b[m export: implement authoritative .mnex format with streaming argon2id + aes-gcm
+[33mde8836b[m platform: robust network cancellation and strict ChatController turns
+[33m4774999[m alarms: decouple core hack and enforce strict fire outcomes
+[33mb8d7dec[m core: decouple schedule_reminder from propose_change and enforce clock injection
+[33ma044f70[m tests: fix Hindi text overlap margin in WhichDinnerTest
+[33m7c2f9b8[m app: finalize BootReceiver, DB migrations, and debug UI
+[33ma14d1c9[m core: wire ChatController, Envelope Mode parser, and D-100 Reminder linking
+[33m0ecaba7[m app: wire MainViewModel to real storage, provider, and alarm scheduler
+[33m74e734c[m ui: phase B compose layout with state and mock actions
+[33md6981d6[m alarms: android alarm scheduler using setAlarmClock and USE_EXACT_ALARM
+[33mb76ecda[m core: context builder with strict token budget truncation
+[33m4f7e681[m core: provider orchestrator, sse normalizer, and 429 rate limiter
+[33m1ee794b[m core: tool contracts and gateway funnel
+[33m2d88499[m core: memory models and ambiguity resolver with exact-time override
+[33m77969af[m storage: sqlcipher database with keystore wrap and append-only triggers
+[33me74721b[m setup: strict AGP 9 toolchain

@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Mine contributors
+// Part of Mine. See LICENSE in the repository root.
+
 package com.anchor.mine.ui.theme
 
 import androidx.compose.material3.Typography

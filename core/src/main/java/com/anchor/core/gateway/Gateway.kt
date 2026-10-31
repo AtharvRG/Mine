@@ -56,8 +56,11 @@ class Gateway(
                 val hint = (args["hint"] ?: args["title"] ?: "").take(200) // B3: Length cap
                 val dueText = args["due_text"]
                 
+                // Fetch user's actual day_rule start_minute from settings to pass to DateResolver
+                val rolloverMin = storage.getSetting("day_start_minute")?.toIntOrNull() ?: 240
+                
                 val targetTimeMillis = if (dueText.isNullOrBlank()) null else {
-                    dateResolver.parse(dueText) ?: return ToolResult.Error("Could not understand the time '$dueText'. Ask the user to clarify.")
+                    dateResolver.parse(dueText, rolloverMin) ?: return ToolResult.Error("Could not understand the time '$dueText'. Ask the user to clarify.")
                 }
 
                 when (intent) {
@@ -86,7 +89,7 @@ class Gateway(
     }
 
     private suspend fun handleScheduleReminder(targetRef: String, whenText: String): ToolResult {
-        val fireAt = dateResolver.parse(whenText) ?: return ToolResult.Error("Could not understand the time '$whenText'. Ask the user to clarify.")
+        val fireAt = dateResolver.parse(whenText, storage.getSetting("day_start_minute")?.toIntOrNull() ?: 240) ?: return ToolResult.Error("Could not understand the time '$whenText'. Ask the user to clarify.")
         val node = if (targetRef.isNotBlank()) storage.getNode(targetRef) else null
         
         // A8: Reject bad target refs silently making orphan "Reminder"s
@@ -114,13 +117,13 @@ class Gateway(
         val node = storage.getNode(nodeId) ?: return ToolResult.Error("Node not found")
         if (node.status != "active" && node.status != "in_progress") return ToolResult.Error("Node is no longer active")
 
-        storage.consumeProposal(proposalId)
-
         val now = clock.now()
         val newNode = node.copy(status = if (proposal.intent == IntentType.CANCEL) "cancelled" else "done", closedAt = now, updatedAt = now)
         val remId = "r_${node.id}"
         val activeRems = storage.getPendingReminders()
         val oldRem = activeRems.find { it.id == remId }
+        
+        // B5: Removed the standalone storage.consumeProposal(proposalId) call.
 
         val beforeJson = json.encodeToString(NodeStateSnapshot(node, oldRem))
         val afterJson = json.encodeToString(NodeStateSnapshot(newNode, null))
@@ -128,7 +131,8 @@ class Gateway(
         val uId = "u_${UUID.randomUUID().toString().take(6)}"
         val event = RawEvent(uId, proposal.intent.name, "node", newNode.id, beforeJson = beforeJson, afterJson = afterJson)
         
-        storage.updateNodeAndCommit(newNode, event, remId)
+        // B5: Pass proposalId into the atomic transaction
+        storage.updateNodeAndCommit(newNode, event, deleteReminderId = remId, upsertReminder = null, consumeProposalId = proposalId)
         return ToolResult.Committed(proposal.intent.name, newNode.id, "Applied ${proposal.intent.name}: ${newNode.title}", uId)
     }
 

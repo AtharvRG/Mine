@@ -14,3 +14,6 @@
 -keep class com.anchor.core.provider.Choice { *; }
 -keep class com.anchor.core.provider.Delta { *; }
 -keep class com.anchor.core.models.NodeStateSnapshot { *; }
+
+# ADD this to the bottom of the file to protect the Models from minification crashes (B20):
+-keep class com.anchor.core.models.** { *; }
