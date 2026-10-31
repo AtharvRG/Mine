@@ -48,4 +48,6 @@ sealed interface UiAction {
     data object RefreshStats : UiAction
     data object PromptResetDatabase : UiAction
     data class ConfirmResetDatabase(val confirm: Boolean) : UiAction
+    data object ExportData : UiAction
+    data object ImportData : UiAction
 }

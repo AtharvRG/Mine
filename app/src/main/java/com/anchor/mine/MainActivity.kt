@@ -44,6 +44,13 @@ class MainActivity : ComponentActivity() {
                 requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
         }
+        
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val alarmManager = getSystemService(android.app.AlarmManager::class.java)
+            if (!alarmManager.canScheduleExactAlarms()) {
+                startActivity(android.content.Intent(android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM))
+            }
+        }
 
         setContent {
             com.anchor.mine.ui.theme.MineTheme {
@@ -115,7 +122,6 @@ fun ChatScreen(state: UiState, onAction: (UiAction) -> Unit) {
                 val isUser = msg.role == "user"
                 val align = if (isUser) Modifier.padding(start = 32.dp) else Modifier.padding(end = 32.dp)
                 val color = if (isUser) Color.Blue.copy(alpha = 0.1f) else Color.Gray.copy(alpha = 0.1f)
-
                 val textContent = msg.content ?: "[redacted]"
 
                 Text(
@@ -123,6 +129,41 @@ fun ChatScreen(state: UiState, onAction: (UiAction) -> Unit) {
                     modifier = Modifier.fillMaxWidth().then(align).padding(4.dp).background(color).padding(8.dp)
                 )
             }
+            
+            // RENDER RECEIPTS (Tool Results & Undo)
+            items(state.receipts) { receipt ->
+                Row(modifier = Modifier.fillMaxWidth().padding(start = 32.dp, top = 4.dp, bottom = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("✓ ${receipt.message}", color = Color.Gray, modifier = Modifier.weight(1f))
+                    val undoToken = receipt.undoToken
+                    if (undoToken != null) {
+                        Button(onClick = { onAction(UiAction.Undo(undoToken)) }) { Text("Undo") }
+                    }
+                }
+            }
+            
+            // RENDER PROPOSALS (Ambiguity Chips)
+            items(state.openProposals) { prop ->
+                Column(modifier = Modifier.fillMaxWidth().padding(8.dp).background(Color.Yellow.copy(alpha=0.2f)).padding(8.dp)) {
+                    Text("Clarify: Which one?")
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        prop.optionsIds.forEach { opt ->
+                            Button(onClick = { onAction(UiAction.ConfirmProposal(prop.id, opt)) }) { Text(opt.take(8)) }
+                        }
+                    }
+                }
+            }
+            
+            // RENDER SOUL PROPOSALS (Accept/Reject)
+            items(state.proposedSoulFacts) { fact ->
+                Column(modifier = Modifier.fillMaxWidth().padding(8.dp).background(Color.Cyan.copy(alpha=0.2f)).padding(8.dp)) {
+                    Text("Learn: ${fact.statement}?")
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(onClick = { onAction(UiAction.AcceptSoulFact(fact.id)) }) { Text("Yes") }
+                        Button(onClick = { onAction(UiAction.RejectSoulFact(fact.id)) }) { Text("No") }
+                    }
+                }
+            }
+            
             if (state.isChatLoading) {
                 item { Text("Typing...", modifier = Modifier.padding(8.dp)) }
             }
@@ -187,12 +228,14 @@ fun ProviderScreen(state: UiState, onSave: (String, String, String) -> Unit) {
 
 @Composable
 fun DebugScreen(state: UiState, onAction: (UiAction) -> Unit) {
-    Column {
+    Column(modifier = Modifier.padding(8.dp)) {
         Text("=== Storage Stats ===", style = MaterialTheme.typography.titleMedium)
         Text(state.debugStats)
         Spacer(modifier = Modifier.height(16.dp))
-        Button(onClick = { onAction(UiAction.RefreshStats) }) {
-            Text("Refresh Stats")
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(onClick = { onAction(UiAction.RefreshStats) }) { Text("Refresh Stats") }
+            Button(onClick = { onAction(UiAction.ExportData) }) { Text("Export") }
+            Button(onClick = { onAction(UiAction.ImportData) }) { Text("Import") }
         }
     }
 }

@@ -16,6 +16,7 @@ import kotlinx.coroutines.launch
 
 class MineApp : Application() {
     val sharedStorage = CompletableDeferred<Storage>()
+    val sharedExportManager = CompletableDeferred<com.anchor.core.export.ExportManager>()
 
     override fun onCreate() {
         super.onCreate()
@@ -24,8 +25,10 @@ class MineApp : Application() {
                 val key = DbKeyProvider(this@MineApp).getOrGenerateKey()
                 val db = DatabaseProvider.getHelper(this@MineApp, key, "mine_encrypted.db")
                 sharedStorage.complete(AndroidStorage(db))
+                sharedExportManager.complete(com.anchor.mine.export.AndroidExportManager(db))
             } catch (e: Exception) {
                 sharedStorage.completeExceptionally(e)
+                sharedExportManager.completeExceptionally(e)
             }
         }
     }

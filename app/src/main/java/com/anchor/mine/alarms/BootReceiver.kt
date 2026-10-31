@@ -25,20 +25,23 @@ class BootReceiver : BroadcastReceiver() {
             try {
                 val storage = (context.applicationContext as MineApp).sharedStorage.await()
                 val scheduler = AndroidAlarmScheduler(context)
-
+                
+                // 1. Re-arm future reminders AND reminders within the 60-second grace period.
+                // Android's AlarmManager will fire past-due alarms immediately.
                 val now = System.currentTimeMillis()
                 val reminders = storage.getPendingReminders()
+                reminders.filter { it.fireAtMillis >= now - 60000L }.forEach { scheduler.schedule(it) }
 
-                reminders.forEach {
-                    if (it.fireAtMillis <= now) {
-                        val missedIntent = Intent(context, AlarmReceiver::class.java).apply {
-                            putExtra("EXTRA_ID", it.id)
-                            putExtra("EXTRA_TEXT", "Missed: ${it.text}")
-                        }
-                        context.sendBroadcast(missedIntent)
-                    } else {
-                        scheduler.schedule(it)
+                // 2. Run Sweeper for alarms missed while the device was off (older than 60s)
+                val clock = com.anchor.core.time.SystemClock()
+                val reliabilityManager = com.anchor.core.reliability.ReliabilityManager(storage, clock)
+                
+                reliabilityManager.runSweeper().forEach { missedRem ->
+                    val missedIntent = Intent(context, AlarmReceiver::class.java).apply {
+                        putExtra("EXTRA_ID", missedRem.id)
+                        putExtra("EXTRA_TEXT", "Missed: ${missedRem.text}")
                     }
+                    context.sendBroadcast(missedIntent)
                 }
             } finally {
                 pendingResult?.finish()

@@ -100,8 +100,9 @@ class AndroidStorageTest {
         // Fix: Use the REAL app storage for this test, because BootReceiver and AlarmReceiver
         // explicitly connect to the app's real database.
         val appStorage = (context.applicationContext as com.anchor.mine.MineApp).sharedStorage.await()
-
-        val r = com.anchor.core.models.Reminder("r_missed", "Missed Task", System.currentTimeMillis() - 10000L)
+        
+        // Push the reminder 70 seconds into the past so it formally qualifies as "missed" by the Sweeper
+        val r = com.anchor.core.models.Reminder("r_missed", "Missed Task", System.currentTimeMillis() - 70000L)
         appStorage.saveReminder(r)
 
         com.anchor.mine.alarms.AlarmReceiver.lastFiredId = null
