@@ -41,23 +41,27 @@ class Resolver {
             .sortedByDescending { it.second.total }
 
         val top = scores[0]
-        if (top.second.textMatch < 0.20) return Resolution.NotFound // Must have text overlap
+        
+        // Strict baseline: Must have at least 30% word match
+        if (top.second.textMatch < 0.30) return Resolution.NotFound 
 
         // Clear winner by pure text distinction
-        if (scores.size == 1 || (top.second.textMatch - scores[1].second.textMatch >= 0.20)) {
+        if (scores.size == 1 || (top.second.textMatch - scores[1].second.textMatch >= 0.30)) {
             return Resolution.ClearWinner(top.first)
         }
 
         // Time Override
         if (targetTimeMillis != null) {
             val timeMatches = scores.filter { (node, _) -> node.dueAt != null && Math.abs(node.dueAt - targetTimeMillis) < (1000L * 60 * 60 * 24) }
-            if (timeMatches.size == 1 && timeMatches[0].second.textMatch >= 0.20) return Resolution.ClearWinner(timeMatches[0].first)
+            if (timeMatches.size == 1 && timeMatches[0].second.textMatch >= 0.30) return Resolution.ClearWinner(timeMatches[0].first)
         }
 
         val second = scores[1]
         val margin = top.second.total - second.second.total
         val isClosing = intent == IntentType.CANCEL || intent == IntentType.COMPLETE
-        val requiredScore = if (isClosing) 0.85 else 0.75
+        
+        // Simplified thresholds: Pure overlap ratio (0.0 to 1.0) + Time bonus
+        val requiredScore = if (isClosing) 0.80 else 0.70
         val requiredMargin = if (isClosing) 0.25 else 0.20
 
         if (top.second.total >= requiredScore && margin >= requiredMargin) {
@@ -75,28 +79,19 @@ class Resolver {
         val titleTokens = tokenize(node.title)
 
         val textScore = if (hintTokens.isNotEmpty()) {
-            val matches = hintTokens.count { hw -> titleTokens.contains(hw) }
-            (matches.toDouble() / hintTokens.size) * 0.35
+            hintTokens.count { hw -> titleTokens.contains(hw) }.toDouble() / hintTokens.size
         } else {
             return ScoreBreakdown(0.0, 0.0)
         }
 
         var total = textScore
-
+        
+        // Time Bonus: Massive boost for same-day match
         if (targetTimeMillis != null && node.dueAt != null) {
             val diffDays = Math.abs(node.dueAt - targetTimeMillis) / (1000 * 60 * 60 * 24).toDouble()
-            if (diffDays < 1.0) total += 0.25 else if (diffDays < 7.0) total += 0.05
-        } else if (targetTimeMillis == null) {
-            total += 0.25 // Baseline for untimed queries
+            if (diffDays < 1.0) total += 0.5 
         }
-
-        if (node.status == "active" || node.status == "in_progress") total += 0.10
-        total += 0.10 // Type fit baseline
-
-        // BP 22: Recency weight (mocked as baseline 0.20 since these are fetched hot candidates)
-        // This ensures the maximum score can reach the 0.85 threshold for closing intents.
-        total += 0.20
-
+        
         return ScoreBreakdown(textScore, total)
     }
 }

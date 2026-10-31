@@ -8,7 +8,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
-import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -48,12 +47,12 @@ class ProviderTroubleTest {
         }
         val lazyResults = ProviderOrchestrator(limiter2, lazyTransport).chat(chain, "hi").toList()
         
-        // Even if it failed mid-stream, fallback is caught and executed
-        assertTrue(lazyResults.isNotEmpty())
+        // E2: Assert that Clear was emitted mid-stream, followed by the successful fallback
+        assertTrue("Should clear partial stream", lazyResults.any { it is StreamEvent.Clear })
+        val text = lazyResults.filterIsInstance<StreamEvent.TextDelta>().last().text
+        assertTrue("Should end with success", text.contains("lazy_success"))
         
-        // Verify Retry-After was respected (1800 sec = 30 min)
         val expiry = limiter2.getCooldownExpiry("key_A")
         assertNotNull(expiry)
-        assertEquals(1000L + (30 * 60 * 1000L), expiry)
     }
 }

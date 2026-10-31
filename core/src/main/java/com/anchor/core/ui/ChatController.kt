@@ -307,8 +307,11 @@ CRITICAL: Do NOT say "Done" or "Saved" unless you issue a tool call.
 
     private suspend fun refreshUI() {
         reconcileAlarms()
+        val currentSize = _state.value.chatMessages.size
+        val fetchCount = kotlin.math.max(30, currentSize)
+        
         _state.update { it.copy(
-            chatMessages = storage.getRecentMessages(30), 
+            chatMessages = storage.getRecentMessages(fetchCount), 
             activeReminders = storage.getActiveReminders(),
             openProposals = storage.getOpenProposals(),
             proposedSoulFacts = storage.getProposedSoulFacts()

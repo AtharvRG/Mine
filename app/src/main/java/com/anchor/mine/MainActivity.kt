@@ -46,7 +46,9 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
-            MineAppUI(viewModel)
+            com.anchor.mine.ui.theme.MineTheme {
+                MineAppUI(viewModel)
+            }
         }
     }
 }
@@ -83,7 +85,7 @@ fun MineAppUI(viewModel: MainViewModel) {
     }
 
     Column(modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars)) {
-        TabRow(selectedTabIndex = selectedTab) {
+        PrimaryTabRow(selectedTabIndex = selectedTab) {
             tabs.forEachIndexed { index, title ->
                 Tab(selected = selectedTab == index, onClick = { selectedTab = index }, text = { Text(title) })
             }
