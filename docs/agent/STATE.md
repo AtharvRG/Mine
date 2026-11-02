@@ -1,5 +1,5 @@
 # STATE (update every session; facts only)
-Updated: 2026-11-03   Commit: 3ed71b3 (baseline) + uncommitted working tree
+Updated: 2026-11-03   Commit: 81ec87a (R0 hygiene) + uncommitted working tree (R0b)
 ## Build/test status (command + exit code)
 - `./gradlew :core:test`: SUCCESS (exit 0)
 - `./gradlew :app:assembleDebug`: SUCCESS (exit 0)

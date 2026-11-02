@@ -1,3 +1,5 @@
+HISTORICAL: contains unverified or incorrect claims; superseded by the session1 review (see TASKS.md and DECISIONS.md)
+
 # Task T-C: Alarm Tiers & Status-Bar Disclosure (D-105) Branching Analysis
 
 **Date**: 2026-11-02  

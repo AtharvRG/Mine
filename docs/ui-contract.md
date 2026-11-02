@@ -55,4 +55,4 @@ The UI layer can query the `Storage` interface directly for data visualization w
 - **Reminder Queries**: Query `getRemindersBetween(startMs, endMs)` and `getRemindersForDay(startOfDayMs, endOfDayMs)` from `reminder`.
 - **Soul/Memory Reads**: Query active/stale nodes, node counts, and soul facts from `node` and `soul_fact`.
 - **Quote Slots**: Query `getQuoteSlot(slot, dayKey)` from `quote_slot`.
-- **Follow-up Graph**: Query `getEdgesFrom(nodeId)` / `getEdgesTo(nodeId)` with `type = 'follow_up'` from `edge`.
+- **Follow-up Graph**: Query `getEdgesForSource(nodeId)` / `getEdgesForDestination(nodeId)` with `type = 'follow_up'` from `edge`.

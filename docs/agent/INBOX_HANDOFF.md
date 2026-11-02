@@ -1,3 +1,5 @@
+HISTORICAL: contains unverified or incorrect claims; superseded by the session1 review (see TASKS.md and DECISIONS.md)
+
 # 1. FILE MANIFEST
 
 | Path | What was changed / provided | Applied? | Confidence |

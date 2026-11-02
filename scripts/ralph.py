@@ -1,3 +1,4 @@
+# DO NOT RUN until the developer re-enables it
 import subprocess, sys, os, re
 
 MAX = 12

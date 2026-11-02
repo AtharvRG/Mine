@@ -1,4 +1,5 @@
 # TASKS (one at a time, smallest first). Status: [ ] open, [~] in progress, [x] done+reviewed
+Specs for R1-R10: docs/agent/work/session1-remediation-spec.md. Read the task's section before starting.
 ## Blockers
 [x] T1 Provider endpoint: saving strips /chat/completions but the transport posts as-is -> 404. Test: save provider, assert request URL.
 [x] T2 Import: DB swap runs in finally, so a failed import overwrites live DB. Swap only after validated commit; tampered/truncated file leaves live DB unchanged. Test it.

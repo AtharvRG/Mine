@@ -1,3 +1,5 @@
+HISTORICAL: contains unverified or incorrect claims; superseded by the session1 review (see TASKS.md and DECISIONS.md)
+
 # Task T-A: DateResolver 24h + Ambiguity Chips (D-103) Branching Analysis
 
 **Date**: 2026-11-02  
