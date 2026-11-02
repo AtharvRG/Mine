@@ -50,9 +50,9 @@ The only events the UI can trigger:
 
 ## 3. Backend Capabilities (Exposed via Storage Interface)
 The UI layer can query the `Storage` interface directly for data visualization without triggering state mutations:
-- **Day Paging**: Query `raw_message` grouped by `day_key`.
-- **Calendar Heat-Map**: Query `daily_stat` and `day_block`.
-- **Reminder Dates**: Extract `fire_at` from the `reminder` table.
-- **Soul/Memory Reads**: Read `node` and `soul_fact` tables.
-- **Quote Slots**: Query `quote_slot` by slot and `day_key`.
-- **Follow-up Graph**: Query `edge` by `src_id` / `dst_id` with `type = 'follow_up'`.
+- **Day Paging**: Query `getMessagesForDay(dayKey)` from `raw_message`.
+- **Calendar Heat-Map**: Query `getHeatMapCounts(startDayKey, endDayKey)` and `getDaysWithMessages(startDayKey, endDayKey)` from `raw_message`.
+- **Reminder Queries**: Query `getRemindersBetween(startMs, endMs)` and `getRemindersForDay(startOfDayMs, endOfDayMs)` from `reminder`.
+- **Soul/Memory Reads**: Query active/stale nodes, node counts, and soul facts from `node` and `soul_fact`.
+- **Quote Slots**: Query `getQuoteSlot(slot, dayKey)` from `quote_slot`.
+- **Follow-up Graph**: Query `getEdgesFrom(nodeId)` / `getEdgesTo(nodeId)` with `type = 'follow_up'` from `edge`.

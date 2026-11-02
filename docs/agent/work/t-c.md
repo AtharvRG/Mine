@@ -52,7 +52,7 @@ Implement two-tier alarm scheduling per Decision D-105:
 - **privacy/security**: Zero permission escalation; no device identifiers logged in alarm intents.
 - **testability**: Unit tests in `:core` for serialization, storage, and gateway; instrumented tests in `:app` for SQLite migration and `AndroidAlarmScheduler` routing.
 - **blast radius**: Default argument `tier: AlarmTier = AlarmTier.ALARM` on `Reminder` ensures all 15+ existing call sites remain 100% source and binary compatible.
-- **platform (Android 14, OEM)**: Tested on physical Motorola moto g73 5G (Android 14 API 34); verifies `setAndAllowWhileIdle` does NOT throw `SecurityException` or require `SCHEDULE_EXACT_ALARM`.
+- **platform (Android 14, OEM)**: Tested on physical device (Android 14 API 34); verifies `setAndAllowWhileIdle` does NOT throw `SecurityException` or require `SCHEDULE_EXACT_ALARM`.
 - **model behaviour (what a real LLM would send)**: Real LLM can specify `"tier": "gentle"` or `"tier": "alarm"` in `propose_change` or `schedule_reminder`.
 
 ---
@@ -62,7 +62,7 @@ Implement two-tier alarm scheduling per Decision D-105:
 - Inspected `MineDatabaseCallback`: version is currently 1; `reminder` table created with `(id TEXT PRIMARY KEY, node_id TEXT, text TEXT NOT NULL, fire_at INTEGER NOT NULL)`.
 - Verified `AndroidAlarmScheduler.kt`: currently unconditionally calls `alarmManager.setAlarmClock(AlarmManager.AlarmClockInfo(...), pendingIntent)`.
 - Verified `AlarmReceiver.kt`: hardcodes `mine_reminders_v1` channel with `IMPORTANCE_HIGH`.
-- Verified connected physical phone `ZD2229P46Y` is running Android 14 (API 34).
+- Verified connected physical phone is running Android 14 (API 34).
 
 ---
 

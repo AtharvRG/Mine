@@ -52,9 +52,9 @@ Implement the `follow_up` edge type per Decision D-106:
 - **failure paths**: Missing nodes, self-referential edges, soft-deleted edges, and duplicate edges handled cleanly without SQLite crashes.
 - **user-visible behaviour**: Nodes linked as follow-ups can be displayed in child/subsequent lists and traversed.
 - **privacy/security**: No external network leakage; edges are encrypted inside SQLCipher.
-- **testability**: Unit tests in `:core` with `SharedFakeStorage`; instrumented tests on device `ZD2229P46Y` for V2->V3 migration and real SQLCipher persistence.
+- **testability**: Unit tests in `:core` with `SharedFakeStorage`; instrumented tests on device for V2->V3 migration and real SQLCipher persistence.
 - **blast radius**: Purely additive to `Storage`, `Memory.kt`, and `UiAction`. Zero breaking changes to existing call sites.
-- **platform (Android 14, OEM)**: Verified on Motorola moto g73 5G; SQLCipher encrypted DB operations tested.
+- **platform (Android 14, OEM)**: Verified on Android 14 test device; SQLCipher encrypted DB operations tested.
 - **model behaviour (what a real LLM would send)**: Real LLM can send `follow_up_to` in `propose_change` to link tasks immediately.
 
 ---

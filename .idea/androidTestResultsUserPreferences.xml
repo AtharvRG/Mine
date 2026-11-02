@@ -10,7 +10,7 @@
                 <map>
                   <entry key="Duration" value="90" />
                   <entry key="Tests" value="360" />
-                  <entry key="motorola moto g73 5G" value="120" />
+                  <entry key="device" value="120" />
                 </map>
               </option>
             </AndroidTestResultsTableState>
@@ -23,7 +23,7 @@
                 <map>
                   <entry key="Duration" value="90" />
                   <entry key="Tests" value="360" />
-                  <entry key="motorola moto g73 5G" value="120" />
+                  <entry key="device" value="120" />
                 </map>
               </option>
             </AndroidTestResultsTableState>
