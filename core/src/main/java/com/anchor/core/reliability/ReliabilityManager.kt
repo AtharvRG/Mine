@@ -19,26 +19,29 @@ class ReliabilityManager(
     suspend fun runSweeper(): List<com.anchor.core.models.Reminder> {
         val now = clock.now()
         val pending = storage.getPendingReminders()
-        
         val missed = pending.filter { it.fireAtMillis < now - 60000L }
         
+        val toNotify = mutableListOf<com.anchor.core.models.Reminder>()
+        
         for (reminder in missed) {
-            val fire = com.anchor.core.models.ReminderFire(
-                id = "f_${java.util.UUID.randomUUID().toString().take(8)}",
-                reminderId = reminder.id,
-                firedAt = now,
-                scheduledFor = reminder.fireAtMillis,
-                latencyMs = (now - reminder.fireAtMillis).toInt(),
-                outcome = "missed"
-            )
-            storage.recordReminderFire(fire)
-            // DO NOT DELETE the reminder here! 
-            // Allow the returned list to be broadcast to AlarmReceiver, which will handle notification and deletion safely.
+            // SEC 10: Check if we already logged this fire to prevent duplicate sweeping
+            if (!storage.hasReminderFire(reminder.id, "missed")) {
+                val fire = com.anchor.core.models.ReminderFire(
+                    id = "f_${java.util.UUID.randomUUID().toString().take(8)}",
+                    reminderId = reminder.id,
+                    firedAt = now,
+                    scheduledFor = reminder.fireAtMillis,
+                    latencyMs = (now - reminder.fireAtMillis).toInt(),
+                    outcome = "missed"
+                )
+                storage.recordReminderFire(fire)
+                toNotify.add(reminder)
+            }
         }
         
         val state = storage.getReliabilityState()
         storage.saveReliabilityState(state.copy(sweeperHeartbeat = now))
         
-        return missed
+        return toNotify
     }
 }

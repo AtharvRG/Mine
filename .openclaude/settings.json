@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "deny": [
+      "Bash(rm -rf:*)",
+      "Bash(git push --force:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(adb shell pm clear:*)",
+      "Bash(adb uninstall:*)",
+      "Edit(docs/blueprints/03-decisions.md)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      { "matcher": "Bash",
+        "hooks": [{ "type": "command", "command": "python .claude/hooks/guard_bash.py" }] }
+    ],
+    "PostToolUse": [
+      { "matcher": "Edit|Write|MultiEdit",
+        "hooks": [{ "type": "command", "command": "python .claude/hooks/after_edit.py" }] }
+    ],
+    "Stop": [
+      { "hooks": [{ "type": "command", "command": "python .claude/hooks/stop_gate.py", "timeout": 900 }] }
+    ]
+  }
+}

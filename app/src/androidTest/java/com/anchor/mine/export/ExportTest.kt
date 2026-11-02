@@ -69,17 +69,24 @@ class ExportTest {
         raf.seek(exportFile.length() - 10) // Seek into the ciphertext chunk
         val b = raf.read()
         raf.seek(exportFile.length() - 10)
-        raf.write(b.inv()) // Invert the byte
+        raf.write(b.inv()) 
         raf.close()
 
         var threwTamper = false
         try {
-            manager.verifyOrImport(exportFile, "strong_password123", false)
+            // C2: Assert that Live DB is unchanged on failure
+            manager.verifyOrImport(exportFile, "strong_password123", true)
         } catch (e: SecurityException) {
             threwTamper = true
             assertTrue(e.message!!.contains("Tampered data"))
         }
-        assertTrue("Must reject tampered file by throwing SecurityException", threwTamper)
+        assertTrue("Must reject tampered file", threwTamper)
+        
+        // Verify Live DB was not wiped
+        val countCursor = dbHelper.readableDatabase.query("SELECT COUNT(*) FROM raw_message")
+        countCursor.moveToFirst()
+        assertEquals(2, countCursor.getInt(0))
+        countCursor.close()
 
         dbHelper.close()
     }

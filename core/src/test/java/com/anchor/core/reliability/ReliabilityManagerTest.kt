@@ -36,7 +36,25 @@ class ReliabilityManagerTest {
         org.junit.Assert.assertEquals(1, storage.reminderFires.size)
         org.junit.Assert.assertEquals("missed", storage.reminderFires[0].outcome)
         org.junit.Assert.assertEquals("r_missed", storage.reminderFires[0].reminderId)
-        
+
         org.junit.Assert.assertEquals(100000L, storage.reliabilityState.sweeperHeartbeat)
+    }
+
+    @Test
+    fun testSweeper_DoesNotLogSameMissedReminderTwice() = runBlocking {
+        val storage = SharedFakeStorage()
+        val clock = FakeClock(100000L)
+        val manager = ReliabilityManager(storage, clock)
+
+        storage.saveReminder(Reminder("r_missed", "Way past", 10000L))
+
+        val sweptFirst = manager.runSweeper()
+        assertEquals(1, sweptFirst.size)
+        assertEquals(1, storage.reminderFires.size)
+
+        // Second run: must not re-log or re-notify
+        val sweptSecond = manager.runSweeper()
+        assertEquals("Must not sweep already-handled missed reminder", 0, sweptSecond.size)
+        assertEquals("Must not create duplicate fire log", 1, storage.reminderFires.size)
     }
 }

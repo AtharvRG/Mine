@@ -136,7 +136,7 @@ class AndroidExportManager(
             val magic = ByteArray(4).apply { buf.get(this) }
             if (String(magic) != "MNEX") throw SecurityException("Invalid file magic")
             if (buf.short.toInt() != 1) throw SecurityException("Unsupported format version")
-            buf.short // flags
+            buf.short 
             if (buf.get().toInt() != 1) throw SecurityException("Unsupported KDF")
             
             val mem = buf.int
@@ -160,6 +160,7 @@ class AndroidExportManager(
             val tempDbName = "mine_import_temp.db"
             var importHelper: SupportSQLiteOpenHelper? = null
             var db: SupportSQLiteDatabase? = null
+            var dbTransactionActive = false
             
             try {
                 if (isImport) {
@@ -167,12 +168,13 @@ class AndroidExportManager(
                     importHelper = com.anchor.mine.storage.DatabaseProvider.getHelper(context, dbKey, tempDbName)
                     db = importHelper.writableDatabase
                     db.beginTransaction()
+                    dbTransactionActive = true
                 }
                 
                 ChunkedAesInputStream(fis, dek, noncePrefix, headerHash).use { chunkedIn ->
-                    GZIPInputStream(chunkedIn).use { gzipIn ->
-                        val digestStream = MessageDigest.getInstance("SHA-256")
-                        BufferedReader(InputStreamReader(gzipIn, Charsets.UTF_8)).use { reader ->
+                    java.util.zip.GZIPInputStream(chunkedIn).use { gzipIn ->
+                        val digestStream = java.security.MessageDigest.getInstance("SHA-256")
+                        java.io.BufferedReader(java.io.InputStreamReader(gzipIn, kotlin.text.Charsets.UTF_8)).use { reader ->
                             var line: String?
                             while (reader.readLine().also { line = it } != null) {
                                 if (line!!.isBlank()) continue
@@ -207,32 +209,36 @@ class AndroidExportManager(
                             }
                         }
                     }
+                    // SEC 11: Consume stream to end to ensure final chunk is read
+                    while (chunkedIn.read() != -1) {}
                     if (!chunkedIn.isFinalSeen) throw SecurityException("Truncated or tampered file: missing final flag")
                 }
                 
                 if (isImport) {
                     db?.setTransactionSuccessful()
-                }
-            } finally {
-                if (isImport) {
                     db?.endTransaction()
+                    dbTransactionActive = false
                     importHelper?.close()
+                    importHelper = null
                     
-                    // FILE SWAP: Safely overwrite the active DB file while it is closed
+                    // ISSUE 2: SAFE SWAP. The active DB is overwritten only AFTER successful verification.
                     dbHelper.close()
-                    
                     val originalFile = context.getDatabasePath("mine_encrypted.db")
                     val tempFile = context.getDatabasePath(tempDbName)
-                    
                     tempFile.copyTo(originalFile, overwrite = true)
                     
-                    // Nuke WAL and SHM files to prevent corruption from old cache
                     context.getDatabasePath("mine_encrypted.db-wal").delete()
                     context.getDatabasePath("mine_encrypted.db-shm").delete()
                     tempFile.delete()
                     context.getDatabasePath("mine_import_temp.db-wal").delete()
                     context.getDatabasePath("mine_import_temp.db-shm").delete()
                 }
+            } catch (e: Exception) {
+                if (dbTransactionActive) db?.endTransaction()
+                throw e
+            } finally {
+                importHelper?.close()
+                context.getDatabasePath(tempDbName).delete()
             }
             
             return ExportStats(msgCount, nodeCount, eventCount, verified = true)

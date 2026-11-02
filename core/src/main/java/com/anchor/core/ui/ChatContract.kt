@@ -10,7 +10,8 @@ import com.anchor.core.models.Reminder
 data class ReceiptState(
     val id: String,
     val message: String,
-    val undoToken: String?
+    val undoToken: String?,
+    val isError: Boolean = false
 )
 
 data class UiState(
@@ -30,7 +31,11 @@ data class UiState(
     val composerDraft: String = "",
     val connectionError: String? = null,
     val globalError: String? = null,
-    val showResetConfirm: Boolean = false
+    val showResetConfirm: Boolean = false,
+    val alarmDisclosureText: String = "Urgent/alarm reminders use Android Alarm Clock (setAlarmClock) to guarantee delivery in Doze mode. This causes an alarm icon to appear in the system status bar while pending. Gentle reminders use notification-only scheduling without showing the status bar alarm icon.",
+    val selectedDayKey: String? = null,
+    val selectedDayMessages: List<ChatMessage> = emptyList(),
+    val selectedDayReminders: List<Reminder> = emptyList()
 )
 
 sealed interface UiAction {
@@ -43,11 +48,13 @@ sealed interface UiAction {
     data class RejectSoulFact(val factId: String) : UiAction
     data class CancelReminder(val id: String) : UiAction
     data class LoadDay(val dayKey: String) : UiAction
+    data class ShowDayReminders(val dayKey: String, val startOfDayMs: Long, val endOfDayMs: Long) : UiAction
+    data object ClearDaySelection : UiAction
     data class SaveProvider(val endpoint: String, val key: String, val model: String) : UiAction
     data object RunSelfTest : UiAction
     data object RefreshStats : UiAction
     data object PromptResetDatabase : UiAction
     data class ConfirmResetDatabase(val confirm: Boolean) : UiAction
-    data object ExportData : UiAction
-    data object ImportData : UiAction
+    data class AddFollowUp(val srcNodeId: String, val dstNodeId: String) : UiAction
+    data class RemoveFollowUp(val edgeId: String) : UiAction
 }

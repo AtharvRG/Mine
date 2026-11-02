@@ -149,4 +149,83 @@ class TurnCompletionTest {
         controller.onAction(UiAction.SendMessage)
         assertEquals("Mixed envelope with a Commit should end turn", 1, callCount)
     }
+
+    @Test
+    fun testLoopLimit_FiresWhenToolKeepsLoopingWithoutCommit() = runBlocking {
+        val storage = SharedFakeStorage()
+        storage.settings["key"] = "test-key"
+        val clock = FakeClock(1000L)
+        var callCount = 0
+
+        val fakeTransport = object : HttpTransport {
+            override suspend fun postStream(target: Target, body: String): Flow<String> = flow {
+                callCount++
+                // Continuous non-committing tool calls (search_memory with no results)
+                emit("""data: {"choices":[{"delta":{"content":"{\"reply\":\"Searching step $callCount...\",\"calls\":[{\"tool\":\"search_memory\",\"args\":{\"query\":\"query_$callCount\"}}]}"}}]}""")
+                emit("data: [DONE]")
+            }
+        }
+
+        val dateResolver = DateResolver(clock)
+        val checkinBuilder = com.anchor.core.nudge.CheckinBuilder(storage, clock, dateResolver)
+        val contextBuilder = ContextBuilder(storage, clock, dateResolver, checkinBuilder)
+
+        val controller = ChatController(
+            storage, ProviderOrchestrator(RateLimiter { clock.now() }, fakeTransport), contextBuilder,
+            Gateway(storage, Resolver(), dateResolver, clock),
+            object : AlarmScheduler { override val lastFiredId = MutableStateFlow<String?>(null); override fun schedule(reminder: Reminder) {}; override fun cancel(reminderId: String) {} },
+            TestScope(UnconfinedTestDispatcher()), UnconfinedTestDispatcher(), clock
+        )
+
+        controller.onAction(UiAction.UpdateDraft("Keep searching"))
+        controller.onAction(UiAction.SendMessage)
+
+        assertEquals("Should stop after 4 loops", 4, callCount)
+        val messages = storage.messages
+        val limitMessage = messages.find { it.content == "Loop limit reached." }
+        org.junit.Assert.assertNotNull("Must show loop limit reached", limitMessage)
+        // Verify unique IDs so no PK collisions
+        val ids = messages.map { it.id }
+        assertEquals(ids.distinct().size, ids.size)
+    }
+
+    @Test
+    fun testLoopLimit_DoesNotFireWhenFourthLoopCommits() = runBlocking {
+        val storage = SharedFakeStorage()
+        storage.settings["key"] = "test-key"
+        val clock = FakeClock(1000L)
+        var callCount = 0
+
+        val fakeTransport = object : HttpTransport {
+            override suspend fun postStream(target: Target, body: String): Flow<String> = flow {
+                callCount++
+                if (callCount < 4) {
+                    emit("""data: {"choices":[{"delta":{"content":"{\"reply\":\"Searching step $callCount...\",\"calls\":[{\"tool\":\"search_memory\",\"args\":{\"query\":\"query_$callCount\"}}]}"}}]}""")
+                } else {
+                    // 4th loop commits!
+                    emit("""data: {"choices":[{"delta":{"content":"{\"reply\":\"Found and creating.\",\"calls\":[{\"tool\":\"propose_change\",\"args\":{\"intent\":\"CREATE\",\"hint\":\"Finish report\"}}]}"}}]}""")
+                }
+                emit("data: [DONE]")
+            }
+        }
+
+        val dateResolver = DateResolver(clock)
+        val checkinBuilder = com.anchor.core.nudge.CheckinBuilder(storage, clock, dateResolver)
+        val contextBuilder = ContextBuilder(storage, clock, dateResolver, checkinBuilder)
+
+        val controller = ChatController(
+            storage, ProviderOrchestrator(RateLimiter { clock.now() }, fakeTransport), contextBuilder,
+            Gateway(storage, Resolver(), dateResolver, clock),
+            object : AlarmScheduler { override val lastFiredId = MutableStateFlow<String?>(null); override fun schedule(reminder: Reminder) {}; override fun cancel(reminderId: String) {} },
+            TestScope(UnconfinedTestDispatcher()), UnconfinedTestDispatcher(), clock
+        )
+
+        controller.onAction(UiAction.UpdateDraft("Search then create"))
+        controller.onAction(UiAction.SendMessage)
+
+        assertEquals(4, callCount)
+        val messages = storage.messages
+        val limitMessage = messages.find { it.content == "Loop limit reached." }
+        org.junit.Assert.assertNull("Loop limit reached must NOT fire if 4th loop commits", limitMessage)
+    }
 }

@@ -71,11 +71,11 @@ class SystemPromptTest {
         val requestJson = kotlinx.serialization.json.Json.parseToJsonElement(interceptedPayload).jsonObject
         val messagesArr = requestJson["messages"]?.jsonArray
         val sysMsg = messagesArr?.firstOrNull()?.jsonObject?.get("content")?.jsonPrimitive?.content ?: ""
-
+        
         assertTrue(sysMsg.contains("MUST use when user states an appointment, plan, task, commitment"))
         assertTrue(sysMsg.contains("unless you issue a tool call"))
         assertTrue(sysMsg.contains("confirm_change"))
-        assertTrue(sysMsg.contains("schedule_reminder"))
+        // Removed schedule_reminder assertion, as it was stripped from the prompt to prevent double-alarms
 
         // 2. Verify End-to-End Creation
         assertEquals(1, storage.getActiveNodes().size)

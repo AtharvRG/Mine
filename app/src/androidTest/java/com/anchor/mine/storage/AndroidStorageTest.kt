@@ -42,13 +42,14 @@ class AndroidStorageTest {
 
     @Test
     fun testSaveAndReadProposal() = runBlocking {
-        val p = Proposal("p1", "ambiguous", IntentType.CANCEL, listOf("n1", "n2"))
+        val p = Proposal("p1", "ambiguous", IntentType.CANCEL, listOf(ProposalOption("n1", "Option 1"), ProposalOption("n2", "Option 2")))
         storage.saveProposal(p)
         
-        val cursor = dbHelper.readableDatabase.query("SELECT options FROM proposal WHERE id = 'p1'")
-        assertTrue(cursor.moveToFirst())
-        assertEquals("n1,n2", cursor.getString(0))
-        cursor.close()
+        val readProposal = storage.getProposal("p1")
+        assertNotNull(readProposal)
+        assertEquals(2, readProposal!!.options.size)
+        assertEquals("n1", readProposal.options[0].id)
+        assertEquals("Option 1", readProposal.options[0].title)
     }
 
     @Test
@@ -165,5 +166,577 @@ class AndroidStorageTest {
             org.junit.Assert.assertTrue(it.moveToFirst())
             org.junit.Assert.assertEquals("2099-12-31", it.getString(0))
         }
+    }
+
+    @Test
+    fun testD104_ActiveNodesPaginationAndCountsOnRealDb() = runBlocking {
+        val now = 1_700_000_000_000L
+        val staleCutoff = 30L * 24 * 3600 * 1000L
+        val thirtyFiveDaysAgo = now - 35L * 24 * 3600 * 1000L
+
+        // Insert 20 nodes directly via SQLite
+        // 2 stale nodes (created 35 days ago, updated 35 days ago)
+        // 3 overdue nodes (due in past, updated recently)
+        // 5 future due nodes
+        // 10 undated nodes
+        val db = dbHelper.writableDatabase
+
+        for (i in 1..2) {
+            db.execSQL(
+                "INSERT INTO node (id, type, title, status, due_at, created_at, updated_at) VALUES (?, 'task', ?, 'active', NULL, ?, ?)",
+                arrayOf<Any>("stale_$i", "Stale $i", thirtyFiveDaysAgo, thirtyFiveDaysAgo)
+            )
+        }
+
+        for (i in 1..3) {
+            val due = now - (i * 3600_000L)
+            db.execSQL(
+                "INSERT INTO node (id, type, title, status, due_at, created_at, updated_at) VALUES (?, 'task', ?, 'active', ?, ?, ?)",
+                arrayOf<Any>("overdue_$i", "Overdue $i", due, now - 1000, now - 1000)
+            )
+        }
+
+        for (i in 1..5) {
+            val due = now + (i * 3600_000L)
+            db.execSQL(
+                "INSERT INTO node (id, type, title, status, due_at, created_at, updated_at) VALUES (?, 'task', ?, 'active', ?, ?, ?)",
+                arrayOf<Any>("future_$i", "Future $i", due, now - 1000, now - 1000)
+            )
+        }
+
+        for (i in 1..10) {
+            db.execSQL(
+                "INSERT INTO node (id, type, title, status, due_at, created_at, updated_at) VALUES (?, 'task', ?, 'active', NULL, ?, ?)",
+                arrayOf<Any>("undated_$i", "Undated $i", now - 1000, now - 1000)
+            )
+        }
+
+        // 1. Verify getActiveNodeCounts:
+        // total open (non-stale) = 3 overdue + 5 future + 10 undated = 18.
+        // overdue = 3.
+        val counts = storage.getActiveNodeCounts(now, staleCutoff)
+        assertEquals(18, counts.totalOpen)
+        assertEquals(3, counts.overdue)
+
+        // 2. Verify getStaleNodes:
+        val stale = storage.getStaleNodes(staleCutoff, now)
+        assertEquals(2, stale.size)
+        assertTrue(stale.any { it.id == "stale_1" })
+        assertTrue(stale.any { it.id == "stale_2" })
+
+        // 3. Verify Keyset Cursor Pagination over all 20 active nodes
+        val pageSize = 6
+        val visitedIds = mutableListOf<String>()
+        var cursor: String? = null
+
+        while (true) {
+            val page = storage.getActiveNodes(limit = pageSize, cursor = cursor, order = "ASC")
+            if (page.isEmpty()) break
+            page.forEach { visitedIds.add(it.id) }
+            val last = page.last()
+            cursor = "${last.dueAt ?: "null"}:${last.id}"
+        }
+
+        assertEquals("Must visit all 20 nodes across pages", 20, visitedIds.size)
+        assertEquals("Zero duplicates across pages", 20, visitedIds.toSet().size)
+
+        // Ensure order: dated items come before undated items (null due_at)
+        val firstUndatedIdx = visitedIds.indexOfFirst { it.startsWith("undated_") || it.startsWith("stale_") }
+        val lastDatedIdx = visitedIds.indexOfLast { it.startsWith("overdue_") || it.startsWith("future_") }
+        assertTrue("Dated items must precede undated items", lastDatedIdx < firstUndatedIdx)
+    }
+
+    @Test
+    fun testReminderTier_SaveAndReadAlarmAndGentle(): Unit = runBlocking {
+        val rAlarm = Reminder("r_alarm", "Alarm task", System.currentTimeMillis() + 100000L, "n_a", AlarmTier.ALARM)
+        val rGentle = Reminder("r_gentle", "Gentle task", System.currentTimeMillis() + 200000L, "n_g", AlarmTier.GENTLE)
+
+        storage.saveReminder(rAlarm)
+        storage.saveReminder(rGentle)
+
+        val pending = storage.getPendingReminders()
+        val fetchedAlarm = pending.find { it.id == "r_alarm" }
+        val fetchedGentle = pending.find { it.id == "r_gentle" }
+
+        assertNotNull(fetchedAlarm)
+        assertEquals(AlarmTier.ALARM, fetchedAlarm!!.tier)
+
+        assertNotNull(fetchedGentle)
+        assertEquals(AlarmTier.GENTLE, fetchedGentle!!.tier)
+    }
+
+    @Test
+    fun testDatabaseMigration_V1toV3_PreservesRemindersAndDefaultsToAlarm(): Unit = runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val migrationDbName = "mine_migration_test.db"
+        context.deleteDatabase(migrationDbName)
+        val key = ByteArray(32) { 2 }
+
+        // 1. Create DB with V1 schema (no 'tier' column on reminder)
+        val v1Callback = object : androidx.sqlite.db.SupportSQLiteOpenHelper.Callback(1) {
+            override fun onCreate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE app_meta (\"key\" TEXT PRIMARY KEY, value TEXT NOT NULL)")
+                db.execSQL("CREATE TABLE raw_message (id TEXT PRIMARY KEY, device_id TEXT, ts_utc INTEGER, tz_offset_min INTEGER, day_key TEXT, role TEXT, content TEXT, redacted_at INTEGER, reasoning TEXT, tags TEXT, persona_id TEXT, model_ref TEXT, tokens_in INTEGER, tokens_out INTEGER, client_msg_id TEXT, attrs TEXT)")
+                db.execSQL("CREATE TABLE raw_event (op_id TEXT PRIMARY KEY, ts_utc INTEGER, device_id TEXT, actor TEXT, op_type TEXT, target_type TEXT, target_id TEXT, before_json TEXT, after_json TEXT, cause_msg_id TEXT, undo_of TEXT, attrs TEXT)")
+                db.execSQL("CREATE TABLE node (id TEXT PRIMARY KEY, device_id TEXT, type TEXT, title TEXT, body TEXT, status TEXT, priority INTEGER, severity INTEGER, start_at INTEGER, due_at INTEGER, time_precision TEXT, flexible INTEGER, lane TEXT, expires_at INTEGER, source TEXT, origin TEXT, source_msg_ids TEXT, extractor_version TEXT, attrs TEXT, local_only INTEGER, hlc TEXT, created_at INTEGER, updated_at INTEGER, closed_at INTEGER, deleted_at INTEGER)")
+                db.execSQL("CREATE TABLE edge (id TEXT PRIMARY KEY, device_id TEXT, src_id TEXT, dst_id TEXT, dst_kind TEXT, type TEXT, weight REAL, source TEXT, origin TEXT, source_msg_ids TEXT, attrs TEXT, hlc TEXT, created_at INTEGER, updated_at INTEGER, deleted_at INTEGER)")
+                db.execSQL("CREATE TABLE soul_fact (id TEXT PRIMARY KEY, device_id TEXT NOT NULL, category TEXT NOT NULL, statement TEXT NOT NULL, attrs TEXT, confidence REAL NOT NULL DEFAULT 0.7, source TEXT NOT NULL, origin TEXT NOT NULL, status TEXT NOT NULL, pinned_core INTEGER NOT NULL DEFAULT 0, sensitive INTEGER NOT NULL DEFAULT 0, local_only INTEGER NOT NULL DEFAULT 0, hlc TEXT NOT NULL, valid_from INTEGER, valid_to INTEGER, supersedes TEXT, source_msg_ids TEXT, extractor_version TEXT, last_confirmed_at INTEGER, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, deleted_at INTEGER)")
+                db.execSQL("CREATE TABLE msg_chunk (id TEXT PRIMARY KEY, day_key TEXT NOT NULL, ts_start INTEGER NOT NULL, ts_end INTEGER NOT NULL, msg_ids TEXT NOT NULL, text TEXT NOT NULL, extractor_version TEXT NOT NULL)")
+                db.execSQL("CREATE TABLE reminder (id TEXT PRIMARY KEY, node_id TEXT, text TEXT NOT NULL, fire_at INTEGER NOT NULL)")
+                db.execSQL("CREATE TABLE proposal (id TEXT PRIMARY KEY, kind TEXT NOT NULL, intent TEXT NOT NULL, options TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'open', created_at INTEGER NOT NULL)")
+                db.execSQL("CREATE TABLE day_rule (id TEXT PRIMARY KEY, effective_from INTEGER NOT NULL, start_minute INTEGER NOT NULL, end_minute INTEGER NOT NULL, tz_id TEXT NOT NULL, created_at INTEGER NOT NULL)")
+                db.execSQL("CREATE TABLE day_block (day_key TEXT NOT NULL, idx INTEGER NOT NULL, start_msg_id TEXT NOT NULL, start_ts INTEGER NOT NULL, end_ts INTEGER NOT NULL, msg_count INTEGER NOT NULL, part_of_day TEXT, PRIMARY KEY (day_key, idx))")
+                db.execSQL("CREATE TABLE export_log (id TEXT PRIMARY KEY, ts INTEGER NOT NULL, kind TEXT NOT NULL, options_json TEXT, counts_json TEXT, bytes INTEGER, verified INTEGER, note TEXT)")
+                db.execSQL("CREATE TABLE signal_log (id TEXT PRIMARY KEY, ts_utc INTEGER NOT NULL, kind TEXT NOT NULL, subject TEXT, value REAL, attrs TEXT)")
+                db.execSQL("CREATE TABLE learned_pref (key TEXT NOT NULL, scope TEXT NOT NULL, value_json TEXT NOT NULL, samples INTEGER NOT NULL, confidence REAL NOT NULL, locked INTEGER NOT NULL DEFAULT 0, updated_at INTEGER NOT NULL, PRIMARY KEY (key, scope))")
+                db.execSQL("CREATE TABLE reliability_state (id INTEGER PRIMARY KEY CHECK (id = 1), last_check_at INTEGER, score TEXT, issues_json TEXT, sweeper_heartbeat INTEGER, last_force_stop_detected INTEGER, p95_latency_ms INTEGER)")
+                db.execSQL("CREATE TABLE diag_log (ts INTEGER NOT NULL, level TEXT NOT NULL, tag TEXT NOT NULL, msg TEXT NOT NULL)")
+                db.execSQL("CREATE TABLE reminder_fire (id TEXT PRIMARY KEY, reminder_id TEXT NOT NULL, fired_at INTEGER NOT NULL, scheduled_for INTEGER NOT NULL, latency_ms INTEGER NOT NULL, outcome TEXT NOT NULL, delivery TEXT, reason_json TEXT, opener_source TEXT)")
+                db.execSQL("CREATE TABLE alarm_registry (reminder_id TEXT PRIMARY KEY, request_code INTEGER NOT NULL, api TEXT NOT NULL, registered_for INTEGER NOT NULL, registered_at INTEGER NOT NULL)")
+                db.execSQL("CREATE TABLE proactive_state (id INTEGER PRIMARY KEY CHECK (id = 1), open_thread_msg_id TEXT, thread_opened_at INTEGER, backoff_step INTEGER NOT NULL DEFAULT 0, last_sent_at INTEGER, last_contact_at INTEGER, paused_until INTEGER, silent_days INTEGER NOT NULL DEFAULT 0, sent_today INTEGER NOT NULL DEFAULT 0, fuse_tripped_at INTEGER, day_key TEXT)")
+                db.execSQL("CREATE TABLE nudge_log (id TEXT PRIMARY KEY, ts_utc INTEGER NOT NULL, trigger_type TEXT NOT NULL, subject_refs TEXT, score REAL, threshold REAL, gates_json TEXT, decision TEXT NOT NULL, delivery TEXT, msg_id TEXT, text_source TEXT, outcome TEXT, latency_ms INTEGER, reason_json TEXT)")
+                db.execSQL("CREATE TABLE nudge_pool (id TEXT PRIMARY KEY, trigger_type TEXT NOT NULL, subject_refs TEXT, score REAL NOT NULL, created_at INTEGER NOT NULL, expires_at INTEGER NOT NULL)")
+                db.execSQL("CREATE TABLE nudge_hold (node_id TEXT NOT NULL, trigger_type TEXT NOT NULL, until_ts INTEGER NOT NULL, PRIMARY KEY (node_id, trigger_type))")
+                db.execSQL("CREATE TABLE checkin_state (kind TEXT NOT NULL, day_key TEXT NOT NULL, status TEXT NOT NULL, msg_id TEXT, scheduled_for INTEGER, delivered_at INTEGER, PRIMARY KEY (kind, day_key))")
+
+                db.execSQL("CREATE INDEX idx_node_status_due ON node(status, due_at)")
+                db.execSQL("CREATE INDEX idx_raw_event_target ON raw_event(target_type, target_id)")
+                db.execSQL("CREATE INDEX idx_raw_message_ts ON raw_message(ts_utc)")
+                db.execSQL("CREATE INDEX idx_raw_message_day ON raw_message(day_key, ts_utc)")
+                db.execSQL("CREATE INDEX idx_reminder_fire ON reminder(fire_at)")
+
+                db.execSQL("CREATE VIRTUAL TABLE node_fts USING fts5(title, body, content='node', content_rowid='rowid')")
+                db.execSQL("CREATE VIRTUAL TABLE soul_fts USING fts5(statement, content='soul_fact', content_rowid='rowid')")
+                db.execSQL("CREATE VIRTUAL TABLE msg_chunk_fts USING fts5(text, content='msg_chunk', content_rowid='rowid')")
+
+                MineDatabaseCallback.createTriggers(db)
+            }
+            override fun onUpgrade(db: androidx.sqlite.db.SupportSQLiteDatabase, oldVersion: Int, newVersion: Int) {}
+        }
+        val v1Config = androidx.sqlite.db.SupportSQLiteOpenHelper.Configuration.builder(context)
+            .name(migrationDbName)
+            .callback(v1Callback)
+            .build()
+        val v1Helper = net.zetetic.database.sqlcipher.SupportOpenHelperFactory(key).create(v1Config)
+        val v1Db = v1Helper.writableDatabase
+        v1Db.execSQL("INSERT INTO reminder (id, node_id, text, fire_at) VALUES ('r_v1', 'n_v1', 'Legacy Task', 1234567890)")
+        v1Helper.close()
+
+        // 2. Open DB with MineDatabaseCallback (version 4)
+        val v3Helper = DatabaseProvider.getHelper(context, key, migrationDbName)
+        val v3Storage = AndroidStorage(v3Helper)
+
+        // Verify version bumped to 4
+        assertEquals(4, v3Helper.readableDatabase.version)
+
+        // Verify column exists
+        var hasTierColumn = false
+        v3Helper.readableDatabase.query("PRAGMA table_info(reminder)").use { cursor ->
+            val nameIndex = cursor.getColumnIndex("name")
+            while (cursor.moveToNext()) {
+                if (nameIndex != -1 && cursor.getString(nameIndex).equals("tier", ignoreCase = true)) {
+                    hasTierColumn = true
+                    break
+                }
+            }
+        }
+        assertTrue("Migrated table must contain 'tier' column", hasTierColumn)
+
+        // 3. Read legacy reminder; should default to AlarmTier.ALARM
+        val legacy = v3Storage.getReminderByNodeId("n_v1")
+        assertNotNull(legacy)
+        assertEquals("r_v1", legacy!!.id)
+        assertEquals(AlarmTier.ALARM, legacy.tier)
+
+        // 4. Save a gentle reminder into migrated DB and verify it persists
+        val gentleRem = Reminder("r_gentle", "Gentle Reminder", System.currentTimeMillis() + 50000L, "n_gentle", AlarmTier.GENTLE)
+        v3Storage.saveReminder(gentleRem)
+        val readGentle = v3Storage.getReminderByNodeId("n_gentle")
+        assertNotNull(readGentle)
+        assertEquals(AlarmTier.GENTLE, readGentle!!.tier)
+
+        v3Helper.close()
+        context.deleteDatabase(migrationDbName)
+    }
+
+    @Test
+    fun testDatabaseMigration_V2toV3_CreatesEdgeIndexes(): Unit = runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val migrationDbName = "mine_migration_v2_v3.db"
+        context.deleteDatabase(migrationDbName)
+        val key = ByteArray(32) { 3 }
+
+        // 1. Create DB with V2 schema (has 'tier' on reminder, but lacks edge indices)
+        val v2Callback = object : androidx.sqlite.db.SupportSQLiteOpenHelper.Callback(2) {
+            override fun onCreate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE app_meta (\"key\" TEXT PRIMARY KEY, value TEXT NOT NULL)")
+                db.execSQL("CREATE TABLE raw_message (id TEXT PRIMARY KEY, device_id TEXT, ts_utc INTEGER, tz_offset_min INTEGER, day_key TEXT, role TEXT, content TEXT, redacted_at INTEGER, reasoning TEXT, tags TEXT, persona_id TEXT, model_ref TEXT, tokens_in INTEGER, tokens_out INTEGER, client_msg_id TEXT, attrs TEXT)")
+                db.execSQL("CREATE TABLE raw_event (op_id TEXT PRIMARY KEY, ts_utc INTEGER, device_id TEXT, actor TEXT, op_type TEXT, target_type TEXT, target_id TEXT, before_json TEXT, after_json TEXT, cause_msg_id TEXT, undo_of TEXT, attrs TEXT)")
+                db.execSQL("CREATE TABLE node (id TEXT PRIMARY KEY, device_id TEXT, type TEXT, title TEXT, body TEXT, status TEXT, priority INTEGER, severity INTEGER, start_at INTEGER, due_at INTEGER, time_precision TEXT, flexible INTEGER, lane TEXT, expires_at INTEGER, source TEXT, origin TEXT, source_msg_ids TEXT, extractor_version TEXT, attrs TEXT, local_only INTEGER, hlc TEXT, created_at INTEGER, updated_at INTEGER, closed_at INTEGER, deleted_at INTEGER)")
+                db.execSQL("CREATE TABLE edge (id TEXT PRIMARY KEY, device_id TEXT, src_id TEXT, dst_id TEXT, dst_kind TEXT, type TEXT, weight REAL, source TEXT, origin TEXT, source_msg_ids TEXT, attrs TEXT, hlc TEXT, created_at INTEGER, updated_at INTEGER, deleted_at INTEGER)")
+                db.execSQL("CREATE TABLE soul_fact (id TEXT PRIMARY KEY, device_id TEXT NOT NULL, category TEXT NOT NULL, statement TEXT NOT NULL, attrs TEXT, confidence REAL NOT NULL DEFAULT 0.7, source TEXT NOT NULL, origin TEXT NOT NULL, status TEXT NOT NULL, pinned_core INTEGER NOT NULL DEFAULT 0, sensitive INTEGER NOT NULL DEFAULT 0, local_only INTEGER NOT NULL DEFAULT 0, hlc TEXT NOT NULL, valid_from INTEGER, valid_to INTEGER, supersedes TEXT, source_msg_ids TEXT, extractor_version TEXT, last_confirmed_at INTEGER, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, deleted_at INTEGER)")
+                db.execSQL("CREATE TABLE msg_chunk (id TEXT PRIMARY KEY, day_key TEXT NOT NULL, ts_start INTEGER NOT NULL, ts_end INTEGER NOT NULL, msg_ids TEXT NOT NULL, text TEXT NOT NULL, extractor_version TEXT NOT NULL)")
+                db.execSQL("CREATE TABLE reminder (id TEXT PRIMARY KEY, node_id TEXT, text TEXT NOT NULL, fire_at INTEGER NOT NULL, tier TEXT NOT NULL DEFAULT 'alarm')")
+                db.execSQL("CREATE TABLE proposal (id TEXT PRIMARY KEY, kind TEXT NOT NULL, intent TEXT NOT NULL, options TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'open', created_at INTEGER NOT NULL)")
+                db.execSQL("CREATE TABLE day_rule (id TEXT PRIMARY KEY, effective_from INTEGER NOT NULL, start_minute INTEGER NOT NULL, end_minute INTEGER NOT NULL, tz_id TEXT NOT NULL, created_at INTEGER NOT NULL)")
+                db.execSQL("CREATE TABLE day_block (day_key TEXT NOT NULL, idx INTEGER NOT NULL, start_msg_id TEXT NOT NULL, start_ts INTEGER NOT NULL, end_ts INTEGER NOT NULL, msg_count INTEGER NOT NULL, part_of_day TEXT, PRIMARY KEY (day_key, idx))")
+                db.execSQL("CREATE TABLE export_log (id TEXT PRIMARY KEY, ts INTEGER NOT NULL, kind TEXT NOT NULL, options_json TEXT, counts_json TEXT, bytes INTEGER, verified INTEGER, note TEXT)")
+                db.execSQL("CREATE TABLE signal_log (id TEXT PRIMARY KEY, ts_utc INTEGER NOT NULL, kind TEXT NOT NULL, subject TEXT, value REAL, attrs TEXT)")
+                db.execSQL("CREATE TABLE learned_pref (key TEXT NOT NULL, scope TEXT NOT NULL, value_json TEXT NOT NULL, samples INTEGER NOT NULL, confidence REAL NOT NULL, locked INTEGER NOT NULL DEFAULT 0, updated_at INTEGER NOT NULL, PRIMARY KEY (key, scope))")
+                db.execSQL("CREATE TABLE reliability_state (id INTEGER PRIMARY KEY CHECK (id = 1), last_check_at INTEGER, score TEXT, issues_json TEXT, sweeper_heartbeat INTEGER, last_force_stop_detected INTEGER, p95_latency_ms INTEGER)")
+                db.execSQL("CREATE TABLE diag_log (ts INTEGER NOT NULL, level TEXT NOT NULL, tag TEXT NOT NULL, msg TEXT NOT NULL)")
+                db.execSQL("CREATE TABLE reminder_fire (id TEXT PRIMARY KEY, reminder_id TEXT NOT NULL, fired_at INTEGER NOT NULL, scheduled_for INTEGER NOT NULL, latency_ms INTEGER NOT NULL, outcome TEXT NOT NULL, delivery TEXT, reason_json TEXT, opener_source TEXT)")
+                db.execSQL("CREATE TABLE alarm_registry (reminder_id TEXT PRIMARY KEY, request_code INTEGER NOT NULL, api TEXT NOT NULL, registered_for INTEGER NOT NULL, registered_at INTEGER NOT NULL)")
+                db.execSQL("CREATE TABLE proactive_state (id INTEGER PRIMARY KEY CHECK (id = 1), open_thread_msg_id TEXT, thread_opened_at INTEGER, backoff_step INTEGER NOT NULL DEFAULT 0, last_sent_at INTEGER, last_contact_at INTEGER, paused_until INTEGER, silent_days INTEGER NOT NULL DEFAULT 0, sent_today INTEGER NOT NULL DEFAULT 0, fuse_tripped_at INTEGER, day_key TEXT)")
+                db.execSQL("CREATE TABLE nudge_log (id TEXT PRIMARY KEY, ts_utc INTEGER NOT NULL, trigger_type TEXT NOT NULL, subject_refs TEXT, score REAL, threshold REAL, gates_json TEXT, decision TEXT NOT NULL, delivery TEXT, msg_id TEXT, text_source TEXT, outcome TEXT, latency_ms INTEGER, reason_json TEXT)")
+                db.execSQL("CREATE TABLE nudge_pool (id TEXT PRIMARY KEY, trigger_type TEXT NOT NULL, subject_refs TEXT, score REAL NOT NULL, created_at INTEGER NOT NULL, expires_at INTEGER NOT NULL)")
+                db.execSQL("CREATE TABLE nudge_hold (node_id TEXT NOT NULL, trigger_type TEXT NOT NULL, until_ts INTEGER NOT NULL, PRIMARY KEY (node_id, trigger_type))")
+                db.execSQL("CREATE TABLE checkin_state (kind TEXT NOT NULL, day_key TEXT NOT NULL, status TEXT NOT NULL, msg_id TEXT, scheduled_for INTEGER, delivered_at INTEGER, PRIMARY KEY (kind, day_key))")
+
+                db.execSQL("CREATE INDEX idx_node_status_due ON node(status, due_at)")
+                db.execSQL("CREATE INDEX idx_raw_event_target ON raw_event(target_type, target_id)")
+                db.execSQL("CREATE INDEX idx_raw_message_ts ON raw_message(ts_utc)")
+                db.execSQL("CREATE INDEX idx_raw_message_day ON raw_message(day_key, ts_utc)")
+                db.execSQL("CREATE INDEX idx_reminder_fire ON reminder(fire_at)")
+
+                db.execSQL("CREATE VIRTUAL TABLE node_fts USING fts5(title, body, content='node', content_rowid='rowid')")
+                db.execSQL("CREATE VIRTUAL TABLE soul_fts USING fts5(statement, content='soul_fact', content_rowid='rowid')")
+                db.execSQL("CREATE VIRTUAL TABLE msg_chunk_fts USING fts5(text, content='msg_chunk', content_rowid='rowid')")
+
+                MineDatabaseCallback.createTriggers(db)
+            }
+            override fun onUpgrade(db: androidx.sqlite.db.SupportSQLiteDatabase, oldVersion: Int, newVersion: Int) {}
+        }
+        val v2Config = androidx.sqlite.db.SupportSQLiteOpenHelper.Configuration.builder(context)
+            .name(migrationDbName)
+            .callback(v2Callback)
+            .build()
+        val v2Helper = net.zetetic.database.sqlcipher.SupportOpenHelperFactory(key).create(v2Config)
+        val v2Db = v2Helper.writableDatabase
+        v2Db.execSQL("INSERT INTO edge (id, src_id, dst_id, type) VALUES ('e_legacy', 'n1', 'n2', 'follow_up')")
+        v2Helper.close()
+
+        // 2. Open DB with MineDatabaseCallback (version 4)
+        val v3Helper = DatabaseProvider.getHelper(context, key, migrationDbName)
+        assertEquals(4, v3Helper.readableDatabase.version)
+
+        // 3. Verify indexes exist
+        val foundIndexes = mutableListOf<String>()
+        v3Helper.readableDatabase.query("SELECT name FROM sqlite_master WHERE type = 'index' AND tbl_name = 'edge'").use { cursor ->
+            while (cursor.moveToNext()) {
+                foundIndexes.add(cursor.getString(0))
+            }
+        }
+        assertTrue("Index idx_edge_src_type must exist after migration", foundIndexes.contains("idx_edge_src_type"))
+        assertTrue("Index idx_edge_dst_type must exist after migration", foundIndexes.contains("idx_edge_dst_type"))
+
+        v3Helper.close()
+        context.deleteDatabase(migrationDbName)
+    }
+
+    @Test
+    fun testSaveAndQueryEdges_FollowUp(): Unit = runBlocking {
+        val edge1 = Edge(
+            id = "e_1",
+            srcId = "n_1",
+            dstId = "n_2",
+            type = EdgeTypes.FOLLOW_UP,
+            createdAt = 1000L,
+            updatedAt = 1000L
+        )
+        val edge2 = Edge(
+            id = "e_2",
+            srcId = "n_1",
+            dstId = "n_3",
+            type = EdgeTypes.FOLLOW_UP,
+            createdAt = 2000L,
+            updatedAt = 2000L
+        )
+        val edge3 = Edge(
+            id = "e_3",
+            srcId = "n_4",
+            dstId = "n_1",
+            type = EdgeTypes.FOLLOW_UP,
+            createdAt = 3000L,
+            updatedAt = 3000L
+        )
+
+        storage.saveEdge(edge1)
+        storage.saveEdge(edge2)
+        storage.saveEdge(edge3)
+
+        val retrieved1 = storage.getEdge("e_1")
+        assertNotNull(retrieved1)
+        assertEquals("n_1", retrieved1!!.srcId)
+        assertEquals("n_2", retrieved1.dstId)
+        assertEquals(EdgeTypes.FOLLOW_UP, retrieved1.type)
+
+        val outEdges = storage.getEdgesForSource("n_1", EdgeTypes.FOLLOW_UP)
+        assertEquals(2, outEdges.size)
+        assertEquals("n_2", outEdges[0].dstId)
+        assertEquals("n_3", outEdges[1].dstId)
+
+        val inEdges = storage.getEdgesForDestination("n_1", EdgeTypes.FOLLOW_UP)
+        assertEquals(1, inEdges.size)
+        assertEquals("n_4", inEdges[0].srcId)
+
+        // Soft delete edge1
+        storage.deleteEdge("e_1")
+        assertNull(storage.getEdge("e_1"))
+
+        val outAfterDelete = storage.getEdgesForSource("n_1", EdgeTypes.FOLLOW_UP)
+        assertEquals(1, outAfterDelete.size)
+        assertEquals("n_3", outAfterDelete[0].dstId)
+    }
+
+    @Test
+    fun testCreateEdgeAndCommit_And_DeleteEdgeAndCommit(): Unit = runBlocking {
+        val edge = Edge(
+            id = "e_commit",
+            srcId = "n_src",
+            dstId = "n_dst",
+            type = EdgeTypes.FOLLOW_UP,
+            createdAt = 5000L,
+            updatedAt = 5000L
+        )
+        val createEvent = RawEvent(
+            opId = "op_link_1",
+            opType = "LINK",
+            targetType = "edge",
+            targetId = "e_commit",
+            tsUtc = 5000L
+        )
+
+        storage.createEdgeAndCommit(edge, createEvent)
+
+        val fetched = storage.getEdge("e_commit")
+        assertNotNull(fetched)
+        assertEquals("n_src", fetched!!.srcId)
+
+        val event = storage.getEvent("op_link_1")
+        assertNotNull(event)
+        assertEquals("LINK", event!!.opType)
+        assertEquals("edge", event.targetType)
+
+        val deleteEvent = RawEvent(
+            opId = "op_unlink_1",
+            opType = "UNLINK",
+            targetType = "edge",
+            targetId = "e_commit",
+            undoOf = "op_link_1",
+            tsUtc = 6000L
+        )
+
+        storage.deleteEdgeAndCommit("e_commit", deleteEvent)
+
+        assertNull(storage.getEdge("e_commit"))
+        val unlinkedEvent = storage.getEvent("op_unlink_1")
+        assertNotNull(unlinkedEvent)
+        assertEquals("op_link_1", unlinkedEvent!!.undoOf)
+    }
+
+    @Test
+    fun testCalendarQueries_AndroidStorage(): Unit = runBlocking {
+        val db = dbHelper.writableDatabase
+
+        // 1. Insert messages across days
+        db.execSQL("INSERT INTO raw_message (id, device_id, ts_utc, tz_offset_min, day_key, role, content) VALUES ('m1', 'dev1', 1000, 0, '2026-11-01', 'user', 'Hello Day 1')")
+        db.execSQL("INSERT INTO raw_message (id, device_id, ts_utc, tz_offset_min, day_key, role, content) VALUES ('m2', 'dev1', 2000, 0, '2026-11-01', 'assistant', 'Hi there!')")
+
+        db.execSQL("INSERT INTO raw_message (id, device_id, ts_utc, tz_offset_min, day_key, role, content) VALUES ('m3', 'dev1', 10000, 0, '2026-11-02', 'user', 'Morning Day 2')")
+        db.execSQL("INSERT INTO raw_message (id, device_id, ts_utc, tz_offset_min, day_key, role, content) VALUES ('m4', 'dev1', 11000, 0, '2026-11-02', 'assistant', 'Good morning')")
+        db.execSQL("INSERT INTO raw_message (id, device_id, ts_utc, tz_offset_min, day_key, role, content) VALUES ('m5', 'dev1', 12000, 0, '2026-11-02', 'user', 'Afternoon task')")
+        db.execSQL("INSERT INTO raw_message (id, device_id, ts_utc, tz_offset_min, day_key, role, content) VALUES ('m6', 'dev1', 13000, 0, '2026-11-02', 'assistant', 'Got it')")
+        db.execSQL("INSERT INTO raw_message (id, device_id, ts_utc, tz_offset_min, day_key, role, content) VALUES ('m7', 'dev1', 14000, 0, '2026-11-02', 'user', 'Evening wrap-up')")
+
+        db.execSQL("INSERT INTO raw_message (id, device_id, ts_utc, tz_offset_min, day_key, role, content) VALUES ('m8', 'dev1', 20000, 0, '2026-11-03', 'user', 'Sole message on Day 3')")
+
+        // 2. Insert reminders
+        val r1 = Reminder("r1", "Doctor appointment", 10500L, "n1", AlarmTier.ALARM)
+        val r2 = Reminder("r2", "Call electrician", 13500L, "n2", AlarmTier.GENTLE)
+        val r3 = Reminder("r3", "Dentist next week", 30000L, "n3", AlarmTier.ALARM)
+        storage.saveReminder(r1)
+        storage.saveReminder(r2)
+        storage.saveReminder(r3)
+
+        // 3. Verify getDaysWithMessages
+        val activeDays = storage.getDaysWithMessages("2026-11-01", "2026-11-03")
+        assertEquals(setOf("2026-11-01", "2026-11-02", "2026-11-03"), activeDays)
+
+        val emptyDays = storage.getDaysWithMessages("2026-11-04", "2026-11-10")
+        assertTrue(emptyDays.isEmpty())
+
+        // 4. Verify getHeatMapCounts
+        val heatMap = storage.getHeatMapCounts("2026-11-01", "2026-11-03")
+        assertEquals(3, heatMap.size)
+        assertEquals(2, heatMap["2026-11-01"])
+        assertEquals(5, heatMap["2026-11-02"])
+        assertEquals(1, heatMap["2026-11-03"])
+
+        // 5. Verify getMessagesForDay (chronological ASC)
+        val day2Msgs = storage.getMessagesForDay("2026-11-02")
+        assertEquals(5, day2Msgs.size)
+        assertEquals("m3", day2Msgs[0].id)
+        assertEquals("2026-11-02", day2Msgs[0].dayKey)
+        assertEquals(10000L, day2Msgs[0].tsUtc)
+        assertEquals("m7", day2Msgs[4].id)
+
+        // 6. Verify getRemindersForDay
+        val day2Reminders = storage.getRemindersForDay(10000L, 15000L)
+        assertEquals(2, day2Reminders.size)
+        assertEquals("r1", day2Reminders[0].id)
+        assertEquals(AlarmTier.ALARM, day2Reminders[0].tier)
+        assertEquals("r2", day2Reminders[1].id)
+        assertEquals(AlarmTier.GENTLE, day2Reminders[1].tier)
+    }
+
+    @Test
+    fun testDatabaseMigration_V3toV4_CreatesQuoteSlotTable(): Unit = runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val migrationDbName = "mine_migration_v3_v4.db"
+        context.deleteDatabase(migrationDbName)
+        val key = ByteArray(32) { 4 }
+
+        // 1. Create DB with V3 schema (has edge indexes, but lacks quote_slot)
+        val v3Callback = object : androidx.sqlite.db.SupportSQLiteOpenHelper.Callback(3) {
+            override fun onCreate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE app_meta (\"key\" TEXT PRIMARY KEY, value TEXT NOT NULL)")
+                db.execSQL("CREATE TABLE raw_message (id TEXT PRIMARY KEY, device_id TEXT, ts_utc INTEGER, tz_offset_min INTEGER, day_key TEXT, role TEXT, content TEXT, redacted_at INTEGER, reasoning TEXT, tags TEXT, persona_id TEXT, model_ref TEXT, tokens_in INTEGER, tokens_out INTEGER, client_msg_id TEXT, attrs TEXT)")
+                db.execSQL("CREATE TABLE raw_event (op_id TEXT PRIMARY KEY, ts_utc INTEGER, device_id TEXT, actor TEXT, op_type TEXT, target_type TEXT, target_id TEXT, before_json TEXT, after_json TEXT, cause_msg_id TEXT, undo_of TEXT, attrs TEXT)")
+                db.execSQL("CREATE TABLE node (id TEXT PRIMARY KEY, device_id TEXT, type TEXT, title TEXT, body TEXT, status TEXT, priority INTEGER, severity INTEGER, start_at INTEGER, due_at INTEGER, time_precision TEXT, flexible INTEGER, lane TEXT, expires_at INTEGER, source TEXT, origin TEXT, source_msg_ids TEXT, extractor_version TEXT, attrs TEXT, local_only INTEGER, hlc TEXT, created_at INTEGER, updated_at INTEGER, closed_at INTEGER, deleted_at INTEGER)")
+                db.execSQL("CREATE TABLE edge (id TEXT PRIMARY KEY, device_id TEXT, src_id TEXT, dst_id TEXT, dst_kind TEXT, type TEXT, weight REAL, source TEXT, origin TEXT, source_msg_ids TEXT, attrs TEXT, hlc TEXT, created_at INTEGER, updated_at INTEGER, deleted_at INTEGER)")
+                db.execSQL("CREATE TABLE soul_fact (id TEXT PRIMARY KEY, device_id TEXT NOT NULL, category TEXT NOT NULL, statement TEXT NOT NULL, attrs TEXT, confidence REAL NOT NULL DEFAULT 0.7, source TEXT NOT NULL, origin TEXT NOT NULL, status TEXT NOT NULL, pinned_core INTEGER NOT NULL DEFAULT 0, sensitive INTEGER NOT NULL DEFAULT 0, local_only INTEGER NOT NULL DEFAULT 0, hlc TEXT NOT NULL, valid_from INTEGER, valid_to INTEGER, supersedes TEXT, source_msg_ids TEXT, extractor_version TEXT, last_confirmed_at INTEGER, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, deleted_at INTEGER)")
+                db.execSQL("CREATE TABLE msg_chunk (id TEXT PRIMARY KEY, day_key TEXT NOT NULL, ts_start INTEGER NOT NULL, ts_end INTEGER NOT NULL, msg_ids TEXT NOT NULL, text TEXT NOT NULL, extractor_version TEXT NOT NULL)")
+                db.execSQL("CREATE TABLE reminder (id TEXT PRIMARY KEY, node_id TEXT, text TEXT NOT NULL, fire_at INTEGER NOT NULL, tier TEXT NOT NULL DEFAULT 'alarm')")
+                db.execSQL("CREATE TABLE proposal (id TEXT PRIMARY KEY, kind TEXT NOT NULL, intent TEXT NOT NULL, options TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'open', created_at INTEGER NOT NULL)")
+                db.execSQL("CREATE TABLE day_rule (id TEXT PRIMARY KEY, effective_from INTEGER NOT NULL, start_minute INTEGER NOT NULL, end_minute INTEGER NOT NULL, tz_id TEXT NOT NULL, created_at INTEGER NOT NULL)")
+                db.execSQL("CREATE TABLE day_block (day_key TEXT NOT NULL, idx INTEGER NOT NULL, start_msg_id TEXT NOT NULL, start_ts INTEGER NOT NULL, end_ts INTEGER NOT NULL, msg_count INTEGER NOT NULL, part_of_day TEXT, PRIMARY KEY (day_key, idx))")
+                db.execSQL("CREATE TABLE export_log (id TEXT PRIMARY KEY, ts INTEGER NOT NULL, kind TEXT NOT NULL, options_json TEXT, counts_json TEXT, bytes INTEGER, verified INTEGER, note TEXT)")
+                db.execSQL("CREATE TABLE signal_log (id TEXT PRIMARY KEY, ts_utc INTEGER NOT NULL, kind TEXT NOT NULL, subject TEXT, value REAL, attrs TEXT)")
+                db.execSQL("CREATE TABLE learned_pref (key TEXT NOT NULL, scope TEXT NOT NULL, value_json TEXT NOT NULL, samples INTEGER NOT NULL, confidence REAL NOT NULL, locked INTEGER NOT NULL DEFAULT 0, updated_at INTEGER NOT NULL, PRIMARY KEY (key, scope))")
+                db.execSQL("CREATE TABLE reliability_state (id INTEGER PRIMARY KEY CHECK (id = 1), last_check_at INTEGER, score TEXT, issues_json TEXT, sweeper_heartbeat INTEGER, last_force_stop_detected INTEGER, p95_latency_ms INTEGER)")
+                db.execSQL("CREATE TABLE diag_log (ts INTEGER NOT NULL, level TEXT NOT NULL, tag TEXT NOT NULL, msg TEXT NOT NULL)")
+                db.execSQL("CREATE TABLE reminder_fire (id TEXT PRIMARY KEY, reminder_id TEXT NOT NULL, fired_at INTEGER NOT NULL, scheduled_for INTEGER NOT NULL, latency_ms INTEGER NOT NULL, outcome TEXT NOT NULL, delivery TEXT, reason_json TEXT, opener_source TEXT)")
+                db.execSQL("CREATE TABLE alarm_registry (reminder_id TEXT PRIMARY KEY, request_code INTEGER NOT NULL, api TEXT NOT NULL, registered_for INTEGER NOT NULL, registered_at INTEGER NOT NULL)")
+                db.execSQL("CREATE TABLE proactive_state (id INTEGER PRIMARY KEY CHECK (id = 1), open_thread_msg_id TEXT, thread_opened_at INTEGER, backoff_step INTEGER NOT NULL DEFAULT 0, last_sent_at INTEGER, last_contact_at INTEGER, paused_until INTEGER, silent_days INTEGER NOT NULL DEFAULT 0, sent_today INTEGER NOT NULL DEFAULT 0, fuse_tripped_at INTEGER, day_key TEXT)")
+                db.execSQL("CREATE TABLE nudge_log (id TEXT PRIMARY KEY, ts_utc INTEGER NOT NULL, trigger_type TEXT NOT NULL, subject_refs TEXT, score REAL, threshold REAL, gates_json TEXT, decision TEXT NOT NULL, delivery TEXT, msg_id TEXT, text_source TEXT, outcome TEXT, latency_ms INTEGER, reason_json TEXT)")
+                db.execSQL("CREATE TABLE nudge_pool (id TEXT PRIMARY KEY, trigger_type TEXT NOT NULL, subject_refs TEXT, score REAL NOT NULL, created_at INTEGER NOT NULL, expires_at INTEGER NOT NULL)")
+                db.execSQL("CREATE TABLE nudge_hold (node_id TEXT NOT NULL, trigger_type TEXT NOT NULL, until_ts INTEGER NOT NULL, PRIMARY KEY (node_id, trigger_type))")
+                db.execSQL("CREATE TABLE checkin_state (kind TEXT NOT NULL, day_key TEXT NOT NULL, status TEXT NOT NULL, msg_id TEXT, scheduled_for INTEGER, delivered_at INTEGER, PRIMARY KEY (kind, day_key))")
+
+                db.execSQL("CREATE INDEX idx_node_status_due ON node(status, due_at)")
+                db.execSQL("CREATE INDEX idx_raw_event_target ON raw_event(target_type, target_id)")
+                db.execSQL("CREATE INDEX idx_raw_message_ts ON raw_message(ts_utc)")
+                db.execSQL("CREATE INDEX idx_raw_message_day ON raw_message(day_key, ts_utc)")
+                db.execSQL("CREATE INDEX idx_reminder_fire ON reminder(fire_at)")
+                db.execSQL("CREATE INDEX idx_edge_src_type ON edge(src_id, type)")
+                db.execSQL("CREATE INDEX idx_edge_dst_type ON edge(dst_id, type)")
+
+                db.execSQL("CREATE VIRTUAL TABLE node_fts USING fts5(title, body, content='node', content_rowid='rowid')")
+                db.execSQL("CREATE VIRTUAL TABLE soul_fts USING fts5(statement, content='soul_fact', content_rowid='rowid')")
+                db.execSQL("CREATE VIRTUAL TABLE msg_chunk_fts USING fts5(text, content='msg_chunk', content_rowid='rowid')")
+
+                MineDatabaseCallback.createTriggers(db)
+            }
+            override fun onUpgrade(db: androidx.sqlite.db.SupportSQLiteDatabase, oldVersion: Int, newVersion: Int) {}
+        }
+
+        val v3Config = androidx.sqlite.db.SupportSQLiteOpenHelper.Configuration.builder(context)
+            .name(migrationDbName)
+            .callback(v3Callback)
+            .build()
+        val v3Helper = net.zetetic.database.sqlcipher.SupportOpenHelperFactory(key).create(v3Config)
+        val v3Db = v3Helper.writableDatabase
+        v3Db.execSQL("INSERT INTO reminder (id, text, fire_at) VALUES ('r_v3', 'Task in V3', 50000)")
+        v3Helper.close()
+
+        // 2. Open DB with MineDatabaseCallback (version 4)
+        val v4Helper = DatabaseProvider.getHelper(context, key, migrationDbName)
+        assertEquals(4, v4Helper.readableDatabase.version)
+
+        // 3. Verify quote_slot table exists
+        var quoteSlotExists = false
+        v4Helper.readableDatabase.query("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'quote_slot'").use { cursor ->
+            if (cursor.moveToFirst()) {
+                quoteSlotExists = true
+            }
+        }
+        assertTrue("Table quote_slot must exist after migration", quoteSlotExists)
+
+        // 4. Test storing quote in migrated DB
+        val v4Storage = AndroidStorage(v4Helper)
+        val quote = Quote(QuoteSlot.EVENING, "2026-11-02", "Evening rest and reflection.", 60000L, null, QuoteSource.PRESET, 0)
+        v4Storage.saveQuoteSlot(quote)
+        val fetched = v4Storage.getQuoteSlot(QuoteSlot.EVENING, "2026-11-02")
+        assertNotNull(fetched)
+        assertEquals("Evening rest and reflection.", fetched!!.text)
+        assertEquals(QuoteSlot.EVENING, fetched.slot)
+        assertEquals(QuoteSource.PRESET, fetched.source)
+
+        v4Helper.close()
+        context.deleteDatabase(migrationDbName)
+    }
+
+    @Test
+    fun testSaveAndQueryQuoteSlot(): Unit = runBlocking {
+        // 1. Initial query non-existent slot returns null
+        val empty = storage.getQuoteSlot(QuoteSlot.AFTERNOON, "2026-11-02")
+        assertNull(empty)
+
+        // 2. Save preset quote
+        val preset = Quote(
+            slot = QuoteSlot.MORNING,
+            dayKey = "2026-11-02",
+            text = "Begin today with calm intention.",
+            generatedAt = 1000L,
+            source = QuoteSource.PRESET,
+            regenCount = 0
+        )
+        storage.saveQuoteSlot(preset)
+
+        val fetchedPreset = storage.getQuoteSlot(QuoteSlot.MORNING, "2026-11-02")
+        assertNotNull(fetchedPreset)
+        assertEquals("Begin today with calm intention.", fetchedPreset!!.text)
+        assertEquals(QuoteSource.PRESET, fetchedPreset.source)
+        assertEquals(0, fetchedPreset.regenCount)
+
+        // 3. Update to live quote with 1 regeneration
+        val live = Quote(
+            slot = QuoteSlot.MORNING,
+            dayKey = "2026-11-02",
+            text = "Live LLM quote replacing preset.",
+            generatedAt = 2000L,
+            source = QuoteSource.LIVE,
+            regenCount = 1
+        )
+        storage.saveQuoteSlot(live)
+
+        val fetchedLive = storage.getQuoteSlot(QuoteSlot.MORNING, "2026-11-02")
+        assertNotNull(fetchedLive)
+        assertEquals("Live LLM quote replacing preset.", fetchedLive!!.text)
+        assertEquals(QuoteSource.LIVE, fetchedLive.source)
+        assertEquals(1, fetchedLive.regenCount)
+    }
+
+    @Test
+    fun testGetUrgentNodes_OrdersNullsLast(): Unit = runBlocking {
+        val now = System.currentTimeMillis()
+        val node1 = Node("n1", "task", "Task with no due date", "active", null, now, now)
+        val node2 = Node("n2", "task", "Urgent task later", "active", now + 100000L, now, now)
+        val node3 = Node("n3", "task", "Urgent task soonest", "active", now + 50000L, now, now)
+        val node4 = Node("n4", "task", "Done task", "done", now + 10000L, now, now)
+
+        storage.createNodeAndCommit(node1, RawEvent("e1", "CREATE", "node", "n1"), null)
+        storage.createNodeAndCommit(node2, RawEvent("e2", "CREATE", "node", "n2"), null)
+        storage.createNodeAndCommit(node3, RawEvent("e3", "CREATE", "node", "n3"), null)
+        storage.createNodeAndCommit(node4, RawEvent("e4", "CREATE", "node", "n4"), null)
+
+        val urgent = storage.getUrgentNodes()
+        assertEquals(3, urgent.size)
+        // Order: soonest due_at first, then later due_at, then null due_at last.
+        // Done task must be excluded.
+        assertEquals("n3", urgent[0].id)
+        assertEquals("n2", urgent[1].id)
+        assertEquals("n1", urgent[2].id)
     }
 }

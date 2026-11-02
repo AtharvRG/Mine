@@ -9,8 +9,8 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.sqlite.db.SupportSQLiteOpenHelper
 import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
 
-// BUMPED to Version 1 (Squashed pristine schema)
-class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(1) {
+// BUMPED to Version 4 (Task T-F: D-108 quote slots table)
+class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(4) {
 
     override fun onConfigure(db: SupportSQLiteDatabase) {
         super.onConfigure(db)
@@ -27,7 +27,7 @@ class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(1) {
         db.execSQL("CREATE TABLE edge (id TEXT PRIMARY KEY, device_id TEXT, src_id TEXT, dst_id TEXT, dst_kind TEXT, type TEXT, weight REAL, source TEXT, origin TEXT, source_msg_ids TEXT, attrs TEXT, hlc TEXT, created_at INTEGER, updated_at INTEGER, deleted_at INTEGER)")
         db.execSQL("CREATE TABLE soul_fact (id TEXT PRIMARY KEY, device_id TEXT NOT NULL, category TEXT NOT NULL, statement TEXT NOT NULL, attrs TEXT, confidence REAL NOT NULL DEFAULT 0.7, source TEXT NOT NULL, origin TEXT NOT NULL, status TEXT NOT NULL, pinned_core INTEGER NOT NULL DEFAULT 0, sensitive INTEGER NOT NULL DEFAULT 0, local_only INTEGER NOT NULL DEFAULT 0, hlc TEXT NOT NULL, valid_from INTEGER, valid_to INTEGER, supersedes TEXT, source_msg_ids TEXT, extractor_version TEXT, last_confirmed_at INTEGER, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, deleted_at INTEGER)")
         db.execSQL("CREATE TABLE msg_chunk (id TEXT PRIMARY KEY, day_key TEXT NOT NULL, ts_start INTEGER NOT NULL, ts_end INTEGER NOT NULL, msg_ids TEXT NOT NULL, text TEXT NOT NULL, extractor_version TEXT NOT NULL)")
-        db.execSQL("CREATE TABLE reminder (id TEXT PRIMARY KEY, node_id TEXT, text TEXT NOT NULL, fire_at INTEGER NOT NULL)")
+        db.execSQL("CREATE TABLE reminder (id TEXT PRIMARY KEY, node_id TEXT, text TEXT NOT NULL, fire_at INTEGER NOT NULL, tier TEXT NOT NULL DEFAULT 'alarm')")
         db.execSQL("CREATE TABLE proposal (id TEXT PRIMARY KEY, kind TEXT NOT NULL, intent TEXT NOT NULL, options TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'open', created_at INTEGER NOT NULL)")
         db.execSQL("CREATE TABLE day_rule (id TEXT PRIMARY KEY, effective_from INTEGER NOT NULL, start_minute INTEGER NOT NULL, end_minute INTEGER NOT NULL, tz_id TEXT NOT NULL, created_at INTEGER NOT NULL)")
         db.execSQL("CREATE TABLE day_block (day_key TEXT NOT NULL, idx INTEGER NOT NULL, start_msg_id TEXT NOT NULL, start_ts INTEGER NOT NULL, end_ts INTEGER NOT NULL, msg_count INTEGER NOT NULL, part_of_day TEXT, PRIMARY KEY (day_key, idx))")
@@ -43,22 +43,47 @@ class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(1) {
         db.execSQL("CREATE TABLE nudge_pool (id TEXT PRIMARY KEY, trigger_type TEXT NOT NULL, subject_refs TEXT, score REAL NOT NULL, created_at INTEGER NOT NULL, expires_at INTEGER NOT NULL)")
         db.execSQL("CREATE TABLE nudge_hold (node_id TEXT NOT NULL, trigger_type TEXT NOT NULL, until_ts INTEGER NOT NULL, PRIMARY KEY (node_id, trigger_type))")
         db.execSQL("CREATE TABLE checkin_state (kind TEXT NOT NULL, day_key TEXT NOT NULL, status TEXT NOT NULL, msg_id TEXT, scheduled_for INTEGER, delivered_at INTEGER, PRIMARY KEY (kind, day_key))")
+        db.execSQL("CREATE TABLE quote_slot (slot TEXT NOT NULL, day_key TEXT NOT NULL, text TEXT NOT NULL, generated_at INTEGER NOT NULL, state_hash TEXT, source TEXT NOT NULL, regen_count INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (slot, day_key))")
 
         db.execSQL("CREATE INDEX idx_node_status_due ON node(status, due_at)")
         db.execSQL("CREATE INDEX idx_raw_event_target ON raw_event(target_type, target_id)")
         db.execSQL("CREATE INDEX idx_raw_message_ts ON raw_message(ts_utc)")
         db.execSQL("CREATE INDEX idx_raw_message_day ON raw_message(day_key, ts_utc)")
         db.execSQL("CREATE INDEX idx_reminder_fire ON reminder(fire_at)")
-        
+        db.execSQL("CREATE INDEX idx_edge_src_type ON edge(src_id, type)")
+        db.execSQL("CREATE INDEX idx_edge_dst_type ON edge(dst_id, type)")
+
         db.execSQL("CREATE VIRTUAL TABLE node_fts USING fts5(title, body, content='node', content_rowid='rowid')")
         db.execSQL("CREATE VIRTUAL TABLE soul_fts USING fts5(statement, content='soul_fact', content_rowid='rowid')")
         db.execSQL("CREATE VIRTUAL TABLE msg_chunk_fts USING fts5(text, content='msg_chunk', content_rowid='rowid')")
-        
+
         createTriggers(db)
     }
 
     override fun onUpgrade(db: SupportSQLiteDatabase, oldVersion: Int, newVersion: Int) {
-        // Squashed to V1. No upgrades necessary.
+        if (oldVersion < 2) {
+            var columnExists = false
+            db.query("PRAGMA table_info(reminder)").use { cursor ->
+                val nameIndex = cursor.getColumnIndex("name")
+                while (cursor.moveToNext()) {
+                    if (nameIndex != -1 && cursor.getString(nameIndex).equals("tier", ignoreCase = true)) {
+                        columnExists = true
+                        break
+                    }
+                }
+            }
+            if (!columnExists) {
+                db.execSQL("ALTER TABLE reminder ADD COLUMN tier TEXT NOT NULL DEFAULT 'alarm'")
+            }
+        }
+        if (oldVersion < 3) {
+            db.execSQL("CREATE INDEX IF NOT EXISTS idx_edge_src_type ON edge(src_id, type)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS idx_edge_dst_type ON edge(dst_id, type)")
+        }
+        if (oldVersion < 4) {
+            db.execSQL("CREATE TABLE IF NOT EXISTS quote_slot (slot TEXT NOT NULL, day_key TEXT NOT NULL, text TEXT NOT NULL, generated_at INTEGER NOT NULL, state_hash TEXT, source TEXT NOT NULL, regen_count INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (slot, day_key))")
+        }
+        createTriggers(db)
     }
 
     companion object {

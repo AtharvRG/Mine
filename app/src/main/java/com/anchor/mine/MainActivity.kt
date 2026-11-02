@@ -17,6 +17,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -24,6 +25,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import com.anchor.core.models.AlarmTier
 import com.anchor.core.ui.UiAction
 import com.anchor.core.ui.UiState
 
@@ -44,13 +46,7 @@ class MainActivity : ComponentActivity() {
                 requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
         }
-        
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            val alarmManager = getSystemService(android.app.AlarmManager::class.java)
-            if (!alarmManager.canScheduleExactAlarms()) {
-                startActivity(android.content.Intent(android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM))
-            }
-        }
+        // SEC 9: Removed ACTION_REQUEST_SCHEDULE_EXACT_ALARM prompt entirely. setAlarmClock doesn't need it.
 
         setContent {
             com.anchor.mine.ui.theme.MineTheme {
@@ -112,12 +108,21 @@ fun MineAppUI(viewModel: MainViewModel) {
 
 @Composable
 fun ChatScreen(state: UiState, onAction: (UiAction) -> Unit) {
-    Column(modifier = Modifier.fillMaxSize()) {
+    val listState = rememberLazyListState()
+    val totalItems = state.chatMessages.size + state.receipts.size + state.openProposals.size + state.proposedSoulFacts.size + (if (state.isChatLoading) 1 else 0)
+    LaunchedEffect(totalItems) {
+        if (totalItems > 0) {
+            listState.animateScrollToItem(totalItems - 1)
+        }
+    }
+
+    // SEC 4: Added imePadding to prevent keyboard overlap
+    Column(modifier = Modifier.fillMaxSize().imePadding()) {
         val connErr = state.connectionError
         if (connErr != null) {
             Text(connErr, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(8.dp))
         }
-        LazyColumn(modifier = Modifier.weight(1f)) {
+        LazyColumn(modifier = Modifier.weight(1f), state = listState) {
             items(state.chatMessages) { msg ->
                 val isUser = msg.role == "user"
                 val align = if (isUser) Modifier.padding(start = 32.dp) else Modifier.padding(end = 32.dp)
@@ -133,7 +138,9 @@ fun ChatScreen(state: UiState, onAction: (UiAction) -> Unit) {
             // RENDER RECEIPTS (Tool Results & Undo)
             items(state.receipts) { receipt ->
                 Row(modifier = Modifier.fillMaxWidth().padding(start = 32.dp, top = 4.dp, bottom = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("✓ ${receipt.message}", color = Color.Gray, modifier = Modifier.weight(1f))
+                    val prefix = if (receipt.isError) "✗ " else "✓ "
+                    val color = if (receipt.isError) Color.Red else Color.Gray
+                    Text("$prefix${receipt.message}", color = color, modifier = Modifier.weight(1f))
                     val undoToken = receipt.undoToken
                     if (undoToken != null) {
                         Button(onClick = { onAction(UiAction.Undo(undoToken)) }) { Text("Undo") }
@@ -146,8 +153,11 @@ fun ChatScreen(state: UiState, onAction: (UiAction) -> Unit) {
                 Column(modifier = Modifier.fillMaxWidth().padding(8.dp).background(Color.Yellow.copy(alpha=0.2f)).padding(8.dp)) {
                     Text("Clarify: Which one?")
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        prop.optionsIds.forEach { opt ->
-                            Button(onClick = { onAction(UiAction.ConfirmProposal(prop.id, opt)) }) { Text(opt.take(8)) }
+                        // Use the new structured options to display the real title on the button!
+                        prop.options.forEach { opt ->
+                            Button(onClick = { onAction(UiAction.ConfirmProposal(prop.id, opt.id)) }) { 
+                                Text(opt.title) 
+                            }
                         }
                     }
                 }
@@ -190,13 +200,21 @@ fun RemindersScreen(state: UiState, onAction: (UiAction) -> Unit) {
             Text("Run 5-sec Self Test")
         }
         Text("Test Status: ${state.selfTestStatus}")
-        
+
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = state.alarmDisclosureText,
+            style = MaterialTheme.typography.bodySmall,
+            color = Color.Gray
+        )
+
         Spacer(modifier = Modifier.height(16.dp))
         Text("Active Reminders:")
         LazyColumn {
             items(state.activeReminders) { r ->
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("ID: ${r.id.take(8)} | ${r.text}")
+                    val badge = if (r.tier == AlarmTier.GENTLE) "[GENTLE]" else "[ALARM]"
+                    Text("$badge ID: ${r.id.take(8)} | ${r.text}")
                     Button(onClick = { onAction(UiAction.CancelReminder(r.id)) }) { Text("X") }
                 }
             }
@@ -234,8 +252,7 @@ fun DebugScreen(state: UiState, onAction: (UiAction) -> Unit) {
         Spacer(modifier = Modifier.height(16.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(onClick = { onAction(UiAction.RefreshStats) }) { Text("Refresh Stats") }
-            Button(onClick = { onAction(UiAction.ExportData) }) { Text("Export") }
-            Button(onClick = { onAction(UiAction.ImportData) }) { Text("Import") }
+            // ISSUE 5: Export/Import removed from debug UI until v1.1 implements the formal Android File Picker and Dialog
         }
     }
 }

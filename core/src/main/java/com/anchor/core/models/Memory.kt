@@ -15,15 +15,53 @@ data class Node(
     val dueAt: Long? = null,
     val createdAt: Long = 0L,
     val updatedAt: Long = 0L,
-    val closedAt: Long? = null
+    val closedAt: Long? = null,
+    val priority: Int = 0,
+    val severity: Int = 0,
+    val pinned: Boolean = false
 )
+
+@Serializable
+data class NodeCounts(
+    val totalOpen: Int,
+    val overdue: Int
+)
+
+@Serializable
+enum class AlarmTier {
+    ALARM,
+    GENTLE
+}
 
 @Serializable
 data class Reminder(
     val id: String,
     val text: String,
     val fireAtMillis: Long,
-    val nodeId: String? = null // D5: Explicit relational tie to the Node
+    val nodeId: String? = null, // D5: Explicit relational tie to the Node
+    val tier: AlarmTier = AlarmTier.ALARM
+)
+
+object EdgeTypes {
+    const val FOLLOW_UP = "follow_up"
+}
+
+@Serializable
+data class Edge(
+    val id: String,
+    val srcId: String,
+    val dstId: String,
+    val type: String = EdgeTypes.FOLLOW_UP,
+    val dstKind: String = "node",
+    val weight: Double = 1.0,
+    val source: String = "user",
+    val origin: String = "manual",
+    val sourceMsgIds: String? = null,
+    val attrs: String? = null,
+    val hlc: String? = null,
+    val createdAt: Long = 0L,
+    val updatedAt: Long = 0L,
+    val deletedAt: Long? = null
 )
 
 // Used for JSON serialization in RawEvent
@@ -43,15 +81,21 @@ sealed interface Resolution {
 data class ChatMessage(
     val id: String,
     val role: String, // "system", "user", "assistant"
-    val content: String? // Null means redacted
+    val content: String?, // Null means redacted
+    val dayKey: String? = null,
+    val tsUtc: Long = 0L
 )
 
+@Serializable
+data class ProposalOption(val id: String, val title: String, val dueTime: String? = null)
+
+@Serializable
 data class Proposal(
     val id: String,
     val kind: String,
     val intent: IntentType,
-    val optionsIds: List<String>,
-    val status: String = "open" // Item 1e
+    val options: List<ProposalOption>,
+    val status: String = "open"
 )
 
 @Serializable

@@ -1,0 +1,1 @@
+Run /fix on the first open task in docs/agent/TASKS.md that does not need my decision or the physical device. Follow CLAUDE.md. One task only. If a task needs a decision, mark it "[?] needs developer" in TASKS.md and pick the next. Update the memory files and HANDOFF.md before finishing.

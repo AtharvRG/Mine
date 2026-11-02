@@ -48,10 +48,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 val limiter = RateLimiter { System.currentTimeMillis() }
                 val orchestrator = ProviderOrchestrator(limiter, AndroidHttpTransport())
                 val clock = SystemClock()
-                val gateway = Gateway(loadedStorage, Resolver(), DateResolver(clock), clock)
+                val is24HourFormat = { android.text.format.DateFormat.is24HourFormat(application) }
+                val dateResolver = DateResolver(clock, is24HourFormat)
+                val gateway = Gateway(loadedStorage, Resolver(), dateResolver, clock)
                 reliabilityManager = ReliabilityManager(loadedStorage, clock)
 
-                val dateResolver = DateResolver(clock)
                 val checkinBuilder = com.anchor.core.nudge.CheckinBuilder(loadedStorage, clock, dateResolver)
                 val contextBuilder = ContextBuilder(loadedStorage, clock, dateResolver, checkinBuilder)
                 
@@ -94,34 +95,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 android.os.Process.killProcess(android.os.Process.myPid())
             } else {
                 _state.value = _state.value.copy(showResetConfirm = false)
-            }
-            return
-        }
-        if (action is UiAction.ExportData) {
-            viewModelScope.launch(Dispatchers.IO) {
-                try {
-                    val app = getApplication<Application>() as MineApp
-                    val file = java.io.File(app.cacheDir, "mine_backup.mnex")
-                    val mgr = app.sharedExportManager.await()
-                    val stats = mgr.exportTo(file, "password123", true, false)
-                    _state.update { it.copy(debugStats = it.debugStats + "\nExported ${stats.messages} msgs to ${file.name}") }
-                } catch (e: Exception) {
-                    _state.update { it.copy(debugStats = it.debugStats + "\nExport failed: ${e.message}") }
-                }
-            }
-            return
-        }
-        if (action is UiAction.ImportData) {
-            viewModelScope.launch(Dispatchers.IO) {
-                try {
-                    val app = getApplication<Application>() as MineApp
-                    val file = java.io.File(app.cacheDir, "mine_backup.mnex")
-                    val mgr = app.sharedExportManager.await()
-                    mgr.verifyOrImport(file, "password123", true)
-                    _state.update { it.copy(debugStats = it.debugStats + "\nImport successful! Please restart the app.") }
-                } catch (e: Exception) {
-                    _state.update { it.copy(debugStats = it.debugStats + "\nImport failed: ${e.message}") }
-                }
             }
             return
         }

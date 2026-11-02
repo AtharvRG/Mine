@@ -50,7 +50,39 @@ class SharedFakeStorage : Storage {
     override suspend fun getSetting(key: String): String? = settings[key]
     override suspend fun saveSetting(key: String, value: String) { settings[key] = value }
 
-    override suspend fun getActiveNodes(): List<Node> = activeNodes.filter { it.status == "active" || it.status == "in_progress" || it.status == "paused" }
+    override suspend fun getActiveNodes(limit: Int, cursor: String?, order: String): List<Node> {
+        val openNodes = activeNodes.filter { it.status == "active" || it.status == "in_progress" || it.status == "paused" }
+        val sorted = openNodes.sortedWith(
+            compareBy<Node> { it.dueAt == null }
+                .thenBy { it.dueAt }
+                .thenBy { it.id }
+        )
+        val startIdx = if (cursor != null) {
+            val cursorId = cursor.substringAfter(":", cursor)
+            val idx = sorted.indexOfFirst { it.id == cursorId }
+            if (idx != -1) idx + 1 else 0
+        } else 0
+
+        return sorted.drop(startIdx).take(limit)
+    }
+
+    override suspend fun getActiveNodeCounts(now: Long, staleCutoffMs: Long): NodeCounts {
+        val nonStaleOpen = activeNodes.filter {
+            (it.status == "active" || it.status == "in_progress" || it.status == "paused") &&
+            (maxOf(it.updatedAt, it.createdAt) == 0L || (now - maxOf(it.updatedAt, it.createdAt) <= staleCutoffMs))
+        }
+        val totalOpen = nonStaleOpen.size
+        val overdue = nonStaleOpen.count { it.dueAt != null && it.dueAt < now }
+        return NodeCounts(totalOpen, overdue)
+    }
+
+    override suspend fun getStaleNodes(cutoffMs: Long, now: Long): List<Node> {
+        return activeNodes.filter {
+            (it.status == "active" || it.status == "in_progress" || it.status == "paused") &&
+            (maxOf(it.updatedAt, it.createdAt) > 0L && (now - maxOf(it.updatedAt, it.createdAt) > cutoffMs))
+        }
+    }
+
     override suspend fun getActiveReminders(): List<Reminder> = reminders.filter { it.fireAtMillis > (System.currentTimeMillis() - 1000) }
     override suspend fun getPendingReminders(): List<Reminder> = reminders
 
@@ -88,8 +120,8 @@ class SharedFakeStorage : Storage {
         loggedEvents.add(event)
     }
 
-    override suspend fun getOpenProposals(): List<Proposal> = savedProposals.filter { it.status == "open" && it.id.isNotBlank() /* Mock 24h filter */ }
-    override suspend fun getUrgentNodes(): List<Node> = activeNodes.sortedBy { it.dueAt ?: Long.MAX_VALUE }.take(3)
+    override suspend fun getOpenProposals(): List<Proposal> = savedProposals.filter { it.status == "open" && it.id.isNotBlank() }
+    override suspend fun getUrgentNodes(): List<Node> = activeNodes.filter { it.status == "active" || it.status == "in_progress" }.sortedWith(compareBy<Node> { it.dueAt == null }.thenBy { it.dueAt }).take(3)
     override suspend fun getActiveSoulFacts(): List<SoulFact> = soulFacts.filter { it.status == "active" || it.status == "pinned" }
 
     override suspend fun updateNodeAndCommit(node: Node, event: RawEvent, deleteReminderId: String?, upsertReminder: Reminder?, consumeProposalId: String?) {
@@ -130,7 +162,10 @@ class SharedFakeStorage : Storage {
 
     var soulFacts = mutableListOf<SoulFact>()
 
-    override suspend fun saveSoulFact(fact: SoulFact) {}
+    override suspend fun saveSoulFact(fact: SoulFact) {
+        soulFacts.removeAll { it.id == fact.id }
+        soulFacts.add(fact)
+    }
     
     override suspend fun createSoulFactAndCommit(fact: SoulFact, event: RawEvent) {
         soulFacts.removeAll { it.id == fact.id }
@@ -160,5 +195,80 @@ class SharedFakeStorage : Storage {
     override suspend fun updateSoulFactStatus(id: String, status: String) {
         val idx = soulFacts.indexOfFirst { it.id == id }
         if (idx != -1) soulFacts[idx] = soulFacts[idx].copy(status = status)
+    }
+
+    override suspend fun getReminderByNodeId(nodeId: String): Reminder? = reminders.find { it.nodeId == nodeId }
+    override suspend fun clearAlarmRegistry() { registeredAlarms.clear() }
+    override suspend fun hasReminderFire(reminderId: String, outcome: String): Boolean = reminderFires.any { it.reminderId == reminderId && it.outcome == outcome }
+
+    val edges = mutableListOf<Edge>()
+
+    override suspend fun saveEdge(edge: Edge) {
+        val idx = edges.indexOfFirst { it.id == edge.id }
+        if (idx != -1) edges[idx] = edge else edges.add(edge)
+    }
+
+    override suspend fun getEdge(id: String): Edge? = edges.find { it.id == id && it.deletedAt == null }
+
+    override suspend fun getEdgesForSource(srcId: String, type: String?): List<Edge> {
+        return edges.filter { it.srcId == srcId && (type == null || it.type == type) && it.deletedAt == null }
+    }
+
+    override suspend fun getEdgesForDestination(dstId: String, type: String?): List<Edge> {
+        return edges.filter { it.dstId == dstId && (type == null || it.type == type) && it.deletedAt == null }
+    }
+
+    override suspend fun deleteEdge(id: String) {
+        val idx = edges.indexOfFirst { it.id == id }
+        if (idx != -1) {
+            edges[idx] = edges[idx].copy(deletedAt = System.currentTimeMillis())
+        }
+    }
+
+    override suspend fun createEdgeAndCommit(edge: Edge, event: RawEvent) {
+        saveEdge(edge)
+        loggedEvents.add(event)
+    }
+
+    override suspend fun deleteEdgeAndCommit(edgeId: String, event: RawEvent) {
+        deleteEdge(edgeId)
+        loggedEvents.add(event)
+    }
+
+    fun insertRawMessageWithDay(id: String, role: String, content: String, dayKey: String, tsUtc: Long = System.currentTimeMillis()) {
+        messages.add(ChatMessage(id, role, content, dayKey, tsUtc))
+    }
+
+    override suspend fun getDaysWithMessages(startDayKey: String, endDayKey: String): Set<String> {
+        return messages
+            .filter { it.dayKey != null && it.dayKey in startDayKey..endDayKey && it.content != null }
+            .mapNotNull { it.dayKey }
+            .toSet()
+    }
+
+    override suspend fun getHeatMapCounts(startDayKey: String, endDayKey: String): Map<String, Int> {
+        return messages
+            .filter { it.dayKey != null && it.dayKey in startDayKey..endDayKey }
+            .groupBy { it.dayKey!! }
+            .mapValues { it.value.size }
+    }
+
+    override suspend fun getMessagesForDay(dayKey: String): List<ChatMessage> {
+        return messages.filter { it.dayKey == dayKey }
+    }
+
+    override suspend fun getRemindersBetween(startMs: Long, endMs: Long): List<Reminder> {
+        return reminders.filter { it.fireAtMillis in startMs..endMs }.sortedBy { it.fireAtMillis }
+    }
+
+    override suspend fun getRemindersForDay(startOfDayMs: Long, endOfDayMs: Long): List<Reminder> {
+        return getRemindersBetween(startOfDayMs, endOfDayMs)
+    }
+
+    val quoteSlots = mutableMapOf<Pair<QuoteSlot, String>, Quote>()
+
+    override suspend fun getQuoteSlot(slot: QuoteSlot, dayKey: String): Quote? = quoteSlots[slot to dayKey]
+    override suspend fun saveQuoteSlot(quote: Quote) {
+        quoteSlots[quote.slot to quote.dayKey] = quote
     }
 }

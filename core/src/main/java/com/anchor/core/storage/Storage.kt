@@ -5,7 +5,9 @@
 package com.anchor.core.storage
 
 import com.anchor.core.models.ChatMessage
+import com.anchor.core.models.Edge
 import com.anchor.core.models.Node
+import com.anchor.core.models.NodeCounts
 import com.anchor.core.models.Proposal
 import com.anchor.core.models.RawEvent
 import com.anchor.core.models.Reminder
@@ -24,7 +26,9 @@ interface Storage {
     suspend fun getSetting(key: String): String?
     suspend fun saveSetting(key: String, value: String)
 
-    suspend fun getActiveNodes(): List<Node>
+    suspend fun getActiveNodes(limit: Int = 100, cursor: String? = null, order: String = "ASC"): List<Node>
+    suspend fun getActiveNodeCounts(now: Long, staleCutoffMs: Long = 30L * 24 * 3600 * 1000L): NodeCounts
+    suspend fun getStaleNodes(cutoffMs: Long = 30L * 24 * 3600 * 1000L, now: Long = System.currentTimeMillis()): List<Node>
     suspend fun getActiveReminders(): List<Reminder>
     suspend fun getPendingReminders(): List<Reminder>
 
@@ -56,6 +60,9 @@ interface Storage {
     suspend fun getActiveSoulFacts(): List<SoulFact>
     suspend fun getProposedSoulFacts(): List<SoulFact>
     suspend fun updateSoulFactStatus(id: String, status: String)
+    suspend fun getReminderByNodeId(nodeId: String): Reminder?
+    suspend fun clearAlarmRegistry()
+    suspend fun hasReminderFire(reminderId: String, outcome: String): Boolean
 
     // Purely Transactional Gateways
     suspend fun createNodeAndCommit(node: Node, event: RawEvent, reminder: Reminder?)
@@ -64,7 +71,26 @@ interface Storage {
     suspend fun createReminderAndCommit(reminder: Reminder, event: RawEvent)
     suspend fun deleteReminderAndCommit(reminderId: String, event: RawEvent)
 
+    suspend fun saveEdge(edge: Edge)
+    suspend fun getEdge(id: String): Edge?
+    suspend fun getEdgesForSource(srcId: String, type: String? = null): List<Edge>
+    suspend fun getEdgesForDestination(dstId: String, type: String? = null): List<Edge>
+    suspend fun deleteEdge(id: String)
+    suspend fun createEdgeAndCommit(edge: Edge, event: RawEvent)
+    suspend fun deleteEdgeAndCommit(edgeId: String, event: RawEvent)
+
     suspend fun getRegisteredAlarms(): List<Pair<String, Long>>
     suspend fun saveRegisteredAlarm(reminderId: String, requestCode: Int, registeredFor: Long)
     suspend fun deleteRegisteredAlarm(reminderId: String)
+
+    // Calendar & Day Navigation Queries (D-107, UI Spec E6)
+    suspend fun getDaysWithMessages(startDayKey: String, endDayKey: String): Set<String>
+    suspend fun getHeatMapCounts(startDayKey: String, endDayKey: String): Map<String, Int>
+    suspend fun getMessagesForDay(dayKey: String): List<ChatMessage>
+    suspend fun getRemindersBetween(startMs: Long, endMs: Long): List<Reminder>
+    suspend fun getRemindersForDay(startOfDayMs: Long, endOfDayMs: Long): List<Reminder>
+
+    // Quote Slots (D-108, Blueprint 40)
+    suspend fun getQuoteSlot(slot: com.anchor.core.models.QuoteSlot, dayKey: String): com.anchor.core.models.Quote?
+    suspend fun saveQuoteSlot(quote: com.anchor.core.models.Quote)
 }

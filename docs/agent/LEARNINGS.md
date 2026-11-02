@@ -1,0 +1,10 @@
+- Tests whose fake model reads storage hid the ambiguity bug (proposal id never reached a real model).
+- SQLite sorts NULLs first on ASC; fake storage must match.
+- A schema change without version bump crashed a real phone ("no such column: status").
+- Registry of armed alarms is not truth: force-stop clears all alarms.
+- Hooks beat prompts: enforce rules with scripts.
+- Model claimed tests passed without running them; only pasted output counts.
+- Streaming envelope JSON shows raw braces; extract "reply" incrementally or buffer.
+- SQLite parameter type affinity: `?` arguments passed as strings in raw SQL queries fail integer column comparisons unless explicitly wrapped with `CAST(? AS INTEGER)`.
+- Keyset cursor pagination over nullable columns: `(due_at, id)` must separate `due_at IS NOT NULL` traversal from `due_at IS NULL` traversal to prevent dropped rows or infinite cursor loops.
+- Android instrumented test type inference: mixed literals in `arrayOf(...)` trigger `TYPE_INTERSECTION_AS_REIFIED_ERROR`; pass explicit `arrayOf<Any>(...)`.

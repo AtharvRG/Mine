@@ -26,11 +26,25 @@ class BootReceiver : BroadcastReceiver() {
                 val storage = (context.applicationContext as MineApp).sharedStorage.await()
                 val scheduler = AndroidAlarmScheduler(context)
                 
-                // 1. Re-arm future reminders AND reminders within the 60-second grace period.
-                // Android's AlarmManager will fire past-due alarms immediately.
+                // 1. Reconcile alarms: Cancel orphans from registry, and re-arm future reminders
+                // AND reminders within the 60-second grace period.
+                // Registry is a hint; force-stop / reboot clears OS alarms.
                 val now = System.currentTimeMillis()
                 val reminders = storage.getPendingReminders()
-                reminders.filter { it.fireAtMillis >= now - 60000L }.forEach { scheduler.schedule(it) }
+                val registered = storage.getRegisteredAlarms()
+                val pendingIds = reminders.map { it.id }.toSet()
+
+                registered.forEach { (id, _) ->
+                    if (id !in pendingIds) {
+                        scheduler.cancel(id)
+                        storage.deleteRegisteredAlarm(id)
+                    }
+                }
+
+                reminders.filter { it.fireAtMillis >= now - 60000L }.forEach {
+                    scheduler.schedule(it)
+                    storage.saveRegisteredAlarm(it.id, it.id.hashCode(), it.fireAtMillis)
+                }
 
                 // 2. Run Sweeper for alarms missed while the device was off (older than 60s)
                 val clock = com.anchor.core.time.SystemClock()

@@ -8,9 +8,7 @@ import com.anchor.core.alarms.AlarmScheduler
 import com.anchor.core.context.ContextBuilder
 import com.anchor.core.gateway.EnvelopeParser
 import com.anchor.core.gateway.Gateway
-import com.anchor.core.models.ChatMessage
-import com.anchor.core.models.Reminder
-import com.anchor.core.models.ToolResult
+import com.anchor.core.models.*
 import com.anchor.core.provider.ProviderOrchestrator
 import com.anchor.core.provider.StreamEvent
 import com.anchor.core.provider.Target
@@ -22,6 +20,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import java.util.UUID
 
 class ChatController(
@@ -37,17 +36,23 @@ class ChatController(
     private val _state = MutableStateFlow(UiState())
     val state: StateFlow<UiState> = _state.asStateFlow()
     private var currentStreamJob: Job? = null
+    private val json = Json { ignoreUnknownKeys = true }
 
     init {
         coroutineScope.launch(defaultDispatcher) {
+            reconcileAlarms()
+            
             _state.update { it.copy(
                 activeReminders = storage.getActiveReminders(),
                 chatMessages = storage.getRecentMessages(30),
-                openProposals = storage.getOpenProposals(),
                 providerEndpoint = storage.getSetting("ep") ?: "https://api.openai.com/v1/chat/completions",
                 providerKey = storage.getSetting("key") ?: "",
                 providerModel = storage.getSetting("mod") ?: "gpt-4o-mini",
-                debugStats = storage.getDebugStats().entries.joinToString("\n") { e -> "${e.key}: ${e.value}" }
+                debugStats = storage.getDebugStats().entries.joinToString("\n") { e -> "${e.key}: ${e.value}" },
+                openProposals = storage.getOpenProposals(),
+                proposedSoulFacts = storage.getProposedSoulFacts(), // SEC 8
+                inboxCount = storage.getOpenProposals().size + storage.getProposedSoulFacts().size,
+                urgentItems = storage.getUrgentNodes()
             )}
         }
     }
@@ -74,11 +79,10 @@ class ChatController(
                 currentStreamJob?.cancel()
             }
             is UiAction.SaveProvider -> coroutineScope.launch(defaultDispatcher) {
-                // B13: Aggressively trim whitespace and strip trailing paths that break HTTP POSTs
-                val ep = action.endpoint.trim().removeSuffix("/chat/completions").removeSuffix("/")
+                // ISSUE 1: Keep the endpoint intact for users pointing at specific proxies
+                val ep = action.endpoint.trim()
                 val key = action.key.trim()
                 val mod = action.model.trim()
-                
                 storage.saveSetting("ep", ep)
                 storage.saveSetting("key", key)
                 storage.saveSetting("mod", mod)
@@ -113,16 +117,83 @@ class ChatController(
             is UiAction.Undo -> coroutineScope.launch(defaultDispatcher) {
                 // D-033: Chip taps call gateway directly. Instant, no LLM.
                 val call = com.anchor.core.gateway.ToolCall("undo", mapOf("token" to kotlinx.serialization.json.JsonPrimitive(action.token)))
-                gateway.executeTool(call)
+                val result = gateway.executeTool(call)
+                when (result) {
+                    is ToolResult.Committed -> {
+                        _state.update { it.copy(receipts = it.receipts + ReceiptState(UUID.randomUUID().toString(), result.message, result.undoToken, isError = false)) }
+                    }
+                    is ToolResult.Error -> {
+                        _state.update { it.copy(receipts = it.receipts + ReceiptState(UUID.randomUUID().toString(), result.reason, null, isError = true)) }
+                    }
+                    else -> {}
+                }
                 refreshUI()
             }
             is UiAction.ConfirmProposal -> coroutineScope.launch(defaultDispatcher) {
                 val call = com.anchor.core.gateway.ToolCall("confirm_change", mapOf("proposal" to kotlinx.serialization.json.JsonPrimitive(action.proposalId), "choice" to kotlinx.serialization.json.JsonPrimitive(action.choiceId)))
-                gateway.executeTool(call)
+                val result = gateway.executeTool(call)
+                when (result) {
+                    is ToolResult.Committed -> {
+                        _state.update { it.copy(receipts = it.receipts + ReceiptState(UUID.randomUUID().toString(), result.message, result.undoToken, isError = false)) }
+                    }
+                    is ToolResult.Error -> {
+                        _state.update { it.copy(receipts = it.receipts + ReceiptState(UUID.randomUUID().toString(), result.reason, null, isError = true)) }
+                    }
+                    is ToolResult.NotFound -> {
+                        _state.update { it.copy(receipts = it.receipts + ReceiptState(UUID.randomUUID().toString(), "Item not found: ${result.hint}", null, isError = true)) }
+                    }
+                    else -> {}
+                }
                 refreshUI()
             }
-            is UiAction.LoadDay -> {
-                // Future UI integration for endless scrolling day pagination
+            is UiAction.AddFollowUp -> coroutineScope.launch(defaultDispatcher) {
+                val edgeId = "e_${UUID.randomUUID().toString().take(8)}"
+                val edge = Edge(
+                    id = edgeId,
+                    srcId = action.srcNodeId,
+                    dstId = action.dstNodeId,
+                    type = EdgeTypes.FOLLOW_UP,
+                    createdAt = clock.now(),
+                    updatedAt = clock.now()
+                )
+                val event = RawEvent(
+                    opId = "u_${UUID.randomUUID().toString().take(6)}",
+                    opType = "LINK",
+                    targetType = "edge",
+                    targetId = edgeId,
+                    afterJson = json.encodeToString(edge),
+                    tsUtc = clock.now()
+                )
+                storage.createEdgeAndCommit(edge, event)
+                refreshUI()
+            }
+            is UiAction.RemoveFollowUp -> coroutineScope.launch(defaultDispatcher) {
+                val event = RawEvent(
+                    opId = "u_${UUID.randomUUID().toString().take(6)}",
+                    opType = "UNLINK",
+                    targetType = "edge",
+                    targetId = action.edgeId,
+                    tsUtc = clock.now()
+                )
+                storage.deleteEdgeAndCommit(action.edgeId, event)
+                refreshUI()
+            }
+            is UiAction.LoadDay -> coroutineScope.launch(defaultDispatcher) {
+                val msgs = storage.getMessagesForDay(action.dayKey)
+                _state.update { it.copy(selectedDayKey = action.dayKey, selectedDayMessages = msgs) }
+            }
+            is UiAction.ShowDayReminders -> coroutineScope.launch(defaultDispatcher) {
+                val rems = storage.getRemindersForDay(action.startOfDayMs, action.endOfDayMs)
+                _state.update { it.copy(selectedDayReminders = rems) }
+            }
+            is UiAction.ClearDaySelection -> {
+                _state.update {
+                    it.copy(
+                        selectedDayKey = null,
+                        selectedDayMessages = emptyList(),
+                        selectedDayReminders = emptyList()
+                    )
+                }
             }
             else -> {}
         }
@@ -171,54 +242,74 @@ class ChatController(
                     
                     if (envelope != null) {
                         var sysContext = ""
+                        var hasCommitted = false
                         val turnReceipts = mutableListOf<ReceiptState>()
+                        val turnErrors = mutableListOf<String>()
 
                         envelope.calls.forEach { call ->
                             val result = gateway.executeTool(call, executedCalls)
                             sysContext += "Tool Result: " + when(result) {
                                 is ToolResult.Committed -> {
-                                    turnReceipts.add(ReceiptState(UUID.randomUUID().toString(), result.message, result.undoToken))
+                                    hasCommitted = true
+                                    turnReceipts.add(ReceiptState(UUID.randomUUID().toString(), result.message, result.undoToken, isError = false))
                                     "Committed. ${result.message}"
                                 }
                                 is ToolResult.Ambiguous -> {
                                     turnComplete = true
-                                    "Ambiguous. UI will ask user. ID: ${result.proposalId}, Options: ${result.options.joinToString()}"
+                                    "Ambiguous. UI will ask user. ID: ${result.proposalId}"
                                 }
-                                is ToolResult.NotFound -> "Not Found. Ask user to clarify."
+                                is ToolResult.NotFound -> {
+                                    turnReceipts.add(ReceiptState(UUID.randomUUID().toString(), "Not found: ${result.hint}", null, isError = true))
+                                    "Not Found."
+                                }
                                 is ToolResult.Data -> "Search Results:\n${result.text}"
-                                is ToolResult.Error -> "Error: ${result.reason}"
+                                is ToolResult.Error -> {
+                                    turnErrors.add(result.reason)
+                                    turnReceipts.add(ReceiptState(UUID.randomUUID().toString(), result.reason, null, isError = true))
+                                    "Error: ${result.reason}"
+                                }
                             } + "\n"
                         }
-                        
-                        // Push verified receipts to UI State natively instead of faking LLM prose
+
                         _state.update { it.copy(receipts = it.receipts + turnReceipts) }
-                        
-                        // Prevent empty Acknowledged message if we just spawned tools cleanly
-                        if (envelope.reply.isNotBlank() || turnReceipts.isEmpty()) {
-                            val cleanText = envelope.reply.trim().ifBlank { "..." }
-                            updateLastMessage(botId, cleanText)
-                            storage.insertRawMessage(botId, "assistant", cleanText)
-                            pack = pack + ChatMessage(botId, "assistant", cleanText)
+
+                        // Stop storing model "Done!" prose when receipts already show the change
+                        val rawReply = envelope.reply.trim()
+                        val isGenericDone = rawReply.lowercase().removeSuffix(".").removeSuffix("!") in setOf("done", "saved", "added", "acknowledged", "ok")
+                        val baseText = if (isGenericDone && hasCommitted && turnReceipts.isNotEmpty() && turnErrors.isEmpty()) {
+                            "" // Suppress generic "Done!" when commit receipts exist
                         } else {
-                            // Drop the empty bot response from history completely if it only yielded structural receipts
+                            rawReply
+                        }
+
+                        val finalAssistantText = if (turnErrors.isNotEmpty()) {
+                            if (baseText.isNotBlank()) "$baseText\n\n(Error: ${turnErrors.joinToString("; ")})"
+                            else "Error: ${turnErrors.joinToString("; ")}"
+                        } else baseText
+
+                        // Avoid inserting empty placeholder messages if we purely generated receipts
+                        if (finalAssistantText.isNotBlank()) {
+                            updateLastMessage(botId, finalAssistantText)
+                            storage.insertRawMessage(botId, "assistant", finalAssistantText)
+                            pack = pack + ChatMessage(botId, "assistant", finalAssistantText)
+                        } else {
                             _state.update { it.copy(chatMessages = it.chatMessages.dropLast(1)) }
                         }
                         
-                        // A11: Send tool results as a "user" role message to prevent provider rejection 
-                        // of mid-conversation "system" messages.
                         if (sysContext.isNotBlank()) {
-                            pack = pack + ChatMessage("sys_${UUID.randomUUID()}", "user", "System feedback to AI: $sysContext")
+                            pack = pack + ChatMessage("sys_${UUID.randomUUID()}", "user", "System feedback: $sysContext")
                         }
                         
-                        // A11: Loop limit logic fixed
-                        if (!turnComplete && loops == 4) {
-                            val limitMsg = "Loop limit reached."
-                            updateLastMessage(botId, limitMsg)
-                            storage.insertRawMessage(botId, "assistant", limitMsg)
+                        if (envelope.calls.isEmpty() || hasCommitted || turnErrors.isNotEmpty()) {
                             turnComplete = true
                         }
-                        
-                        if (envelope.calls.isEmpty() || turnReceipts.isNotEmpty()) {
+
+                        // SEC 6: Use unique ID to prevent PK violations when loop limit is hit without completing
+                        if (!turnComplete && loops >= 4) {
+                            val limitMsg = "Loop limit reached."
+                            val limitId = "a_${UUID.randomUUID()}"
+                            _state.update { it.copy(chatMessages = it.chatMessages + ChatMessage(limitId, "assistant", limitMsg)) }
+                            storage.insertRawMessage(limitId, "assistant", limitMsg)
                             turnComplete = true
                         }
                     } else {
@@ -256,10 +347,10 @@ class ChatController(
     }
 
     private fun buildJsonPayload(pack: List<ChatMessage>): String {
+        // ISSUE 3: Removed schedule_reminder from prompt to prevent double-alarm creation.
         val instruction = """You are MineAI, a personal companion. You must use Envelope Mode JSON for EVERY reply: {"reply":"text to user","calls":[{"tool":"...","args":{...}}]}
 Tools:
 - propose_change (intent: CREATE|CANCEL|COMPLETE|UPDATE|RESCHEDULE, hint: target text, due_text: e.g. 'tomorrow at 4pm', 'tonight', 'next monday' or omit if no time). MUST use when user states an appointment, plan, task, commitment.
-- schedule_reminder (target_ref: node id, when_text: time). Use to set alarms.
 - confirm_change (proposal: proposal id, choice: option id). Use when Ambiguous.
 - undo (token: u_123456).
 - search_memory (query: string, limit: int).
@@ -267,10 +358,8 @@ Tools:
 
 Examples:
 CREATE: {"tool":"propose_change","args":{"intent":"CREATE", "title":"Buy milk", "due_text": "tomorrow at 4pm"}}
-SCHEDULE ALARM: {"tool":"schedule_reminder","args":{"target_ref":"n_abc", "when_text": "tomorrow at 4pm"}}
 RESCHEDULE: {"tool":"propose_change","args":{"intent":"RESCHEDULE", "hint":"dinner", "due_text":"6pm"}}
 UNDO: {"tool":"undo","args":{"token":"u_123456"}}
-SOUL: {"tool":"soul_propose","args":{"statement":"Prefers morning workouts","category":"habits_routines"}}
 
 CRITICAL: Do NOT say "Done" or "Saved" unless you issue a tool call.
 """
@@ -292,26 +381,25 @@ CRITICAL: Do NOT say "Done" or "Saved" unless you issue a tool call.
     }
 
     private suspend fun reconcileAlarms() {
+        val now = clock.now()
         val pending = storage.getPendingReminders()
         val registered = storage.getRegisteredAlarms()
-        
+
         val pendingMap = pending.associate { it.id to it.fireAtMillis }
         val registeredMap = registered.associate { it.first to it.second }
-        
+
         val toCancel = registeredMap.keys - pendingMap.keys
-        val toSchedule = pendingMap.filter { (id, fireAt) -> registeredMap[id] != fireAt }
-        
         toCancel.forEach { id ->
             alarmScheduler.cancel(id)
             storage.deleteRegisteredAlarm(id)
         }
-        
-        toSchedule.forEach { (id, fireAt) ->
-            val r = pending.find { it.id == id }
-            if (r != null) {
-                alarmScheduler.schedule(r)
-                storage.saveRegisteredAlarm(id, id.hashCode(), fireAt)
-            }
+
+        // Treat registry as a hint, not ground truth: force-stop clears OS alarms.
+        // Re-arm all active pending reminders (future or within 60s grace).
+        val toSchedule = pending.filter { it.fireAtMillis >= now - 60000L }
+        toSchedule.forEach { r ->
+            alarmScheduler.schedule(r)
+            storage.saveRegisteredAlarm(r.id, r.id.hashCode(), r.fireAtMillis)
         }
     }
 
