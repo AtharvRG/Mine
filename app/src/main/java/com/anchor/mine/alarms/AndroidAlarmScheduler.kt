@@ -9,6 +9,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import com.anchor.core.alarms.AlarmScheduler
+import com.anchor.core.alarms.ScheduleResult
 import com.anchor.core.models.AlarmTier
 import com.anchor.core.models.Reminder
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,7 +32,7 @@ class AndroidAlarmScheduler(private val context: Context) : AlarmScheduler {
 
     override val lastFiredId: StateFlow<String?> = firedFlow
 
-    override fun schedule(reminder: Reminder) {
+    override fun schedule(reminder: Reminder): ScheduleResult {
         val intent = Intent(context, AlarmReceiver::class.java).apply {
             putExtra("EXTRA_ID", reminder.id)
             putExtra("EXTRA_TEXT", reminder.text)
@@ -39,23 +40,24 @@ class AndroidAlarmScheduler(private val context: Context) : AlarmScheduler {
         }
         val pendingIntent = PendingIntent.getBroadcast(context, reminder.id.hashCode(), intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
 
-        try {
+        return try {
             when (reminder.tier) {
                 AlarmTier.ALARM -> {
                     val showIntent = Intent(context, com.anchor.mine.MainActivity::class.java)
                     val pendingShow = PendingIntent.getActivity(context, reminder.id.hashCode(), showIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S && !alarmManager.canScheduleExactAlarms()) {
-                        alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, reminder.fireAtMillis, pendingIntent)
-                    } else {
-                        alarmManager.setAlarmClock(AlarmManager.AlarmClockInfo(reminder.fireAtMillis, pendingShow), pendingIntent)
-                    }
+                    alarmManager.setAlarmClock(AlarmManager.AlarmClockInfo(reminder.fireAtMillis, pendingShow), pendingIntent)
                 }
                 AlarmTier.GENTLE -> {
                     alarmManager.setAndAllowWhileIdle(AlarmManager.RTC, reminder.fireAtMillis, pendingIntent)
                 }
             }
+            ScheduleResult.Armed
         } catch (e: SecurityException) {
-            alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, reminder.fireAtMillis, pendingIntent)
+            ScheduleResult.Failed("SecurityException: ${e.message ?: "permission denied or exact alarm policy disallow"}")
+        } catch (e: IllegalStateException) {
+            ScheduleResult.Failed("IllegalStateException: ${e.message ?: "system state invalid for alarm scheduling"}")
+        } catch (e: Exception) {
+            ScheduleResult.Failed(e.message ?: e.javaClass.simpleName)
         }
     }
 

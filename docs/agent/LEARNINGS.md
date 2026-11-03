@@ -8,3 +8,10 @@
 - SQLite parameter type affinity: `?` arguments passed as strings in raw SQL queries fail integer column comparisons unless explicitly wrapped with `CAST(? AS INTEGER)`.
 - Keyset cursor pagination over nullable columns: `(due_at, id)` must separate `due_at IS NOT NULL` traversal from `due_at IS NULL` traversal to prevent dropped rows or infinite cursor loops.
 - Android instrumented test type inference: mixed literals in `arrayOf(...)` trigger `TYPE_INTERSECTION_AS_REIFIED_ERROR`; pass explicit `arrayOf<Any>(...)`.
+- Environmental branching in tests (`if (canExact) ...`) silently masks failures by skipping the assertion under test; tests must assert unconditionally.
+- Dirty installs with stale AppOps or permissions hide missing manifest declarations; only clean uninstalls expose runtime permission failures.
+- Android 14 (API 34+) `AlarmManager.setAlarmClock()` throws `SecurityException` unless `USE_EXACT_ALARM` or `SCHEDULE_EXACT_ALARM` is declared in the manifest.
+- Partial column hydration in `Storage.getNode` (e.g., omitting `priority`, `severity`, `pinned`) corrupts state snapshots and breaks undo validation.
+- Unbounded prompt additions (e.g., soul facts, proposals) threaten context token budgets; sections must have hard length/count bounds.
+- Catching `Throwable` in application components masks fatal JVM errors; catch `Exception` and handle specific subclasses like `SecurityException`.
+- Reliability state must be bounded (max 5 distinct recent issues) and recover to `healthy` on clean passes to avoid permanently stuck failure flags.

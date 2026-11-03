@@ -61,16 +61,36 @@ class ContextBuilder(
             "$itemsLines\n$countLine"
         }
 
-        // A1 & A6: Inject open proposals and soul facts into context so the LLM isn't blind
+        // A1 & A6: Inject open proposals and soul facts into context with character budgets
         val openProposals = storage.getOpenProposals()
-        val proposalsText = if (openProposals.isEmpty()) "No open proposals."
-        else openProposals.joinToString("\n") {
-            "Proposal ${it.id} (${it.intent}): Needs clarification. Options: ${it.options.joinToString { opt -> opt.id }}"
+        val maxProposalChars = 500
+        var currentProposalChars = 0
+        val shownProposals = mutableListOf<String>()
+        for (prop in openProposals.take(5)) {
+            val line = "Proposal ${prop.id} (${prop.intent}): Needs clarification. Options: ${prop.options.joinToString { opt -> opt.id }}"
+            if (shownProposals.isNotEmpty() && currentProposalChars + line.length > maxProposalChars) {
+                break
+            }
+            shownProposals.add(line)
+            currentProposalChars += line.length
         }
+        val proposalsText = if (shownProposals.isEmpty()) "No open proposals."
+        else shownProposals.joinToString("\n")
 
         val soulFacts = storage.getActiveSoulFacts()
-        val soulText = if (soulFacts.isEmpty()) "No soul facts."
-        else soulFacts.joinToString("\n") { "${it.category}: ${it.statement}" }
+        val maxSoulChars = 1250
+        var currentSoulChars = 0
+        val shownSoulFacts = mutableListOf<String>()
+        for (fact in soulFacts) {
+            val line = "${fact.category}: ${fact.statement}"
+            if (shownSoulFacts.isNotEmpty() && currentSoulChars + line.length > maxSoulChars) {
+                break
+            }
+            shownSoulFacts.add(line)
+            currentSoulChars += line.length
+        }
+        val soulText = if (shownSoulFacts.isEmpty()) "No soul facts."
+        else shownSoulFacts.joinToString("\n")
 
         // D1: Wire the CheckinBuilder into the prompt so the LLM knows the factual agenda
         val checkinFacts = checkinBuilder.buildMorningFacts()

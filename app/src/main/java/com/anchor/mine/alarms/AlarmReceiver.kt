@@ -29,6 +29,7 @@ class AlarmReceiver : BroadcastReceiver() {
         val text = intent.getStringExtra("EXTRA_TEXT") ?: "Reminder"
         val tierStr = intent.getStringExtra("EXTRA_TIER") ?: "ALARM"
         val fallbackTier = if (tierStr.equals("GENTLE", ignoreCase = true)) AlarmTier.GENTLE else AlarmTier.ALARM
+        val isMissed = intent.getBooleanExtra("EXTRA_MISSED", false)
 
         // Safely acquire Wakelock/Timeout context (fails gracefully in unit tests)
         val pendingResult = try { goAsync() } catch (_: Exception) { null }
@@ -44,7 +45,8 @@ class AlarmReceiver : BroadcastReceiver() {
                 val rem = pending.find { it.id == id } ?: return@launch
 
                 // B15: Use text from DB row
-                val safeText = rem.text
+                val baseText = rem.text
+                val safeText = if (isMissed) "Missed: $baseText" else baseText
                 val tier = rem.tier
 
                 lastFiredId = id
@@ -52,12 +54,16 @@ class AlarmReceiver : BroadcastReceiver() {
 
                 val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
                 val (channelId, importance, priority) = if (tier == AlarmTier.GENTLE) {
-                    Triple("mine_gentle_reminders", NotificationManager.IMPORTANCE_DEFAULT, NotificationCompat.PRIORITY_DEFAULT)
+                    Triple("mine_gentle_reminders_v3", NotificationManager.IMPORTANCE_DEFAULT, NotificationCompat.PRIORITY_DEFAULT)
                 } else {
-                    Triple("mine_reminders_v1", NotificationManager.IMPORTANCE_HIGH, NotificationCompat.PRIORITY_HIGH)
+                    Triple("mine_reminders_v3", NotificationManager.IMPORTANCE_HIGH, NotificationCompat.PRIORITY_HIGH)
                 }
                 val channelName = if (tier == AlarmTier.GENTLE) "Gentle Reminders" else "Reminders"
-                manager.createNotificationChannel(NotificationChannel(channelId, channelName, importance))
+                val channel = NotificationChannel(channelId, channelName, importance).apply {
+                    enableVibration(false)
+                    vibrationPattern = null
+                }
+                manager.createNotificationChannel(channel)
 
                 // B15: Removed FLAG_ACTIVITY_CLEAR_TASK to prevent killing active chats
                 val openIntent = Intent(context, MainActivity::class.java).apply { flags = Intent.FLAG_ACTIVITY_NEW_TASK }
@@ -79,17 +85,22 @@ class AlarmReceiver : BroadcastReceiver() {
                 // Fall back to a blind notification instantly so the user doesn't miss the alarm.
                 val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
                 val (channelId, importance, priority) = if (fallbackTier == AlarmTier.GENTLE) {
-                    Triple("mine_gentle_reminders", NotificationManager.IMPORTANCE_DEFAULT, NotificationCompat.PRIORITY_DEFAULT)
+                    Triple("mine_gentle_reminders_v3", NotificationManager.IMPORTANCE_DEFAULT, NotificationCompat.PRIORITY_DEFAULT)
                 } else {
-                    Triple("mine_reminders_v1", NotificationManager.IMPORTANCE_HIGH, NotificationCompat.PRIORITY_HIGH)
+                    Triple("mine_reminders_v3", NotificationManager.IMPORTANCE_HIGH, NotificationCompat.PRIORITY_HIGH)
                 }
                 val channelName = if (fallbackTier == AlarmTier.GENTLE) "Gentle Reminders" else "Reminders"
-                manager.createNotificationChannel(NotificationChannel(channelId, channelName, importance))
+                val channel = NotificationChannel(channelId, channelName, importance).apply {
+                    enableVibration(false)
+                    vibrationPattern = null
+                }
+                manager.createNotificationChannel(channel)
 
+                val fallbackText = if (isMissed) "Missed: $text" else text
                 val notification = NotificationCompat.Builder(context, channelId)
                     .setSmallIcon(android.R.drawable.ic_dialog_info)
                     .setContentTitle("Mine (Fallback)")
-                    .setContentText(text)
+                    .setContentText(fallbackText)
                     .setPriority(priority)
                     .setAutoCancel(true)
                     .build()

@@ -65,7 +65,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 reliabilityManager.runSweeper().forEach { missedRem ->
                     val intent = android.content.Intent(getApplication(), com.anchor.mine.alarms.AlarmReceiver::class.java).apply {
                         putExtra("EXTRA_ID", missedRem.id)
-                        putExtra("EXTRA_TEXT", "Missed: ${missedRem.text}")
+                        putExtra("EXTRA_TEXT", missedRem.text)
+                        putExtra("EXTRA_TIER", missedRem.tier.name)
+                        putExtra("EXTRA_MISSED", true)
                     }
                     getApplication<Application>().sendBroadcast(intent)
                 }

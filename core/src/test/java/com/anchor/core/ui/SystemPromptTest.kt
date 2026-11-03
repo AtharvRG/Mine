@@ -60,7 +60,7 @@ class SystemPromptTest {
         val controller = ChatController(
             storage, ProviderOrchestrator(RateLimiter { clock.now() }, fakeTransport), contextBuilder,
             Gateway(storage, Resolver(), dateResolver, clock),
-            object : AlarmScheduler { override val lastFiredId = MutableStateFlow<String?>(null); override fun schedule(reminder: Reminder) {}; override fun cancel(reminderId: String) {} },
+            object : AlarmScheduler { override val lastFiredId = MutableStateFlow<String?>(null); override fun schedule(reminder: Reminder) = com.anchor.core.alarms.ScheduleResult.Armed; override fun cancel(reminderId: String) {} },
             TestScope(UnconfinedTestDispatcher()), UnconfinedTestDispatcher(), clock
         )
 
@@ -104,7 +104,7 @@ class SystemPromptTest {
         val controller = ChatController(
             storage, ProviderOrchestrator(RateLimiter { clock.now() }, fakeTransport), contextBuilder,
             Gateway(storage, Resolver(), dateResolver, clock),
-            object : AlarmScheduler { override val lastFiredId = MutableStateFlow<String?>(null); override fun schedule(reminder: Reminder) {}; override fun cancel(reminderId: String) {} },
+            object : AlarmScheduler { override val lastFiredId = MutableStateFlow<String?>(null); override fun schedule(reminder: Reminder) = com.anchor.core.alarms.ScheduleResult.Armed; override fun cancel(reminderId: String) {} },
             TestScope(UnconfinedTestDispatcher()), UnconfinedTestDispatcher(), clock
         )
 

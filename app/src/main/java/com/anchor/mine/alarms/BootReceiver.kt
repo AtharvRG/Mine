@@ -7,6 +7,8 @@ package com.anchor.mine.alarms
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import com.anchor.core.alarms.AlarmReconciler
+import com.anchor.core.time.SystemClock
 import com.anchor.mine.MineApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -25,35 +27,21 @@ class BootReceiver : BroadcastReceiver() {
             try {
                 val storage = (context.applicationContext as MineApp).sharedStorage.await()
                 val scheduler = AndroidAlarmScheduler(context)
-                
-                // 1. Reconcile alarms: Cancel orphans from registry, and re-arm future reminders
-                // AND reminders within the 60-second grace period.
-                // Registry is a hint; force-stop / reboot clears OS alarms.
-                val now = System.currentTimeMillis()
-                val reminders = storage.getPendingReminders()
-                val registered = storage.getRegisteredAlarms()
-                val pendingIds = reminders.map { it.id }.toSet()
+                val clock = SystemClock()
 
-                registered.forEach { (id, _) ->
-                    if (id !in pendingIds) {
-                        scheduler.cancel(id)
-                        storage.deleteRegisteredAlarm(id)
-                    }
-                }
-
-                reminders.filter { it.fireAtMillis >= now - 60000L }.forEach {
-                    scheduler.schedule(it)
-                    storage.saveRegisteredAlarm(it.id, it.id.hashCode(), it.fireAtMillis)
-                }
+                // 1. Reconcile alarms using unified core reconciler (force = true on boot / time change)
+                val reconciler = AlarmReconciler(storage, scheduler, clock)
+                reconciler.reconcile(force = true)
 
                 // 2. Run Sweeper for alarms missed while the device was off (older than 60s)
-                val clock = com.anchor.core.time.SystemClock()
                 val reliabilityManager = com.anchor.core.reliability.ReliabilityManager(storage, clock)
-                
+
                 reliabilityManager.runSweeper().forEach { missedRem ->
                     val missedIntent = Intent(context, AlarmReceiver::class.java).apply {
                         putExtra("EXTRA_ID", missedRem.id)
-                        putExtra("EXTRA_TEXT", "Missed: ${missedRem.text}")
+                        putExtra("EXTRA_TEXT", missedRem.text)
+                        putExtra("EXTRA_TIER", missedRem.tier.name)
+                        putExtra("EXTRA_MISSED", true)
                     }
                     context.sendBroadcast(missedIntent)
                 }

@@ -7,6 +7,7 @@ package com.anchor.core.models
 data class ReliabilityState(
     val lastCheckAt: Long? = null,
     val score: String? = null,
+    val issuesJson: String? = null,
     val sweeperHeartbeat: Long? = null,
     val p95LatencyMs: Int? = null
 )

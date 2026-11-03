@@ -101,6 +101,20 @@ class DatabaseMigrationTest {
         storage.saveQuoteSlot(quote)
         assertEquals("A fresh morning.", storage.getQuoteSlot(QuoteSlot.MORNING, "2026-11-03")?.text)
 
+        // 9. Reliability State & Alarm Registry
+        val rel = ReliabilityState(score = "at_risk", issuesJson = "{\"error\":\"test\"}", lastCheckAt = 12345L)
+        storage.saveReliabilityState(rel)
+        val loadedRel = storage.getReliabilityState()
+        assertEquals("at_risk", loadedRel.score)
+        assertEquals("{\"error\":\"test\"}", loadedRel.issuesJson)
+        assertEquals(12345L, loadedRel.lastCheckAt)
+
+        storage.saveRegisteredAlarm("rem_reg_1", 1001, 1700000000000L)
+        val registered = storage.getRegisteredAlarms()
+        assertTrue(registered.any { it.first == "rem_reg_1" && it.second == 1700000000000L })
+        storage.deleteRegisteredAlarm("rem_reg_1")
+        assertTrue(storage.getRegisteredAlarms().none { it.first == "rem_reg_1" })
+
         helper.close()
     }
 }

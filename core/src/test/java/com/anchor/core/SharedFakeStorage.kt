@@ -57,13 +57,29 @@ class SharedFakeStorage : Storage {
                 .thenBy { it.dueAt }
                 .thenBy { it.id }
         )
-        val startIdx = if (cursor != null) {
-            val cursorId = cursor.substringAfter(":", cursor)
-            val idx = sorted.indexOfFirst { it.id == cursorId }
-            if (idx != -1) idx + 1 else 0
-        } else 0
+        if (cursor.isNullOrBlank()) {
+            return sorted.take(limit)
+        }
+        val parts = cursor.split(":", limit = 2)
+        val cursorDueAt = parts[0].toLongOrNull()
+        val cursorId = parts.getOrElse(1) { "" }
 
-        return sorted.drop(startIdx).take(limit)
+        val filtered = sorted.filter { node ->
+            if (cursorDueAt != null) {
+                if (node.dueAt == null) {
+                    true
+                } else if (node.dueAt > cursorDueAt) {
+                    true
+                } else if (node.dueAt == cursorDueAt) {
+                    node.id > cursorId
+                } else {
+                    false
+                }
+            } else {
+                node.dueAt == null && node.id > cursorId
+            }
+        }
+        return filtered.take(limit)
     }
 
     override suspend fun findActiveNodeByTitle(title: String): Node? {

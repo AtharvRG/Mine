@@ -18,17 +18,21 @@ class CheckinBuilder(private val storage: Storage, private val clock: Clock, pri
         val logicalTodayEnd = logicalTodayStart + 86400000L // +24 hours
 
         // B14: Use strict logical calendar day boundaries, not a rolling +/- 24h window
-        val dueToday = storage.getNodesDueBetween(logicalTodayStart, logicalTodayEnd, limit = 500)
-        val overdue = storage.getOverdueNodes(logicalTodayStart, limit = 500)
-        
+        val staleCutoffMs = 30L * 24 * 3600 * 1000L
+        val rawDueToday = storage.getNodesDueBetween(logicalTodayStart, logicalTodayEnd, limit = 5000)
+        val dueToday = rawDueToday.filter {
+            maxOf(it.updatedAt, it.createdAt) == 0L || (now - maxOf(it.updatedAt, it.createdAt) <= staleCutoffMs)
+        }
+        val overdueCount = storage.getActiveNodeCounts(logicalTodayStart, staleCutoffMs).overdue
+
         val builder = java.lang.StringBuilder()
         builder.append("Today's Facts:\n")
         builder.append("- Due Today: ${dueToday.size}\n")
-        if (overdue.isNotEmpty()) builder.append("- Overdue: ${overdue.size}\n")
-        
+        if (overdueCount > 0) builder.append("- Overdue: $overdueCount\n")
+
         if (dueToday.isNotEmpty()) {
             builder.append("\nAgenda:\n")
-            dueToday.sortedBy { it.dueAt }.take(5).forEach { 
+            dueToday.take(5).forEach {
                 builder.append("  * ${it.title} (Due: ${dateResolver.format(it.dueAt!!)})\n")
             }
         }

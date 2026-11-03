@@ -100,9 +100,12 @@ class AndroidStorageTest {
         // Fix: Use the REAL app storage for this test, because BootReceiver and AlarmReceiver
         // explicitly connect to the app's real database.
         val appStorage = (context.applicationContext as com.anchor.mine.MineApp).sharedStorage.await()
-        
+        appStorage.deleteReminder("test_alarm_1")
+        appStorage.deleteReminder("test_gentle_1")
+
         // Push the reminder 70 seconds into the past so it formally qualifies as "missed" by the Sweeper
-        val r = com.anchor.core.models.Reminder("r_missed", "Missed Task", System.currentTimeMillis() - 70000L)
+        val rId = "r_missed_${System.currentTimeMillis()}"
+        val r = com.anchor.core.models.Reminder(rId, "Missed Task", System.currentTimeMillis() - 70000L)
         appStorage.saveReminder(r)
 
         com.anchor.mine.alarms.AlarmReceiver.lastFiredId = null
@@ -113,15 +116,15 @@ class AndroidStorageTest {
         receiver.onReceive(context, intent)
 
         var elapsed = 0
-        while (com.anchor.mine.alarms.AlarmReceiver.lastFiredId != "r_missed" && elapsed < 5000) {
+        while (com.anchor.mine.alarms.AlarmReceiver.lastFiredId != rId && elapsed < 5000) {
             kotlinx.coroutines.delay(250.milliseconds)
             elapsed += 250
         }
 
         // Cleanup
-        appStorage.deleteReminder("r_missed")
+        appStorage.deleteReminder(rId)
 
-        org.junit.Assert.assertEquals("BootReceiver must broadcast the missed alarm to AlarmReceiver", "r_missed", com.anchor.mine.alarms.AlarmReceiver.lastFiredId)
+        org.junit.Assert.assertEquals("BootReceiver must broadcast the missed alarm to AlarmReceiver", rId, com.anchor.mine.alarms.AlarmReceiver.lastFiredId)
     }
 
     @Test
@@ -902,5 +905,84 @@ class AndroidStorageTest {
         assertEquals("n3", urgent[0].id)
         assertEquals("n2", urgent[1].id)
         assertEquals("n1", urgent[2].id)
+    }
+
+    @Test
+    fun testReliabilityState_IssuesJsonRoundTrip(): Unit = runBlocking {
+        val initial = storage.getReliabilityState()
+        assertEquals(ReliabilityState(), initial)
+
+        val state = ReliabilityState(
+            lastCheckAt = 1700000000000L,
+            score = "at_risk",
+            issuesJson = """{"error":"SecurityException","time":1700000000000}""",
+            sweeperHeartbeat = 1699999990000L,
+            p95LatencyMs = 45
+        )
+        storage.saveReliabilityState(state)
+
+        val fetched = storage.getReliabilityState()
+        assertEquals(1700000000000L, fetched.lastCheckAt)
+        assertEquals("at_risk", fetched.score)
+        assertEquals("""{"error":"SecurityException","time":1700000000000}""", fetched.issuesJson)
+        assertEquals(1699999990000L, fetched.sweeperHeartbeat)
+        assertEquals(45, fetched.p95LatencyMs)
+    }
+
+    @Test
+    fun testAndroidStorage_getNode_HydratesPrioritySeverityPinned_AndEnablesUndo(): Unit = runBlocking {
+        val now = System.currentTimeMillis()
+        val node = Node(
+            id = "n_special",
+            type = "task",
+            title = "Special task with attributes",
+            status = "active",
+            dueAt = null,
+            createdAt = now,
+            updatedAt = now,
+            priority = 2,
+            severity = 3,
+            pinned = true
+        )
+        val snapshot = NodeStateSnapshot(node, null)
+        val snapshotJson = kotlinx.serialization.json.Json.encodeToString(NodeStateSnapshot.serializer(), snapshot)
+        val event = RawEvent(
+            opId = "op_special_create",
+            opType = "CREATE",
+            targetType = "node",
+            targetId = "n_special",
+            beforeJson = null,
+            afterJson = snapshotJson,
+            tsUtc = now
+        )
+
+        storage.createNodeAndCommit(node, event, reminder = null)
+
+        val fetched = storage.getNode("n_special")
+        assertNotNull(fetched)
+        assertEquals(2, fetched!!.priority)
+        assertEquals(3, fetched.severity)
+        assertEquals(true, fetched.pinned)
+
+        // Snapshot comparison for undo
+        val currentSnapshot = NodeStateSnapshot(fetched, null)
+        val decodedSnapshot = kotlinx.serialization.json.Json.decodeFromString(NodeStateSnapshot.serializer(), event.afterJson!!)
+        assertEquals("Snapshot must match exactly for undo to succeed", decodedSnapshot, currentSnapshot)
+
+        // Perform undo commit
+        val undoEvent = RawEvent(
+            opId = "op_special_undo",
+            opType = "UNDO",
+            targetType = "node",
+            targetId = "n_special",
+            beforeJson = snapshotJson,
+            afterJson = null,
+            undoOf = "op_special_create",
+            tsUtc = now + 1000L
+        )
+        storage.undoChangeAndCommit(node = fetched.copy(status = "cancelled"), event = undoEvent, restoreReminder = null)
+        val undone = storage.getNode("n_special")
+        assertNotNull(undone)
+        assertEquals("cancelled", undone!!.status)
     }
 }

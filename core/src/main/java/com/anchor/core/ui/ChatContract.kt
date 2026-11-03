@@ -31,6 +31,8 @@ data class UiState(
     val composerDraft: String = "",
     val connectionError: String? = null,
     val globalError: String? = null,
+    val schedulingError: String? = null,
+    val schedulingFailedCount: Int = 0,
     val showResetConfirm: Boolean = false,
     val alarmDisclosureText: String = "Urgent/alarm reminders use Android Alarm Clock (setAlarmClock) to guarantee delivery in Doze mode. This causes an alarm icon to appear in the system status bar while pending. Gentle reminders use notification-only scheduling without showing the status bar alarm icon.",
     val selectedDayKey: String? = null,

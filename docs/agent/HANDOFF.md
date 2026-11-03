@@ -1,4 +1,4 @@
-# HANDOFF (Session 1 - Remediation R0/R0b)
+# HANDOFF (Session 2 - Tasks R3 & R3b Complete)
 
 ## 1. What Changed
 
@@ -83,25 +83,67 @@
     - Added untitled title-preservation test in `R11UntitledAlarmsTest.kt`.
     - Added duration overflow and bounding tests in `DateResolverTest.kt`.
   - Authored branching analysis `docs/agent/work/r2.md` and independent 3-agent review `docs/agent/work/r2-review.md`.
+- **Task R3 (Alarm truth, permission, and silent failures, D-102, D-114)**:
+  - Manifest gate: Removed `SCHEDULE_EXACT_ALARM` from `app/src/main/AndroidManifest.xml` per D-102. Authored `ManifestPermissionTest` asserting that the merged manifest declares none of `VIBRATE`, `WAKE_LOCK`, `USE_EXACT_ALARM`, `SCHEDULE_EXACT_ALARM`.
+  - Zero silent failure swallowing: Refactored `AlarmScheduler.schedule` to return sealed `ScheduleResult` (`Armed` or `Failed(reason)`). `AndroidAlarmScheduler` returns `Failed` on `SecurityException` or scheduling errors instead of silently swallowing or falling back.
+  - Reliability & UI error exposure: Added `issuesJson` to `ReliabilityState` in `Stats.kt`, updated `AndroidStorage.kt` and `SharedFakeStorage.kt` to persist/load `issues_json` in table `reliability_state`. Added `val schedulingError: String? = null` to `UiState` in `ChatContract.kt`. When scheduling fails, reliability state is marked `at_risk` with error details and `UiState.schedulingError` is surfaced.
+  - Unified core reconciler: Implemented `AlarmReconciler(storage, scheduler, clock)` with `reconcile(force: Boolean)`. `force = true` unconditionally re-arms all active pending reminders within 60s grace on boot, init, and time changes. `force = false` selectively schedules changed/new reminders and cancels/purges orphaned registry entries during UI updates. Unified reconciliation across `ChatController` and `BootReceiver`.
+  - Sweeper missed reminders: `AlarmReceiver` inspects `EXTRA_MISSED = true` and prefixes notification text with `"Missed: "` for both DB and fallback flows. `BootReceiver` sets `EXTRA_MISSED = true` when dispatching missed alarms.
+  - Fixed `AlarmSelfTest`: Removed `canScheduleExactAlarms()` skip, added `alarmManager.nextAlarmClock` verification (`triggerTime == fireAt`, `showIntent.creatorPackage == packageName`) for `ALARM` tier, and verified `GENTLE` tier exclusion.
+  - TDD test suites: Authored `AlarmReconcilerTest.kt` in `:core`, added `testReconcileAlarms_SchedulerFailure_ExposesSchedulingErrorInUiState` in `ChatControllerEdgeCaseTest.kt`, updated `DatabaseMigrationTest.kt` smoke test, added `testReliabilityState_IssuesJsonRoundTrip` in `AndroidStorageTest.kt`, added `testAlarmReceiver_MissedReminder_PrefixesMissedText` in `AlarmReceiverTest.kt`, and authored `ManifestPermissionTest.kt`.
+  - Recorded architectural decision D-114 in `docs/agent/DECISIONS.md`.
+  - Authored branching analysis `docs/agent/work/r3.md` and independent review report `docs/agent/work/r3-review.md`.
+  - Hardening from reviewer: added `EXTRA_MISSED = true` and `EXTRA_TIER` in `MainViewModel.kt` sweeper broadcast, cleared `UiState.schedulingError` when reconciliation succeeds without failure in `ChatController.kt`, and hardened control character JSON escaping in `AlarmReconciler.kt`.
+  - **Physical Device Connected Tests on moto g73 5G (Android 14 / API 34)**:
+    - 29/29 tests passed across all 7 test classes (100% success rate: 3 `AlarmReceiverTest`, 2 `AlarmSelfTest`, 1 `ManifestPermissionTest`, 1 `ExportTest`, 19 `AndroidStorageTest`, 1 `DatabaseMigrationTest`, 2 `StorageTest`).
+    - Merged manifest on-device test `ManifestPermissionTest` confirmed none of `VIBRATE`, `WAKE_LOCK`, `USE_EXACT_ALARM`, `SCHEDULE_EXACT_ALARM` are declared.
+    - Zero-Vibration Protocol verified: Notification channels `mine_reminders_v3` and `mine_gentle_reminders_v3` explicitly set `enableVibration(false)` and `vibrationPattern = null`, no vibration calls, safely accommodating damaged vibration motor hardware.
+
+- **Task R3b (Session 2 Correction, Re-Verification, and Reliability State Hardening)**:
+  - Addressed all items from Part 1 Sections B, C, D, and E of Session 2 directive.
+  - Manifest gate & D-102 amended: Declared `USE_EXACT_ALARM` per Android 14 requirements for `setAlarmClock()` (normal auto-granted permission for alarm apps). Confirmed `SCHEDULE_EXACT_ALARM`, `VIBRATE`, and `WAKE_LOCK` are strictly forbidden. Verified on physical device in `ManifestPermissionTest`.
+  - Zero-Vibration Protocol: Verified on device via `dumpsys notification` that channels `mine_reminders_v3` and `mine_gentle_reminders_v3` have `mVibration=null` and `mVibrationEnabled=false`, with zero vibration code or permissions across app and tests.
+  - Clean-Install Physical Verification: Connected test run on Motorola moto g73 5G (Android 14 / API 34) preceded by clean uninstall (`./gradlew.bat :app:uninstallDebug :app:uninstallDebugAndroidTest`). 31/31 connected tests passed across 8 test classes (100% success rate).
+  - AlarmSelfTest rewrite: Removed all `canExact` branching. Asserts `ScheduleResult.Armed` unconditionally, verifies `alarmManager.nextAlarmClock` matches trigger time and package name, and verifies `GENTLE` tier exclusion.
+  - Connected BootReceiver test: Authored `BootReceiverTest.kt` verifying `BootReceiver` -> `ReliabilityManager.runSweeper` -> `AlarmReceiver` end-to-end for reminders >60s overdue (verifies `"Missed: "` prefix, single record in `reminder_fire`, pending row deleted, zero duplicate notifications on subsequent boots).
+  - Reliability state recovery & bounding: Recomputed `score` to `"healthy"` on a clean reconciliation pass (zero failures), clearing `issuesJson`. Bounded `issuesJson` to at most 5 distinct recent issues with timestamps.
+  - UiState multi-failure exposure: Added `schedulingFailedCount` to `UiState`, populated in `ChatController.reconcileAlarms` alongside `schedulingError`, and cleared on a clean pass.
+  - AndroidStorage.getNode column hydration: Hydrated all 11 columns in `getNode` (parsing `priority`, `severity`, and `pinned` from `attrs`), ensuring snapshot equality in `Gateway.handleUndo`.
+  - Prompt budgeting: Capped soul facts to 1250 characters and open proposals to 500 characters in `ContextBuilder.kt`.
+  - Keyset pagination parity: Implemented composite `(due_at, id)` keyset comparison in `SharedFakeStorage.getActiveNodes` matching SQLite ordering semantics when a cursor node is missing.
+  - Untitled auto-titling guard: Enforced `isAutoTitled = isUntitled && targetTimeMillis != null && hint.isBlank()`.
 
 ## 2. Verified Working (with Evidence)
 
 ### Command: `./gradlew :core:test` (Exit code: 0)
-85 unit tests executed, 85 passed, 0 failures, 0 skipped (100% success rate).
+105 unit tests executed, 105 passed, 0 failures, 0 skipped (100% success rate).
+
+### Connected Tests on Physical Device (Clean Install):
+- Command: `./gradlew.bat :app:connectedDebugAndroidTest` (Exit code: 0)
+- Device: Motorola moto g73 5G (Android 14 / API 34), serial `10.175.15.5:5555`.
+- Result: 31/31 passed across 8 test classes (100% success rate).
+  - `AlarmReceiverTest`: 3 passed.
+  - `AlarmSelfTest`: 2 passed.
+  - `BootReceiverTest`: 1 passed.
+  - `ManifestPermissionTest`: 1 passed.
+  - `ExportTest`: 1 passed.
+  - `AndroidStorageTest`: 20 passed.
+  - `DatabaseMigrationTest`: 1 passed.
+  - `StorageTest`: 2 passed.
+- HTML report: `app/build/reports/androidTests/connected/debug/index.html`
+- XML report: `app/build/outputs/androidTest-results/connected/debug/TEST-moto g73 5G - 14.xml`
 
 ### Other Verified Builds:
 - `./gradlew :app:assembleDebug`: SUCCESS (exit 0)
 - `./gradlew :app:assembleRelease`: SUCCESS (exit 0, R8 minification + lintVitalRelease)
-- `./gradlew :app:compileDebugAndroidTestKotlin`: SUCCESS (exit 0, compiles all 25 instrumented test methods across 6 files)
-- `./gradlew :app:connectedDebugAndroidTest`: SUCCESS (exit 0, 25/25 instrumented tests passed on moto g73 5G - Android 14)
-- `./gradlew :app:installDebug`: SUCCESS (exit 0, APK installed on connected moto g73 5G)
+- `:app:compileDebugAndroidTestKotlin`: SUCCESS (exit 0, compiles 31 instrumented test methods across 8 classes)
 - `./gradlew :app:testDebugUnitTest`: SUCCESS (exit 0, NO-SOURCE; app/src/test contains no tests)
 - `./gradlew :app:lintDebug`: SUCCESS (exit 0)
 
 ## 3. NOT Verified
 - **D-105 Phone Gate**: Status-bar alarm clock icon display for Alarm-tier reminders remains to be checked on real UI while phone is active. Task T-C remains open.
 - **T-E (Calendar Queries) & T-F (Home Quotes)**: Unit-verified only.
-- **Remediation Tasks R3 through R10**: Open, pending execution (R1, R2, and R11 completed).
+- **Remediation Tasks R4 through R10**: Open, pending execution (R1, R2, R3, R11, and R3b completed).
 - **B5 Export UI**: SAF picker and passphrase dialog dark-shipped pending v1.1.
 
 ## 4. Operating Rules
@@ -110,6 +152,7 @@
 - One task per run; stop and await user approval before proceeding to the next task.
 
 ## 5. Next Step
-- **Task R3**: Alarm truth, permission, and silent failures.
-  - Review spec in `docs/agent/work/session1-remediation-spec.md` (R3 section).
-  - Create branching analysis `docs/agent/work/r3.md`, write failing tests first.
+- Reviewer subagent (`reviewer`) verdict: **APPROVE**.
+- Blueprint checker subagent (`blueprint-checker`) verdict: **ALL SATISFIED**.
+- Await user explicit "OK" to commit Task R3b (`git commit -s`).
+- Next scheduled task is **Task R4**: Unreachable features: stale items and time chips (T-A, T-B) per `session1-remediation-spec.md`.

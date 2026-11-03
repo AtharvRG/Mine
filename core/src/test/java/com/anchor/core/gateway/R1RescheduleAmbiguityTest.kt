@@ -259,7 +259,7 @@ class R1RescheduleAmbiguityTest {
         val gateway = Gateway(storage, Resolver(), dateResolver, clock)
         val scheduler = object : AlarmScheduler {
             override val lastFiredId = MutableStateFlow<String?>(null)
-            override fun schedule(reminder: Reminder) {}
+            override fun schedule(reminder: Reminder) = com.anchor.core.alarms.ScheduleResult.Armed
             override fun cancel(reminderId: String) {}
         }
 

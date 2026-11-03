@@ -7,6 +7,7 @@ package com.anchor.core.context
 import com.anchor.core.SharedFakeStorage
 import com.anchor.core.models.ChatMessage
 import com.anchor.core.models.Node
+import com.anchor.core.models.SoulFact
 import com.anchor.core.time.DateResolver
 import com.anchor.core.time.FakeClock
 import kotlinx.coroutines.runBlocking
@@ -267,5 +268,30 @@ class ContextBuilderTest {
 
         assertEquals("Must visit exactly 5000 items", 5000, visitedIds.size)
         assertEquals("Zero duplicates allowed", 5000, visitedIds.toSet().size)
+    }
+
+    @Test
+    fun testContextBuilder_200SoulFacts_RespectsBudget() = runBlocking {
+        val now = 1_700_000_000_000L
+        val clock = FakeClock(now)
+        val dateResolver = DateResolver(clock)
+        val storage = SharedFakeStorage()
+
+        // Insert 200 soul facts
+        for (i in 1..200) {
+            storage.saveSoulFact(SoulFact("sf_$i", "Preferences", "User prefers hot drink variety $i with extra sugar", 1.0, "chat", "inferred", "accepted", now))
+        }
+
+        val checkinBuilder = com.anchor.core.nudge.CheckinBuilder(storage, clock, dateResolver)
+        val builder = ContextBuilder(storage, clock, dateResolver, checkinBuilder)
+        val pack = builder.buildPack()
+
+        val sysMsg = pack.first { it.role == "system" }.content ?: ""
+        val soulSection = sysMsg.substringAfter("Soul:\n").substringBefore("\n\nActive Items:")
+
+        assertTrue("Soul section must not be empty", soulSection.isNotBlank())
+        assertTrue("Soul section must not exceed 1250 chars budget", soulSection.length <= 1250)
+        // Ensure not all 200 facts leaked in uncapped
+        assertTrue("Must cap soul facts", !soulSection.contains("variety 200"))
     }
 }

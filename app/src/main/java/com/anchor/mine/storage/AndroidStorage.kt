@@ -365,11 +365,7 @@ class AndroidStorage(private val dbHelper: SupportSQLiteOpenHelper) : Storage {
     }
 
     override suspend fun getNode(id: String): Node? = withContext(ioDispatcher) {
-        dbHelper.readableDatabase.query("SELECT type, title, status, due_at, created_at, updated_at, closed_at FROM node WHERE id = ?", arrayOf(id)).use {
-            if (it.moveToFirst()) Node(id, it.getString(0), it.getString(1), it.getString(2),
-                if (it.isNull(3)) null else it.getLong(3), it.getLong(4), it.getLong(5),
-                if (it.isNull(6)) null else it.getLong(6)) else null
-        }
+        queryNodes("SELECT id, type, title, status, due_at, created_at, updated_at, closed_at, priority, severity, attrs FROM node WHERE id = ?", arrayOf(id)).firstOrNull()
     }
 
     override suspend fun getEvent(opId: String): RawEvent? = withContext(ioDispatcher) {
@@ -393,8 +389,9 @@ class AndroidStorage(private val dbHelper: SupportSQLiteOpenHelper) : Storage {
         val db = dbHelper.writableDatabase
         db.beginTransaction()
         try {
-            db.execSQL("INSERT INTO node (id, device_id, type, title, status, due_at, origin, hlc, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 'extracted', '', ?, ?)",
-                arrayOf<Any?>(node.id, deviceId, node.type, node.title, node.status, node.dueAt, node.createdAt, node.updatedAt))
+            val attrs = if (node.pinned) "{\"pinned\":true}" else null
+            db.execSQL("INSERT INTO node (id, device_id, type, title, status, due_at, priority, severity, attrs, origin, hlc, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'extracted', '', ?, ?)",
+                arrayOf<Any?>(node.id, deviceId, node.type, node.title, node.status, node.dueAt, node.priority, node.severity, attrs, node.createdAt, node.updatedAt))
             reminder?.let { db.execSQL("INSERT OR REPLACE INTO reminder (id, node_id, text, fire_at, tier) VALUES (?, ?, ?, ?, ?)", arrayOf<Any?>(it.id, it.nodeId, it.text, it.fireAtMillis, it.tier.name.lowercase())) }
             db.execSQL("INSERT INTO raw_event (op_id, target_id, op_type, target_type, ts_utc, device_id, actor, before_json, after_json) VALUES (?, ?, ?, ?, ?, ?, 'chat_ai', ?, ?)",
                 arrayOf<Any?>(event.opId, event.targetId, event.opType, event.targetType, System.currentTimeMillis(), deviceId, event.beforeJson, event.afterJson))
@@ -406,8 +403,9 @@ class AndroidStorage(private val dbHelper: SupportSQLiteOpenHelper) : Storage {
         val db = dbHelper.writableDatabase
         db.beginTransaction()
         try {
-            db.execSQL("UPDATE node SET status = ?, due_at = ?, closed_at = ?, updated_at = ? WHERE id = ?",
-                arrayOf<Any?>(node.status, node.dueAt, node.closedAt, node.updatedAt, node.id))
+            val attrs = if (node.pinned) "{\"pinned\":true}" else null
+            db.execSQL("UPDATE node SET status = ?, due_at = ?, closed_at = ?, priority = ?, severity = ?, attrs = ?, updated_at = ? WHERE id = ?",
+                arrayOf<Any?>(node.status, node.dueAt, node.closedAt, node.priority, node.severity, attrs, node.updatedAt, node.id))
 
             deleteReminderId?.let { db.execSQL("DELETE FROM reminder WHERE id = ?", arrayOf(it)) }
 
@@ -431,9 +429,10 @@ class AndroidStorage(private val dbHelper: SupportSQLiteOpenHelper) : Storage {
         val db = dbHelper.writableDatabase
         db.beginTransaction()
         try {
-            // FIX: Restore due_at so rescheduled items roll back accurately
-            db.execSQL("UPDATE node SET status = ?, due_at = ?, closed_at = ?, updated_at = ? WHERE id = ?",
-                arrayOf<Any?>(node.status, node.dueAt, node.closedAt, node.updatedAt, node.id))
+            // FIX: Restore due_at, priority, severity, and attrs so snapshots roll back accurately
+            val attrs = if (node.pinned) "{\"pinned\":true}" else null
+            db.execSQL("UPDATE node SET status = ?, due_at = ?, closed_at = ?, priority = ?, severity = ?, attrs = ?, updated_at = ? WHERE id = ?",
+                arrayOf<Any?>(node.status, node.dueAt, node.closedAt, node.priority, node.severity, attrs, node.updatedAt, node.id))
             restoreReminder?.let { db.execSQL("INSERT OR REPLACE INTO reminder (id, node_id, text, fire_at, tier) VALUES (?, ?, ?, ?, ?)", arrayOf<Any?>(it.id, it.nodeId, it.text, it.fireAtMillis, it.tier.name.lowercase())) }
             db.execSQL("INSERT INTO raw_event (op_id, target_id, op_type, target_type, ts_utc, device_id, actor, undo_of, before_json, after_json) VALUES (?, ?, ?, ?, ?, ?, 'user', ?, ?, ?)",
                 arrayOf<Any?>(event.opId, event.targetId, event.opType, event.targetType, System.currentTimeMillis(), deviceId, event.undoOf, event.beforeJson, event.afterJson))
@@ -536,13 +535,14 @@ class AndroidStorage(private val dbHelper: SupportSQLiteOpenHelper) : Storage {
     }
 
     override suspend fun getReliabilityState(): ReliabilityState = withContext(ioDispatcher) {
-        dbHelper.readableDatabase.query("SELECT last_check_at, score, sweeper_heartbeat, p95_latency_ms FROM reliability_state WHERE id = 1").use {
+        dbHelper.readableDatabase.query("SELECT last_check_at, score, issues_json, sweeper_heartbeat, p95_latency_ms FROM reliability_state WHERE id = 1").use {
             if (it.moveToFirst()) {
                 ReliabilityState(
                     lastCheckAt = if (it.isNull(0)) null else it.getLong(0),
                     score = if (it.isNull(1)) null else it.getString(1),
-                    sweeperHeartbeat = if (it.isNull(2)) null else it.getLong(2),
-                    p95LatencyMs = if (it.isNull(3)) null else it.getInt(3)
+                    issuesJson = if (it.isNull(2)) null else it.getString(2),
+                    sweeperHeartbeat = if (it.isNull(3)) null else it.getLong(3),
+                    p95LatencyMs = if (it.isNull(4)) null else it.getInt(4)
                 )
             } else ReliabilityState()
         }
@@ -550,8 +550,8 @@ class AndroidStorage(private val dbHelper: SupportSQLiteOpenHelper) : Storage {
 
     override suspend fun saveReliabilityState(state: ReliabilityState) = withContext(ioDispatcher) {
         dbHelper.writableDatabase.execSQL(
-            "INSERT OR REPLACE INTO reliability_state (id, last_check_at, score, sweeper_heartbeat, p95_latency_ms) VALUES (1, ?, ?, ?, ?)",
-            arrayOf<Any?>(state.lastCheckAt, state.score, state.sweeperHeartbeat, state.p95LatencyMs)
+            "INSERT OR REPLACE INTO reliability_state (id, last_check_at, score, issues_json, sweeper_heartbeat, p95_latency_ms) VALUES (1, ?, ?, ?, ?, ?)",
+            arrayOf<Any?>(state.lastCheckAt, state.score, state.issuesJson, state.sweeperHeartbeat, state.p95LatencyMs)
         )
     }
 

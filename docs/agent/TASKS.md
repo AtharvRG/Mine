@@ -36,7 +36,8 @@ Specs for R1-R10: docs/agent/work/session1-remediation-spec.md. Read the task's 
 [x] R1 Reschedule/cancel/complete after ambiguity (D-110, D-111): DB v5 proposal payload column, ProposalPayload model, RESCHEDULE null time in resolver, destination time in proposal payload, UPDATE/PAUSE/RESUME unsupported error, handleConfirmChange with target check & reminder tier preservation, prompt update, tests [unit + compile verified]
 [x] R11 Compound duration parsing, date prompt enforcement, and untitled alarm fallbacks (D-112): parseDuration in DateResolver for multi-unit & seconds expressions, copy user due_text rule in prompt, untitled=true & label handling in Gateway CREATE with formatted fallback title and duplicate-title bypass, reviewer hygiene applied, TDD tests [unit + connected verified]
 [x] R2 Candidate selection broken by 100-item default (T-B regression): limit required on getActiveNodes, page all active nodes up to 5000 in resolver, findActiveNodeByTitle for CREATE dedupe, getNodesDueBetween/getOverdueNodes for CheckinBuilder, getRankedCandidates per tier excluding stale in SQL for ContextBuilder, contract tests [unit + connected verified, approved]
-[ ] R3 Alarm truth, permission and silent failures (self-test UI refresh + permission fallback applied): remove SCHEDULE_EXACT_ALARM from manifest & assertion, AlarmScheduler.schedule returns Armed/Failed and writes reliability/UiState, core AlarmReconciler(force: Boolean), AlarmReceiver Missed prefix on EXTRA_MISSED, fix AlarmSelfTest without early return and test nextAlarmClock.
+[x] R3 Alarm truth, permission and silent failures (D-102, D-114): remove SCHEDULE_EXACT_ALARM from manifest & assertion, AlarmScheduler.schedule returns Armed/Failed and writes reliability/UiState, core AlarmReconciler(force: Boolean), AlarmReceiver Missed prefix on EXTRA_MISSED, fix AlarmSelfTest without early return and test nextAlarmClock, reviewer hardening applied [unit + connected verified on moto g73 5G, approved]
+[x] R3b Session 2 Correction, Re-Verification, and Reliability State Hardening: Part 1 sections B, C, D, E fixes; clean-install connected run (31/31 passed on moto g73 5G); evidence files; STATE/HANDOFF honest rewrite; reviewer & blueprint-checker approved [clean-installed on moto g73 5G, approved]
 [ ] R4 Unreachable features: stale items and time chips (T-A, T-B): UiState.staleItems + KeepStale/CancelStale actions, Gateway uses resolve() and returns NeedsTime with proposal kind="time" and formatted chips, handleConfirmChange for time chips with undo, DateResolver night/12 edge cases and weekday names.
 [ ] R5 Export/import hardening (security): ChunkedAesInputStream chunk length 16..chunkSize+16 check, Argon2 KDF bounds, table & column whitelist from current schema, configurable liveDbName, post-import AlarmReconciler call.
 [ ] R6 Gentle tier is a dead end (T-C): propose_change tier argument (alarm|gentle), CREATE honours it, RESCHEDULE and confirm path preserve existing tier, time-chip payloads carry tier, undo restores tier.
@@ -51,11 +52,11 @@ Specs for R1-R10: docs/agent/work/session1-remediation-spec.md. Read the task's 
     [ ] R10e PresetQuotes Math.floorMod for slot index
     [ ] R10f Weekday/vocabulary gaps from P1-B 14 in DateResolver
     [ ] R10g Minified release APK test on physical phone when device returns (NOT VERIFIED until then)
-    [ ] R10h CheckinBuilder query scaling & stale exclusion: getNodesDueBetween/getOverdueNodes limit=500 cap removal/pagination and exclude stale items consistent with ContextBuilder
-    [ ] R10i Pinned/severity/priority persistence & getNode reading: wire into Gateway CREATE, getNode SQL query, and undo snapshot equality
+    [x] R10h CheckinBuilder query scaling & stale exclusion: getNodesDueBetween/getOverdueNodes limit=500 cap removal/pagination and exclude stale items consistent with ContextBuilder
+    [x] R10i Pinned/severity/priority persistence & getNode reading: wire into Gateway CREATE, getNode SQL query, and undo snapshot equality
     [ ] R10j Chat history search indexing: populate msg_chunk_fts on message insert so searchMemoryFts searches conversation history
-    [ ] R10k Prompt context budgeting: add token/char cap on Soul facts and open proposals in ContextBuilder.buildPack
-    [ ] R10l SharedFakeStorage keyset pagination parity: do not reset to head when cursor ID is absent
+    [x] R10k Prompt context budgeting: add token/char cap on Soul facts and open proposals in ContextBuilder.buildPack
+    [x] R10l SharedFakeStorage keyset pagination parity: do not reset to head when cursor ID is absent
 
 ## Roadmap items to be tackled post-remediation
 [ ] P1-B 15 Reminder policy per blueprint 30 (lead times, reminder only when asked or per default)

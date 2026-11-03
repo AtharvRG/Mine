@@ -97,7 +97,10 @@ class ChatControllerEdgeCaseTest {
         
         val scheduler = object : AlarmScheduler {
             override val lastFiredId = MutableStateFlow<String?>(null)
-            override fun schedule(reminder: Reminder) { scheduledIds.add(reminder.id) }
+            override fun schedule(reminder: Reminder): com.anchor.core.alarms.ScheduleResult {
+                scheduledIds.add(reminder.id)
+                return com.anchor.core.alarms.ScheduleResult.Armed
+            }
             override fun cancel(reminderId: String) { canceledIds.add(reminderId) }
         }
         
@@ -132,7 +135,10 @@ class ChatControllerEdgeCaseTest {
         val scheduledIds = mutableListOf<String>()
         val scheduler = object : AlarmScheduler {
             override val lastFiredId = MutableStateFlow<String?>(null)
-            override fun schedule(reminder: Reminder) { scheduledIds.add(reminder.id) }
+            override fun schedule(reminder: Reminder): com.anchor.core.alarms.ScheduleResult {
+                scheduledIds.add(reminder.id)
+                return com.anchor.core.alarms.ScheduleResult.Armed
+            }
             override fun cancel(reminderId: String) {}
         }
 
@@ -207,7 +213,7 @@ class ChatControllerEdgeCaseTest {
         val cancelledAlarms = mutableListOf<String>()
         val scheduler = object : AlarmScheduler {
             override val lastFiredId = MutableStateFlow<String?>(null)
-            override fun schedule(reminder: Reminder) {}
+            override fun schedule(reminder: Reminder) = com.anchor.core.alarms.ScheduleResult.Armed
             override fun cancel(reminderId: String) { cancelledAlarms.add(reminderId) }
         }
 
@@ -401,6 +407,44 @@ class ChatControllerEdgeCaseTest {
     }
 
     @Test
+    fun testUndoAction_NodeWithSeverityAndPinned_RestoresProperly() = runBlocking {
+        val storage = SharedFakeStorage().apply { settings["key"] = "test-key" }
+        val clock = FakeClock(1000L)
+        val transport = object : HttpTransport {
+            override suspend fun postStream(t: Target, b: String): Flow<String> = flow { emit("""data: [DONE]""") }
+        }
+        val controller = buildController(storage, clock, transport)
+
+        val gateway = Gateway(storage, Resolver(), DateResolver(clock), clock)
+        val createCall = com.anchor.core.gateway.ToolCall(
+            "propose_change",
+            mapOf(
+                "intent" to kotlinx.serialization.json.JsonPrimitive("CREATE"),
+                "hint" to kotlinx.serialization.json.JsonPrimitive("Fix prod outage"),
+                "severity" to kotlinx.serialization.json.JsonPrimitive("3"),
+                "priority" to kotlinx.serialization.json.JsonPrimitive("2"),
+                "pinned" to kotlinx.serialization.json.JsonPrimitive("true")
+            )
+        )
+        val res = gateway.executeTool(createCall) as com.anchor.core.models.ToolResult.Committed
+        val createdNode = storage.getNode(res.targetId)
+        org.junit.Assert.assertNotNull(createdNode)
+        assertEquals(3, createdNode!!.severity)
+        assertEquals(2, createdNode.priority)
+        assertEquals(true, createdNode.pinned)
+
+        // Undo CREATE
+        controller.onAction(UiAction.Undo(res.undoToken))
+        kotlinx.coroutines.delay(100)
+
+        val receipts = controller.state.value.receipts
+        org.junit.Assert.assertTrue("Should create receipt for undo", receipts.isNotEmpty())
+        org.junit.Assert.assertFalse("Receipt must NOT be error ('state has changed')", receipts.last().isError)
+        org.junit.Assert.assertTrue(receipts.last().message.contains("Removed: Fix prod outage"))
+        assertEquals("cancelled", storage.getNode(res.targetId)?.status)
+    }
+
+    @Test
     fun testModelGenericDone_SuppressesDoneProse_AndKeepsReceipt() = runBlocking {
         val storage = SharedFakeStorage().apply { settings["key"] = "test-key" }
         val clock = FakeClock(1000L)
@@ -516,13 +560,21 @@ class ChatControllerEdgeCaseTest {
     fun testGatewayAndControllerUntitledFlowIntegration() = runBlocking {
         val storage = SharedFakeStorage().apply { settings["key"] = "test-key" }
         val clock = FakeClock(1000L)
-        val replies = mutableListOf<String>()
         val interceptedPayloads = mutableListOf<String>()
 
         val transport = object : HttpTransport {
             override suspend fun postStream(target: Target, body: String): Flow<String> = flow {
                 interceptedPayloads.add(body)
-                val reply = replies.removeAt(0)
+                val reply = when {
+                    body.contains("\"content\":\"remaind me in 15 secs for checking laptop\"") ->
+                        """ "{\"reply\":\"Got it.\",\"calls\":[{\"tool\":\"propose_change\",\"args\":{\"intent\":\"CREATE\",\"title\":\"checking laptop\",\"due_text\":\"in 15 secs\"}}]}" """
+                    body.contains("\"content\":\"nothing specific just do it\"") ->
+                        """ "{\"reply\":\"Got it.\",\"calls\":[{\"tool\":\"propose_change\",\"args\":{\"intent\":\"CREATE\",\"untitled\":\"true\",\"label\":\"notification\",\"due_text\":\"in 10 secs\"}}]}" """
+                    body.contains("\"content\":\"notify me in 10 secs\"") ->
+                        """ "{\"reply\":\"For what?\",\"calls\":[]}" """
+                    else ->
+                        """ "{\"reply\":\"Unexpected message\",\"calls\":[]}" """
+                }
                 emit("""data: {"choices":[{"delta":{"content":$reply}}]}""")
                 emit("data: [DONE]")
             }
@@ -530,27 +582,110 @@ class ChatControllerEdgeCaseTest {
         val controller = buildController(storage, clock, transport)
 
         // Turn 1: "notify me in 10 secs" -> LLM asks "For what?"
-        replies.add(""" "{\"reply\":\"For what?\",\"calls\":[]}" """)
         controller.onAction(UiAction.UpdateDraft("notify me in 10 secs"))
         controller.onAction(UiAction.SendMessage)
         kotlinx.coroutines.delay(50)
 
         // Turn 2: "nothing specific just do it" -> LLM calls propose_change untitled=true
-        replies.add(""" "{\"reply\":\"Got it.\",\"calls\":[{\"tool\":\"propose_change\",\"args\":{\"intent\":\"CREATE\",\"untitled\":\"true\",\"label\":\"notification\",\"due_text\":\"in 10 secs\"}}]}" """)
         controller.onAction(UiAction.UpdateDraft("nothing specific just do it"))
         controller.onAction(UiAction.SendMessage)
         kotlinx.coroutines.delay(50)
 
         // Turn 3: "remaind me in 15 secs for checking laptop" -> With subject present, LLM must propose_change CREATE directly
-        replies.add(""" "{\"reply\":\"Got it.\",\"calls\":[{\"tool\":\"propose_change\",\"args\":{\"intent\":\"CREATE\",\"title\":\"checking laptop\",\"due_text\":\"in 15 secs\"}}]}" """)
         controller.onAction(UiAction.UpdateDraft("remaind me in 15 secs for checking laptop"))
         controller.onAction(UiAction.SendMessage)
         kotlinx.coroutines.delay(50)
 
         val nodes = storage.getActiveNodes(100)
-        assertEquals(2, nodes.size)
+        println("Payloads: ${interceptedPayloads.size}")
+        for ((idx, p) in interceptedPayloads.withIndex()) {
+            println("Payload $idx: $p")
+        }
+        println("Receipts: ${controller.state.value.receipts}")
+        assertEquals("Nodes found: ${nodes.map { it.title }}", 2, nodes.size)
         assertTrue(nodes.any { it.title == "checking laptop" })
         assertTrue(nodes.any { it.title.contains("Notification") })
+    }
+
+    @Test
+    fun testReconcileAlarms_SchedulerFailure_ExposesSchedulingErrorInUiState() = runBlocking {
+        val storage = SharedFakeStorage().apply { settings["key"] = "test-key" }
+        val clock = FakeClock(1000L)
+        val reminder = Reminder("r_fail", "Fail Me", 5000L)
+        storage.saveReminder(reminder)
+
+        val failingScheduler = object : AlarmScheduler {
+            override val lastFiredId = MutableStateFlow<String?>(null)
+            override fun schedule(reminder: Reminder): com.anchor.core.alarms.ScheduleResult {
+                return com.anchor.core.alarms.ScheduleResult.Failed("OS security restriction")
+            }
+            override fun cancel(reminderId: String) {}
+        }
+
+        val controller = ChatController(
+            storage,
+            ProviderOrchestrator(RateLimiter { clock.now() }, object : HttpTransport { override suspend fun postStream(t: Target, b: String): Flow<String> = flow{} }),
+            com.anchor.core.context.ContextBuilder(storage, clock, DateResolver(clock), com.anchor.core.nudge.CheckinBuilder(storage, clock, DateResolver(clock))),
+            Gateway(storage, Resolver(), DateResolver(clock), clock),
+            failingScheduler,
+            kotlinx.coroutines.CoroutineScope(UnconfinedTestDispatcher()),
+            UnconfinedTestDispatcher(),
+            clock
+        )
+
+        controller.onAction(UiAction.RefreshStats)
+        kotlinx.coroutines.delay(100)
+
+        assertEquals("OS security restriction", controller.state.value.schedulingError)
+        assertEquals(1, controller.state.value.schedulingFailedCount)
+    }
+
+    @Test
+    fun testReconcileAlarms_MultipleFailures_SurfacesFirstReasonAndCount_AndClearsOnCleanPass() = runBlocking {
+        val storage = SharedFakeStorage().apply { settings["key"] = "test-key" }
+        val clock = FakeClock(1000L)
+        val r1 = Reminder("r1", "Task 1", 5000L)
+        val r2 = Reminder("r2", "Task 2", 6000L)
+        storage.saveReminder(r1)
+        storage.saveReminder(r2)
+
+        var failScheduler = true
+        val configurableScheduler = object : AlarmScheduler {
+            override val lastFiredId = MutableStateFlow<String?>(null)
+            override fun schedule(reminder: Reminder): com.anchor.core.alarms.ScheduleResult {
+                return if (failScheduler) {
+                    com.anchor.core.alarms.ScheduleResult.Failed("Failure for ${reminder.id}")
+                } else {
+                    com.anchor.core.alarms.ScheduleResult.Armed
+                }
+            }
+            override fun cancel(reminderId: String) {}
+        }
+
+        val controller = ChatController(
+            storage,
+            ProviderOrchestrator(RateLimiter { clock.now() }, object : HttpTransport { override suspend fun postStream(t: Target, b: String): Flow<String> = flow{} }),
+            com.anchor.core.context.ContextBuilder(storage, clock, DateResolver(clock), com.anchor.core.nudge.CheckinBuilder(storage, clock, DateResolver(clock))),
+            Gateway(storage, Resolver(), DateResolver(clock), clock),
+            configurableScheduler,
+            kotlinx.coroutines.CoroutineScope(UnconfinedTestDispatcher()),
+            UnconfinedTestDispatcher(),
+            clock
+        )
+
+        controller.onAction(UiAction.RefreshStats)
+        kotlinx.coroutines.delay(100)
+
+        assertEquals("Failure for r1", controller.state.value.schedulingError)
+        assertEquals(2, controller.state.value.schedulingFailedCount)
+
+        // Now fix the scheduler (clean pass)
+        failScheduler = false
+        controller.onAction(UiAction.RefreshStats)
+        kotlinx.coroutines.delay(100)
+
+        assertEquals(null, controller.state.value.schedulingError)
+        assertEquals(0, controller.state.value.schedulingFailedCount)
     }
 
     private fun buildController(storage: com.anchor.core.storage.Storage, clock: Clock, transport: HttpTransport): ChatController {
@@ -558,7 +693,7 @@ class ChatControllerEdgeCaseTest {
             storage, ProviderOrchestrator(RateLimiter { clock.now() }, transport), 
             com.anchor.core.context.ContextBuilder(storage, clock, DateResolver(clock), com.anchor.core.nudge.CheckinBuilder(storage, clock, DateResolver(clock))),
             Gateway(storage, Resolver(), DateResolver(clock), clock),
-            object : AlarmScheduler { override val lastFiredId = MutableStateFlow<String?>(null); override fun schedule(reminder: Reminder) {}; override fun cancel(reminderId: String) {} },
+            object : AlarmScheduler { override val lastFiredId = MutableStateFlow<String?>(null); override fun schedule(reminder: Reminder) = com.anchor.core.alarms.ScheduleResult.Armed; override fun cancel(reminderId: String) {} },
             kotlinx.coroutines.CoroutineScope(UnconfinedTestDispatcher()), UnconfinedTestDispatcher(), clock
         )
     }

@@ -35,7 +35,7 @@ class CalendarQueriesTest {
 
     private class FakeAlarmScheduler : AlarmScheduler {
         override val lastFiredId = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
-        override fun schedule(reminder: Reminder) {}
+        override fun schedule(reminder: Reminder) = com.anchor.core.alarms.ScheduleResult.Armed
         override fun cancel(reminderId: String) {}
     }
 

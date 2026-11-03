@@ -118,8 +118,11 @@ class Gateway(
                             }
                         }
 
+                        val priority = args["priority"]?.toIntOrNull() ?: 0
+                        val severity = args["severity"]?.toIntOrNull() ?: 0
+                        val pinned = args["pinned"]?.toBooleanStrictOrNull() ?: false
                         val followUpTo = args["follow_up_to"] ?: args["follow_up_of"]
-                        handleCreate(title, safeType, targetTimeMillis, followUpTo)
+                        handleCreate(title, safeType, targetTimeMillis, followUpTo, priority, severity, pinned)
                     }
                     IntentType.CANCEL, IntentType.COMPLETE, IntentType.RESCHEDULE -> {
                         val timeForResolver = if (intent == IntentType.RESCHEDULE) null else targetTimeMillis
@@ -213,10 +216,18 @@ class Gateway(
         }
     }
 
-    private suspend fun handleCreate(title: String, type: String, dueAt: Long?, followUpTo: String? = null): ToolResult {
+    private suspend fun handleCreate(
+        title: String,
+        type: String,
+        dueAt: Long?,
+        followUpTo: String? = null,
+        priority: Int = 0,
+        severity: Int = 0,
+        pinned: Boolean = false
+    ): ToolResult {
         val nId = "n_${UUID.randomUUID().toString().take(8)}"
         val now = clock.now()
-        val node = Node(nId, type, title, "active", dueAt, createdAt = now, updatedAt = now)
+        val node = Node(nId, type, title, "active", dueAt, createdAt = now, updatedAt = now, priority = priority, severity = severity, pinned = pinned)
 
         // Fix: Auto-create the reminder inherently so the LLM doesn't have to call a separate tool
         val reminder = dueAt?.let { Reminder("r_$nId", title, it, nId) }

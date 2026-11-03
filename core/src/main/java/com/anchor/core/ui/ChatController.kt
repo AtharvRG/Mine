@@ -4,7 +4,9 @@
 
 package com.anchor.core.ui
 
+import com.anchor.core.alarms.AlarmReconciler
 import com.anchor.core.alarms.AlarmScheduler
+import com.anchor.core.alarms.ScheduleResult
 import com.anchor.core.context.ContextBuilder
 import com.anchor.core.gateway.EnvelopeParser
 import com.anchor.core.gateway.Gateway
@@ -31,7 +33,8 @@ class ChatController(
     private val alarmScheduler: AlarmScheduler,
     private val coroutineScope: CoroutineScope,
     private val defaultDispatcher: CoroutineDispatcher,
-    private val clock: Clock
+    private val clock: Clock,
+    private val reconciler: AlarmReconciler = AlarmReconciler(storage, alarmScheduler, clock)
 ) {
     private val _state = MutableStateFlow(UiState())
     val state: StateFlow<UiState> = _state.asStateFlow()
@@ -40,7 +43,7 @@ class ChatController(
 
     init {
         coroutineScope.launch(defaultDispatcher) {
-            reconcileAlarms()
+            reconcileAlarms(force = true)
 
             _state.update { it.copy(
                 activeReminders = storage.getActiveReminders(),
@@ -393,31 +396,20 @@ CRITICAL: Do NOT say "Done" or "Saved" unless you issue a tool call.
         }
     }
 
-    private suspend fun reconcileAlarms() {
-        val now = clock.now()
-        val pending = storage.getPendingReminders()
-        val registered = storage.getRegisteredAlarms()
-
-        val pendingMap = pending.associate { it.id to it.fireAtMillis }
-        val registeredMap = registered.associate { it.first to it.second }
-
-        val toCancel = registeredMap.keys - pendingMap.keys
-        toCancel.forEach { id ->
-            alarmScheduler.cancel(id)
-            storage.deleteRegisteredAlarm(id)
-        }
-
-        // Treat registry as a hint, not ground truth: force-stop clears OS alarms.
-        // Re-arm all active pending reminders (future or within 60s grace).
-        val toSchedule = pending.filter { it.fireAtMillis >= now - 60000L }
-        toSchedule.forEach { r ->
-            alarmScheduler.schedule(r)
-            storage.saveRegisteredAlarm(r.id, r.id.hashCode(), r.fireAtMillis)
+    private suspend fun reconcileAlarms(force: Boolean = false) {
+        val results = reconciler.reconcile(force)
+        val failures = results.filterIsInstance<ScheduleResult.Failed>()
+        val failure = failures.firstOrNull()
+        _state.update {
+            it.copy(
+                schedulingError = failure?.reason,
+                schedulingFailedCount = failures.size
+            )
         }
     }
 
     private suspend fun refreshUI() {
-        reconcileAlarms()
+        reconcileAlarms(force = false)
         val currentSize = _state.value.chatMessages.size
         val fetchCount = kotlin.math.max(30, currentSize)
         
