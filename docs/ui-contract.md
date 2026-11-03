@@ -11,7 +11,7 @@ The single source of truth for the UI at any given moment:
 - `receipts`: List<ReceiptState> (Tool execution receipts and undo tokens)
 - `openProposals`: List<Proposal> (Disambiguation chips with titles and options)
 - `proposedSoulFacts`: List<SoulFact> (Soul memory proposals for accept/reject)
-- `inboxCount`: Int (Number of open non-stale inbox items)
+- `inboxCount`: Int (Number of open proposals + proposed soul facts; stale items are NOT included yet pending R4)
 - `urgentItems`: List<Node> (Top urgent tasks sorted by due date)
 - `isChatLoading`: Boolean (True when waiting for network or streaming)
 - `activeReminders`: List<Reminder> (Reminders scheduled for the future)
@@ -34,7 +34,7 @@ The only events the UI can trigger:
 - `Stop`: Instantly halts the AI stream and severs the socket.
 - `Undo(token: String)`: Instantly reverts an operation (bypasses LLM).
 - `ConfirmProposal(proposalId, choiceId)`: Resolves ambiguity instantly (bypasses LLM).
-- `AcceptSoulFact(factId: String)`: Confirms and pins a soul fact.
+- `AcceptSoulFact(factId: String)`: Sets status to "active" (confirms a soul fact).
 - `RejectSoulFact(factId: String)`: Rejects a proposed soul fact.
 - `CancelReminder(id: String)`: Cancels active reminder and alarm.
 - `LoadDay(dayKey: String)`: Paginates chat history for a specific day.

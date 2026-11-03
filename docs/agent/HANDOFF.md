@@ -14,15 +14,22 @@
   - Repointed hook commands in `.openclaude/settings.json` to `.openclaude/hooks/*.py`.
   - Aligned `docs/ui-contract.md` to remove unimplemented storage query claims.
   - Created `docs/agent/BLUEPRINT_PATCHES.md` with Patch 1 for Blueprint 13 s3.6 (`follow_up` edge type).
-- **Current Commit (R0b)**:
+- **Commit `982dbc7` (R0b)**:
   - Created `docs/agent/work/session1-remediation-spec.md` preserving the full verbatim session 1 specification prompt.
   - Added pointer to `session1-remediation-spec.md` at top of `docs/agent/TASKS.md`.
   - Added historical warning banner to `docs/agent/INBOX_HANDOFF.md`, `docs/agent/work/session0-plan.md`, and `docs/agent/work/t-a.md` through `t-f.md`.
   - Reconciled all cited test names in `docs/agent/work/session0-plan.md` to verified existing test names or marked "does not exist".
   - Replaced `getEdgesFrom`/`getEdgesTo` with `getEdgesForSource`/`getEdgesForDestination` in `docs/ui-contract.md` and verified all UiState fields, UiActions, and Storage methods exist in `:core`.
   - Verified directory junction `docs/blueprints -> D:\CnP\MDocs (Attempt 3)`, added `docs/blueprints/` to `.gitignore`, and added deny rules for `Edit` and `Write` on `docs/blueprints/**` in both `.openclaude/settings.json` and `.claude/settings.json`.
+    - *Safety Note*: The `Edit`/`Write` deny rules on `docs/blueprints/**` only block those two tools, not Bash, and may not match once the path resolves to `D:\CnP\...`. The developer will set the source folder to read-only.
   - Added developer-lock comment to `scripts/ralph.py` and gated `scripts/ralph_prompt.txt` behind `RALPH: ENABLED`.
   - Re-ran `:core:test`, `:app:assembleDebug`, `:app:assembleRelease`, `:app:compileDebugAndroidTestKotlin`, and `:app:lintDebug` with full status captured.
+- **Current Commit (R0c)**:
+  - Verified blueprint junction directory listing and gitignore compliance (`git check-ignore -v docs/blueprints` matches; `git ls-files docs/blueprints` empty).
+  - Split `:app:compileDebugAndroidTestKotlin` and `:app:testDebugUnitTest` in `STATE.md` and re-ran `:app:testDebugUnitTest` (SUCCESS, exit 0, `NO-SOURCE`).
+  - Corrected `docs/ui-contract.md` for `AcceptSoulFact` (sets status to "active") and `inboxCount` (proposals + soul facts; stale items excluded pending R4).
+  - Appended R1 notes to `docs/agent/work/session1-remediation-spec.md` (v5 migration assertions update, `MineDatabaseCallback.onUpgrade` trigger limitation recorded).
+  - Logged trigger limitation task in `docs/agent/TASKS.md`.
 
 ## 2. Verified Working (with Evidence)
 
@@ -53,7 +60,8 @@ Configuration cache entry reused.
 ### Other Verified Builds:
 - `./gradlew :app:assembleDebug`: SUCCESS (exit 0)
 - `./gradlew :app:assembleRelease`: SUCCESS (exit 0, R8 minification + lintVitalRelease)
-- `./gradlew :app:compileDebugAndroidTestKotlin`: SUCCESS (exit 0, compiles all 23 instrumented test methods across 6 files)
+- `./gradlew :app:compileDebugAndroidTestKotlin`: SUCCESS (exit 0, compiles all 23 instrumented test methods across 6 files; re-run in R0b)
+- `./gradlew :app:testDebugUnitTest`: SUCCESS (exit 0, NO-SOURCE; app/src/test contains no tests; re-run in R0c)
 - `./gradlew :app:lintDebug`: SUCCESS (exit 0)
 
 ## 3. NOT Verified

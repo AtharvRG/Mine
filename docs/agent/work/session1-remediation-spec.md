@@ -91,6 +91,10 @@ TESTS (each must FAIL on current code; paste the failing output first)
 Do NOT: add retries/flags, parse model prose, touch unrelated code. Review: reviewer + test-auditor +
 migration-guard, saved to docs/agent/work/R1-review.md. Report in the 9-part format. Stop.
 
+R1 NOTES (added after R0b review)
+- Existing androidTests assert DB version 4 (the V1->V3, V2->V3 and V3->V4 migration tests in AndroidStorageTest.kt). The v5 bump legitimately changes these assertions to 5. Update them in the R1 commit and state this explicitly in the R1 report as "test updated because the schema version changed", not as a weakened test.
+- MineDatabaseCallback.onUpgrade only runs createTriggers with CREATE TRIGGER IF NOT EXISTS, so changing an existing trigger body would NOT apply to upgraded databases. Not needed for R1. Record it under "Noticed, not changed" in the R1 report and add it to TASKS.md as an open item.
+
 ==================================================================================================
 R2  CANDIDATE SELECTION IS BROKEN BY THE 100-ITEM DEFAULT (T-B regression)  [blocking]
 PROBLEM

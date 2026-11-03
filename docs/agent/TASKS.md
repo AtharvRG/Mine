@@ -22,6 +22,7 @@ Specs for R1-R10: docs/agent/work/session1-remediation-spec.md. Read the task's 
 ## Housekeeping
 [x] T18 Real GPLv3 LICENSE text; delete stray file "a"; .idea device IP; update docs/ui-contract.md.
 [x] T19 Release (R8) build smoke test; proguard keep rules for Node, Reminder, SoulFact.
+[ ] Database trigger upgrades: MineDatabaseCallback.onUpgrade only runs createTriggers with CREATE TRIGGER IF NOT EXISTS; updated trigger bodies do not apply to existing databases without DROP TRIGGER IF EXISTS.
 ## Backend needed before UI (see UI spec E6)
 [~] T20 Storage queries: day page by day_key, heat-map counts, reminder dates per month, Home priority list, structured chat items.
 [~] T-A DateResolver 24h + ambiguity chips (D-103)
