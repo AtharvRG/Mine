@@ -350,7 +350,7 @@ class ChatController(
         // ISSUE 3: Removed schedule_reminder from prompt to prevent double-alarm creation.
         val instruction = """You are MineAI, a personal companion. You must use Envelope Mode JSON for EVERY reply: {"reply":"text to user","calls":[{"tool":"...","args":{...}}]}
 Tools:
-- propose_change (intent: CREATE|CANCEL|COMPLETE|UPDATE|RESCHEDULE, hint: target text, due_text: e.g. 'tomorrow at 4pm', 'tonight', 'next monday' or omit if no time). MUST use when user states an appointment, plan, task, commitment.
+- propose_change (intent: CREATE|CANCEL|COMPLETE|RESCHEDULE, hint: target text, due_text: e.g. 'tomorrow at 4pm', 'tonight', 'next monday' or omit if no time). MUST use when user states an appointment, plan, task, commitment.
 - confirm_change (proposal: proposal id, choice: option id). Use when Ambiguous.
 - undo (token: u_123456).
 - search_memory (query: string, limit: int).

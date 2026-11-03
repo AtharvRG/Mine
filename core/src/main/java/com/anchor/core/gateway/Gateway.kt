@@ -59,13 +59,17 @@ class Gateway(
             "propose_change" -> {
                 val intentStr = args["intent"]?.uppercase() ?: return ToolResult.Error("Missing intent")
                 val intent = try { IntentType.valueOf(intentStr) } catch(e: Exception) { return ToolResult.Error("Unknown intent") }
-                
+
+                if (intent in listOf(IntentType.UPDATE, IntentType.PAUSE, IntentType.RESUME)) {
+                    return ToolResult.Error("${intent.name} is not supported yet")
+                }
+
                 // B3: Hard cap LLM hallucinated lengths to prevent DB/UI bloat
-                val hint = (args["hint"] ?: args["title"] ?: "").take(200) 
+                val hint = (args["hint"] ?: args["title"] ?: "").take(200)
                 val dueText = (args["due_text"] ?: "").take(100)
-                
+
                 val rolloverMin = storage.getSetting("day_start_minute")?.toIntOrNull() ?: 240
-                
+
                 val targetTimeMillis = if (dueText.isBlank()) null else {
                     dateResolver.parse(dueText, rolloverMin) ?: return ToolResult.Error("Could not understand the time '$dueText'. Ask the user to clarify.")
                 }
@@ -76,7 +80,7 @@ class Gateway(
                         val type = (args["type"] ?: "task").lowercase().take(50)
                         val validTypes = listOf("task", "event", "note", "habit")
                         val safeType = if (type in validTypes) type else "task"
-                        
+
                         val active = storage.getActiveNodes()
                         val duplicate = active.find { it.title.equals(hint, ignoreCase = true) && it.status != "done" && it.status != "cancelled" }
                         if (duplicate != null) {
@@ -86,8 +90,11 @@ class Gateway(
                         val followUpTo = args["follow_up_to"] ?: args["follow_up_of"]
                         handleCreate(hint, safeType, targetTimeMillis, followUpTo)
                     }
-                    IntentType.CANCEL, IntentType.COMPLETE, IntentType.UPDATE, IntentType.RESCHEDULE -> handleResolveChange(intent, hint, targetTimeMillis)
-                    else -> ToolResult.Error("$intent not supported yet")
+                    IntentType.CANCEL, IntentType.COMPLETE, IntentType.RESCHEDULE -> {
+                        val timeForResolver = if (intent == IntentType.RESCHEDULE) null else targetTimeMillis
+                        handleResolveChange(intent, hint, timeForResolver, targetTimeMillis)
+                    }
+                    else -> ToolResult.Error("${intent.name} is not supported yet")
                 }
             }
             else -> ToolResult.Error("Tool not supported yet")
@@ -126,21 +133,53 @@ class Gateway(
         if (node.status != "active" && node.status != "in_progress") return ToolResult.Error("Node is no longer active")
 
         val now = clock.now()
-        val newNode = node.copy(status = if (proposal.intent == IntentType.CANCEL) "cancelled" else "done", closedAt = now, updatedAt = now)
-        
-        // ISSUE 3: Relational alarm lookup prevents orphaned alarms
-        val oldRem = storage.getReminderByNodeId(newNode.id)
-        val remId = oldRem?.id
-        val deleteReminderId = if (proposal.intent == IntentType.CANCEL || proposal.intent == IntentType.COMPLETE) remId else null
+        val oldRem = storage.getReminderByNodeId(node.id) ?: storage.getPendingReminders().find { it.nodeId == node.id || it.id == "r_${node.id}" }
 
-        val beforeJson = json.encodeToString(NodeStateSnapshot(node, oldRem))
-        val afterJson = json.encodeToString(NodeStateSnapshot(newNode, null))
-
-        val uId = "u_${UUID.randomUUID().toString().take(6)}"
-        val event = RawEvent(uId, proposal.intent.name, "node", newNode.id, beforeJson = beforeJson, afterJson = afterJson, tsUtc = clock.now())
-        
-        storage.updateNodeAndCommit(newNode, event, deleteReminderId = deleteReminderId, upsertReminder = null, consumeProposalId = proposalId)
-        return ToolResult.Committed(proposal.intent.name, newNode.id, "Applied ${proposal.intent.name}: ${newNode.title}", uId)
+        return when (proposal.intent) {
+            IntentType.CANCEL -> {
+                val newNode = node.copy(status = "cancelled", closedAt = now, updatedAt = now)
+                val beforeJson = json.encodeToString(NodeStateSnapshot(node, oldRem))
+                val afterJson = json.encodeToString(NodeStateSnapshot(newNode, null))
+                val uId = "u_${UUID.randomUUID().toString().take(6)}"
+                val event = RawEvent(uId, "CANCEL", "node", newNode.id, beforeJson = beforeJson, afterJson = afterJson, tsUtc = now)
+                storage.updateNodeAndCommit(newNode, event, deleteReminderId = oldRem?.id, upsertReminder = null, consumeProposalId = proposalId)
+                ToolResult.Committed("CANCEL", newNode.id, "Applied CANCEL: ${newNode.title}", uId)
+            }
+            IntentType.COMPLETE -> {
+                val newNode = node.copy(status = "done", closedAt = now, updatedAt = now)
+                val beforeJson = json.encodeToString(NodeStateSnapshot(node, oldRem))
+                val afterJson = json.encodeToString(NodeStateSnapshot(newNode, null))
+                val uId = "u_${UUID.randomUUID().toString().take(6)}"
+                val event = RawEvent(uId, "COMPLETE", "node", newNode.id, beforeJson = beforeJson, afterJson = afterJson, tsUtc = now)
+                storage.updateNodeAndCommit(newNode, event, deleteReminderId = oldRem?.id, upsertReminder = null, consumeProposalId = proposalId)
+                ToolResult.Committed("COMPLETE", newNode.id, "Applied COMPLETE: ${newNode.title}", uId)
+            }
+            IntentType.RESCHEDULE -> {
+                val payload = proposal.payload?.let {
+                    try { json.decodeFromString<ProposalPayload>(it) } catch (e: Exception) { null }
+                }
+                val target = payload?.targetAtMillis
+                if (target == null || target <= clock.now()) {
+                    storage.consumeProposal(proposalId)
+                    return ToolResult.Error("That time has already passed; tell me the new time again")
+                }
+                val newNode = node.copy(dueAt = target, updatedAt = now)
+                val remId = oldRem?.id ?: "r_${node.id}"
+                val existingTier = oldRem?.tier ?: AlarmTier.ALARM
+                val newRem = if (oldRem != null) {
+                    oldRem.copy(text = newNode.title, fireAtMillis = target)
+                } else {
+                    Reminder(remId, newNode.title, target, node.id, tier = existingTier)
+                }
+                val beforeJson = json.encodeToString(NodeStateSnapshot(node, oldRem))
+                val afterJson = json.encodeToString(NodeStateSnapshot(newNode, newRem))
+                val uId = "u_${UUID.randomUUID().toString().take(6)}"
+                val event = RawEvent(uId, "RESCHEDULE", "node", newNode.id, beforeJson = beforeJson, afterJson = afterJson, tsUtc = now)
+                storage.updateNodeAndCommit(newNode, event, deleteReminderId = null, upsertReminder = newRem, consumeProposalId = proposalId)
+                ToolResult.Committed("RESCHEDULE", newNode.id, "Rescheduled: ${newNode.title} to ${dateResolver.format(target)}", uId)
+            }
+            else -> ToolResult.Error("${proposal.intent.name} is not supported yet")
+        }
     }
 
     private suspend fun handleCreate(title: String, type: String, dueAt: Long?, followUpTo: String? = null): ToolResult {
@@ -185,9 +224,14 @@ class Gateway(
         return ToolResult.Committed(IntentType.CREATE.name, nId, "Created: $title$timeStr", uId)
     }
 
-    private suspend fun handleResolveChange(intent: IntentType, hint: String, targetTimeMillis: Long?): ToolResult {
+    private suspend fun handleResolveChange(
+        intent: IntentType,
+        hint: String,
+        timeForResolver: Long?,
+        destinationTimeMillis: Long?
+    ): ToolResult {
         val candidates = storage.getActiveNodes()
-        val resolution = resolver.resolve(intent, hint, targetTimeMillis, candidates)
+        val resolution = resolver.resolve(intent, hint, timeForResolver, candidates)
 
         return when (resolution) {
             is Resolution.NotFound -> ToolResult.NotFound(hint)
@@ -198,31 +242,37 @@ class Gateway(
                     val fullTitle = if (dueStr != null) "${node.title} ($dueStr)" else node.title
                     ProposalOption(node.id, fullTitle, dueStr)
                 }
-                storage.saveProposal(Proposal(pId, "ambiguous", intent, opts))
+                val payloadJson = if (intent == IntentType.RESCHEDULE) {
+                    json.encodeToString(ProposalPayload(targetAtMillis = destinationTimeMillis))
+                } else null
+                storage.saveProposal(Proposal(pId, "ambiguous", intent, opts, payload = payloadJson))
                 ToolResult.Ambiguous(pId, "ask: which item", opts.map { "${it.id} '${it.title}'" })
             }
             is Resolution.ClearWinner -> {
                 val oldNode = resolution.node
                 val now = clock.now()
-                
+
                 val newNode = when (intent) {
                     IntentType.CANCEL -> oldNode.copy(status = "cancelled", closedAt = now, updatedAt = now)
                     IntentType.COMPLETE -> oldNode.copy(status = "done", closedAt = now, updatedAt = now)
-                    IntentType.RESCHEDULE -> oldNode.copy(dueAt = targetTimeMillis ?: oldNode.dueAt, updatedAt = now)
-                    else -> oldNode.copy(updatedAt = now) // UPDATE
+                    IntentType.RESCHEDULE -> oldNode.copy(dueAt = destinationTimeMillis ?: oldNode.dueAt, updatedAt = now)
+                    else -> return ToolResult.Error("${intent.name} is not supported yet")
                 }
-                
+
                 val activeRems = storage.getPendingReminders()
                 // D5: Fetch cleanly by relational node ID, not by fragile string prefix
-                val oldRem = activeRems.find { it.nodeId == oldNode.id || it.id == "r_${oldNode.id}" }
+                val oldRem = storage.getReminderByNodeId(oldNode.id) ?: activeRems.find { it.nodeId == oldNode.id || it.id == "r_${oldNode.id}" }
                 val remId = oldRem?.id ?: "rem_${UUID.randomUUID().toString().take(8)}"
-                
-                val newRem = if (intent == IntentType.RESCHEDULE && targetTimeMillis != null) {
-                    Reminder(remId, newNode.title, targetTimeMillis, newNode.id)
-                } else if (intent == IntentType.UPDATE) {
-                    oldRem 
+                val existingTier = oldRem?.tier ?: AlarmTier.ALARM
+
+                val newRem = if (intent == IntentType.RESCHEDULE && destinationTimeMillis != null) {
+                    if (oldRem != null) {
+                        oldRem.copy(text = newNode.title, fireAtMillis = destinationTimeMillis)
+                    } else {
+                        Reminder(remId, newNode.title, destinationTimeMillis, newNode.id, tier = existingTier)
+                    }
                 } else null
-                
+
                 val deleteReminderId = if (intent == IntentType.CANCEL || intent == IntentType.COMPLETE) oldRem?.id else null
 
                 val beforeJson = json.encodeToString(NodeStateSnapshot(oldNode, oldRem))
@@ -230,9 +280,14 @@ class Gateway(
 
                 val uId = "u_${UUID.randomUUID().toString().take(6)}"
                 val event = RawEvent(uId, intent.name, "node", newNode.id, beforeJson = beforeJson, afterJson = afterJson, tsUtc = clock.now())
-                
+
                 storage.updateNodeAndCommit(newNode, event, deleteReminderId, newRem)
-                return ToolResult.Committed(intent.name, newNode.id, "Applied ${intent.name}: ${newNode.title}", uId)
+                val receiptText = if (intent == IntentType.RESCHEDULE && destinationTimeMillis != null) {
+                    "Rescheduled: ${newNode.title} to ${dateResolver.format(destinationTimeMillis)}"
+                } else {
+                    "Applied ${intent.name}: ${newNode.title}"
+                }
+                return ToolResult.Committed(intent.name, newNode.id, receiptText, uId)
             }
         }
     }

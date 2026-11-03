@@ -24,51 +24,40 @@
     - *Safety Note*: The `Edit`/`Write` deny rules on `docs/blueprints/**` only block those two tools, not Bash, and may not match once the path resolves to `D:\CnP\...`. The developer will set the source folder to read-only.
   - Added developer-lock comment to `scripts/ralph.py` and gated `scripts/ralph_prompt.txt` behind `RALPH: ENABLED`.
   - Re-ran `:core:test`, `:app:assembleDebug`, `:app:assembleRelease`, `:app:compileDebugAndroidTestKotlin`, and `:app:lintDebug` with full status captured.
-- **Current Commit (R0c)**:
+- **Commit `ff78d71` (R0c)**:
   - Verified blueprint junction directory listing and gitignore compliance (`git check-ignore -v docs/blueprints` matches; `git ls-files docs/blueprints` empty).
   - Split `:app:compileDebugAndroidTestKotlin` and `:app:testDebugUnitTest` in `STATE.md` and re-ran `:app:testDebugUnitTest` (SUCCESS, exit 0, `NO-SOURCE`).
   - Corrected `docs/ui-contract.md` for `AcceptSoulFact` (sets status to "active") and `inboxCount` (proposals + soul facts; stale items excluded pending R4).
   - Appended R1 notes to `docs/agent/work/session1-remediation-spec.md` (v5 migration assertions update, `MineDatabaseCallback.onUpgrade` trigger limitation recorded).
   - Logged trigger limitation task in `docs/agent/TASKS.md`.
+- **Current Commit (Task R1 - Reschedule/cancel/complete after ambiguity, D-110, D-111)**:
+  - SQLite schema bumped to v5 with nullable `payload TEXT` on `proposal` table, with idempotent `PRAGMA table_info` upgrade logic in `MineDatabaseCallback`.
+  - Added `ProposalPayload` serializable data class and updated `Proposal` model.
+  - Implemented `propose_change` intent validation in `Gateway`: immediately reject unsupported `UPDATE`, `PAUSE`, `RESUME` with `ToolResult.Error` before mutating state.
+  - For `RESCHEDULE`, pass `timeForResolver = null` to `Resolver.resolve` to prevent +0.5 time proximity bonus biasing candidate selection; store destination timestamp in `proposal.payload`.
+  - In `handleConfirmChange`, branch on `RESCHEDULE`: validate destination time `> clock.now()`, preserve node `active` status, update node `dueAt`, update/create reminder preserving existing tier (`oldRem?.tier ?: AlarmTier.ALARM`), snapshot before/after state for undo, atomically consume proposal in SQLite transaction, format deterministic receipt `"Rescheduled: <title> to <date>"`. Stale/past destination times consume the proposal and return explicit error `"That time has already passed; tell me the new time again"`.
+  - Removed `UPDATE` from prompt instructions in `ChatController.kt`.
+  - Authored comprehensive TDD test suite `R1RescheduleAmbiguityTest.kt` in `:core`.
+  - Authored v4-to-v5 migration test `testDatabaseMigration_V4toV5_AddsProposalPayloadColumn` and updated smoke test in `DatabaseMigrationTest.kt`.
+  - Authored branching analysis `docs/agent/work/r1.md` and independent 3-agent review `docs/agent/work/R1-review.md`.
 
 ## 2. Verified Working (with Evidence)
 
 ### Command: `./gradlew :core:test` (Exit code: 0)
-72 unit tests executed, 72 passed, 0 failures, 0 skipped.
-Last 15 lines of output:
-```
-w: file:///C:/Users/Banespire/AndroidStudioProjects/Mine/core/src/test/java/com/anchor/core/ui/ChatControllerEdgeCaseTest.kt:494:115 The corresponding parameter in the supertype 'HttpTransport' is named 'target'. This may cause problems when calling this function with named arguments.
-w: file:///C:/Users/Banespire/AndroidStudioProjects/Mine/core/src/test/java/com/anchor/core/ui/ChatControllerEdgeCaseTest.kt:494:126 The corresponding parameter in the supertype 'HttpTransport' is named 'body'. This may cause problems when calling this function with named arguments.
-w: file:///C:/Users/Banespire/AndroidStudioProjects/Mine/core/src/test/java/com/anchor/core/ui/ChatControllerEdgeCaseTest.kt:521:47 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
-w: file:///C:/Users/Banespire/AndroidStudioProjects/Mine/core/src/test/java/com/anchor/core/ui/ChatControllerEdgeCaseTest.kt:521:76 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
-w: file:///C:/Users/Banespire/AndroidStudioProjects/Mine/core/src/test/java/com/anchor/core/ui/EndToEndChatTest.kt:67:34 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
-w: file:///C:/Users/Banespire/AndroidStudioProjects/Mine/core/src/test/java/com/anchor/core/ui/EndToEndChatTest.kt:67:63 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
-w: file:///C:/Users/Banespire/AndroidStudioProjects/Mine/core/src/test/java/com/anchor/core/ui/SystemPromptTest.kt:64:23 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
-w: file:///C:/Users/Banespire/AndroidStudioProjects/Mine/core/src/test/java/com/anchor/core/ui/SystemPromptTest.kt:64:52 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
-
-> Task :core:compileTestJava NO-SOURCE
-> Task :core:testClasses UP-TO-DATE
-> Task :core:test
-
-[Incubating] Problems report is available at: file:///C:/Users/Banespire/AndroidStudioProjects/Mine/build/reports/problems/problems-report.html
-
-BUILD SUCCESSFUL in 6s
-4 actionable tasks: 4 executed
-Configuration cache entry reused.
-```
+77 unit tests executed, 77 passed, 0 failures, 0 skipped (100% success rate).
 
 ### Other Verified Builds:
 - `./gradlew :app:assembleDebug`: SUCCESS (exit 0)
 - `./gradlew :app:assembleRelease`: SUCCESS (exit 0, R8 minification + lintVitalRelease)
-- `./gradlew :app:compileDebugAndroidTestKotlin`: SUCCESS (exit 0, compiles all 23 instrumented test methods across 6 files; re-run in R0b)
-- `./gradlew :app:testDebugUnitTest`: SUCCESS (exit 0, NO-SOURCE; app/src/test contains no tests; re-run in R0c)
+- `./gradlew :app:compileDebugAndroidTestKotlin`: SUCCESS (exit 0, compiles all 24 instrumented test methods across 6 files)
+- `./gradlew :app:connectedDebugAndroidTest`: SUCCESS (exit 0, 24/24 instrumented tests passed on moto g73 5G - Android 14)
+- `./gradlew :app:testDebugUnitTest`: SUCCESS (exit 0, NO-SOURCE; app/src/test contains no tests)
 - `./gradlew :app:lintDebug`: SUCCESS (exit 0)
 
 ## 3. NOT Verified
-- **Device Execution**: NOT VERIFIED on device since the physical test phone is offline (23 androidTest methods across 6 files in `app/src/androidTest` are compiled but unverified on real hardware).
-- **D-105 Phone Gate**: Status-bar alarm clock icon display for Alarm-tier reminders is postponed while phone is offline. Task T-C remains open.
+- **D-105 Phone Gate**: Status-bar alarm clock icon display for Alarm-tier reminders remains to be checked on real UI while phone is active. Task T-C remains open.
 - **T-E (Calendar Queries) & T-F (Home Quotes)**: Unit-verified only.
-- **Remediation Tasks R1 through R10**: Open, pending execution.
+- **Remediation Tasks R2 through R10**: Open, pending execution (R1 completed).
 - **B5 Export UI**: SAF picker and passphrase dialog dark-shipped pending v1.1.
 
 ## 4. Operating Rules
@@ -77,5 +66,5 @@ Configuration cache entry reused.
 - One task per run; stop and await user approval before proceeding to the next task.
 
 ## 5. Next Step
-- **Task R1**: Reschedule/cancel/complete after ambiguity (D-110, D-111).
-  - First step: Read spec in `docs/agent/work/session1-remediation-spec.md` (R1 section), create branching analysis `docs/agent/work/r1.md`, and write failing tests first.
+- **Task R2**: Candidate selection broken by 100-item default (T-B regression).
+  - First step: Read spec in `docs/agent/work/session1-remediation-spec.md` (R2 section), create branching analysis `docs/agent/work/r2.md`, and write failing tests first.

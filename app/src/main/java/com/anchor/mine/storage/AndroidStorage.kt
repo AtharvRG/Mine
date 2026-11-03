@@ -224,21 +224,22 @@ class AndroidStorage(private val dbHelper: SupportSQLiteOpenHelper) : Storage {
 
     override suspend fun saveProposal(proposal: Proposal) = withContext(ioDispatcher) {
         val optsJson = kotlinx.serialization.json.Json.encodeToString(proposal.options)
-        dbHelper.writableDatabase.execSQL("INSERT OR REPLACE INTO proposal (id, kind, intent, options, status, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-            arrayOf<Any>(proposal.id, proposal.kind, proposal.intent.name, optsJson, proposal.status, System.currentTimeMillis()))
+        dbHelper.writableDatabase.execSQL("INSERT OR REPLACE INTO proposal (id, kind, intent, options, status, created_at, payload) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            arrayOf<Any?>(proposal.id, proposal.kind, proposal.intent.name, optsJson, proposal.status, System.currentTimeMillis(), proposal.payload))
     }
 
     override suspend fun getProposal(id: String): Proposal? = withContext(ioDispatcher) {
         val expiryThreshold = System.currentTimeMillis() - (24 * 3600 * 1000L)
         // B5: Enforce 24-hour expiry directly at the read level. If it's old, it doesn't exist to the Gateway.
-        dbHelper.readableDatabase.query("SELECT kind, intent, options, status FROM proposal WHERE id = ? AND created_at > ?", arrayOf<Any>(id, expiryThreshold)).use {
+        dbHelper.readableDatabase.query("SELECT kind, intent, options, status, payload FROM proposal WHERE id = ? AND created_at > ?", arrayOf<Any>(id, expiryThreshold)).use {
             if (it.moveToFirst()) {
                 val opts = try {
                     kotlinx.serialization.json.Json.decodeFromString<List<ProposalOption>>(it.getString(2))
                 } catch (e: Exception) {
                     it.getString(2).split(",").map { idStr -> ProposalOption(idStr, "Unknown") }
                 }
-                Proposal(id, it.getString(0), IntentType.valueOf(it.getString(1)), opts, it.getString(3))
+                val payload = if (it.isNull(4)) null else it.getString(4)
+                Proposal(id, it.getString(0), IntentType.valueOf(it.getString(1)), opts, it.getString(3), payload)
             } else null
         }
     }
@@ -250,14 +251,15 @@ class AndroidStorage(private val dbHelper: SupportSQLiteOpenHelper) : Storage {
     override suspend fun getOpenProposals(): List<Proposal> = withContext(ioDispatcher) {
         val list = mutableListOf<Proposal>()
         val expiryThreshold = System.currentTimeMillis() - (24 * 3600 * 1000L)
-        dbHelper.readableDatabase.query("SELECT id, kind, intent, options, status FROM proposal WHERE status = 'open' AND created_at > ?", arrayOf(expiryThreshold)).use {
+        dbHelper.readableDatabase.query("SELECT id, kind, intent, options, status, payload FROM proposal WHERE status = 'open' AND created_at > ?", arrayOf(expiryThreshold)).use {
             while (it.moveToNext()) {
                 val opts = try {
                     kotlinx.serialization.json.Json.decodeFromString<List<ProposalOption>>(it.getString(3))
                 } catch (e: Exception) {
                     it.getString(3).split(",").map { id -> ProposalOption(id, "Unknown") }
                 }
-                list.add(Proposal(it.getString(0), it.getString(1), IntentType.valueOf(it.getString(2)), opts, it.getString(4)))
+                val payload = if (it.isNull(5)) null else it.getString(5)
+                list.add(Proposal(it.getString(0), it.getString(1), IntentType.valueOf(it.getString(2)), opts, it.getString(4), payload))
             }
         }
         list

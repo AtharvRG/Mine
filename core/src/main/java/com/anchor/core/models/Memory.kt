@@ -90,12 +90,22 @@ data class ChatMessage(
 data class ProposalOption(val id: String, val title: String, val dueTime: String? = null)
 
 @Serializable
+data class ProposalPayload(
+    val targetAtMillis: Long? = null,
+    val title: String? = null,
+    val type: String? = null,
+    val followUpTo: String? = null,
+    val tier: AlarmTier? = null
+)
+
+@Serializable
 data class Proposal(
     val id: String,
     val kind: String,
     val intent: IntentType,
     val options: List<ProposalOption>,
-    val status: String = "open"
+    val status: String = "open",
+    val payload: String? = null
 )
 
 @Serializable
