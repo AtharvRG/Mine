@@ -52,6 +52,38 @@
   - TDD test suites: Authored `R11UntitledAlarmsTest.kt` in `:core`, added unit tests in `DateResolverTest.kt`, `SystemPromptTest.kt`, and updated `GatewayTest.kt`.
   - Recorded architectural decision D-112 in `docs/agent/DECISIONS.md`.
 
+- **Task R2 (Candidate selection broken by 100-item default, T-B regression, D-104)**:
+  - Eliminated the silent 100-item default cutoff across all storage reads and candidate selection paths, scaling safely to 5000+ active items.
+  - `Storage.kt`:
+    - Defined `TooManyActiveNodesException(val cap: Int)`.
+    - Added extension function `getAllActiveNodesPaged(pageSize = 200, hardCap = 5000)` streaming records via keyset pagination with composite cursor `${dueAt}:${id}` (`due_at IS NULL, due_at ASC, id ASC`).
+    - Declared new targeted contract methods: `findActiveNodeByTitle(title: String): Node?`, `getNodesDueBetween(startMs: Long, endMs: Long, limit: Int = 500): List<Node>`, `getOverdueNodes(beforeMs: Long, limit: Int = 500): List<Node>`, and `getRankedCandidates(now: Long, staleCutoffMs: Long, perTierLimit: Int = 25): List<Node>`.
+  - `Gateway.kt`:
+    - `handleCreate`: Uses `storage.findActiveNodeByTitle(title)` for exact case-insensitive match on active/in_progress/paused items without scanning in memory.
+    - `handleResolveChange`: Pages through active items up to 5000 using `getAllActiveNodesPaged(200, 5000)`. Catches `TooManyActiveNodesException` and returns explicit user feedback: `"There are too many active items (${e.cap}+). Please be more specific with the item title or due time."`.
+    - Hardened `untitled` handling: `isAutoTitled = isUntitled && targetTimeMillis != null && hint.isBlank()`. When `untitled="true"` and an explicit title/hint is given ("Buy milk"), the title is preserved as "Buy milk".
+  - `DateResolver.kt`:
+    - Hardened `parseDuration` against overflow and excessive values: amounts > 100,000 return null, and total duration is bounded to `1..366 days`.
+  - `ContextBuilder.kt`:
+    - Replaced `storage.getActiveNodes(100)` with `storage.getRankedCandidates(now, staleCutoffMs, perTierLimit = 25)` and `storage.getActiveNodeCounts(now, staleCutoffMs)`.
+    - Context pack candidate ranking gathers items across 6 tiers (Overdue, In-Progress, Due within 48h, Pinned, High severity, Recency), filtering out stale nodes in SQL/storage to prevent undated pinned and severity 3 items from being starved by future-dated nodes.
+  - `CheckinBuilder.kt`:
+    - Replaced `storage.getActiveNodes(100)` with `storage.getNodesDueBetween(logicalTodayStart, logicalTodayEnd, limit = 500)` and `storage.getOverdueNodes(logicalTodayStart, limit = 500)` to compute exact morning agenda and overdue facts.
+  - `AndroidStorage.kt`:
+    - Implemented helper `queryNodes(sql, args)` executing under `ioDispatcher`.
+    - Implemented `findActiveNodeByTitle` using `WHERE (status = 'active' OR status = 'in_progress' OR status = 'paused') AND TRIM(title) = ? COLLATE NOCASE LIMIT 1`.
+    - Implemented `getNodesDueBetween` and `getOverdueNodes` leveraging existing index `idx_node_status_due`.
+    - Implemented `getRankedCandidates` querying 6 indexed tiers excluding stale items (`now - max(updated_at, created_at) <= staleCutoffMs`) and deduplicating by ID preserving tier precedence.
+  - `SharedFakeStorage.kt`:
+    - Implemented matching in-memory behavior using `LinkedHashMap<String, Node>` for exact parity with `AndroidStorage`.
+  - Recorded architectural decision D-113 in `docs/agent/DECISIONS.md`.
+  - TDD test suites:
+    - Authored `R2CandidateSelectionTest.kt` in `:core` (7 unit tests covering resolution at 300 nodes, duplicate lookup at 500 nodes, context pack tier survival, stale overdue exclusion, checkin agenda counts, storage contract parity, and 5000 hard-cap exceeded).
+    - Authored `testR2_StorageContract_AndroidStorage` in `AndroidStorageTest.kt` verifying identical behavior on real SQLite/SQLCipher on Android.
+    - Added untitled title-preservation test in `R11UntitledAlarmsTest.kt`.
+    - Added duration overflow and bounding tests in `DateResolverTest.kt`.
+  - Authored branching analysis `docs/agent/work/r2.md` and independent 3-agent review `docs/agent/work/r2-review.md`.
+
 ## 2. Verified Working (with Evidence)
 
 ### Command: `./gradlew :core:test` (Exit code: 0)
@@ -60,8 +92,8 @@
 ### Other Verified Builds:
 - `./gradlew :app:assembleDebug`: SUCCESS (exit 0)
 - `./gradlew :app:assembleRelease`: SUCCESS (exit 0, R8 minification + lintVitalRelease)
-- `./gradlew :app:compileDebugAndroidTestKotlin`: SUCCESS (exit 0, compiles all 24 instrumented test methods across 6 files)
-- `./gradlew :app:connectedDebugAndroidTest`: SUCCESS (exit 0, 24/24 instrumented tests passed on moto g73 5G - Android 14)
+- `./gradlew :app:compileDebugAndroidTestKotlin`: SUCCESS (exit 0, compiles all 25 instrumented test methods across 6 files)
+- `./gradlew :app:connectedDebugAndroidTest`: SUCCESS (exit 0, 25/25 instrumented tests passed on moto g73 5G - Android 14)
 - `./gradlew :app:installDebug`: SUCCESS (exit 0, APK installed on connected moto g73 5G)
 - `./gradlew :app:testDebugUnitTest`: SUCCESS (exit 0, NO-SOURCE; app/src/test contains no tests)
 - `./gradlew :app:lintDebug`: SUCCESS (exit 0)
@@ -69,7 +101,7 @@
 ## 3. NOT Verified
 - **D-105 Phone Gate**: Status-bar alarm clock icon display for Alarm-tier reminders remains to be checked on real UI while phone is active. Task T-C remains open.
 - **T-E (Calendar Queries) & T-F (Home Quotes)**: Unit-verified only.
-- **Remediation Tasks R2 through R10**: Open, pending execution (R1 and R11 completed).
+- **Remediation Tasks R3 through R10**: Open, pending execution (R1, R2, and R11 completed).
 - **B5 Export UI**: SAF picker and passphrase dialog dark-shipped pending v1.1.
 
 ## 4. Operating Rules
@@ -78,5 +110,6 @@
 - One task per run; stop and await user approval before proceeding to the next task.
 
 ## 5. Next Step
-- **Task R2**: Candidate selection broken by 100-item default (T-B regression).
-  - First step: Read spec in `docs/agent/work/session1-remediation-spec.md` (R2 section), create branching analysis `docs/agent/work/r2.md`, and write failing tests first.
+- **Task R3**: Alarm truth, permission, and silent failures.
+  - Review spec in `docs/agent/work/session1-remediation-spec.md` (R3 section).
+  - Create branching analysis `docs/agent/work/r3.md`, write failing tests first.

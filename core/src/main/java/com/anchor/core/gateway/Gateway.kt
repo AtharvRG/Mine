@@ -7,6 +7,8 @@ package com.anchor.core.gateway
 import com.anchor.core.models.*
 import com.anchor.core.resolver.Resolver
 import com.anchor.core.storage.Storage
+import com.anchor.core.storage.TooManyActiveNodesException
+import com.anchor.core.storage.getAllActiveNodesPaged
 import com.anchor.core.time.Clock
 import com.anchor.core.time.DateResolver
 import kotlinx.serialization.encodeToString
@@ -77,7 +79,7 @@ class Gateway(
                 when (intent) {
                     IntentType.CREATE -> {
                         val isUntitled = args["untitled"]?.equals("true", ignoreCase = true) == true
-                        val isAutoTitled = isUntitled && targetTimeMillis != null
+                        val isAutoTitled = isUntitled && targetTimeMillis != null && hint.isBlank()
                         val title = if (isAutoTitled) {
                             val rawLabel = args["label"]?.trim()?.lowercase(java.util.Locale.US)
                             val label = when (rawLabel) {
@@ -110,8 +112,7 @@ class Gateway(
                         val safeType = if (type in validTypes) type else "task"
 
                         if (!isAutoTitled) {
-                            val active = storage.getActiveNodes()
-                            val duplicate = active.find { it.title.equals(title, ignoreCase = true) && it.status != "done" && it.status != "cancelled" }
+                            val duplicate = storage.findActiveNodeByTitle(title)
                             if (duplicate != null) {
                                 return ToolResult.Error("An active item named '${duplicate.title}' already exists.")
                             }
@@ -260,7 +261,11 @@ class Gateway(
         timeForResolver: Long?,
         destinationTimeMillis: Long?
     ): ToolResult {
-        val candidates = storage.getActiveNodes()
+        val candidates = try {
+            storage.getAllActiveNodesPaged(pageSize = 200, hardCap = 5000)
+        } catch (e: TooManyActiveNodesException) {
+            return ToolResult.Error("There are too many active items (${e.cap}+). Please be more specific with the item title or due time.")
+        }
         val resolution = resolver.resolve(intent, hint, timeForResolver, candidates)
 
         return when (resolution) {

@@ -26,7 +26,11 @@ interface Storage {
     suspend fun getSetting(key: String): String?
     suspend fun saveSetting(key: String, value: String)
 
-    suspend fun getActiveNodes(limit: Int = 100, cursor: String? = null, order: String = "ASC"): List<Node>
+    suspend fun getActiveNodes(limit: Int, cursor: String? = null): List<Node>
+    suspend fun findActiveNodeByTitle(title: String): Node?
+    suspend fun getNodesDueBetween(startMs: Long, endMs: Long, limit: Int): List<Node>
+    suspend fun getOverdueNodes(beforeMs: Long, limit: Int): List<Node>
+    suspend fun getRankedCandidates(now: Long, staleCutoffMs: Long, perTierLimit: Int = 25): List<Node>
     suspend fun getActiveNodeCounts(now: Long, staleCutoffMs: Long = 30L * 24 * 3600 * 1000L): NodeCounts
     suspend fun getStaleNodes(cutoffMs: Long = 30L * 24 * 3600 * 1000L, now: Long = System.currentTimeMillis()): List<Node>
     suspend fun getActiveReminders(): List<Reminder>
@@ -93,4 +97,23 @@ interface Storage {
     // Quote Slots (D-108, Blueprint 40)
     suspend fun getQuoteSlot(slot: com.anchor.core.models.QuoteSlot, dayKey: String): com.anchor.core.models.Quote?
     suspend fun saveQuoteSlot(quote: com.anchor.core.models.Quote)
+}
+
+class TooManyActiveNodesException(val cap: Int) : Exception("Too many active items (exceeded $cap). Please be more specific.")
+
+suspend fun Storage.getAllActiveNodesPaged(pageSize: Int = 200, hardCap: Int = 5000): List<Node> {
+    val all = mutableListOf<Node>()
+    var cursor: String? = null
+    while (true) {
+        val page = getActiveNodes(limit = pageSize, cursor = cursor)
+        if (page.isEmpty()) break
+        all.addAll(page)
+        if (all.size > hardCap) {
+            throw TooManyActiveNodesException(hardCap)
+        }
+        if (page.size < pageSize) break
+        val last = page.last()
+        cursor = "${last.dueAt ?: "null"}:${last.id}"
+    }
+    return all
 }

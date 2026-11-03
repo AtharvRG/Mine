@@ -47,11 +47,12 @@ class DateResolver(
             val unit = m.groupValues[2]
             if (unit.length == 1 && !hasPrefix) return null   // "15h" must stay 3pm (D-103)
             val amount = m.groupValues[1].toLongOrNull() ?: return null
+            if (amount > 100_000L) return null
             total += amount * when (unit[0]) {
                 's' -> 1_000L; 'm' -> 60_000L; 'h' -> 3_600_000L; else -> 86_400_000L
             }
         }
-        return if (total > 0) total else null
+        return if (total in 1..366L * 86_400_000L) total else null
     }
 
     fun parse(dueText: String?, rolloverMinuteOfDay: Int = 240): Long? {

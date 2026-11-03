@@ -192,4 +192,29 @@ class R11UntitledAlarmsTest {
         assertTrue(result is ToolResult.Error)
         assertEquals("Missing title: ask the user what it is for.", (result as ToolResult.Error).reason)
     }
+
+    @Test
+    fun testUntitledWithTitle_PreservesTitle() = runBlocking {
+        val cal = Calendar.getInstance().apply { set(2026, Calendar.OCTOBER, 25, 12, 0, 0); set(Calendar.MILLISECOND, 0) }
+        val now = cal.timeInMillis
+        val clock = FakeClock(now)
+        val dateResolver = DateResolver(clock)
+        val storage = SharedFakeStorage()
+        val gateway = Gateway(storage, Resolver(), dateResolver, clock)
+
+        val toolCall = ToolCall(
+            "propose_change",
+            mapOf(
+                "intent" to JsonPrimitive("CREATE"),
+                "untitled" to JsonPrimitive("true"),
+                "title" to JsonPrimitive("Buy milk"),
+                "due_text" to JsonPrimitive("in 2 min 32 seconds")
+            )
+        )
+        val result = gateway.executeTool(toolCall)
+        assertTrue(result is ToolResult.Committed)
+        val committed = result as ToolResult.Committed
+        val node = storage.getNode(committed.targetId)!!
+        assertEquals("Buy milk", node.title)
+    }
 }

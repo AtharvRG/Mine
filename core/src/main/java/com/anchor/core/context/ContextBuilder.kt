@@ -28,8 +28,7 @@ class ContextBuilder(
         // D-104: Paged, deterministic code-ranking, token-budget capped active items
         val staleCutoffMs = 30L * 24 * 3600 * 1000L
         val counts = storage.getActiveNodeCounts(now, staleCutoffMs)
-        val candidates = storage.getActiveNodes(limit = 100)
-            .filter { maxOf(it.updatedAt, it.createdAt) == 0L || (now - maxOf(it.updatedAt, it.createdAt)) <= staleCutoffMs }
+        val candidates = storage.getRankedCandidates(now, staleCutoffMs, perTierLimit = 25)
 
         val rankedNodes = candidates.sortedWith(createDeterministicNodeComparator(now))
 

@@ -78,8 +78,8 @@ class SystemPromptTest {
         // Removed schedule_reminder assertion, as it was stripped from the prompt to prevent double-alarms
 
         // 2. Verify End-to-End Creation
-        assertEquals(1, storage.getActiveNodes().size)
-        assertEquals("Dinner with Shyam", storage.getActiveNodes()[0].title)
+        assertEquals(1, storage.getActiveNodes(100).size)
+        assertEquals("Dinner with Shyam", storage.getActiveNodes(100)[0].title)
     }
 
     @Test

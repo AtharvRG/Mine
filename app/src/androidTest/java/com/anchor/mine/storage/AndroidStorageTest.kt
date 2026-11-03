@@ -230,7 +230,7 @@ class AndroidStorageTest {
         var cursor: String? = null
 
         while (true) {
-            val page = storage.getActiveNodes(limit = pageSize, cursor = cursor, order = "ASC")
+            val page = storage.getActiveNodes(limit = pageSize, cursor = cursor)
             if (page.isEmpty()) break
             page.forEach { visitedIds.add(it.id) }
             val last = page.last()
@@ -244,6 +244,52 @@ class AndroidStorageTest {
         val firstUndatedIdx = visitedIds.indexOfFirst { it.startsWith("undated_") || it.startsWith("stale_") }
         val lastDatedIdx = visitedIds.indexOfLast { it.startsWith("overdue_") || it.startsWith("future_") }
         assertTrue("Dated items must precede undated items", lastDatedIdx < firstUndatedIdx)
+    }
+
+    @Test
+    fun testR2_StorageContract_AndroidStorage(): Unit = runBlocking {
+        val now = 1_700_000_000_000L
+        val staleCutoff = 30L * 24 * 3600 * 1000L
+        val db = dbHelper.writableDatabase
+
+        db.execSQL("INSERT INTO node (id, type, title, status, due_at, created_at, updated_at) VALUES ('n_walk', 'task', 'Walk the dog', 'active', ?, ?, ?)", arrayOf(now + 10_000L, now - 1000L, now - 1000L))
+        db.execSQL("INSERT INTO node (id, type, title, status, due_at, created_at, updated_at) VALUES ('n_groceries', 'task', 'Buy groceries', 'active', ?, ?, ?)", arrayOf(now + 7200_000L, now - 1000L, now - 1000L))
+        db.execSQL("INSERT INTO node (id, type, title, status, due_at, created_at, updated_at) VALUES ('n_overdue_fresh', 'task', 'Pay electric bill', 'active', ?, ?, ?)", arrayOf(now - 3600_000L, now - 1000L, now - 1000L))
+        db.execSQL("INSERT INTO node (id, type, title, status, due_at, created_at, updated_at) VALUES ('n_overdue_stale', 'task', 'Old parking ticket', 'active', ?, ?, ?)", arrayOf(now - (40L * 86400000L), now - (40L * 86400000L), now - (35L * 86400000L)))
+        db.execSQL("INSERT INTO node (id, type, title, status, due_at, created_at, updated_at, attrs) VALUES ('n_pinned', 'task', 'Keep kitchen clean', 'active', NULL, ?, ?, '{\"pinned\":true}')", arrayOf(now - 1000L, now - 1000L))
+        db.execSQL("INSERT INTO node (id, type, title, status, due_at, created_at, updated_at, severity) VALUES ('n_urgent', 'task', 'Fix water leak', 'active', NULL, ?, ?, 3)", arrayOf(now - 1000L, now - 1000L))
+        db.execSQL("INSERT INTO node (id, type, title, status, due_at, created_at, updated_at) VALUES ('n_done', 'task', 'Walk the dog', 'done', ?, ?, ?)", arrayOf(now - 10_000L, now - 2000L, now - 1000L))
+        db.execSQL("INSERT INTO node (id, type, title, status, due_at, created_at, updated_at) VALUES ('n_deleted', 'task', 'Walk the dog', 'deleted', ?, ?, ?)", arrayOf(now - 10_000L, now - 2000L, now - 1000L))
+
+        // 1. findActiveNodeByTitle
+        val foundWalk = storage.findActiveNodeByTitle("  walk the DOG  ")
+        assertNotNull(foundWalk)
+        assertEquals("n_walk", foundWalk?.id)
+
+        val foundGroceries = storage.findActiveNodeByTitle("buy groceries")
+        assertNotNull(foundGroceries)
+        assertEquals("n_groceries", foundGroceries?.id)
+
+        val foundMissing = storage.findActiveNodeByTitle("does not exist")
+        assertEquals(null, foundMissing)
+
+        // 2. getNodesDueBetween
+        val dueSoon = storage.getNodesDueBetween(now, now + 86400000L, limit = 10)
+        assertEquals(listOf("n_walk", "n_groceries"), dueSoon.map { it.id })
+
+        // 3. getOverdueNodes
+        val overdue = storage.getOverdueNodes(now, limit = 10)
+        assertEquals(listOf("n_overdue_stale", "n_overdue_fresh"), overdue.map { it.id })
+
+        // 4. getRankedCandidates: must exclude stale overdue, done, deleted; include fresh overdue, due soon, pinned, high severity
+        val ranked = storage.getRankedCandidates(now, staleCutoff, perTierLimit = 10)
+        val rankedIds = ranked.map { it.id }.toSet()
+        assertTrue("Must include fresh overdue", rankedIds.contains("n_overdue_fresh"))
+        assertFalse("Must NOT include stale overdue", rankedIds.contains("n_overdue_stale"))
+        assertTrue("Must include due soon", rankedIds.contains("n_walk") && rankedIds.contains("n_groceries"))
+        assertTrue("Must include pinned", rankedIds.contains("n_pinned"))
+        assertTrue("Must include high severity", rankedIds.contains("n_urgent"))
+        assertFalse("Must NOT include done or deleted", rankedIds.contains("n_done") || rankedIds.contains("n_deleted"))
     }
 
     @Test

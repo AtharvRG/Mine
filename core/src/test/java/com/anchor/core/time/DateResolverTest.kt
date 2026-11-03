@@ -248,5 +248,11 @@ class DateResolverTest {
         assertEquals(now + 60_000L, resolver.parse("in a min"))
         assertEquals(now + 3_600_000L, resolver.parse("in an hour"))
         assertEquals(now + 1_800_000L, resolver.parse("in half an hour"))
+
+        // Overflow & bounds protection: amounts > 100_000 or total > 366 days return null
+        assertNull(resolver.parse("in 99999999999999 days"))
+        assertNull(resolver.parse("in 100001 seconds"))
+        assertNull(resolver.parse("in 367 days"))
+        assertEquals(now + 365L * 86_400_000L, resolver.parse("in 365 days"))
     }
 }

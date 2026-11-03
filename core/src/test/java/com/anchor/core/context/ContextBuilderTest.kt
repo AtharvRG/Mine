@@ -257,7 +257,7 @@ class ContextBuilderTest {
         var pages = 0
 
         while (true) {
-            val page = storage.getActiveNodes(limit = pageSize, cursor = cursor, order = "ASC")
+            val page = storage.getActiveNodes(limit = pageSize, cursor = cursor)
             if (page.isEmpty()) break
             pages++
             page.forEach { visitedIds.add(it.id) }

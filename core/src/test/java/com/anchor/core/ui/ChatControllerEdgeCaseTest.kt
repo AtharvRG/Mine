@@ -512,6 +512,47 @@ class ChatControllerEdgeCaseTest {
         org.junit.Assert.assertFalse("Context must not include rejected soul fact", sysPrompt.contains("Plays tennis"))
     }
 
+    @Test
+    fun testGatewayAndControllerUntitledFlowIntegration() = runBlocking {
+        val storage = SharedFakeStorage().apply { settings["key"] = "test-key" }
+        val clock = FakeClock(1000L)
+        val replies = mutableListOf<String>()
+        val interceptedPayloads = mutableListOf<String>()
+
+        val transport = object : HttpTransport {
+            override suspend fun postStream(target: Target, body: String): Flow<String> = flow {
+                interceptedPayloads.add(body)
+                val reply = replies.removeAt(0)
+                emit("""data: {"choices":[{"delta":{"content":$reply}}]}""")
+                emit("data: [DONE]")
+            }
+        }
+        val controller = buildController(storage, clock, transport)
+
+        // Turn 1: "notify me in 10 secs" -> LLM asks "For what?"
+        replies.add(""" "{\"reply\":\"For what?\",\"calls\":[]}" """)
+        controller.onAction(UiAction.UpdateDraft("notify me in 10 secs"))
+        controller.onAction(UiAction.SendMessage)
+        kotlinx.coroutines.delay(50)
+
+        // Turn 2: "nothing specific just do it" -> LLM calls propose_change untitled=true
+        replies.add(""" "{\"reply\":\"Got it.\",\"calls\":[{\"tool\":\"propose_change\",\"args\":{\"intent\":\"CREATE\",\"untitled\":\"true\",\"label\":\"notification\",\"due_text\":\"in 10 secs\"}}]}" """)
+        controller.onAction(UiAction.UpdateDraft("nothing specific just do it"))
+        controller.onAction(UiAction.SendMessage)
+        kotlinx.coroutines.delay(50)
+
+        // Turn 3: "remaind me in 15 secs for checking laptop" -> With subject present, LLM must propose_change CREATE directly
+        replies.add(""" "{\"reply\":\"Got it.\",\"calls\":[{\"tool\":\"propose_change\",\"args\":{\"intent\":\"CREATE\",\"title\":\"checking laptop\",\"due_text\":\"in 15 secs\"}}]}" """)
+        controller.onAction(UiAction.UpdateDraft("remaind me in 15 secs for checking laptop"))
+        controller.onAction(UiAction.SendMessage)
+        kotlinx.coroutines.delay(50)
+
+        val nodes = storage.getActiveNodes(100)
+        assertEquals(2, nodes.size)
+        assertTrue(nodes.any { it.title == "checking laptop" })
+        assertTrue(nodes.any { it.title.contains("Notification") })
+    }
+
     private fun buildController(storage: com.anchor.core.storage.Storage, clock: Clock, transport: HttpTransport): ChatController {
         return ChatController(
             storage, ProviderOrchestrator(RateLimiter { clock.now() }, transport), 

@@ -76,7 +76,7 @@ class TurnCompletionTest {
         controller.onAction(UiAction.SendMessage)
         assertEquals(2, callCount) // User Answers -> Commit -> Loop Ends
         
-        val active = storage.getActiveNodes()
+        val active = storage.getActiveNodes(100)
         assertEquals("Exactly one node cancelled", 1, active.size)
         assertEquals("n_thur", active[0].id)
     }

@@ -73,16 +73,16 @@ class EndToEndChatTest {
         assertEquals(1, turnCount) // Ambiguous ends turn immediately so UI can display choice selection
         
         // Verify node wasn't deleted, and a proposal was made
-        assertEquals(2, storage.getActiveNodes().size)
+        assertEquals(2, storage.getActiveNodes(100).size)
         assertEquals(1, storage.savedProposals.size)
 
         // User: "Raj"
         controller.onAction(UiAction.UpdateDraft("Raj"))
         controller.onAction(UiAction.SendMessage)
         assertEquals(2, turnCount) // Confirm change executed and turn completed
-        
+
         // Verify only Raj was cancelled
-        val active = storage.getActiveNodes()
+        val active = storage.getActiveNodes(100)
         assertEquals(1, active.size)
         assertEquals("n_thur", active[0].id)
     }

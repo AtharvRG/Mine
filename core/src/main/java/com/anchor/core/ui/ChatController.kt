@@ -365,7 +365,8 @@ Tools:
 - soul_propose (statement: string, category: string). Use to record facts or preferences. Do NOT use sensitive categories (health, medical, legal) unless the user explicitly commands it.
 
 Rules:
-- If the user asks to be reminded, cued, notified or alarmed with a time but gives no subject, make no tool call. Reply with one short question ("For what?") and calls: []. If they say there's no reason ("just an alarm", "no particular reason"), call propose_change CREATE with untitled=true and label set to the word they used (alarm, reminder or notification). Send no title.
+- If the user asks to be reminded, cued, notified or alarmed with a time but gives no subject, make no tool call. Reply with one short question ("For what?") and calls: [].
+- However, if the user already answered or said there's no reason (e.g. "nothing specific", "just do it", "just an alarm", "no particular reason"), or if they explicitly include a subject ("for checking laptop"), DO NOT ask "For what?" again! Call propose_change CREATE immediately. For no reason, use untitled=true and label set to the word they used (alarm, reminder or notification) with no title. For explicit subject, set title to the subject and untitled=false.
 
 Examples:
 CREATE: {"tool":"propose_change","args":{"intent":"CREATE", "title":"Buy milk", "due_text": "tomorrow at 4pm"}}

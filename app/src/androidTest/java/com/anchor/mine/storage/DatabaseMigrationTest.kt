@@ -55,7 +55,7 @@ class DatabaseMigrationTest {
         val e = RawEvent("e_s", "CREATE", "node", "n_s")
         storage.createNodeAndCommit(n, e, null)
         assertNotNull(storage.getNode("n_s"))
-        assertEquals(1, storage.getActiveNodes().size)
+        assertEquals(1, storage.getActiveNodes(limit = 100).size)
         assertEquals(1, storage.getActiveNodeCounts(1700000000000L).totalOpen)
         assertEquals(0, storage.getStaleNodes(100000L, 1700000000000L).size)
         assertEquals(1, storage.getUrgentNodes().size)

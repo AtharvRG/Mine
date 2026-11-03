@@ -1,16 +1,17 @@
 # STATE (update every session; facts only)
-Updated: 2026-11-03   Commit: 11f5bc4 (Task R1 completion + live alarm fix; R11 implemented)
+Updated: 2026-11-03   Commit: in-progress (Task R2 completion; R1, R2, R11 implemented)
 ## Build/test status (command + exit code)
 - `./gradlew :core:test`: SUCCESS (exit 0, 85/85 tests passed)
 - `./gradlew :app:assembleDebug`: SUCCESS (exit 0)
 - `./gradlew :app:assembleRelease`: SUCCESS (exit 0, R8 minification + lintVitalRelease)
-- `./gradlew :app:compileDebugAndroidTestKotlin`: SUCCESS (exit 0, compiles 24 androidTest test methods across 6 classes)
+- `./gradlew :app:compileDebugAndroidTestKotlin`: SUCCESS (exit 0, compiles 25 androidTest test methods across 6 classes)
 - `./gradlew :app:testDebugUnitTest`: SUCCESS (exit 0, task reported NO-SOURCE; app/src/test contains no tests)
-- `./gradlew :app:connectedDebugAndroidTest`: SUCCESS (exit 0, 24/24 instrumented tests passed on moto g73 5G - Android 14)
+- `./gradlew :app:connectedDebugAndroidTest`: SUCCESS (exit 0, 25/25 instrumented tests passed on moto g73 5G - Android 14)
 - `./gradlew :app:lintDebug`: SUCCESS (exit 0)
 ## Verified working (with evidence)
-- `:core:test` passes all 85 unit tests across resolver, time, context, gateway, provider, reliability, and chat controller.
-- `:app:connectedDebugAndroidTest` passes 24/24 instrumented tests on physical device moto g73 5G (API 34).
+- `:core:test` passes all unit tests across resolver, time, context, gateway, provider, reliability, chat controller, and R2 candidate selection.
+- `:app:connectedDebugAndroidTest` passes 25/25 instrumented tests on physical device moto g73 5G (API 34).
+- R2: Candidate selection under load (>100 to 5000+ active items, D-104, D-113): eliminated silent 100-item default cutoff across all storage reads. Keyset cursor pagination over `(due_at, id)` up to 5000 hard-cap with `TooManyActiveNodesException` handling in `Gateway.handleResolveChange` informing the user to be more specific; targeted case-insensitive duplicate check `findActiveNodeByTitle` on active nodes (`TRIM(title) = ? COLLATE NOCASE`) in `Gateway.handleCreate` without loading items into memory; multi-tier candidate ranking `getRankedCandidates` across 6 tiers (Overdue, In-Progress, Due within 48h, Pinned, High severity, Recency) filtering out stale nodes in SQL/storage to prevent undated pinned and severity 3 items from being starved by future-dated nodes; logical calendar day range queries `getNodesDueBetween` and `getOverdueNodes` in `CheckinBuilder` providing exact morning agenda counts. Hardened untitled alarm handling to preserve title if provided (`isUntitled && targetTimeMillis != null && hint.isBlank()`), and bounded `parseDuration` against overflow. Verified by 7 unit tests in `R2CandidateSelectionTest.kt` and on-device instrumentation `testR2_StorageContract_AndroidStorage` in `AndroidStorageTest.kt`.
 - R11: Compound duration parsing, date prompt enforcement, and untitled alarm fallbacks (D-112): unanchored multi-unit compound duration scanner `parseDuration` in `DateResolver` (seconds, minutes, hours, days, optional prefixes `in`/`after`/`within`, conjunctions `and`/`,`), hardened with `Locale.US` and `toLongOrNull()`, D-103 single-letter prefix retention ("15h" preserved as 15:00), prompt temporal authority rule enforcing verbatim user time copying and forbidding LLM clock calculation or "Now:" format reuse, untitled alarm handling in `Gateway` creating `<MM:SS> <Label>` / `<H:MM:SS> <Label>` / `<HH:mm> <Label>` titles with whitelisted labels (`alarm`, `reminder`, `notification`), direct durationMillis math preventing clock jitter, and duplicate-title bypass. Verified by 8 new unit tests in `DateResolverTest`, `SystemPromptTest`, `GatewayTest`, and `R11UntitledAlarmsTest`.
 - `:app:compileDebugAndroidTestKotlin` compiles all 24 instrumented test methods across 6 test classes without error.
 - R1: Reschedule/cancel/complete after ambiguity (D-110, D-111): SQLite v5 schema migration with nullable proposal payload column, ProposalPayload model, RESCHEDULE resolver isolation (passes null time to prevent +0.5 time override crown), proposal payload persistence for zero-model-call chip execution, handleConfirmChange destination time validity checks (> clock.now()), reminder tier preservation, explicit ToolResult.Error on unsupported intents (UPDATE, PAUSE, RESUME) before mutation, prompt alignment removing UPDATE - unit-verified in core and migration-verified in androidTest.
@@ -27,11 +28,11 @@ Updated: 2026-11-03   Commit: 11f5bc4 (Task R1 completion + live alarm fix; R11 
 - 6 custom agents (`reviewer`, `debugger`, `blueprint-checker`, `migration-guard`, `test-auditor`, `android-device`), 5 commands (`bootstrap`, `audit`, `fix`, `verify`, `handoff`), 5 skills, and safety hooks installed in repo `.claude/` and `.openclaude/` directories (OpenClaude canonical is `.openclaude/`).
 ## Known broken
 - B5 (Export UI picker & passphrase dialog) is not implemented; dark-shipped pending v1.1 SAF integration.
-- Tasks T-A, T-B, T-C, T-D, T6, T13, T20 set to in-progress [~] pending remediation (R2..R10; R1 completed).
+- Tasks T-A, T-B, T-C, T-D, T6, T13, T20 set to in-progress [~] pending remediation (R3..R10; R1, R2, R11 completed).
 ## UNVERIFIED (from old chat / unproven)
 - T-E, T-F are unit-verified only.
-- R2 through R10 remediation tasks open (R1 completed).
+- R3 through R10 remediation tasks open (R1, R2, R11 completed).
 ## Environment notes (device, Android version, OEM, toolchain versions)
-- Physical test device is connected: moto g73 5G running Android 14 (API 34). Instrumented test suite (:app:connectedDebugAndroidTest) verified 24/24 passed.
+- Physical test device is connected: moto g73 5G running Android 14 (API 34). Instrumented test suite (:app:connectedDebugAndroidTest) verified 25/25 passed.
 - Windows 11 Pro, Bash environment.
 - Toolchains: AGP 9.4.0, Kotlin 2.4.21, Gradle 9.6.0, daemon JDK toolchain 25 (Eclipse Adoptium 25.0.4.1+1-LTS), JVM target 17.

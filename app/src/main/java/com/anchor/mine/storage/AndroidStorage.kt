@@ -116,8 +116,29 @@ class AndroidStorage(private val dbHelper: SupportSQLiteOpenHelper) : Storage {
         dbHelper.writableDatabase.execSQL("INSERT OR REPLACE INTO app_meta (\"key\", value) VALUES (?, ?)", arrayOf(key, value))
     }
 
-    override suspend fun getActiveNodes(limit: Int, cursor: String?, order: String): List<Node> = withContext(ioDispatcher) {
+    private fun queryNodes(sql: String, args: Array<String>): List<Node> {
         val list = mutableListOf<Node>()
+        dbHelper.readableDatabase.query(sql, args).use {
+            while (it.moveToNext()) {
+                val id = it.getString(0)
+                val type = it.getString(1)
+                val title = it.getString(2)
+                val status = it.getString(3)
+                val dueAt = if (it.isNull(4)) null else it.getLong(4)
+                val createdAt = it.getLong(5)
+                val updatedAt = it.getLong(6)
+                val closedAt = if (it.isNull(7)) null else it.getLong(7)
+                val priority = if (it.isNull(8)) 0 else it.getInt(8)
+                val severity = if (it.isNull(9)) 0 else it.getInt(9)
+                val attrs = if (it.isNull(10)) null else it.getString(10)
+                val pinned = attrs?.contains("\"pinned\":true") == true || attrs?.contains("\"pinned\": true") == true
+                list.add(Node(id, type, title, status, dueAt, createdAt, updatedAt, closedAt, priority, severity, pinned))
+            }
+        }
+        return list
+    }
+
+    override suspend fun getActiveNodes(limit: Int, cursor: String?): List<Node> = withContext(ioDispatcher) {
         val queryBuilder = StringBuilder()
         val args = mutableListOf<String>()
 
@@ -142,29 +163,69 @@ class AndroidStorage(private val dbHelper: SupportSQLiteOpenHelper) : Storage {
         queryBuilder.append(" ORDER BY due_at IS NULL, due_at ASC, id ASC LIMIT CAST(? AS INTEGER)")
         args.add(limit.toString())
 
-        dbHelper.readableDatabase.query(queryBuilder.toString(), args.toTypedArray()).use {
-            while (it.moveToNext()) {
-                val id = it.getString(0)
-                val type = it.getString(1)
-                val title = it.getString(2)
-                val status = it.getString(3)
-                val dueAt = if (it.isNull(4)) null else it.getLong(4)
-                val createdAt = it.getLong(5)
-                val updatedAt = it.getLong(6)
-                val closedAt = if (it.isNull(7)) null else it.getLong(7)
-                val priority = if (it.isNull(8)) 0 else it.getInt(8)
-                val severity = if (it.isNull(9)) 0 else it.getInt(9)
-                val attrs = if (it.isNull(10)) null else it.getString(10)
-                val pinned = attrs?.contains("\"pinned\":true") == true || attrs?.contains("\"pinned\": true") == true
-                list.add(Node(id, type, title, status, dueAt, createdAt, updatedAt, closedAt, priority, severity, pinned))
-            }
-        }
-        list
+        queryNodes(queryBuilder.toString(), args.toTypedArray())
+    }
+
+    override suspend fun findActiveNodeByTitle(title: String): Node? = withContext(ioDispatcher) {
+        val trimmed = title.trim()
+        val sql = "SELECT id, type, title, status, due_at, created_at, updated_at, closed_at, priority, severity, attrs FROM node WHERE (status = 'active' OR status = 'in_progress' OR status = 'paused') AND TRIM(title) = ? COLLATE NOCASE LIMIT 1"
+        queryNodes(sql, arrayOf(trimmed)).firstOrNull()
+    }
+
+    override suspend fun getNodesDueBetween(startMs: Long, endMs: Long, limit: Int): List<Node> = withContext(ioDispatcher) {
+        val sql = "SELECT id, type, title, status, due_at, created_at, updated_at, closed_at, priority, severity, attrs FROM node WHERE (status = 'active' OR status = 'in_progress' OR status = 'paused') AND due_at IS NOT NULL AND due_at >= CAST(? AS INTEGER) AND due_at < CAST(? AS INTEGER) ORDER BY due_at ASC, id ASC LIMIT CAST(? AS INTEGER)"
+        queryNodes(sql, arrayOf(startMs.toString(), endMs.toString(), limit.toString()))
+    }
+
+    override suspend fun getOverdueNodes(beforeMs: Long, limit: Int): List<Node> = withContext(ioDispatcher) {
+        val sql = "SELECT id, type, title, status, due_at, created_at, updated_at, closed_at, priority, severity, attrs FROM node WHERE (status = 'active' OR status = 'in_progress' OR status = 'paused') AND due_at IS NOT NULL AND due_at < CAST(? AS INTEGER) ORDER BY due_at ASC, id ASC LIMIT CAST(? AS INTEGER)"
+        queryNodes(sql, arrayOf(beforeMs.toString(), limit.toString()))
+    }
+
+    override suspend fun getRankedCandidates(now: Long, staleCutoffMs: Long, perTierLimit: Int): List<Node> = withContext(ioDispatcher) {
+        val cutoff = now - staleCutoffMs
+        val nonStaleCond = "(created_at = 0 OR (CASE WHEN updated_at > created_at THEN updated_at ELSE created_at END) >= CAST(? AS INTEGER))"
+        val activeCond = "(status = 'active' OR status = 'in_progress' OR status = 'paused') AND $nonStaleCond"
+        val cols = "id, type, title, status, due_at, created_at, updated_at, closed_at, priority, severity, attrs"
+
+        // Tier 1: Overdue (< now)
+        val t1Sql = "SELECT $cols FROM node WHERE $activeCond AND due_at IS NOT NULL AND due_at < CAST(? AS INTEGER) ORDER BY due_at ASC, id ASC LIMIT CAST(? AS INTEGER)"
+        val tier1 = queryNodes(t1Sql, arrayOf(cutoff.toString(), now.toString(), perTierLimit.toString()))
+
+        // Tier 2: In-progress
+        val t2Sql = "SELECT $cols FROM node WHERE (status = 'in_progress') AND $nonStaleCond ORDER BY (CASE WHEN updated_at > created_at THEN updated_at ELSE created_at END) DESC, id ASC LIMIT CAST(? AS INTEGER)"
+        val tier2 = queryNodes(t2Sql, arrayOf(cutoff.toString(), perTierLimit.toString()))
+
+        // Tier 3: Due within 48h
+        val horizon = now + (48L * 3600 * 1000L)
+        val t3Sql = "SELECT $cols FROM node WHERE $activeCond AND due_at IS NOT NULL AND due_at >= CAST(? AS INTEGER) AND due_at <= CAST(? AS INTEGER) ORDER BY due_at ASC, id ASC LIMIT CAST(? AS INTEGER)"
+        val tier3 = queryNodes(t3Sql, arrayOf(cutoff.toString(), now.toString(), horizon.toString(), perTierLimit.toString()))
+
+        // Tier 4: Pinned
+        val t4Sql = "SELECT $cols FROM node WHERE $activeCond AND (attrs LIKE '%\"pinned\":true%' OR attrs LIKE '%\"pinned\": true%') ORDER BY (CASE WHEN updated_at > created_at THEN updated_at ELSE created_at END) DESC, id ASC LIMIT CAST(? AS INTEGER)"
+        val tier4 = queryNodes(t4Sql, arrayOf(cutoff.toString(), perTierLimit.toString()))
+
+        // Tier 5: Severity > 0
+        val t5Sql = "SELECT $cols FROM node WHERE $activeCond AND severity > 0 ORDER BY severity DESC, (CASE WHEN updated_at > created_at THEN updated_at ELSE created_at END) DESC, id ASC LIMIT CAST(? AS INTEGER)"
+        val tier5 = queryNodes(t5Sql, arrayOf(cutoff.toString(), perTierLimit.toString()))
+
+        // Tier 6: Recency
+        val t6Sql = "SELECT $cols FROM node WHERE $activeCond ORDER BY (CASE WHEN updated_at > created_at THEN updated_at ELSE created_at END) DESC, id ASC LIMIT CAST(? AS INTEGER)"
+        val tier6 = queryNodes(t6Sql, arrayOf(cutoff.toString(), perTierLimit.toString()))
+
+        val union = LinkedHashMap<String, Node>()
+        for (node in tier1) union.putIfAbsent(node.id, node)
+        for (node in tier2) union.putIfAbsent(node.id, node)
+        for (node in tier3) union.putIfAbsent(node.id, node)
+        for (node in tier4) union.putIfAbsent(node.id, node)
+        for (node in tier5) union.putIfAbsent(node.id, node)
+        for (node in tier6) union.putIfAbsent(node.id, node)
+        union.values.toList()
     }
 
     override suspend fun getActiveNodeCounts(now: Long, staleCutoffMs: Long): NodeCounts = withContext(ioDispatcher) {
         val cutoff = now - staleCutoffMs
-        val sql = "SELECT COUNT(*), COUNT(CASE WHEN due_at IS NOT NULL AND due_at < CAST(? AS INTEGER) THEN 1 END) FROM node WHERE (status = 'active' OR status = 'in_progress' OR status = 'paused') AND (created_at = 0 OR (CASE WHEN updated_at > 0 THEN updated_at ELSE created_at END) >= CAST(? AS INTEGER))"
+        val sql = "SELECT COUNT(*), COUNT(CASE WHEN due_at IS NOT NULL AND due_at < CAST(? AS INTEGER) THEN 1 END) FROM node WHERE (status = 'active' OR status = 'in_progress' OR status = 'paused') AND (created_at = 0 OR (CASE WHEN updated_at > created_at THEN updated_at ELSE created_at END) >= CAST(? AS INTEGER))"
         dbHelper.readableDatabase.query(sql, arrayOf(now.toString(), cutoff.toString())).use {
             if (it.moveToFirst()) {
                 NodeCounts(it.getInt(0), it.getInt(1))
@@ -175,27 +236,9 @@ class AndroidStorage(private val dbHelper: SupportSQLiteOpenHelper) : Storage {
     }
 
     override suspend fun getStaleNodes(cutoffMs: Long, now: Long): List<Node> = withContext(ioDispatcher) {
-        val list = mutableListOf<Node>()
         val cutoff = now - cutoffMs
-        val sql = "SELECT id, type, title, status, due_at, created_at, updated_at, closed_at, priority, severity, attrs FROM node WHERE (status = 'active' OR status = 'in_progress' OR status = 'paused') AND (created_at > 0 OR updated_at > 0) AND (CASE WHEN updated_at > 0 THEN updated_at ELSE created_at END) < CAST(? AS INTEGER) ORDER BY created_at DESC"
-        dbHelper.readableDatabase.query(sql, arrayOf(cutoff.toString())).use {
-            while (it.moveToNext()) {
-                val id = it.getString(0)
-                val type = it.getString(1)
-                val title = it.getString(2)
-                val status = it.getString(3)
-                val dueAt = if (it.isNull(4)) null else it.getLong(4)
-                val createdAt = it.getLong(5)
-                val updatedAt = it.getLong(6)
-                val closedAt = if (it.isNull(7)) null else it.getLong(7)
-                val priority = if (it.isNull(8)) 0 else it.getInt(8)
-                val severity = if (it.isNull(9)) 0 else it.getInt(9)
-                val attrs = if (it.isNull(10)) null else it.getString(10)
-                val pinned = attrs?.contains("\"pinned\":true") == true || attrs?.contains("\"pinned\": true") == true
-                list.add(Node(id, type, title, status, dueAt, createdAt, updatedAt, closedAt, priority, severity, pinned))
-            }
-        }
-        list
+        val sql = "SELECT id, type, title, status, due_at, created_at, updated_at, closed_at, priority, severity, attrs FROM node WHERE (status = 'active' OR status = 'in_progress' OR status = 'paused') AND (created_at > 0 OR updated_at > 0) AND (CASE WHEN updated_at > created_at THEN updated_at ELSE created_at END) < CAST(? AS INTEGER) ORDER BY created_at DESC"
+        queryNodes(sql, arrayOf(cutoff.toString()))
     }
 
     override suspend fun getActiveReminders(): List<Reminder> = withContext(ioDispatcher) {

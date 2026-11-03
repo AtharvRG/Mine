@@ -50,7 +50,7 @@ class SharedFakeStorage : Storage {
     override suspend fun getSetting(key: String): String? = settings[key]
     override suspend fun saveSetting(key: String, value: String) { settings[key] = value }
 
-    override suspend fun getActiveNodes(limit: Int, cursor: String?, order: String): List<Node> {
+    override suspend fun getActiveNodes(limit: Int, cursor: String?): List<Node> {
         val openNodes = activeNodes.filter { it.status == "active" || it.status == "in_progress" || it.status == "paused" }
         val sorted = openNodes.sortedWith(
             compareBy<Node> { it.dueAt == null }
@@ -64,6 +64,68 @@ class SharedFakeStorage : Storage {
         } else 0
 
         return sorted.drop(startIdx).take(limit)
+    }
+
+    override suspend fun findActiveNodeByTitle(title: String): Node? {
+        val trimmed = title.trim()
+        return activeNodes.find {
+            (it.status == "active" || it.status == "in_progress" || it.status == "paused") &&
+            it.title.trim().equals(trimmed, ignoreCase = true)
+        }
+    }
+
+    override suspend fun getNodesDueBetween(startMs: Long, endMs: Long, limit: Int): List<Node> {
+        return activeNodes
+            .filter { (it.status == "active" || it.status == "in_progress" || it.status == "paused") && it.dueAt != null && it.dueAt in startMs until endMs }
+            .sortedWith(compareBy<Node> { it.dueAt }.thenBy { it.id })
+            .take(limit)
+    }
+
+    override suspend fun getOverdueNodes(beforeMs: Long, limit: Int): List<Node> {
+        return activeNodes
+            .filter { (it.status == "active" || it.status == "in_progress" || it.status == "paused") && it.dueAt != null && it.dueAt < beforeMs }
+            .sortedWith(compareBy<Node> { it.dueAt }.thenBy { it.id })
+            .take(limit)
+    }
+
+    override suspend fun getRankedCandidates(now: Long, staleCutoffMs: Long, perTierLimit: Int): List<Node> {
+        val freshActive = activeNodes.filter {
+            (it.status == "active" || it.status == "in_progress" || it.status == "paused") &&
+            (maxOf(it.updatedAt, it.createdAt) == 0L || (now - maxOf(it.updatedAt, it.createdAt) <= staleCutoffMs))
+        }
+
+        val tier1 = freshActive.filter { it.dueAt != null && it.dueAt < now }
+            .sortedWith(compareBy<Node> { it.dueAt }.thenBy { it.id })
+            .take(perTierLimit)
+
+        val tier2 = freshActive.filter { it.status == "in_progress" }
+            .sortedWith(compareByDescending<Node> { maxOf(it.updatedAt, it.createdAt) }.thenBy { it.id })
+            .take(perTierLimit)
+
+        val tier3 = freshActive.filter { it.dueAt != null && it.dueAt in now..(now + 48L * 3600 * 1000L) }
+            .sortedWith(compareBy<Node> { it.dueAt }.thenBy { it.id })
+            .take(perTierLimit)
+
+        val tier4 = freshActive.filter { it.pinned }
+            .sortedWith(compareByDescending<Node> { maxOf(it.updatedAt, it.createdAt) }.thenBy { it.id })
+            .take(perTierLimit)
+
+        val tier5 = freshActive.filter { it.severity > 0 }
+            .sortedWith(compareByDescending<Node> { it.severity }.thenByDescending { maxOf(it.updatedAt, it.createdAt) }.thenBy { it.id })
+            .take(perTierLimit)
+
+        val tier6 = freshActive
+            .sortedWith(compareByDescending<Node> { maxOf(it.updatedAt, it.createdAt) }.thenBy { it.id })
+            .take(perTierLimit)
+
+        val union = LinkedHashMap<String, Node>()
+        for (node in tier1) union.putIfAbsent(node.id, node)
+        for (node in tier2) union.putIfAbsent(node.id, node)
+        for (node in tier3) union.putIfAbsent(node.id, node)
+        for (node in tier4) union.putIfAbsent(node.id, node)
+        for (node in tier5) union.putIfAbsent(node.id, node)
+        for (node in tier6) union.putIfAbsent(node.id, node)
+        return union.values.toList()
     }
 
     override suspend fun getActiveNodeCounts(now: Long, staleCutoffMs: Long): NodeCounts {

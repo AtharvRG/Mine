@@ -18,4 +18,11 @@ D-112 (2026-11-03): Compound duration parsing, prompt date compliance, and untit
 - Untitled timers/alarms: Model asks "For what?" if no subject is provided. When user confirms no subject, model calls propose_change CREATE with untitled=true and label in [alarm, reminder, notification]. Gateway synthesizes deterministic title: <MM:SS> <Label> for durations < 1h (e.g. 02:32 Alarm), <H:MM:SS> <Label> for durations >= 1h (e.g. 1:05:00 Alarm), or device-formatted time-of-day (e.g. 17:00 Alarm) for absolute times. Auto-generated titles bypass duplicate title deduplication. Label is frozen at creation.
 Reason: Prevent model date hallucinations, handle multi-unit timer durations (e.g. "in 2 min 32 seconds", "in 10 secs"), and provide reliable title fallbacks without creating duplicate-title errors.
 Rejected: Model generating timer labels or clock timestamps; regex-guessing hallucinated date strings in code; code-enforced NeedsTitle tool flow in v1.
-(Next free: D-113. Add: date, decision, reason, rejected.)
+D-113 (2026-11-03): Keyset candidate pagination, multi-tier ranking, and 5000 hard-cap.
+- Storage active node queries use cursor-based keyset pagination on (due_at IS NULL, due_at ASC, id ASC) in chunks of 200.
+- Gateway.handleResolveChange loads paged items up to a 5000-node hard cap. Exceeding 5000 throws TooManyActiveNodesException, caught and reported gracefully to the user.
+- ContextBuilder uses getRankedCandidates querying 6 priority tiers directly in SQL/storage with non-stale filtering, preventing candidate starvation.
+- Duplicate title check uses targeted findActiveNodeByTitle(title) directly in SQL with COLLATE NOCASE.
+Reason: Eliminate silent 100-item query cutoffs (T-B regression) and starvation of pinned/high-severity tasks, while preventing OOM crashes at scale.
+Rejected: In-memory sorting of all nodes; unbounded database queries; silently dropping items above 100.
+(Next free: D-114. Add: date, decision, reason, rejected.)
