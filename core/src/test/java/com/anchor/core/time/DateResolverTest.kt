@@ -210,4 +210,43 @@ class DateResolverTest {
         assertNull(resolver.parse("25:00"))
         assertNull(resolver.parse("14:65"))
     }
+
+    @Test
+    fun testR11_CompoundDurationAndUnitParsing() {
+        val cal = Calendar.getInstance().apply { set(2026, Calendar.OCTOBER, 25, 12, 0, 0); set(Calendar.MILLISECOND, 0) }
+        val now = cal.timeInMillis
+        val fakeClock = FakeClock(now)
+        val resolver = DateResolver(fakeClock)
+
+        // Seconds and compound expressions
+        assertEquals(now + 10_000L, resolver.parse("in 10 seconds"))
+        assertEquals(now + 10_000L, resolver.parse("in 10 secs"))
+        assertEquals(now + 152_000L, resolver.parse("in 2 min 32 seconds"))
+        assertEquals(now + 152_000L, resolver.parse("in 2 mins, 32 secs"))
+        assertEquals(now + 152_000L, resolver.parse("in 2 minutes and 32 seconds"))
+
+        // Prefixes and conjunctions
+        assertEquals(now + 120_000L, resolver.parse("after 2 mins"))
+        assertEquals(now + 120_000L, resolver.parse("within 2 mins"))
+        assertEquals(now + 120_000L, resolver.parse("2 mins"))
+        assertEquals(now + 5_400_000L, resolver.parse("1 hour and 30 minutes"))
+
+        // Single letter prefix rules: with prefix it parses, without prefix it returns null
+        assertEquals(now + 5_400_000L, resolver.parse("in 1h 30m"))
+        assertNull(resolver.parse("1h 30m"))
+
+        // D-103 preservation: "15h" without prefix must remain 3pm (15:00), NOT a duration
+        val threePm = Calendar.getInstance().apply { set(2026, Calendar.OCTOBER, 25, 15, 0, 0); set(Calendar.MILLISECOND, 0) }.timeInMillis
+        assertEquals(threePm, resolver.parse("15h"))
+
+        // Zero duration must return null
+        assertNull(resolver.parse("in 0 seconds"))
+        assertNull(resolver.parse("0 mins"))
+
+        // Literals: "in a minute", "in an hour", "in half an hour"
+        assertEquals(now + 60_000L, resolver.parse("in a minute"))
+        assertEquals(now + 60_000L, resolver.parse("in a min"))
+        assertEquals(now + 3_600_000L, resolver.parse("in an hour"))
+        assertEquals(now + 1_800_000L, resolver.parse("in half an hour"))
+    }
 }

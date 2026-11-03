@@ -81,4 +81,48 @@ class SystemPromptTest {
         assertEquals(1, storage.getActiveNodes().size)
         assertEquals("Dinner with Shyam", storage.getActiveNodes()[0].title)
     }
+
+    @Test
+    fun testR11_SystemPromptContainsTemporalAuthorityAndUntitledAlarmRules() = runBlocking {
+        val storage = SharedFakeStorage()
+        storage.settings["key"] = "test-key"
+        val clock = FakeClock(1000L)
+        var interceptedPayload = ""
+
+        val fakeTransport = object : HttpTransport {
+            override suspend fun postStream(target: Target, body: String): Flow<String> = flow {
+                interceptedPayload = body
+                emit("""data: {"choices":[{"delta":{"content":"```json\n{\"reply\":\"For what?\",\"calls\":[]}\n```"}}]}""")
+                emit("data: [DONE]")
+            }
+        }
+
+        val dateResolver = DateResolver(clock)
+        val checkinBuilder = com.anchor.core.nudge.CheckinBuilder(storage, clock, dateResolver)
+        val contextBuilder = ContextBuilder(storage, clock, dateResolver, checkinBuilder)
+
+        val controller = ChatController(
+            storage, ProviderOrchestrator(RateLimiter { clock.now() }, fakeTransport), contextBuilder,
+            Gateway(storage, Resolver(), dateResolver, clock),
+            object : AlarmScheduler { override val lastFiredId = MutableStateFlow<String?>(null); override fun schedule(reminder: Reminder) {}; override fun cancel(reminderId: String) {} },
+            TestScope(UnconfinedTestDispatcher()), UnconfinedTestDispatcher(), clock
+        )
+
+        controller.onAction(UiAction.UpdateDraft("remind me in 2 mins"))
+        controller.onAction(UiAction.SendMessage)
+
+        val requestJson = kotlinx.serialization.json.Json.parseToJsonElement(interceptedPayload).jsonObject
+        val messagesArr = requestJson["messages"]?.jsonArray
+        val sysMsg = messagesArr?.firstOrNull()?.jsonObject?.get("content")?.jsonPrimitive?.content ?: ""
+
+        // Fix 2: Prompt rule forbidding model from computing clock dates
+        assertTrue("Prompt must instruct to copy user time words", sysMsg.contains("copy the user's own words for the time exactly"))
+        assertTrue("Prompt must forbid computing clock time", sysMsg.contains("Never compute a clock time or date yourself"))
+        assertTrue("Prompt must forbid reusing Now format", sysMsg.contains("never reuse the \"Now:\" format"))
+
+        // Fix 3: Prompt rule for asking reason and untitled=true fallback
+        assertTrue("Prompt must instruct to ask For what?", sysMsg.contains("For what?"))
+        assertTrue("Prompt must describe untitled=true", sysMsg.contains("untitled=true"))
+        assertTrue("Prompt must specify label whitelist", sysMsg.contains("alarm, reminder or notification"))
+    }
 }

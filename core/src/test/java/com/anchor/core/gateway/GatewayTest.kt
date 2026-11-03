@@ -104,7 +104,7 @@ class GatewayTest {
         val result = gateway.executeTool(createCall)
 
         assertTrue(result is ToolResult.Error)
-        assertEquals("Title cannot be blank", (result as ToolResult.Error).reason)
+        assertEquals("Missing title: ask the user what it is for.", (result as ToolResult.Error).reason)
     }
 
     @Test

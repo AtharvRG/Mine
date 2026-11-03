@@ -48,6 +48,7 @@ class AlarmReceiver : BroadcastReceiver() {
                 val tier = rem.tier
 
                 lastFiredId = id
+                AndroidAlarmScheduler.notifyFired(id)
 
                 val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
                 val (channelId, importance, priority) = if (tier == AlarmTier.GENTLE) {

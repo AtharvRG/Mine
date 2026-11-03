@@ -76,19 +76,49 @@ class Gateway(
 
                 when (intent) {
                     IntentType.CREATE -> {
-                        if (hint.isBlank()) return ToolResult.Error("Title cannot be blank")
+                        val isUntitled = args["untitled"]?.equals("true", ignoreCase = true) == true
+                        val isAutoTitled = isUntitled && targetTimeMillis != null
+                        val title = if (isAutoTitled) {
+                            val rawLabel = args["label"]?.trim()?.lowercase(java.util.Locale.US)
+                            val label = when (rawLabel) {
+                                "reminder" -> "Reminder"
+                                "notification" -> "Notification"
+                                else -> "Alarm"
+                            }
+                            val durationMillis = dateResolver.parseDuration(dueText)
+                            if (durationMillis != null) {
+                                val durationSec = durationMillis / 1000L
+                                val hrs = durationSec / 3600L
+                                val mins = (durationSec % 3600L) / 60L
+                                val secs = durationSec % 60L
+                                if (hrs > 0) {
+                                    String.format(java.util.Locale.US, "%d:%02d:%02d %s", hrs, mins, secs, label)
+                                } else {
+                                    String.format(java.util.Locale.US, "%02d:%02d %s", mins, secs, label)
+                                }
+                            } else {
+                                val timeStr = dateResolver.formatTimeOfDay(targetTimeMillis)
+                                "$timeStr $label"
+                            }
+                        } else {
+                            hint
+                        }
+
+                        if (title.isBlank()) return ToolResult.Error("Missing title: ask the user what it is for.")
                         val type = (args["type"] ?: "task").lowercase().take(50)
                         val validTypes = listOf("task", "event", "note", "habit")
                         val safeType = if (type in validTypes) type else "task"
 
-                        val active = storage.getActiveNodes()
-                        val duplicate = active.find { it.title.equals(hint, ignoreCase = true) && it.status != "done" && it.status != "cancelled" }
-                        if (duplicate != null) {
-                            return ToolResult.Error("An active item named '${duplicate.title}' already exists.")
+                        if (!isAutoTitled) {
+                            val active = storage.getActiveNodes()
+                            val duplicate = active.find { it.title.equals(title, ignoreCase = true) && it.status != "done" && it.status != "cancelled" }
+                            if (duplicate != null) {
+                                return ToolResult.Error("An active item named '${duplicate.title}' already exists.")
+                            }
                         }
 
                         val followUpTo = args["follow_up_to"] ?: args["follow_up_of"]
-                        handleCreate(hint, safeType, targetTimeMillis, followUpTo)
+                        handleCreate(title, safeType, targetTimeMillis, followUpTo)
                     }
                     IntentType.CANCEL, IntentType.COMPLETE, IntentType.RESCHEDULE -> {
                         val timeForResolver = if (intent == IntentType.RESCHEDULE) null else targetTimeMillis

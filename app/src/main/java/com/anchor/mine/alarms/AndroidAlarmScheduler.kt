@@ -18,13 +18,18 @@ import kotlinx.coroutines.flow.asStateFlow
 // D4: Removed redundant GlobalAlarmState holder. Using AlarmReceiver.lastFiredId directly.
 
 class AndroidAlarmScheduler(private val context: Context) : AlarmScheduler {
+    companion object {
+        private val _lastFiredId = MutableStateFlow<String?>(null)
+        val firedFlow: StateFlow<String?> = _lastFiredId.asStateFlow()
+
+        fun notifyFired(id: String) {
+            _lastFiredId.value = id
+        }
+    }
+
     private val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
 
-    private val _lastFiredId = MutableStateFlow<String?>(null)
-    override val lastFiredId: StateFlow<String?> = _lastFiredId.asStateFlow()
-
-    // SEC 7: Removed polling coroutine that just fed the test hook. 
-    // Tests can read the state directly from AlarmReceiver if needed.
+    override val lastFiredId: StateFlow<String?> = firedFlow
 
     override fun schedule(reminder: Reminder) {
         val intent = Intent(context, AlarmReceiver::class.java).apply {
@@ -37,19 +42,20 @@ class AndroidAlarmScheduler(private val context: Context) : AlarmScheduler {
         try {
             when (reminder.tier) {
                 AlarmTier.ALARM -> {
-                    // Item 13: Activity PendingIntent bypasses USE_EXACT_ALARM requirement
                     val showIntent = Intent(context, com.anchor.mine.MainActivity::class.java)
                     val pendingShow = PendingIntent.getActivity(context, reminder.id.hashCode(), showIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-                    alarmManager.setAlarmClock(AlarmManager.AlarmClockInfo(reminder.fireAtMillis, pendingShow), pendingIntent)
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S && !alarmManager.canScheduleExactAlarms()) {
+                        alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, reminder.fireAtMillis, pendingIntent)
+                    } else {
+                        alarmManager.setAlarmClock(AlarmManager.AlarmClockInfo(reminder.fireAtMillis, pendingShow), pendingIntent)
+                    }
                 }
                 AlarmTier.GENTLE -> {
-                    // Inexact notification-only scheduling: does not show system status bar alarm icon, does not require SCHEDULE_EXACT_ALARM
                     alarmManager.setAndAllowWhileIdle(AlarmManager.RTC, reminder.fireAtMillis, pendingIntent)
                 }
             }
         } catch (e: SecurityException) {
-            // Android 14+ throws if SCHEDULE_EXACT_ALARM is denied.
-            // Gracefully ignore; the Reliability Screen catches this state.
+            alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, reminder.fireAtMillis, pendingIntent)
         }
     }
 

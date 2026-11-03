@@ -1,7 +1,7 @@
 # STATE (update every session; facts only)
-Updated: 2026-11-03   Commit: pending (Task R1 completion)
+Updated: 2026-11-03   Commit: 11f5bc4 (Task R1 completion + live alarm fix; R11 implemented)
 ## Build/test status (command + exit code)
-- `./gradlew :core:test`: SUCCESS (exit 0, 77/77 tests passed)
+- `./gradlew :core:test`: SUCCESS (exit 0, 85/85 tests passed)
 - `./gradlew :app:assembleDebug`: SUCCESS (exit 0)
 - `./gradlew :app:assembleRelease`: SUCCESS (exit 0, R8 minification + lintVitalRelease)
 - `./gradlew :app:compileDebugAndroidTestKotlin`: SUCCESS (exit 0, compiles 24 androidTest test methods across 6 classes)
@@ -9,9 +9,12 @@ Updated: 2026-11-03   Commit: pending (Task R1 completion)
 - `./gradlew :app:connectedDebugAndroidTest`: SUCCESS (exit 0, 24/24 instrumented tests passed on moto g73 5G - Android 14)
 - `./gradlew :app:lintDebug`: SUCCESS (exit 0)
 ## Verified working (with evidence)
-- `:core:test` passes all 77 unit tests across resolver, time, context, gateway, provider, reliability, and chat controller.
+- `:core:test` passes all 85 unit tests across resolver, time, context, gateway, provider, reliability, and chat controller.
+- `:app:connectedDebugAndroidTest` passes 24/24 instrumented tests on physical device moto g73 5G (API 34).
+- R11: Compound duration parsing, date prompt enforcement, and untitled alarm fallbacks (D-112): unanchored multi-unit compound duration scanner `parseDuration` in `DateResolver` (seconds, minutes, hours, days, optional prefixes `in`/`after`/`within`, conjunctions `and`/`,`), hardened with `Locale.US` and `toLongOrNull()`, D-103 single-letter prefix retention ("15h" preserved as 15:00), prompt temporal authority rule enforcing verbatim user time copying and forbidding LLM clock calculation or "Now:" format reuse, untitled alarm handling in `Gateway` creating `<MM:SS> <Label>` / `<H:MM:SS> <Label>` / `<HH:mm> <Label>` titles with whitelisted labels (`alarm`, `reminder`, `notification`), direct durationMillis math preventing clock jitter, and duplicate-title bypass. Verified by 8 new unit tests in `DateResolverTest`, `SystemPromptTest`, `GatewayTest`, and `R11UntitledAlarmsTest`.
 - `:app:compileDebugAndroidTestKotlin` compiles all 24 instrumented test methods across 6 test classes without error.
 - R1: Reschedule/cancel/complete after ambiguity (D-110, D-111): SQLite v5 schema migration with nullable proposal payload column, ProposalPayload model, RESCHEDULE resolver isolation (passes null time to prevent +0.5 time override crown), proposal payload persistence for zero-model-call chip execution, handleConfirmChange destination time validity checks (> clock.now()), reminder tier preservation, explicit ToolResult.Error on unsupported intents (UPDATE, PAUSE, RESUME) before mutation, prompt alignment removing UPDATE - unit-verified in core and migration-verified in androidTest.
+- Self-test & Active Reminders fix: `UiAction.RunSelfTest` refreshes UI `activeReminders` immediately upon arming, aligned to 5-sec countdown (`clock.now() + 5000L`). `AndroidAlarmScheduler` falls back to `setAndAllowWhileIdle(RTC_WAKEUP)` if exact alarm permission is restricted on Android 14+, preventing silent dropping of reminders. `AlarmReceiver` updates `AndroidAlarmScheduler.notifyFired()`, which is collected by `ChatController` to refresh `activeReminders` and dismiss the fired item in real time.
 - T-A: DateResolver 24h + ambiguity chips (D-103) - unit-verified.
 - T-B: Keyset cursor pagination over (due_at, id) on SQLite, getActiveNodeCounts, getStaleNodes, deterministic multi-tier ranking in ContextBuilder, 700-token budget cap, and unshown count summary (D-104) - unit-verified.
 - T-C: Alarm tiers (Alarm vs Gentle), SQLite v2 migration, setAlarmClock vs setAndAllowWhileIdle, notification channel routing, and status bar disclosure text (D-105) - unit-verified; NOT VERIFIED on device (phone offline, D-105 status-bar check postponed).

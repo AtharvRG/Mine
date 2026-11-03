@@ -41,7 +41,7 @@ class ChatController(
     init {
         coroutineScope.launch(defaultDispatcher) {
             reconcileAlarms()
-            
+
             _state.update { it.copy(
                 activeReminders = storage.getActiveReminders(),
                 chatMessages = storage.getRecentMessages(30),
@@ -54,6 +54,13 @@ class ChatController(
                 inboxCount = storage.getOpenProposals().size + storage.getProposedSoulFacts().size,
                 urgentItems = storage.getUrgentNodes()
             )}
+        }
+        coroutineScope.launch(defaultDispatcher) {
+            alarmScheduler.lastFiredId.collect { firedId ->
+                if (firedId != null) {
+                    refreshUI()
+                }
+            }
         }
     }
 
@@ -94,13 +101,14 @@ class ChatController(
                 _state.update { it.copy(activeReminders = storage.getActiveReminders()) }
             }
             is UiAction.RunSelfTest -> coroutineScope.launch(defaultDispatcher) {
-                _state.update { it.copy(selfTestStatus = "Armed for 10 seconds...") }
+                _state.update { it.copy(selfTestStatus = "Armed for 5 seconds...") }
                 val id = "test_${System.currentTimeMillis()}"
-                val fireAt = clock.now() + 10000L
+                val fireAt = clock.now() + 5000L
                 val reminder = Reminder(id, "Self Test Fired!", fireAt)
                 storage.saveReminder(reminder)
                 alarmScheduler.schedule(reminder)
                 storage.saveRegisteredAlarm(id, id.hashCode(), fireAt)
+                _state.update { it.copy(activeReminders = storage.getActiveReminders()) }
             }
             is UiAction.AcceptSoulFact -> coroutineScope.launch(defaultDispatcher) {
                 storage.updateSoulFactStatus(action.factId, "active")
@@ -350,15 +358,19 @@ class ChatController(
         // ISSUE 3: Removed schedule_reminder from prompt to prevent double-alarm creation.
         val instruction = """You are MineAI, a personal companion. You must use Envelope Mode JSON for EVERY reply: {"reply":"text to user","calls":[{"tool":"...","args":{...}}]}
 Tools:
-- propose_change (intent: CREATE|CANCEL|COMPLETE|RESCHEDULE, hint: target text, due_text: e.g. 'tomorrow at 4pm', 'tonight', 'next monday' or omit if no time). MUST use when user states an appointment, plan, task, commitment.
+- propose_change (intent: CREATE|CANCEL|COMPLETE|RESCHEDULE, hint: target text, due_text: copy the user's own words for the time exactly (e.g. "in 10 seconds", "in 2 mins", "tomorrow at 4pm"). Never compute a clock time or date yourself, and never reuse the "Now:" format. Omit if no time. untitled: optional "true", label: optional "alarm"|"reminder"|"notification"). MUST use when user states an appointment, plan, task, commitment.
 - confirm_change (proposal: proposal id, choice: option id). Use when Ambiguous.
 - undo (token: u_123456).
 - search_memory (query: string, limit: int).
 - soul_propose (statement: string, category: string). Use to record facts or preferences. Do NOT use sensitive categories (health, medical, legal) unless the user explicitly commands it.
 
+Rules:
+- If the user asks to be reminded, cued, notified or alarmed with a time but gives no subject, make no tool call. Reply with one short question ("For what?") and calls: []. If they say there's no reason ("just an alarm", "no particular reason"), call propose_change CREATE with untitled=true and label set to the word they used (alarm, reminder or notification). Send no title.
+
 Examples:
 CREATE: {"tool":"propose_change","args":{"intent":"CREATE", "title":"Buy milk", "due_text": "tomorrow at 4pm"}}
 RESCHEDULE: {"tool":"propose_change","args":{"intent":"RESCHEDULE", "hint":"dinner", "due_text":"6pm"}}
+UNTITLED: {"tool":"propose_change","args":{"intent":"CREATE", "untitled":"true", "label":"alarm", "due_text":"in 2 min 32 seconds"}}
 UNDO: {"tool":"undo","args":{"token":"u_123456"}}
 
 CRITICAL: Do NOT say "Done" or "Saved" unless you issue a tool call.

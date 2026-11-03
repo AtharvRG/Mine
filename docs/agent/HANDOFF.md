@@ -30,7 +30,7 @@
   - Corrected `docs/ui-contract.md` for `AcceptSoulFact` (sets status to "active") and `inboxCount` (proposals + soul facts; stale items excluded pending R4).
   - Appended R1 notes to `docs/agent/work/session1-remediation-spec.md` (v5 migration assertions update, `MineDatabaseCallback.onUpgrade` trigger limitation recorded).
   - Logged trigger limitation task in `docs/agent/TASKS.md`.
-- **Current Commit (Task R1 - Reschedule/cancel/complete after ambiguity, D-110, D-111)**:
+- **Commit `11f5bc4` (Task R1 - Reschedule/cancel/complete after ambiguity, D-110, D-111)**:
   - SQLite schema bumped to v5 with nullable `payload TEXT` on `proposal` table, with idempotent `PRAGMA table_info` upgrade logic in `MineDatabaseCallback`.
   - Added `ProposalPayload` serializable data class and updated `Proposal` model.
   - Implemented `propose_change` intent validation in `Gateway`: immediately reject unsupported `UPDATE`, `PAUSE`, `RESUME` with `ToolResult.Error` before mutating state.
@@ -40,24 +40,36 @@
   - Authored comprehensive TDD test suite `R1RescheduleAmbiguityTest.kt` in `:core`.
   - Authored v4-to-v5 migration test `testDatabaseMigration_V4toV5_AddsProposalPayloadColumn` and updated smoke test in `DatabaseMigrationTest.kt`.
   - Authored branching analysis `docs/agent/work/r1.md` and independent 3-agent review `docs/agent/work/R1-review.md`.
+- **Self-Test and Active Reminders Live Fix**:
+  - `ChatController.kt`: Updated `UiAction.RunSelfTest` to arm for 5 seconds (`clock.now() + 5000L`) and immediately emit updated `activeReminders` to UI state so the reminder is instantly visible in the Compose UI list. Added a collection loop on `alarmScheduler.lastFiredId` to invoke `refreshUI()` on firing, removing expired reminders from screen in real time.
+  - `AndroidAlarmScheduler.kt`: Replaced private unused `_lastFiredId` flow with companion `_lastFiredId` and `notifyFired(id)` hook. Added graceful fallback to `setAndAllowWhileIdle(RTC_WAKEUP)` if `canScheduleExactAlarms()` is false or `SecurityException` is caught on Android 14+, preventing silent dropping of reminders.
+  - `AlarmReceiver.kt`: Notifies `AndroidAlarmScheduler.notifyFired(id)` upon delivery.
+  - Built and deployed updated APK directly to connected mobile device.
+- **Task R11 (Compound duration parsing, date prompt enforcement, and untitled alarm fallbacks, D-112)**:
+  - `DateResolver.kt`: Implemented unanchored `parseDuration` scanning compound units (e.g. "in 2 min 32 seconds"), seconds ("in 10 secs"), prefixes (`in`, `after`, `within`), and conjunctions (`and`, `,`). Retained D-103 single-letter unit rule without prefix ("15h" resolves to 15:00, not duration). Hardened parsing with `Locale.US` normalization, `toLongOrNull()`, and added `formatTimeOfDay`.
+  - `ChatController.kt`: Added temporal authority prompt instructions strictly forbidding the LLM from calculating clock timestamps or reusing "Now:" format, instructing verbatim copying into `due_text`. Added untitled alarm prompt rule to ask "For what?" if no subject is given, and call `propose_change CREATE` with `untitled=true` and whitelisted `label` if no subject is confirmed.
+  - `Gateway.kt`: Synthesizes deterministic fallback title `<MM:SS> <Label>` (durations < 1h), `<H:MM:SS> <Label>` (durations >= 1h), or device time-of-day `<HH:mm> <Label>` (absolute times) with label whitelist (`alarm`, `reminder`, `notification`), using direct durationMillis math to eliminate millisecond clock jitter, and bypassing duplicate title deduplication for auto-titled items. Reworded blank title error to `"Missing title: ask the user what it is for."`. Frozen label at creation.
+  - TDD test suites: Authored `R11UntitledAlarmsTest.kt` in `:core`, added unit tests in `DateResolverTest.kt`, `SystemPromptTest.kt`, and updated `GatewayTest.kt`.
+  - Recorded architectural decision D-112 in `docs/agent/DECISIONS.md`.
 
 ## 2. Verified Working (with Evidence)
 
 ### Command: `./gradlew :core:test` (Exit code: 0)
-77 unit tests executed, 77 passed, 0 failures, 0 skipped (100% success rate).
+85 unit tests executed, 85 passed, 0 failures, 0 skipped (100% success rate).
 
 ### Other Verified Builds:
 - `./gradlew :app:assembleDebug`: SUCCESS (exit 0)
 - `./gradlew :app:assembleRelease`: SUCCESS (exit 0, R8 minification + lintVitalRelease)
 - `./gradlew :app:compileDebugAndroidTestKotlin`: SUCCESS (exit 0, compiles all 24 instrumented test methods across 6 files)
 - `./gradlew :app:connectedDebugAndroidTest`: SUCCESS (exit 0, 24/24 instrumented tests passed on moto g73 5G - Android 14)
+- `./gradlew :app:installDebug`: SUCCESS (exit 0, APK installed on connected moto g73 5G)
 - `./gradlew :app:testDebugUnitTest`: SUCCESS (exit 0, NO-SOURCE; app/src/test contains no tests)
 - `./gradlew :app:lintDebug`: SUCCESS (exit 0)
 
 ## 3. NOT Verified
 - **D-105 Phone Gate**: Status-bar alarm clock icon display for Alarm-tier reminders remains to be checked on real UI while phone is active. Task T-C remains open.
 - **T-E (Calendar Queries) & T-F (Home Quotes)**: Unit-verified only.
-- **Remediation Tasks R2 through R10**: Open, pending execution (R1 completed).
+- **Remediation Tasks R2 through R10**: Open, pending execution (R1 and R11 completed).
 - **B5 Export UI**: SAF picker and passphrase dialog dark-shipped pending v1.1.
 
 ## 4. Operating Rules

@@ -19,14 +19,39 @@ class DateResolver(
     private val is24HourFormat: () -> Boolean = { false }
 ) {
     companion object {
-        private val IN_MIN_REGEX = Regex("""^in (\d+)\s*(min|minute|minutes|mins)$""")
-        private val IN_HR_REGEX = Regex("""^in (\d+)\s*(hr|hour|hours)$""")
-        private val IN_DAY_REGEX = Regex("""^in (\d+)\s*(day|days)$""")
+        private val PREFIX_RE = Regex("""^(?:in|after|within)\s+""")
+        private val UNIT_RE = Regex("""(\d+)\s*(seconds?|secs?|minutes?|mins?|hours?|hrs?|days?|s|m|h|d)\b""")
         private val AM_PM_REGEX = Regex("""^(?:at\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)$""")
         private val DAY_PART_REGEX = Regex("""^(?:at\s+)?(\d{1,2})(?::(\d{2}))?\s*(?:in the\s+|at\s+)?(morning|afternoon|evening|night)$""")
         private val H_REGEX = Regex("""^(?:at\s+)?(\d{1,2})h(\d{2})?$""")
         private val COLON_REGEX = Regex("""^(?:at\s+)?(\d{1,2}):(\d{2})$""")
         private val BARE_HOUR_REGEX = Regex("""^(?:at\s+)?(\d{1,2})$""")
+    }
+
+    fun parseDuration(text: String?): Long? {
+        if (text == null) return null
+        val normalized = normalizeDigits(text).lowercase(Locale.US).trim()
+        if (normalized.isBlank()) return null
+        if (normalized == "in a minute" || normalized == "in a min" || normalized == "in 1 min" || normalized == "in 1 minute") return 60_000L
+        if (normalized == "in an hour" || normalized == "in 1 hr" || normalized == "in 1 hour") return 3_600_000L
+        if (normalized == "in half an hour" || normalized == "in 30 mins") return 1_800_000L
+
+        var body = normalized
+        var hasPrefix = false
+        PREFIX_RE.find(body)?.let { body = body.substring(it.value.length); hasPrefix = true }
+        body = body.replace(Regex("""\band\b|,"""), " ").trim()
+        val matches = UNIT_RE.findAll(body).toList()
+        if (matches.isEmpty() || UNIT_RE.replace(body, "").isNotBlank()) return null
+        var total = 0L
+        for (m in matches) {
+            val unit = m.groupValues[2]
+            if (unit.length == 1 && !hasPrefix) return null   // "15h" must stay 3pm (D-103)
+            val amount = m.groupValues[1].toLongOrNull() ?: return null
+            total += amount * when (unit[0]) {
+                's' -> 1_000L; 'm' -> 60_000L; 'h' -> 3_600_000L; else -> 86_400_000L
+            }
+        }
+        return if (total > 0) total else null
     }
 
     fun parse(dueText: String?, rolloverMinuteOfDay: Int = 240): Long? {
@@ -52,20 +77,8 @@ class DateResolver(
         if (isLateNight) logicalCal.add(Calendar.DAY_OF_YEAR, -1)
 
         // 1. Relative durations
-        if (normalized == "in an hour" || normalized == "in 1 hr" || normalized == "in 1 hour") {
-            return DateResolution.Exact(now + 3_600_000L)
-        }
-        if (normalized == "in half an hour" || normalized == "in 30 mins") {
-            return DateResolution.Exact(now + 1_800_000L)
-        }
-        IN_MIN_REGEX.find(normalized)?.let {
-            return DateResolution.Exact(now + it.groupValues[1].toLong() * 60_000L)
-        }
-        IN_HR_REGEX.find(normalized)?.let {
-            return DateResolution.Exact(now + it.groupValues[1].toLong() * 3_600_000L)
-        }
-        IN_DAY_REGEX.find(normalized)?.let {
-            return DateResolution.Exact(now + it.groupValues[1].toLong() * 86_400_000L)
+        parseDuration(normalized)?.let {
+            return DateResolution.Exact(now + it)
         }
 
         // 2. Named dates without time
@@ -296,6 +309,11 @@ class DateResolver(
 
     fun format(timeMillis: Long): String {
         val pattern = if (is24HourFormat()) "EEE d MMM, HH:mm" else "EEE d MMM, h:mm a"
+        return SimpleDateFormat(pattern, Locale.US).format(timeMillis)
+    }
+
+    fun formatTimeOfDay(timeMillis: Long): String {
+        val pattern = if (is24HourFormat()) "HH:mm" else "h:mm a"
         return SimpleDateFormat(pattern, Locale.US).format(timeMillis)
     }
 }

@@ -12,4 +12,10 @@ D-109 (2026-11-03): Quote slots: MORNING 05-12, AFTERNOON 12-17, EVENING 17-21, 
 D-110 (2026-11-03): Reschedule after ambiguity is implemented properly. proposal gets a nullable payload TEXT (JSON) column (DB v5). The payload carries what the final action needs (destination time, title/type, follow_up_to, tier). Reason: a chip tap must complete the user's real request without calling the model.
 D-111 (2026-11-03): Intents UPDATE, PAUSE, RESUME are NOT supported in v1. They return an explicit error before any commit or proposal (never a fake "Applied" receipt). Remove UPDATE from the model prompt.
 (Note: D-105 stays HUMAN-GATED/pending: status-bar alarm icon check on the phone is postponed. T-C is not done.)
-(Next free: D-112. Add: date, decision, reason, rejected.)
+D-112 (2026-11-03): Compound duration parsing, prompt date compliance, and untitled alarm fallbacks.
+- DateResolver replaces single-unit IN_* regexes with an unanchored compound duration scanner (parseDuration) supporting seconds, minutes, hours, days, optional prefixes (in, after, within), and conjunctions (and, commas). Single-letter units (e.g. 15h) without prefix are preserved for D-103 time-of-day parsing.
+- Time authority (Rule 4): Prompt explicitly forbids LLM from calculating clock timestamps or reusing "Now:" format; model must copy user temporal expressions verbatim into due_text.
+- Untitled timers/alarms: Model asks "For what?" if no subject is provided. When user confirms no subject, model calls propose_change CREATE with untitled=true and label in [alarm, reminder, notification]. Gateway synthesizes deterministic title: <MM:SS> <Label> for durations < 1h (e.g. 02:32 Alarm), <H:MM:SS> <Label> for durations >= 1h (e.g. 1:05:00 Alarm), or device-formatted time-of-day (e.g. 17:00 Alarm) for absolute times. Auto-generated titles bypass duplicate title deduplication. Label is frozen at creation.
+Reason: Prevent model date hallucinations, handle multi-unit timer durations (e.g. "in 2 min 32 seconds", "in 10 secs"), and provide reliable title fallbacks without creating duplicate-title errors.
+Rejected: Model generating timer labels or clock timestamps; regex-guessing hallucinated date strings in code; code-enforced NeedsTitle tool flow in v1.
+(Next free: D-113. Add: date, decision, reason, rejected.)
