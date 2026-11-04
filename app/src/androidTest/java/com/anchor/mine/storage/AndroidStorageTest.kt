@@ -154,20 +154,22 @@ class AndroidStorageTest {
     @Test
     fun testMonotonicDayKey_PreventsTimeTravel() = kotlinx.coroutines.runBlocking {
         val db = dbHelper.writableDatabase
-        
-        // 1. Manually insert a message with a "future" day_key (simulating clock was far ahead)
+
+        // 1. Manually insert a message with a rogue runaway "future" day_key (simulating clock was corrupted/far ahead)
         db.execSQL(
             "INSERT INTO raw_message (id, device_id, ts_utc, tz_offset_min, day_key, role, content) VALUES (?, ?, ?, ?, ?, ?, ?)",
             arrayOf<Any>("msg_future", "test_dev", System.currentTimeMillis() - 10000, 0, "2099-12-31", "user", "Future")
         )
-        
+
         // 2. Insert a normal message via AndroidStorage (clock is now back to reality)
         storage.insertRawMessage("msg_present", "user", "Present")
-        
-        // 3. Verify the new message was forced to inherit the future day_key to maintain monotonicity
+
+        // 3. Verify the runaway defense prevented inheriting 2099-12-31, bounding to current day key
         dbHelper.readableDatabase.query("SELECT day_key FROM raw_message WHERE id = 'msg_present'").use {
             org.junit.Assert.assertTrue(it.moveToFirst())
-            org.junit.Assert.assertEquals("2099-12-31", it.getString(0))
+            val presentDayKey = it.getString(0)
+            org.junit.Assert.assertNotEquals("Runaway future day_key must not be inherited", "2099-12-31", presentDayKey)
+            org.junit.Assert.assertTrue("Day key must be bounded by current date/maxDayKey", presentDayKey < "2099-12-31")
         }
     }
 
@@ -222,7 +224,7 @@ class AndroidStorageTest {
         assertEquals(3, counts.overdue)
 
         // 2. Verify getStaleNodes:
-        val stale = storage.getStaleNodes(staleCutoff, now)
+        val stale = storage.getStaleNodes(now, staleCutoff)
         assertEquals(2, stale.size)
         assertTrue(stale.any { it.id == "stale_1" })
         assertTrue(stale.any { it.id == "stale_2" })
@@ -984,5 +986,295 @@ class AndroidStorageTest {
         val undone = storage.getNode("n_special")
         assertNotNull(undone)
         assertEquals("cancelled", undone!!.status)
+    }
+
+    @Test
+    fun testAndroidStorage_getRecentEvents_PreservesCauseMsgIdAndFiltersUndoOf(): Unit = runBlocking {
+        val now = 1700000000000L
+
+        // 1. Create event with causeMsgId
+        val ev1 = RawEvent(
+            opId = "op_r7_1",
+            opType = "CREATE",
+            targetType = "node",
+            targetId = "n_r7_1",
+            tsUtc = now + 1000L,
+            causeMsgId = "u_msg_101"
+        )
+        val node1 = Node("n_r7_1", "task", "Task R7 1", "active", null, now + 1000L, now + 1000L)
+        storage.createNodeAndCommit(node1, ev1, null)
+
+        // 2. Second event without causeMsgId (e.g. chip action)
+        val ev2 = RawEvent(
+            opId = "op_r7_2",
+            opType = "KEEP_STALE",
+            targetType = "node",
+            targetId = "n_r7_1",
+            tsUtc = now + 2000L,
+            causeMsgId = null
+        )
+        val db = dbHelper.writableDatabase
+        db.execSQL(
+            "INSERT INTO raw_event (op_id, ts_utc, device_id, actor, op_type, target_type, target_id, before_json, after_json, cause_msg_id, undo_of, attrs) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            arrayOf<Any?>(ev2.opId, ev2.tsUtc, "device1", "user", ev2.opType, ev2.targetType, ev2.targetId, null, null, null, null, null)
+        )
+
+        // 3. Event with undoOf (undo operation itself - should be filtered out by undo_of IS NULL)
+        val evUndo = RawEvent(
+            opId = "op_r7_undo",
+            opType = "UNDO",
+            targetType = "node",
+            targetId = "n_r7_1",
+            tsUtc = now + 3000L,
+            undoOf = "op_r7_1"
+        )
+        db.execSQL(
+            "INSERT INTO raw_event (op_id, ts_utc, device_id, actor, op_type, target_type, target_id, before_json, after_json, cause_msg_id, undo_of, attrs) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            arrayOf<Any?>(evUndo.opId, evUndo.tsUtc, "device1", "user", evUndo.opType, evUndo.targetType, evUndo.targetId, null, null, null, evUndo.undoOf, null)
+        )
+
+        // Verify getEvent preserves causeMsgId
+        val fetchedEv1 = storage.getEvent("op_r7_1")
+        assertNotNull(fetchedEv1)
+        assertEquals("u_msg_101", fetchedEv1!!.causeMsgId)
+
+        // Verify getRecentEvents returns UI-visible events in chronological ASC order and filters out undo_of
+        val events = storage.getRecentEvents(10)
+        assertTrue("Must return at least 2 events", events.size >= 2)
+        val r7_1 = events.find { it.opId == "op_r7_1" }
+        val r7_2 = events.find { it.opId == "op_r7_2" }
+        val r7_undo = events.find { it.opId == "op_r7_undo" }
+
+        assertNotNull("ev1 must be in recent events", r7_1)
+        assertEquals("u_msg_101", r7_1!!.causeMsgId)
+        assertNotNull("ev2 must be in recent events", r7_2)
+        assertNull("ev2 causeMsgId must be null", r7_2!!.causeMsgId)
+        assertNull("Undo operation must NOT be in recent events because undo_of is not null", r7_undo)
+
+        assertTrue("Chronological order: ev1 before ev2", events.indexOf(r7_1) < events.indexOf(r7_2))
+    }
+
+    @Test
+    fun testAndroidStorage_localOnlyAndSensitiveQuarantine(): Unit = runBlocking {
+        val now = 1700000000000L
+        val staleCutoff = 30L * 24 * 3600 * 1000L
+
+        // 1. Create a localOnly node
+        val localNode = Node(
+            id = "n_local_med",
+            type = "task",
+            title = "Secret Medical Appointment",
+            status = "active",
+            dueAt = now + 1000L,
+            createdAt = now,
+            updatedAt = now,
+            localOnly = true
+        )
+        val ev1 = RawEvent(
+            opId = "op_local_1",
+            opType = "CREATE",
+            targetType = "node",
+            targetId = "n_local_med",
+            tsUtc = now
+        )
+        storage.createNodeAndCommit(localNode, ev1, null)
+
+        // Verify getNode hydrates localOnly
+        val fetchedNode = storage.getNode("n_local_med")
+        assertNotNull(fetchedNode)
+        assertTrue("Node must have localOnly == true", fetchedNode!!.localOnly)
+
+        // Verify provider/query APIs filter out localOnly node
+        val ranked = storage.getRankedCandidates(now, staleCutoff, 10)
+        assertFalse("Ranked candidates must not include localOnly nodes", ranked.any { it.id == "n_local_med" })
+
+        val dueBetween = storage.getNodesDueBetween(now, now + 5000L, 10)
+        assertFalse("getNodesDueBetween must not include localOnly nodes", dueBetween.any { it.id == "n_local_med" })
+
+        val overdue = storage.getOverdueNodes(now + 2000L, 10)
+        assertFalse("getOverdueNodes must not include localOnly nodes", overdue.any { it.id == "n_local_med" })
+
+        val counts = storage.getActiveNodeCounts(now, staleCutoff)
+        assertEquals("Active counts must not count localOnly node", 0, counts.totalOpen)
+
+        val urgent = storage.getUrgentNodes()
+        assertFalse("getUrgentNodes must not include localOnly nodes", urgent.any { it.id == "n_local_med" })
+
+        val searchNode = storage.searchMemoryFts("Medical", 10)
+        assertFalse("searchMemoryFts must not include localOnly nodes", searchNode.any { it.id == "n_local_med" })
+
+        // 2. Create a sensitive localOnly soul fact
+        val sensitiveFact = SoulFact(
+            id = "sf_med_1",
+            category = "health",
+            statement = "User diagnosed with hypertension",
+            confidence = 0.95,
+            source = "chat",
+            origin = "chat",
+            status = "proposed",
+            createdAt = now,
+            sensitive = true,
+            localOnly = true
+        )
+        val ev2 = RawEvent(
+            opId = "op_fact_1",
+            opType = "CREATE",
+            targetType = "soul_fact",
+            targetId = "sf_med_1",
+            tsUtc = now
+        )
+        storage.createSoulFactAndCommit(sensitiveFact, ev2)
+
+        // getProposedSoulFacts should show it for user inspection/review
+        val proposed = storage.getProposedSoulFacts()
+        val foundProposed = proposed.find { it.id == "sf_med_1" }
+        assertNotNull("Proposed soul facts must include quarantined sensitive fact", foundProposed)
+        assertTrue(foundProposed!!.sensitive)
+        assertTrue(foundProposed.localOnly)
+
+        // Active soul facts must NOT include it
+        val activeFacts = storage.getActiveSoulFacts()
+        assertFalse("getActiveSoulFacts must not include sensitive/localOnly fact", activeFacts.any { it.id == "sf_med_1" })
+
+        // Even if status were updated to 'active', local_only = 1 must keep it out of active provider queries
+        storage.updateSoulFactStatus("sf_med_1", "active")
+        val activeAfterUpdate = storage.getActiveSoulFacts()
+        assertFalse("getActiveSoulFacts must continue to filter localOnly soul facts even if active", activeAfterUpdate.any { it.id == "sf_med_1" })
+
+        val searchFact = storage.searchMemoryFts("hypertension", 10)
+        assertFalse("searchMemoryFts must not return localOnly soul facts", searchFact.any { it.id == "sf_med_1" })
+    }
+
+    @Test
+    fun testAndroidStorage_DayRuleEffectiveFrom_AndNextRollover(): Unit = runBlocking {
+        // 1. Uninitialized returns default rule
+        val defaultRule = storage.getEffectiveDayRule(1000L)
+        assertEquals("default", defaultRule.id)
+        assertEquals(240, defaultRule.startMinute)
+
+        // 2. Save rule effective from 2000L
+        val rule1 = DayRule(
+            id = "dr_1",
+            effectiveFrom = 2000L,
+            startMinute = 360, // 06:00
+            endMinute = 1320,
+            tzId = "UTC",
+            createdAt = 1000L
+        )
+        storage.saveDayRule(rule1)
+
+        assertEquals("Before effective_from returns default", "default", storage.getEffectiveDayRule(1500L).id)
+        assertEquals("At effective_from returns dr_1", "dr_1", storage.getEffectiveDayRule(2000L).id)
+        assertEquals("After effective_from returns dr_1", "dr_1", storage.getEffectiveDayRule(2500L).id)
+        assertEquals(360, storage.getEffectiveDayRule(2500L).startMinute)
+
+        // 3. Save rule 2 effective from 4000L
+        val rule2 = DayRule(
+            id = "dr_2",
+            effectiveFrom = 4000L,
+            startMinute = 480, // 08:00
+            endMinute = 1320,
+            tzId = "UTC",
+            createdAt = 3000L
+        )
+        storage.saveDayRule(rule2)
+
+        assertEquals("Between rules returns dr_1", "dr_1", storage.getEffectiveDayRule(3500L).id)
+        assertEquals("At rule 2 effective_from returns dr_2", "dr_2", storage.getEffectiveDayRule(4000L).id)
+        assertEquals("After rule 2 returns dr_2", "dr_2", storage.getEffectiveDayRule(5000L).id)
+        assertEquals(480, storage.getEffectiveDayRule(5000L).startMinute)
+    }
+
+    @Test
+    fun testAndroidStorage_MsgChunkFts_SearchAndRedact(): Unit = runBlocking {
+        // 1. Insert user and assistant messages
+        storage.insertRawMessage("msg_orch_1", "user", "Remember to water the rare orchids tomorrow")
+        storage.insertRawMessage("msg_orch_2", "assistant", "I have noted down to water the rare orchids.")
+
+        // 2. Search for keyword in conversation history
+        val searchResults = storage.searchMemoryFts("orchids", 10)
+        assertTrue("searchMemoryFts must find conversation history containing orchids", searchResults.any { it.details.contains("orchids") })
+        val match = searchResults.first { it.details.contains("orchids") }
+        assertEquals("chat", match.kind)
+        assertTrue("ID should indicate chunk", match.id.contains("msg_orch_1") || match.id.contains("msg_orch_2"))
+
+        // 3. System message should not be indexed into msg_chunk
+        storage.insertRawMessage("msg_orch_sys", "system", "System instructions for orchids")
+        val sysSearch = storage.searchMemoryFts("instructions", 10)
+        assertFalse("System messages must not be indexed in msg_chunk_fts", sysSearch.any { it.id.contains("msg_orch_sys") })
+
+        // 4. Redaction must scrub msg_chunk and msg_chunk_fts via DELETE trigger
+        storage.redactMessage("msg_orch_1")
+        storage.redactMessage("msg_orch_2")
+
+        val scrubbedResults = storage.searchMemoryFts("orchids", 10)
+        assertFalse("Redacted messages must be completely scrubbed from searchMemoryFts", scrubbedResults.any { it.details.contains("orchids") })
+    }
+
+    @Test
+    fun testConsumeProposalCas_RealSqlite(): Unit = runBlocking {
+        val p = Proposal("p_cas_1", "time", IntentType.CREATE, listOf(ProposalOption("1", "Opt 1")), status = "open")
+        storage.saveProposal(p)
+
+        // First CAS must succeed
+        val firstCas = storage.consumeProposalCas("p_cas_1")
+        assertTrue("First CAS on open proposal must return true", firstCas)
+
+        val updated = storage.getProposal("p_cas_1")
+        assertNotNull(updated)
+        assertEquals("consumed", updated!!.status)
+
+        // Second CAS must fail (already consumed)
+        val secondCas = storage.consumeProposalCas("p_cas_1")
+        assertFalse("Second CAS on consumed proposal must return false", secondCas)
+
+        // Non-existent proposal CAS must fail
+        val missingCas = storage.consumeProposalCas("p_missing")
+        assertFalse("CAS on non-existent proposal must return false", missingCas)
+    }
+
+    @Test
+    fun testUpdateProposalStatus_PreservesCreatedAt_RealSqlite(): Unit = runBlocking {
+        val p = Proposal("p_status_test", "time", IntentType.CREATE, listOf(ProposalOption("1", "Opt 1")), status = "open")
+        storage.saveProposal(p)
+
+        // Artificially age the proposal to 23 hours ago in SQLite
+        val agedCreatedAt = System.currentTimeMillis() - (23 * 3600 * 1000L)
+        dbHelper.writableDatabase.execSQL("UPDATE proposal SET created_at = ? WHERE id = ?", arrayOf<Any>(agedCreatedAt, "p_status_test"))
+
+        // Verify getProposal finds it as open
+        val initial = storage.getProposal("p_status_test")
+        assertNotNull(initial)
+        assertEquals("open", initial!!.status)
+
+        // 1. Status flip via updateProposalStatus
+        storage.updateProposalStatus("p_status_test", "consumed")
+        val consumed = storage.getProposal("p_status_test")
+        assertNotNull(consumed)
+        assertEquals("consumed", consumed!!.status)
+
+        storage.updateProposalStatus("p_status_test", "open")
+        val reopened = storage.getProposal("p_status_test")
+        assertNotNull(reopened)
+        assertEquals("open", reopened!!.status)
+
+        // Query raw created_at from SQLite table: must be identical to agedCreatedAt (NOT updated to currentTimeMillis)
+        var actualCreatedAt = 0L
+        dbHelper.readableDatabase.query("SELECT created_at FROM proposal WHERE id = ?", arrayOf<Any>("p_status_test")).use { cursor ->
+            if (cursor.moveToFirst()) {
+                actualCreatedAt = cursor.getLong(0)
+            }
+        }
+        assertEquals("updateProposalStatus must preserve immutable created_at timestamp in SQLite", agedCreatedAt, actualCreatedAt)
+
+        // 2. Contrast with saveProposal which does INSERT OR REPLACE and overwrites created_at
+        storage.saveProposal(p.copy(status = "open"))
+        var overwrittenCreatedAt = 0L
+        dbHelper.readableDatabase.query("SELECT created_at FROM proposal WHERE id = ?", arrayOf<Any>("p_status_test")).use { cursor ->
+            if (cursor.moveToFirst()) {
+                overwrittenCreatedAt = cursor.getLong(0)
+            }
+        }
+        assertTrue("saveProposal overwrites created_at with current time", overwrittenCreatedAt > agedCreatedAt + (20 * 3600 * 1000L))
     }
 }

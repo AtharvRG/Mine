@@ -45,6 +45,12 @@ class DatabaseMigrationTest {
         storage.consumeProposal("p_fresh")
         assertEquals("consumed", storage.getProposal("p_fresh")?.status)
         assertEquals(0, storage.getOpenProposals().size)
+        storage.updateProposalStatus("p_fresh", "open")
+        assertEquals("open", storage.getProposal("p_fresh")?.status)
+        assertEquals(1, storage.getOpenProposals().size)
+        storage.consumeProposalCas("p_fresh")
+        assertEquals("consumed", storage.getProposal("p_fresh")?.status)
+        assertEquals(0, storage.getOpenProposals().size)
 
         // 3. Settings
         storage.saveSetting("set1", "val1")
@@ -57,7 +63,7 @@ class DatabaseMigrationTest {
         assertNotNull(storage.getNode("n_s"))
         assertEquals(1, storage.getActiveNodes(limit = 100).size)
         assertEquals(1, storage.getActiveNodeCounts(1700000000000L).totalOpen)
-        assertEquals(0, storage.getStaleNodes(100000L, 1700000000000L).size)
+        assertEquals(0, storage.getStaleNodes(1700000000000L, 100000L).size)
         assertEquals(1, storage.getUrgentNodes().size)
 
         storage.updateNodeAndCommit(n.copy(status="done"), RawEvent("e_s2", "UPDATE", "node", "n_s"), null)
@@ -86,6 +92,13 @@ class DatabaseMigrationTest {
 
         val searchFacts = storage.searchMemoryFts("Apples", 5)
         assertTrue("Soul FTS Trigger must fire and populate index", searchFacts.any { it.details == "Allergic to Apples" })
+
+        storage.insertRawMessage("msg_smoke_chat", "user", "Remember to call Dr Watson")
+        val searchChat = storage.searchMemoryFts("Watson", 5)
+        assertTrue("Msg Chunk FTS Trigger must fire and populate index", searchChat.any { it.kind == "chat" && it.details.contains("Watson") })
+        storage.redactMessage("msg_smoke_chat")
+        val searchChatAfterRedact = storage.searchMemoryFts("Watson", 5)
+        assertTrue("Msg Chunk FTS Trigger must delete entry upon redaction", searchChatAfterRedact.none { it.details.contains("Watson") })
 
         // 7. Edges
         val edge = Edge("e1", "n_s", "n_fts", EdgeTypes.FOLLOW_UP)

@@ -7,7 +7,7 @@ Specs for R1-R10: docs/agent/work/session1-remediation-spec.md. Read the task's 
 [x] T4 Alarm registry treated as truth; force-stop loses alarms; reconcile not run at startup. Run reconcile at start/boot/time change; treat registry as a hint.
 [x] T5 Export: hardcoded passphrase "password123", API keys always included, file in cacheDir, no picker. Build passphrase dialog + SAF picker or hide export.
 ## Important
-[~] T6 Receipts: lifecycle, persist, render next to message, show failures; chip-confirmed changes need receipts; stop storing model "Done!" text.
+[x] T6 Receipts: lifecycle, persist, render next to message, show failures; chip-confirmed changes need receipts; stop storing model "Done!" text.
 [x] T7 Ambiguity chips show node ids; carry titles and due times.
 [x] T8 Mixed commit+error turn hides the error from the user.
 [x] T9 getUrgentNodes ORDER BY due_at puts NULLs first; fix + real-DB test.
@@ -27,41 +27,47 @@ Specs for R1-R10: docs/agent/work/session1-remediation-spec.md. Read the task's 
 [~] T20 Storage queries: day page by day_key, heat-map counts, reminder dates per month, Home priority list, structured chat items.
 [~] T-A DateResolver 24h + ambiguity chips (D-103)
 [~] T-B getActiveNodes paging + ContextBuilder budget + stale->Inbox (D-104)
-[~] T-C Alarm tiers: Alarm (setAlarmClock) vs Gentle; tier stored on the reminder; icon disclosure text exposed to UI (D-105 - HUMAN GATED)
+[~] T-C Alarm tiers: Alarm (setAlarmClock) vs Gentle; tier stored on the reminder; icon disclosure text exposed to UI (D-105) [unit + connected verified, human-gated status bar check]
 [~] T-D New edge type follow_up: migration + migration test + blueprint 13 patch + UiAction/Storage support (D-106)
 [x] T-E Calendar queries: day exists with messages, reminder dates per month, heat counts per day, reminders for a day (tooltip) [unit-verified only]
 [x] T-F Quote slots: table quote_slot(slot, day_key, text, generated_at, state_hash, source=preset|live), preset pool of generic quotes per slot, generation job (see Part 3, Home), setting flags [unit-verified only]
 
 ## Remediation Tasks (Session 1 Review)
+[x] Architectural Logic Fix 1 (Item 2): Time chip pre-validation & untitled/label payload preservation (D-110, D-112): Gateway missing-title and duplicate checks run before NeedsClarification proposal generation; untitled and label preserved in ProposalPayload and applied on chip confirm [unit-verified]
+[x] Architectural Logic Fix 2 (Item 3): RESCHEDULE blank/unusable time fast-fail: Gateway propose_change returns immediate ToolResult.Error("To when?") before candidate resolution or mutation [unit-verified]
+[x] Architectural Logic Fix 3 (Item 1): Gentle reminders RTC_WAKEUP & disclosure: AndroidAlarmScheduler uses AlarmManager.RTC_WAKEUP, AlarmReceiver sets CATEGORY_ALARM/CATEGORY_REMINDER, alarmDisclosureText updated with Doze delay disclosure, AlarmSelfTest verifies gentle firing [unit + compile verified]
+[x] Architectural Logic Fix 4 (Item 4): Resolver auto-cancel threshold & exact match preference: auto-commit threshold for CANCEL/COMPLETE raised to 0.80 (returns Ambiguous chip below 0.80), exact normalized title match preferred when multiple items contain hint [unit-verified]
 [x] R1 Reschedule/cancel/complete after ambiguity (D-110, D-111): DB v5 proposal payload column, ProposalPayload model, RESCHEDULE null time in resolver, destination time in proposal payload, UPDATE/PAUSE/RESUME unsupported error, handleConfirmChange with target check & reminder tier preservation, prompt update, tests [unit + compile verified]
 [x] R11 Compound duration parsing, date prompt enforcement, and untitled alarm fallbacks (D-112): parseDuration in DateResolver for multi-unit & seconds expressions, copy user due_text rule in prompt, untitled=true & label handling in Gateway CREATE with formatted fallback title and duplicate-title bypass, reviewer hygiene applied, TDD tests [unit + connected verified]
 [x] R2 Candidate selection broken by 100-item default (T-B regression): limit required on getActiveNodes, page all active nodes up to 5000 in resolver, findActiveNodeByTitle for CREATE dedupe, getNodesDueBetween/getOverdueNodes for CheckinBuilder, getRankedCandidates per tier excluding stale in SQL for ContextBuilder, contract tests [unit + connected verified, approved]
 [x] R3 Alarm truth, permission and silent failures (D-102, D-114): remove SCHEDULE_EXACT_ALARM from manifest & assertion, AlarmScheduler.schedule returns Armed/Failed and writes reliability/UiState, core AlarmReconciler(force: Boolean), AlarmReceiver Missed prefix on EXTRA_MISSED, fix AlarmSelfTest without early return and test nextAlarmClock, reviewer hardening applied [unit + connected verified on moto g73 5G, approved]
 [x] R3b Session 2 Correction, Re-Verification, and Reliability State Hardening: Part 1 sections B, C, D, E fixes; clean-install connected run (31/31 passed on moto g73 5G); evidence files; STATE/HANDOFF honest rewrite; reviewer & blueprint-checker approved [clean-installed on moto g73 5G, approved]
-[ ] R4 Unreachable features: stale items and time chips (T-A, T-B): UiState.staleItems + KeepStale/CancelStale actions, Gateway uses resolve() and returns NeedsTime with proposal kind="time" and formatted chips, handleConfirmChange for time chips with undo, DateResolver night/12 edge cases and weekday names.
-[ ] R5 Export/import hardening (security): ChunkedAesInputStream chunk length 16..chunkSize+16 check, Argon2 KDF bounds, table & column whitelist from current schema, configurable liveDbName, post-import AlarmReconciler call.
-[ ] R6 Gentle tier is a dead end (T-C): propose_change tier argument (alarm|gentle), CREATE honours it, RESCHEDULE and confirm path preserve existing tier, time-chip payloads carry tier, undo restores tier.
-[ ] R7 Receipts from operation log (T6): RawEvent causeMsgId, core ReceiptFormatter from raw_event with device time format, Storage.getRecentEvents(limit), UiState.receipts built from events with 24h undoValid and causeMsgId linkage.
-[ ] R8 Quote slots live wiring (T-F, D-108, D-109): slot boundaries (MORNING 5..11, AFTERNOON 12..16, EVENING 17..20, NIGHT 21..4) and prepare hours (4, 11, 16, 20), regen rule (first live is regen 0, max 2 regens with state_hash changed), counts-only prompt, UiState.homeQuote, QuoteManager.onHomeOpened single entry, prepare_next_quote_early setting, rethrow CancellationException.
-[ ] R9 Privacy and injection: <data>...</data> delimiters for tool results and memory with escaping, sanitise titles/statements (collapse newlines, replace |, cap 80 chars), SoulFact/Node localOnly and sensitive fields, sensitive categories forced to proposed/sensitive=1/local_only=1, request capture test.
+[x] R4 Unreachable features: stale items and time chips (T-A, T-B): UiState.staleItems + KeepStale/CancelStale actions, Gateway uses resolve() and returns NeedsTime with proposal kind="time" and formatted chips, handleConfirmChange for time chips with undo, DateResolver night/12 edge cases and weekday names. [unit + connected verified on moto g73 5G]
+[x] R5 Export/import hardening (security): ChunkedAesInputStream chunk length 16..chunkSize+16 check, Argon2 KDF bounds, table & column whitelist from current schema, configurable liveDbName, post-import AlarmReconciler call. [unit + connected verified on moto g73 5G]
+[x] R6 Gentle tier is a dead end (T-C): propose_change tier argument (alarm|gentle), CREATE honours it, RESCHEDULE and confirm path preserve existing tier, time-chip payloads carry tier, undo restores tier. [unit + connected verified]
+[x] R7 Receipts from operation log (T6): RawEvent causeMsgId, core ReceiptFormatter from raw_event with device time format, Storage.getRecentEvents(limit), UiState.receipts built from events with 24h undoValid and causeMsgId linkage. [unit + connected verified on moto g73 5G]
+[x] R8 Quote slots live wiring (T-F, D-108, D-109): slot boundaries (MORNING 5..11, AFTERNOON 12..16, EVENING 17..20, NIGHT 21..4) and prepare hours (4, 11, 16, 20), regen rule (first live is regen 0, max 2 regens with state_hash changed), counts-only prompt, UiState.homeQuote, QuoteManager.onHomeOpened single entry, prepare_next_quote_early setting, rethrow CancellationException. [unit + connected verified on moto g73 5G, approved]
+[x] R9 Privacy and injection: <data>...</data> delimiters for tool results and memory with escaping, sanitise titles/statements (collapse newlines, replace |, cap 80 chars), SoulFact/Node localOnly and sensitive fields, sensitive categories forced to proposed/sensitive=1/local_only=1, request capture test. [unit + connected verified on moto g73 5G, approved]
 [ ] R10 Smaller correctness items:
-    [ ] R10a Day rollover single source of truth (day_rule effective_from per blueprint 50 s3.13)
-    [ ] R10b Stop during streaming null check before persisting [Interrupted] to raw_message
-    [ ] R10c follow_up node existence validation, atomic node+reminder+edge create, CREATE undo soft-deletes edge, AddFollowUp/RemoveFollowUp validation (no self-loop/duplicate, cycle check) with undo receipts
-    [ ] R10d getStaleNodes injected now parameter required (no default System.currentTimeMillis())
-    [ ] R10e PresetQuotes Math.floorMod for slot index
-    [ ] R10f Weekday/vocabulary gaps from P1-B 14 in DateResolver
+    [x] R10a Day rollover single source of truth (day_rule effective_from per blueprint 50 s3.13) [unit + connected verified on moto g73 5G, approved]
+    [x] R10b Stop during streaming null check before persisting [Interrupted] to raw_message [unit-verified, approved]
+    [x] R10c follow_up node existence validation, atomic node+reminder+edge create, CREATE undo soft-deletes edge, AddFollowUp/RemoveFollowUp validation (no self-loop/duplicate, cycle check) with undo receipts [unit-verified, approved]
+    [x] R10d getStaleNodes injected now parameter required (no default System.currentTimeMillis()) [unit-verified, approved]
+    [x] R10e PresetQuotes Math.floorMod for slot index
+    [x] R10f Weekday/vocabulary gaps from P1-B 14 in DateResolver [unit-verified, approved]
     [ ] R10g Minified release APK test on physical phone when device returns (NOT VERIFIED until then)
     [x] R10h CheckinBuilder query scaling & stale exclusion: getNodesDueBetween/getOverdueNodes limit=500 cap removal/pagination and exclude stale items consistent with ContextBuilder
     [x] R10i Pinned/severity/priority persistence & getNode reading: wire into Gateway CREATE, getNode SQL query, and undo snapshot equality
-    [ ] R10j Chat history search indexing: populate msg_chunk_fts on message insert so searchMemoryFts searches conversation history
+    [x] R10j Chat history search indexing: populate msg_chunk_fts on message insert so searchMemoryFts searches conversation history [unit-verified, reviewed, awaiting device]
     [x] R10k Prompt context budgeting: add token/char cap on Soul facts and open proposals in ContextBuilder.buildPack
     [x] R10l SharedFakeStorage keyset pagination parity: do not reset to head when cursor ID is absent
+[x] R12 Turn lifecycle and confirm-path concurrency (findings A-01, A-04, A-09): atomic proposal CAS in Storage/AndroidStorage/SharedFakeStorage, Gateway handleConfirmChange pre-validation & single-winner CAS, accept paused nodes, terminal failure proposal consumption, ChatController currentBotId interruption isolation [unit-verified, live-endpoint verified, approved]
+[~] R12c Corrections only: Item 1 Rollback fix (updateProposalStatus, revert-proof unit test, real-SQLite test, reviews approved) [awaiting confirmation]; Item 2 Atomicity analysis; Item 3 Numbers reconciliation; Item 4 Decisions (D-116/D-117); Item 5 USE_EXACT_ALARM proof/retraction; Item 6 Doc drift & redaction; Item 7 server.js removal; Item 8 Test-auditor on R12
 
 ## Roadmap items to be tackled post-remediation
 [ ] P1-B 15 Reminder policy per blueprint 30 (lead times, reminder only when asked or per default)
 [ ] P1-B 17 Dedupe near-match (same title near same due time -> needs_confirm)
-[ ] DateResolver: Weekday names ("on friday", "next friday", "friday at 5pm")
+[x] DateResolver: Weekday names ("on friday", "next friday", "friday at 5pm") [covered by R10f, unit-verified, approved]
 [ ] P1-D 20 Remainder: Home priority list (code-ranked), at-risk flag, active threads, recently-closed with undo validity, structured chat items (bubble, receipt, chips, nudge+reason, check-in snapshot, system line)
 [ ] P1-E 21 day_rule/day_key monotonic, rollover (11, 50 s3.13)
 [ ] P1-E 22 Layers: raw/derived/operational, rebuild jobs skeleton (11)

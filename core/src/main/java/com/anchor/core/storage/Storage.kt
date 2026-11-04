@@ -5,6 +5,7 @@
 package com.anchor.core.storage
 
 import com.anchor.core.models.ChatMessage
+import com.anchor.core.models.DayRule
 import com.anchor.core.models.Edge
 import com.anchor.core.models.Node
 import com.anchor.core.models.NodeCounts
@@ -21,10 +22,14 @@ interface Storage {
     suspend fun insertRawMessage(id: String, role: String, content: String)
     suspend fun redactMessage(id: String)
     suspend fun getRawMessage(id: String): String?
+    suspend fun hasRawMessage(id: String): Boolean
     suspend fun getRecentMessages(limit: Int): List<ChatMessage>
 
     suspend fun getSetting(key: String): String?
     suspend fun saveSetting(key: String, value: String)
+
+    suspend fun getEffectiveDayRule(tsUtc: Long): DayRule
+    suspend fun saveDayRule(rule: DayRule)
 
     suspend fun getActiveNodes(limit: Int, cursor: String? = null): List<Node>
     suspend fun findActiveNodeByTitle(title: String): Node?
@@ -32,13 +37,15 @@ interface Storage {
     suspend fun getOverdueNodes(beforeMs: Long, limit: Int): List<Node>
     suspend fun getRankedCandidates(now: Long, staleCutoffMs: Long, perTierLimit: Int = 25): List<Node>
     suspend fun getActiveNodeCounts(now: Long, staleCutoffMs: Long = 30L * 24 * 3600 * 1000L): NodeCounts
-    suspend fun getStaleNodes(cutoffMs: Long = 30L * 24 * 3600 * 1000L, now: Long = System.currentTimeMillis()): List<Node>
+    suspend fun getStaleNodes(now: Long, cutoffMs: Long = 30L * 24 * 3600 * 1000L): List<Node>
     suspend fun getActiveReminders(): List<Reminder>
     suspend fun getPendingReminders(): List<Reminder>
 
     suspend fun saveProposal(proposal: Proposal)
     suspend fun getProposal(id: String): Proposal?
     suspend fun consumeProposal(id: String)
+    suspend fun consumeProposalCas(id: String): Boolean
+    suspend fun updateProposalStatus(id: String, status: String)
 
     suspend fun saveReminder(reminder: Reminder)
     suspend fun deleteReminder(id: String)
@@ -55,6 +62,7 @@ interface Storage {
     suspend fun getNode(id: String): Node?
     suspend fun getEvent(opId: String): RawEvent?
     suspend fun hasUndo(token: String): Boolean
+    suspend fun getRecentEvents(limit: Int): List<RawEvent>
 
     suspend fun getProactiveState(): com.anchor.core.models.ProactiveState
     suspend fun saveProactiveState(state: com.anchor.core.models.ProactiveState)
@@ -68,15 +76,16 @@ interface Storage {
     suspend fun getActiveSoulFacts(): List<SoulFact>
     suspend fun getProposedSoulFacts(): List<SoulFact>
     suspend fun updateSoulFactStatus(id: String, status: String)
+    suspend fun updateSoulFactStatusAndCommit(id: String, status: String, event: RawEvent)
     suspend fun getReminderByNodeId(nodeId: String): Reminder?
     suspend fun clearAlarmRegistry()
     suspend fun hasReminderFire(reminderId: String, outcome: String): Boolean
 
     // Purely Transactional Gateways
-    suspend fun createNodeAndCommit(node: Node, event: RawEvent, reminder: Reminder?)
-    suspend fun updateNodeAndCommit(node: Node, event: RawEvent, deleteReminderId: String?, upsertReminder: Reminder? = null, consumeProposalId: String? = null)
+    suspend fun createNodeAndCommit(node: Node, event: RawEvent, reminder: Reminder?, edge: Edge? = null, edgeEvent: RawEvent? = null, consumeProposalId: String? = null)
+    suspend fun updateNodeAndCommit(node: Node, event: RawEvent, deleteReminderId: String?, upsertReminder: Reminder? = null, consumeProposalId: String? = null, softDeleteEdgeIds: List<String> = emptyList())
     suspend fun undoChangeAndCommit(node: Node, event: RawEvent, restoreReminder: Reminder?)
-    suspend fun createReminderAndCommit(reminder: Reminder, event: RawEvent)
+    suspend fun createReminderAndCommit(reminder: Reminder, event: RawEvent, consumeProposalId: String? = null)
     suspend fun deleteReminderAndCommit(reminderId: String, event: RawEvent)
 
     suspend fun saveEdge(edge: Edge)
@@ -88,7 +97,8 @@ interface Storage {
     suspend fun deleteEdgeAndCommit(edgeId: String, event: RawEvent)
 
     suspend fun getRegisteredAlarms(): List<Pair<String, Long>>
-    suspend fun saveRegisteredAlarm(reminderId: String, requestCode: Int, registeredFor: Long)
+    suspend fun getRegisteredAlarmRecords(): List<com.anchor.core.models.RegisteredAlarm> = getRegisteredAlarms().map { com.anchor.core.models.RegisteredAlarm(it.first, it.second, "alarm_clock") }
+    suspend fun saveRegisteredAlarm(reminderId: String, requestCode: Int, registeredFor: Long, api: String = "alarm_clock")
     suspend fun deleteRegisteredAlarm(reminderId: String)
 
     // Calendar & Day Navigation Queries (D-107, UI Spec E6)
@@ -101,6 +111,7 @@ interface Storage {
     // Quote Slots (D-108, Blueprint 40)
     suspend fun getQuoteSlot(slot: com.anchor.core.models.QuoteSlot, dayKey: String): com.anchor.core.models.Quote?
     suspend fun saveQuoteSlot(quote: com.anchor.core.models.Quote)
+    suspend fun getCompletedTodayCount(startOfDayMs: Long, endOfDayMs: Long): Int
 }
 
 class TooManyActiveNodesException(val cap: Int) : Exception("Too many active items (exceeded $cap). Please be more specific.")
