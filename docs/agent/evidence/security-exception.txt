@@ -1,0 +1,63 @@
+# SecurityException Empirical Reproduction Evidence (Android 14 / API 34)
+
+## Context
+Reproduction of empirical SecurityException on physical Motorola moto g73 5G (Android 14 / API 34, targetSdk 35) when `android.permission.USE_EXACT_ALARM` is omitted from `app/src/main/AndroidManifest.xml`.
+
+## Test Execution Failure Output
+```text
+File: app/build/outputs/androidTest-results/connected/debug/TEST-moto g73 5G - 14.xml
+Tests: 32, Failures: 4, Errors: 0, Skipped: 0
+
+FAILED: com.anchor.mine.alarms.AlarmSelfTest#testAlarmFires_SetsFlag
+Failure msg: java.lang.AssertionError: Schedule must succeed as Armed unconditionally, but was Failed(reason=SecurityException: Caller com.anchor.mine needs to hold android.permission.SCHEDULE_EXACT_ALARM or android.permission.USE_EXACT_ALARM to set exact alarms.)
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.assertTrue(Assert.java:42)
+	at com.anchor.mine.alarms.AlarmSelfTest$testAlarmFires_SetsFlag$1.invokeSuspend(AlarmSelfTest.kt:57)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:33)
+	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:104)
+	at kotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:277)
+	at kotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:95)
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking(Builders.kt:70)
+	at kotlinx.coroutines.BuildersKt.runBlocking(Builders.kt:1)
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking$default(Builders.kt:48)
+	at kotlinx.coroutines.BuildersKt.runBlocking$default(Builders.kt:1)
+	at com.anchor.mine.alarms.AlarmSelfTest.testAlarmFires_SetsFlag(AlarmSelfTest.kt:39)
+
+FAILED: com.anchor.mine.alarms.AlarmSelfTest#testAlarmClock_NextAlarmClockVerification
+Failure msg: java.lang.AssertionError: ALARM tier schedule must succeed as Armed unconditionally per D-102, but was Failed(reason=SecurityException: Caller com.anchor.mine needs to hold android.permission.SCHEDULE_EXACT_ALARM or android.permission.USE_EXACT_ALARM to set exact alarms.)
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.assertTrue(Assert.java:42)
+	at com.anchor.mine.alarms.AlarmSelfTest$testAlarmClock_NextAlarmClockVerification$1.invokeSuspend(AlarmSelfTest.kt:110)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:33)
+	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:104)
+	at kotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:277)
+	at kotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:95)
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking(Builders.kt:70)
+	at kotlinx.coroutines.BuildersKt.runBlocking(Builders.kt:1)
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking$default(Builders.kt:48)
+	at kotlinx.coroutines.BuildersKt.runBlocking$default(Builders.kt:1)
+	at com.anchor.mine.alarms.AlarmSelfTest.testAlarmClock_NextAlarmClockVerification(AlarmSelfTest.kt:96)
+
+FAILED: com.anchor.mine.alarms.ManifestPermissionTest#testManifest_DoesNotDeclareForbiddenPermissions
+Failure msg: java.lang.AssertionError: Manifest must declare USE_EXACT_ALARM for setAlarmClock (Decision D-102 amended)
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.assertTrue(Assert.java:42)
+	at com.anchor.mine.alarms.ManifestPermissionTest.testManifest_DoesNotDeclareForbiddenPermissions(ManifestPermissionTest.kt:27)
+```
+
+## OS SecurityException Stack Trace (Android OS AlarmManagerService)
+```text
+java.lang.SecurityException: Caller com.anchor.mine needs to hold android.permission.SCHEDULE_EXACT_ALARM or android.permission.USE_EXACT_ALARM to set exact alarms.
+	at android.os.Parcel.createExceptionOrNull(Parcel.java:3069)
+	at android.os.Parcel.createException(Parcel.java:3053)
+	at android.os.Parcel.readException(Parcel.java:3036)
+	at android.os.Parcel.readException(Parcel.java:2978)
+	at android.app.IAlarmManager$Stub$Proxy.set(IAlarmManager.java:335)
+	at android.app.AlarmManager.setImpl(AlarmManager.java:943)
+	at android.app.AlarmManager.setAlarmClock(AlarmManager.java:817)
+	at com.anchor.mine.alarms.AndroidAlarmScheduler.schedule(AndroidAlarmScheduler.kt:45)
+```
+
+## Resolution
+Per Decision D-102 and D-102b, `android.permission.USE_EXACT_ALARM` is declared in `app/src/main/AndroidManifest.xml`.
+`SCHEDULE_EXACT_ALARM`, `VIBRATE`, and `WAKE_LOCK` remain strictly omitted.

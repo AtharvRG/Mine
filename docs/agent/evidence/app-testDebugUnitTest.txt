@@ -1,0 +1,1059 @@
+Initialized native services in: C:\Users\Banespire\.gradle\native
+Initialized jansi services in: C:\Users\Banespire\.gradle\native
+The client will now receive all logging from the daemon (pid: 17044). The daemon log file: C:\Users\Banespire\.gradle\daemon\9.6.0\daemon-17044.out.log
+Starting 17th build in daemon [uptime: 1 hrs 50 mins 59.071 secs, performance: 100%, GC rate: 0.00/s, heap usage: 2% of 2 GiB]
+Using 12 worker leases.
+Operational build model parameters: {cachingModelBuilding=false, configurationCache=true, configurationCacheDisabledReason=null, configurationCacheParallelLoad=true, configurationCacheParallelStore=false, configureOnDemand=false, invalidateCoupledProjects=false, isolatedProjects=false, isolatedProjectsDiagnostics=false, modelAsProjectDependency=false, modelBuilding=false, parallelModelBuilding=false, parallelProjectConfiguration=false, parallelProjectExecution=false, resilientModelBuilding=false, vintage=false}
+Encryption key source: default Gradle keystore (pkcs12)
+Now considering [C:\Users\Banespire\AndroidStudioProjects\Mine] as hierarchies to watch
+Reusing configuration cache.
+Now considering [C:\Users\Banespire\AndroidStudioProjects\Mine] as hierarchies to watch
+Watching the file system is configured to be enabled if available
+File system watching is active
+Tasks to be executed: [task ':core:checkKotlinGradlePluginConfigurationErrors', task ':core:compileKotlin', task ':core:compileJava', task ':core:processResources', task ':core:classes', task ':core:jar', task ':app:preBuild', task ':app:preDebugBuild', task ':app:generateDebugResources', task ':app:packageDebugResources', task ':app:processDebugNavigationResources', task ':app:parseDebugLocalResources', task ':app:generateDebugRFile', task ':app:compileDebugKotlin', task ':app:javaPreCompileDebug', task ':app:compileDebugJavaWithJavac', task ':app:checkDebugAarMetadata', task ':app:mapDebugSourceSetPaths', task ':app:compileDebugNavigationResources', task ':app:mergeDebugResources', task ':app:createDebugCompatibleScreenManifests', task ':app:extractDeepLinksDebug', task ':app:processDebugMainManifest', task ':app:processDebugManifest', task ':app:processDebugManifestForPackage', task ':app:processDebugResources', task ':app:bundleDebugClassesToRuntimeJar', task ':app:bundleDebugClassesToCompileJar', task ':app:preDebugUnitTestBuild', task ':app:compileDebugUnitTestKotlin', task ':app:javaPreCompileDebugUnitTest', task ':app:compileDebugUnitTestJavaWithJavac', task ':app:processDebugJavaRes', task ':app:processDebugUnitTestJavaRes', task ':app:testDebugUnitTest']
+Tasks that were excluded: []
+Resolve mutations for :core:checkKotlinGradlePluginConfigurationErrors (Thread[#1095,Execution worker,5,main]) started.
+:core:checkKotlinGradlePluginConfigurationErrors (Thread[#1095,Execution worker,5,main]) started.
+Resolve mutations for :core:processResources (Thread[#1101,Execution worker Thread 7,5,main]) started.
+work action Unknown value (Thread[#1100,Execution worker Thread 6,5,main]) started.
+work action Unknown value (Thread[#1096,Execution worker Thread 2,5,main]) started.
+Resolve mutations for :app:preBuild (Thread[#1094,included builds,5,main]) started.
+:app:preBuild (Thread[#1096,Execution worker Thread 2,5,main]) started.
+:core:processResources (Thread[#1101,Execution worker Thread 7,5,main]) started.
+
+> Task :app:preBuild UP-TO-DATE
+Skipping task ':app:preBuild' as it has no actions.
+
+> Task :core:checkKotlinGradlePluginConfigurationErrors SKIPPED
+Skipping task ':core:checkKotlinGradlePluginConfigurationErrors' as task onlyIf 'errorDiagnostics are present' is false.
+Resolve mutations for :app:preDebugBuild (Thread[#1096,Execution worker Thread 2,5,main]) started.
+Resolve mutations for :core:compileKotlin (Thread[#1095,Execution worker,5,main]) started.
+Resolve mutations for :app:preDebugUnitTestBuild (Thread[#1094,included builds,5,main]) started.
+Build 9ae9ed31-49c8-459f-9ae1-37a232e0c0ed is started
+:app:preDebugBuild (Thread[#1096,Execution worker Thread 2,5,main]) started.
+
+> Task :app:preDebugBuild UP-TO-DATE
+Skipping task ':app:preDebugBuild' as it has no actions.
+:core:compileKotlin (Thread[#1095,Execution worker,5,main]) started.
+:app:preDebugUnitTestBuild (Thread[#1094,included builds,5,main]) started.
+
+> Task :app:preDebugUnitTestBuild UP-TO-DATE
+Skipping task ':app:preDebugUnitTestBuild' as it has no actions.
+Resolve mutations for :app:javaPreCompileDebugUnitTest (Thread[#1094,included builds,5,main]) started.
+:app:javaPreCompileDebugUnitTest (Thread[#1094,included builds,5,main]) started.
+Resolve mutations for :app:generateDebugResources (Thread[#1096,Execution worker Thread 2,5,main]) started.
+Resolve mutations for :app:processDebugNavigationResources (Thread[#1098,Execution worker Thread 4,5,main]) started.
+Resolve mutations for :app:javaPreCompileDebug (Thread[#1099,Execution worker Thread 5,5,main]) started.
+Resolve mutations for :app:checkDebugAarMetadata (Thread[#1103,Execution worker Thread 9,5,main]) started.
+Resolve mutations for :app:mapDebugSourceSetPaths (Thread[#1100,Execution worker Thread 6,5,main]) started.
+Resolve mutations for :app:createDebugCompatibleScreenManifests (Thread[#1102,Execution worker Thread 8,5,main]) started.
+:app:javaPreCompileDebug (Thread[#1099,Execution worker Thread 5,5,main]) started.
+Resolve mutations for :app:extractDeepLinksDebug (Thread[#1104,Execution worker Thread 10,5,main]) started.
+:app:mapDebugSourceSetPaths (Thread[#1100,Execution worker Thread 6,5,main]) started.
+:app:createDebugCompatibleScreenManifests (Thread[#1102,Execution worker Thread 8,5,main]) started.
+:app:extractDeepLinksDebug (Thread[#1104,Execution worker Thread 10,5,main]) started.
+:app:generateDebugResources (Thread[#1096,Execution worker Thread 2,5,main]) started.
+:app:processDebugNavigationResources (Thread[#1098,Execution worker Thread 4,5,main]) started.
+:app:checkDebugAarMetadata (Thread[#1103,Execution worker Thread 9,5,main]) started.
+
+> Task :core:processResources NO-SOURCE
+Skipping task ':core:processResources' as it has no source files and no previous output files.
+
+> Task :app:generateDebugResources
+Caching disabled for task ':app:generateDebugResources' because:
+  Build cache is disabled
+Task ':app:generateDebugResources' is not up-to-date because:
+  Executed with '--rerun-tasks'.
+Resolve mutations for :app:packageDebugResources (Thread[#1096,Execution worker Thread 2,5,main]) started.
+Resolve mutations for :app:mergeDebugResources (Thread[#1101,Execution worker Thread 7,5,main]) started.
+:app:packageDebugResources (Thread[#1096,Execution worker Thread 2,5,main]) started.
+:app:mergeDebugResources (Thread[#1101,Execution worker Thread 7,5,main]) started.
+
+> Task :app:createDebugCompatibleScreenManifests
+Caching disabled for task ':app:createDebugCompatibleScreenManifests' because:
+  Build cache is disabled
+  Caching has been disabled for the task
+Task ':app:createDebugCompatibleScreenManifests' is not up-to-date because:
+  Executed with '--rerun-tasks'.
+
+> Task :app:extractDeepLinksDebug
+Caching disabled for task ':app:extractDeepLinksDebug' because:
+  Build cache is disabled
+Task ':app:extractDeepLinksDebug' is not up-to-date because:
+  Executed with '--rerun-tasks'.
+Resolve mutations for :app:processDebugMainManifest (Thread[#1104,Execution worker Thread 10,5,main]) started.
+:app:processDebugMainManifest (Thread[#1104,Execution worker Thread 10,5,main]) started.
+
+> Task :app:javaPreCompileDebugUnitTest
+Caching disabled for task ':app:javaPreCompileDebugUnitTest' because:
+  Build cache is disabled
+Task ':app:javaPreCompileDebugUnitTest' is not up-to-date because:
+  Executed with '--rerun-tasks'.
+
+> Task :app:mapDebugSourceSetPaths
+Caching disabled for task ':app:mapDebugSourceSetPaths' because:
+  Build cache is disabled
+  Caching has been disabled for the task
+Task ':app:mapDebugSourceSetPaths' is not up-to-date because:
+  Executed with '--rerun-tasks'.
+
+> Task :app:javaPreCompileDebug
+Caching disabled for task ':app:javaPreCompileDebug' because:
+  Build cache is disabled
+Task ':app:javaPreCompileDebug' is not up-to-date because:
+  Executed with '--rerun-tasks'.
+
+> Task :app:processDebugNavigationResources
+Caching disabled for task ':app:processDebugNavigationResources' because:
+  Build cache is disabled
+Task ':app:processDebugNavigationResources' is not up-to-date because:
+  Executed with '--rerun-tasks'.
+Resolve mutations for :app:compileDebugNavigationResources (Thread[#1098,Execution worker Thread 4,5,main]) started.
+:app:compileDebugNavigationResources (Thread[#1098,Execution worker Thread 4,5,main]) started.
+
+> Task :app:compileDebugNavigationResources
+Caching disabled for task ':app:compileDebugNavigationResources' because:
+  Build cache is disabled
+Task ':app:compileDebugNavigationResources' is not up-to-date because:
+  Executed with '--rerun-tasks'.
+The input changes require a full rebuild for incremental task ':app:compileDebugNavigationResources'.
+
+> Task :app:checkDebugAarMetadata
+Caching disabled for task ':app:checkDebugAarMetadata' because:
+  Build cache is disabled
+  Caching has been disabled for the task
+Task ':app:checkDebugAarMetadata' is not up-to-date because:
+  Executed with '--rerun-tasks'.
+
+> Task :app:packageDebugResources
+Caching disabled for task ':app:packageDebugResources' because:
+  Build cache is disabled
+Task ':app:packageDebugResources' is not up-to-date because:
+  Executed with '--rerun-tasks'.
+The input changes require a full rebuild for incremental task ':app:packageDebugResources'.
+[MergeResources] Inputs are non-incremental full task action.
+Resolve mutations for :app:parseDebugLocalResources (Thread[#1096,Execution worker Thread 2,5,main]) started.
+:app:parseDebugLocalResources (Thread[#1096,Execution worker Thread 2,5,main]) started.
+
+> Task :app:parseDebugLocalResources
+Caching disabled for task ':app:parseDebugLocalResources' because:
+  Build cache is disabled
+Task ':app:parseDebugLocalResources' is not up-to-date because:
+  Executed with '--rerun-tasks'.
+The input changes require a full rebuild for incremental task ':app:parseDebugLocalResources'.
+Resolve mutations for :app:generateDebugRFile (Thread[#1096,Execution worker Thread 2,5,main]) started.
+:app:generateDebugRFile (Thread[#1096,Execution worker Thread 2,5,main]) started.
+
+> Task :app:processDebugMainManifest
+Caching disabled for task ':app:processDebugMainManifest' because:
+  Build cache is disabled
+Task ':app:processDebugMainManifest' is not up-to-date because:
+  Executed with '--rerun-tasks'.
+Loading library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\24d3e517f4cb2620f3917fac7f2fbf48\transformed\animation-core\AndroidManifest.xml
+Loading library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\a7447ee5e2e7696a638bdf96c32e3aea\transformed\material-ripple\AndroidManifest.xml
+Loading library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\96898bc1efc50450123075931cebdb39\transformed\animation\AndroidManifest.xml
+Loading library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\3871845c190dea3ac505995f2dd5ca82\transformed\foundation-layout\AndroidManifest.xml
+Loading library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\761fe531b5d5c4bf176c6acd292b970f\transformed\foundation\AndroidManifest.xml
+Loading library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\6987e47d77e5e63c47bc210262e3316f\transformed\ui-tooling-preview\AndroidManifest.xml
+Loading library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\be00dce9dca2a78c89db25b9835dfa4c\transformed\ui-tooling-data\AndroidManifest.xml
+Loading library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\8ac5803f8826cd296a9e75fdd6690a19\transformed\ui-unit\AndroidManifest.xml
+Loading library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\71752e51ad318aae7781b0e51ab33b82\transformed\ui-graphics\AndroidManifest.xml
+Loading library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\4d67cf2beaadfacc6147d0c2a7fa8aba\transformed\ui-geometry\AndroidManifest.xml
+Loading library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\2f282077e973796b430b878b0663361d\transformed\ui-util\AndroidManifest.xml
+Loading library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\50d8e362d1336eb149da54dd2d1310ac\transformed\ui-text\AndroidManifest.xml
+Loading library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\961cbe86dcca34acfd6834949727d35e\transformed\ui-tooling\AndroidManifest.xml
+Loading library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\b9d21603a441e2b08c5daed09d88691a\transformed\material3\AndroidManifest.xml
+Loading library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\35d1d9d44eaeabc5c816637e847a4a5d\transformed\ui\AndroidManifest.xml
+Loading library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\fa3342c50394d357730fcf315427d2d8\transformed\activity-1.9.2\AndroidManifest.xml
+Loading library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\1893e18c911fb3d4673a04496e0dc2b9\transformed\activity-ktx-1.9.2\AndroidManifest.xml
+Loading library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\479b4508d9c511bdbc3085b998964c84\transformed\activity-compose-1.9.2\AndroidManifest.xml
+Loading library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\cf20e0489e19f12068b5ad6e5f7748db\transformed\sqlcipher-android-4.19.1\AndroidManifest.xml
+Loading library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\01842422922a7a8fe744b15c2358fd06\transformed\runtime-annotation\AndroidManifest.xml
+Loading library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\6bdf95979bc779b80b9e017dcb9f479d\transformed\runtime-retain\AndroidManifest.xml
+Loading library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\d02ff06277e0625f3391fa62b7da9164\transformed\savedstate-release\AndroidManifest.xml
+Loading library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\d5d29bccbee830220a84122283da6729\transformed\savedstate-ktx-1.3.2\AndroidManifest.xml
+Loading library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\be2c9de5ac7b5c3390b45d1f54b150f0\transformed\savedstate-compose\AndroidManifest.xml
+Loading library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\726b88b5af6c7dea6ac5037874ef6ad3\transformed\runtime\AndroidManifest.xml
+Loading library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\edbaf81241b801807175e146170229a1\transformed\runtime-saveable\AndroidManifest.xml
+Loading library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\715d9e67181bc83f0673d5015f444987\transformed\emoji2-1.4.0\AndroidManifest.xml
+Loading library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\99d2f9ce9e0b0b19f9cd95370f7461a9\transformed\autofill-1.0.0\AndroidManifest.xml
+Loading library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\632005e89e2d2a9a6adcf0150930a554\transformed\window-core\AndroidManifest.xml
+Loading library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\249982f79aeffcbbc14e892f4783b2a8\transformed\window-1.5.0\AndroidManifest.xml
+Loading library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\96cc1e26ab9b2222d1396e1455b2395b\transformed\customview-poolingcontainer-1.0.0\AndroidManifest.xml
+Loading library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\6f6082ee0ac1bae6a27000c8b6ea1b5a\transformed\core-ktx-1.16.0\AndroidManifest.xml
+Loading library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\93a6252ade4dc132a2d99a46ec01a6eb\transformed\graphics-path-1.0.1\AndroidManifest.xml
+Loading library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\2f2eb5646db8441a1caac971eec394cf\transformed\core-1.16.0\AndroidManifest.xml
+Loading library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\0e3c298228948cf3c8cd109a01a3797f\transformed\lifecycle-livedata-core-2.9.4\AndroidManifest.xml
+Loading library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\e662c2e34f03eb295243ffe4318d5506\transformed\lifecycle-viewmodel-release\AndroidManifest.xml
+Loading library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\ccf08bee129808216eec0e585372f507\transformed\lifecycle-runtime-ktx\AndroidManifest.xml
+Loading library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\ac3449aaf0f0e2d666e752e4904c2927\transformed\lifecycle-runtime-release\AndroidManifest.xml
+Loading library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\7bc033e07580c3544d7f293fef11f81e\transformed\lifecycle-process-2.9.4\AndroidManifest.xml
+Loading library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\55a4cfac6262c342330ea41b8d5dd8c6\transformed\lifecycle-viewmodel-ktx-2.9.4\AndroidManifest.xml
+Loading library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\2d24d3e8cff23b3c036c02e08d89ea27\transformed\lifecycle-runtime-compose-release\AndroidManifest.xml
+Loading library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\d7bfaf42af4f7c396bcb73e6cc3ccd31\transformed\lifecycle-viewmodel-savedstate-release\AndroidManifest.xml
+Loading library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\462a5132cbe2cedc4d2f7419d95e794a\transformed\annotation-experimental-1.4.1\AndroidManifest.xml
+Loading library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\fdf7d0839f9193ed5567ca02fc5cd1f4\transformed\sqlite\AndroidManifest.xml
+Loading library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\2176e80328dd5965f554aa1fe632d081\transformed\versionedparcelable-1.1.1\AndroidManifest.xml
+Loading library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\5b4ba3044052d1ffb9bcfc2101a6f2ae\transformed\core-viewtree-1.0.0\AndroidManifest.xml
+Loading library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\338b78cecba34ccd78a105217d4a1542\transformed\profileinstaller-1.4.0\AndroidManifest.xml
+Loading library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\844ec3381d66c1bcb8bb77ecc8780357\transformed\startup-runtime-1.1.1\AndroidManifest.xml
+Loading library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\66dbfce9a1c34049fafab733893f3d93\transformed\tracing-1.2.0\AndroidManifest.xml
+Loading library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\299162fdd02a4ce2f0241524d86c47cd\transformed\interpolator-1.0.0\AndroidManifest.xml
+Loading library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\3b180667a7cf8c275b8e3fb6eadc133b\transformed\core-runtime-2.2.0\AndroidManifest.xml
+Merging main manifest C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\AndroidManifest.xml
+
+Merging library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\24d3e517f4cb2620f3917fac7f2fbf48\transformed\animation-core\AndroidManifest.xml
+Merging manifest with lower [androidx.compose.animation:animation-core-android:1.12.1] AndroidManifest.xml:2:1-7:12
+uses-sdk defined in both files...
+Merging uses-sdk with lower [androidx.compose.animation:animation-core-android:1.12.1] AndroidManifest.xml:5:5-44
+Merging library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\a7447ee5e2e7696a638bdf96c32e3aea\transformed\material-ripple\AndroidManifest.xml
+Merging manifest with lower [androidx.compose.material:material-ripple-android:1.12.1] AndroidManifest.xml:2:1-7:12
+uses-sdk defined in both files...
+Merging uses-sdk with lower [androidx.compose.material:material-ripple-android:1.12.1] AndroidManifest.xml:5:5-44
+Merging library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\96898bc1efc50450123075931cebdb39\transformed\animation\AndroidManifest.xml
+Merging manifest with lower [androidx.compose.animation:animation-android:1.12.1] AndroidManifest.xml:2:1-7:12
+uses-sdk defined in both files...
+Merging uses-sdk with lower [androidx.compose.animation:animation-android:1.12.1] AndroidManifest.xml:5:5-44
+Merging library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\3871845c190dea3ac505995f2dd5ca82\transformed\foundation-layout\AndroidManifest.xml
+Merging manifest with lower [androidx.compose.foundation:foundation-layout-android:1.12.1] AndroidManifest.xml:2:1-7:12
+uses-sdk defined in both files...
+Merging uses-sdk with lower [androidx.compose.foundation:foundation-layout-android:1.12.1] AndroidManifest.xml:5:5-44
+Merging library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\761fe531b5d5c4bf176c6acd292b970f\transformed\foundation\AndroidManifest.xml
+Merging manifest with lower [androidx.compose.foundation:foundation-android:1.12.1] AndroidManifest.xml:2:1-7:12
+uses-sdk defined in both files...
+Merging uses-sdk with lower [androidx.compose.foundation:foundation-android:1.12.1] AndroidManifest.xml:5:5-44
+Merging library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\6987e47d77e5e63c47bc210262e3316f\transformed\ui-tooling-preview\AndroidManifest.xml
+Merging manifest with lower [androidx.compose.ui:ui-tooling-preview-android:1.12.1] AndroidManifest.xml:17:1-22:12
+uses-sdk defined in both files...
+Merging uses-sdk with lower [androidx.compose.ui:ui-tooling-preview-android:1.12.1] AndroidManifest.xml:20:5-44
+Merging library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\be00dce9dca2a78c89db25b9835dfa4c\transformed\ui-tooling-data\AndroidManifest.xml
+Merging manifest with lower [androidx.compose.ui:ui-tooling-data-android:1.12.1] AndroidManifest.xml:2:1-7:12
+uses-sdk defined in both files...
+Merging uses-sdk with lower [androidx.compose.ui:ui-tooling-data-android:1.12.1] AndroidManifest.xml:5:5-44
+Merging library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\8ac5803f8826cd296a9e75fdd6690a19\transformed\ui-unit\AndroidManifest.xml
+Merging manifest with lower [androidx.compose.ui:ui-unit-android:1.12.1] AndroidManifest.xml:2:1-7:12
+uses-sdk defined in both files...
+Merging uses-sdk with lower [androidx.compose.ui:ui-unit-android:1.12.1] AndroidManifest.xml:5:5-44
+Merging library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\71752e51ad318aae7781b0e51ab33b82\transformed\ui-graphics\AndroidManifest.xml
+Merging manifest with lower [androidx.compose.ui:ui-graphics-android:1.12.1] AndroidManifest.xml:2:1-7:12
+uses-sdk defined in both files...
+Merging uses-sdk with lower [androidx.compose.ui:ui-graphics-android:1.12.1] AndroidManifest.xml:5:5-44
+Merging library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\4d67cf2beaadfacc6147d0c2a7fa8aba\transformed\ui-geometry\AndroidManifest.xml
+Merging manifest with lower [androidx.compose.ui:ui-geometry-android:1.12.1] AndroidManifest.xml:2:1-7:12
+uses-sdk defined in both files...
+Merging uses-sdk with lower [androidx.compose.ui:ui-geometry-android:1.12.1] AndroidManifest.xml:5:5-44
+Merging library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\2f282077e973796b430b878b0663361d\transformed\ui-util\AndroidManifest.xml
+Merging manifest with lower [androidx.compose.ui:ui-util-android:1.12.1] AndroidManifest.xml:2:1-7:12
+uses-sdk defined in both files...
+Merging uses-sdk with lower [androidx.compose.ui:ui-util-android:1.12.1] AndroidManifest.xml:5:5-44
+Merging library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\50d8e362d1336eb149da54dd2d1310ac\transformed\ui-text\AndroidManifest.xml
+Merging manifest with lower [androidx.compose.ui:ui-text-android:1.12.1] AndroidManifest.xml:2:1-7:12
+uses-sdk defined in both files...
+Merging uses-sdk with lower [androidx.compose.ui:ui-text-android:1.12.1] AndroidManifest.xml:5:5-44
+Merging library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\961cbe86dcca34acfd6834949727d35e\transformed\ui-tooling\AndroidManifest.xml
+Merging manifest with lower [androidx.compose.ui:ui-tooling-android:1.12.1] AndroidManifest.xml:17:1-28:12
+uses-sdk defined in both files...
+Merging uses-sdk with lower [androidx.compose.ui:ui-tooling-android:1.12.1] AndroidManifest.xml:20:5-44
+application defined in both files...
+Merging application with lower [androidx.compose.ui:ui-tooling-android:1.12.1] AndroidManifest.xml:22:5-26:19
+Adopted [activity: null]
+Merging library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\b9d21603a441e2b08c5daed09d88691a\transformed\material3\AndroidManifest.xml
+Merging manifest with lower [androidx.compose.material3:material3-android:1.4.0] AndroidManifest.xml:17:1-22:12
+uses-sdk defined in both files...
+Merging uses-sdk with lower [androidx.compose.material3:material3-android:1.4.0] AndroidManifest.xml:20:5-44
+Merging library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\35d1d9d44eaeabc5c816637e847a4a5d\transformed\ui\AndroidManifest.xml
+Merging manifest with lower [androidx.compose.ui:ui-android:1.12.1] AndroidManifest.xml:2:1-7:12
+uses-sdk defined in both files...
+Merging uses-sdk with lower [androidx.compose.ui:ui-android:1.12.1] AndroidManifest.xml:5:5-44
+Merging library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\fa3342c50394d357730fcf315427d2d8\transformed\activity-1.9.2\AndroidManifest.xml
+Merging manifest with lower [androidx.activity:activity:1.9.2] AndroidManifest.xml:17:1-22:12
+uses-sdk defined in both files...
+Merging uses-sdk with lower [androidx.activity:activity:1.9.2] AndroidManifest.xml:20:5-44
+Merging library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\1893e18c911fb3d4673a04496e0dc2b9\transformed\activity-ktx-1.9.2\AndroidManifest.xml
+Merging manifest with lower [androidx.activity:activity-ktx:1.9.2] AndroidManifest.xml:2:1-7:12
+uses-sdk defined in both files...
+Merging uses-sdk with lower [androidx.activity:activity-ktx:1.9.2] AndroidManifest.xml:5:5-44
+Merging library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\479b4508d9c511bdbc3085b998964c84\transformed\activity-compose-1.9.2\AndroidManifest.xml
+Merging manifest with lower [androidx.activity:activity-compose:1.9.2] AndroidManifest.xml:2:1-7:12
+uses-sdk defined in both files...
+Merging uses-sdk with lower [androidx.activity:activity-compose:1.9.2] AndroidManifest.xml:5:5-44
+Merging library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\cf20e0489e19f12068b5ad6e5f7748db\transformed\sqlcipher-android-4.19.1\AndroidManifest.xml
+Merging manifest with lower [net.zetetic:sqlcipher-android:4.19.1] AndroidManifest.xml:2:1-7:12
+uses-sdk defined in both files...
+Merging uses-sdk with lower [net.zetetic:sqlcipher-android:4.19.1] AndroidManifest.xml:5:5-44
+Merging library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\01842422922a7a8fe744b15c2358fd06\transformed\runtime-annotation\AndroidManifest.xml
+Merging manifest with lower [androidx.compose.runtime:runtime-annotation-android:1.12.1] AndroidManifest.xml:2:1-7:12
+uses-sdk defined in both files...
+Merging uses-sdk with lower [androidx.compose.runtime:runtime-annotation-android:1.12.1] AndroidManifest.xml:5:5-44
+Merging library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\6bdf95979bc779b80b9e017dcb9f479d\transformed\runtime-retain\AndroidManifest.xml
+Merging manifest with lower [androidx.compose.runtime:runtime-retain-android:1.12.1] AndroidManifest.xml:2:1-7:12
+uses-sdk defined in both files...
+Merging uses-sdk with lower [androidx.compose.runtime:runtime-retain-android:1.12.1] AndroidManifest.xml:5:5-44
+Merging library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\d02ff06277e0625f3391fa62b7da9164\transformed\savedstate-release\AndroidManifest.xml
+Merging manifest with lower [androidx.savedstate:savedstate-android:1.3.2] AndroidManifest.xml:17:1-22:12
+uses-sdk defined in both files...
+Merging uses-sdk with lower [androidx.savedstate:savedstate-android:1.3.2] AndroidManifest.xml:20:5-44
+Merging library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\d5d29bccbee830220a84122283da6729\transformed\savedstate-ktx-1.3.2\AndroidManifest.xml
+Merging manifest with lower [androidx.savedstate:savedstate-ktx:1.3.2] AndroidManifest.xml:2:1-7:12
+uses-sdk defined in both files...
+Merging uses-sdk with lower [androidx.savedstate:savedstate-ktx:1.3.2] AndroidManifest.xml:5:5-44
+Merging library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\be2c9de5ac7b5c3390b45d1f54b150f0\transformed\savedstate-compose\AndroidManifest.xml
+Merging manifest with lower [androidx.savedstate:savedstate-compose-android:1.3.2] AndroidManifest.xml:2:1-7:12
+uses-sdk defined in both files...
+Merging uses-sdk with lower [androidx.savedstate:savedstate-compose-android:1.3.2] AndroidManifest.xml:5:5-44
+Merging library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\726b88b5af6c7dea6ac5037874ef6ad3\transformed\runtime\AndroidManifest.xml
+Merging manifest with lower [androidx.compose.runtime:runtime-android:1.12.1] AndroidManifest.xml:2:1-7:12
+uses-sdk defined in both files...
+Merging uses-sdk with lower [androidx.compose.runtime:runtime-android:1.12.1] AndroidManifest.xml:5:5-44
+Merging library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\edbaf81241b801807175e146170229a1\transformed\runtime-saveable\AndroidManifest.xml
+Merging manifest with lower [androidx.compose.runtime:runtime-saveable-android:1.12.1] AndroidManifest.xml:2:1-7:12
+uses-sdk defined in both files...
+Merging uses-sdk with lower [androidx.compose.runtime:runtime-saveable-android:1.12.1] AndroidManifest.xml:5:5-44
+Merging library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\715d9e67181bc83f0673d5015f444987\transformed\emoji2-1.4.0\AndroidManifest.xml
+Merging manifest with lower [androidx.emoji2:emoji2:1.4.0] AndroidManifest.xml:17:1-35:12
+uses-sdk defined in both files...
+Merging uses-sdk with lower [androidx.emoji2:emoji2:1.4.0] AndroidManifest.xml:21:5-44
+application defined in both files...
+Merging application with lower [androidx.emoji2:emoji2:1.4.0] AndroidManifest.xml:23:5-33:19
+Adopted [provider: null]
+Merging library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\99d2f9ce9e0b0b19f9cd95370f7461a9\transformed\autofill-1.0.0\AndroidManifest.xml
+Merging manifest with lower [androidx.autofill:autofill:1.0.0] AndroidManifest.xml:17:1-24:12
+uses-sdk defined in both files...
+Merging uses-sdk with lower [androidx.autofill:autofill:1.0.0] AndroidManifest.xml:20:5-22:41
+Merging library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\632005e89e2d2a9a6adcf0150930a554\transformed\window-core\AndroidManifest.xml
+Merging manifest with lower [androidx.window:window-core-android:1.5.0] AndroidManifest.xml:2:1-7:12
+uses-sdk defined in both files...
+Merging uses-sdk with lower [androidx.window:window-core-android:1.5.0] AndroidManifest.xml:5:5-44
+Merging library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\249982f79aeffcbbc14e892f4783b2a8\transformed\window-1.5.0\AndroidManifest.xml
+Merging manifest with lower [androidx.window:window:1.5.0] AndroidManifest.xml:17:1-31:12
+uses-sdk defined in both files...
+Merging uses-sdk with lower [androidx.window:window:1.5.0] AndroidManifest.xml:20:5-44
+application defined in both files...
+Merging application with lower [androidx.window:window:1.5.0] AndroidManifest.xml:22:5-29:19
+Adopted [uses-library: null]
+Adopted [uses-library: null]
+Merging library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\96cc1e26ab9b2222d1396e1455b2395b\transformed\customview-poolingcontainer-1.0.0\AndroidManifest.xml
+Merging manifest with lower [androidx.customview:customview-poolingcontainer:1.0.0] AndroidManifest.xml:17:1-23:12
+uses-sdk defined in both files...
+Merging uses-sdk with lower [androidx.customview:customview-poolingcontainer:1.0.0] AndroidManifest.xml:20:5-21:38
+Merging library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\6f6082ee0ac1bae6a27000c8b6ea1b5a\transformed\core-ktx-1.16.0\AndroidManifest.xml
+Merging manifest with lower [androidx.core:core-ktx:1.16.0] AndroidManifest.xml:2:1-7:12
+uses-sdk defined in both files...
+Merging uses-sdk with lower [androidx.core:core-ktx:1.16.0] AndroidManifest.xml:5:5-44
+Merging library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\93a6252ade4dc132a2d99a46ec01a6eb\transformed\graphics-path-1.0.1\AndroidManifest.xml
+Merging manifest with lower [androidx.graphics:graphics-path:1.0.1] AndroidManifest.xml:2:1-7:12
+uses-sdk defined in both files...
+Merging uses-sdk with lower [androidx.graphics:graphics-path:1.0.1] AndroidManifest.xml:5:5-44
+Merging library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\2f2eb5646db8441a1caac971eec394cf\transformed\core-1.16.0\AndroidManifest.xml
+Merging manifest with lower [androidx.core:core:1.16.0] AndroidManifest.xml:17:1-30:12
+uses-sdk defined in both files...
+Merging uses-sdk with lower [androidx.core:core:1.16.0] AndroidManifest.xml:20:5-44
+Adopted [permission: null]
+Adopted [uses-permission: null]
+application defined in both files...
+Merging application with lower [androidx.core:core:1.16.0] AndroidManifest.xml:28:5-89
+Merging library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\0e3c298228948cf3c8cd109a01a3797f\transformed\lifecycle-livedata-core-2.9.4\AndroidManifest.xml
+Merging manifest with lower [androidx.lifecycle:lifecycle-livedata-core:2.9.4] AndroidManifest.xml:17:1-22:12
+uses-sdk defined in both files...
+Merging uses-sdk with lower [androidx.lifecycle:lifecycle-livedata-core:2.9.4] AndroidManifest.xml:20:5-44
+Merging library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\e662c2e34f03eb295243ffe4318d5506\transformed\lifecycle-viewmodel-release\AndroidManifest.xml
+Merging manifest with lower [androidx.lifecycle:lifecycle-viewmodel-android:2.9.4] AndroidManifest.xml:17:1-22:12
+uses-sdk defined in both files...
+Merging uses-sdk with lower [androidx.lifecycle:lifecycle-viewmodel-android:2.9.4] AndroidManifest.xml:20:5-44
+Merging library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\ccf08bee129808216eec0e585372f507\transformed\lifecycle-runtime-ktx\AndroidManifest.xml
+Merging manifest with lower [androidx.lifecycle:lifecycle-runtime-ktx-android:2.9.4] AndroidManifest.xml:2:1-7:12
+uses-sdk defined in both files...
+Merging uses-sdk with lower [androidx.lifecycle:lifecycle-runtime-ktx-android:2.9.4] AndroidManifest.xml:5:5-44
+Merging library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\ac3449aaf0f0e2d666e752e4904c2927\transformed\lifecycle-runtime-release\AndroidManifest.xml
+Merging manifest with lower [androidx.lifecycle:lifecycle-runtime-android:2.9.4] AndroidManifest.xml:17:1-22:12
+uses-sdk defined in both files...
+Merging uses-sdk with lower [androidx.lifecycle:lifecycle-runtime-android:2.9.4] AndroidManifest.xml:20:5-44
+Merging library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\7bc033e07580c3544d7f293fef11f81e\transformed\lifecycle-process-2.9.4\AndroidManifest.xml
+Merging manifest with lower [androidx.lifecycle:lifecycle-process:2.9.4] AndroidManifest.xml:17:1-35:12
+uses-sdk defined in both files...
+Merging uses-sdk with lower [androidx.lifecycle:lifecycle-process:2.9.4] AndroidManifest.xml:21:5-44
+application defined in both files...
+Merging application with lower [androidx.lifecycle:lifecycle-process:2.9.4] AndroidManifest.xml:23:5-33:19
+provider#androidx.startup.InitializationProvider defined in both files...
+Merging provider#androidx.startup.InitializationProvider with lower [androidx.lifecycle:lifecycle-process:2.9.4] AndroidManifest.xml:24:9-32:20
+Adopted [meta-data: null]
+Merging library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\55a4cfac6262c342330ea41b8d5dd8c6\transformed\lifecycle-viewmodel-ktx-2.9.4\AndroidManifest.xml
+Merging manifest with lower [androidx.lifecycle:lifecycle-viewmodel-ktx:2.9.4] AndroidManifest.xml:2:1-7:12
+uses-sdk defined in both files...
+Merging uses-sdk with lower [androidx.lifecycle:lifecycle-viewmodel-ktx:2.9.4] AndroidManifest.xml:5:5-44
+Merging library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\2d24d3e8cff23b3c036c02e08d89ea27\transformed\lifecycle-runtime-compose-release\AndroidManifest.xml
+Merging manifest with lower [androidx.lifecycle:lifecycle-runtime-compose-android:2.9.4] AndroidManifest.xml:2:1-7:12
+uses-sdk defined in both files...
+Merging uses-sdk with lower [androidx.lifecycle:lifecycle-runtime-compose-android:2.9.4] AndroidManifest.xml:5:5-44
+Merging library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\d7bfaf42af4f7c396bcb73e6cc3ccd31\transformed\lifecycle-viewmodel-savedstate-release\AndroidManifest.xml
+Merging manifest with lower [androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.9.4] AndroidManifest.xml:17:1-22:12
+uses-sdk defined in both files...
+Merging uses-sdk with lower [androidx.lifecycle:lifecycle-viewmodel-savedstate-android:2.9.4] AndroidManifest.xml:20:5-44
+Merging library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\462a5132cbe2cedc4d2f7419d95e794a\transformed\annotation-experimental-1.4.1\AndroidManifest.xml
+Merging manifest with lower [androidx.annotation:annotation-experimental:1.4.1] AndroidManifest.xml:2:1-7:12
+uses-sdk defined in both files...
+Merging uses-sdk with lower [androidx.annotation:annotation-experimental:1.4.1] AndroidManifest.xml:5:5-44
+Merging library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\fdf7d0839f9193ed5567ca02fc5cd1f4\transformed\sqlite\AndroidManifest.xml
+Merging manifest with lower [androidx.sqlite:sqlite-android:2.7.0] AndroidManifest.xml:17:1-22:12
+uses-sdk defined in both files...
+Merging uses-sdk with lower [androidx.sqlite:sqlite-android:2.7.0] AndroidManifest.xml:20:5-44
+Merging library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\2176e80328dd5965f554aa1fe632d081\transformed\versionedparcelable-1.1.1\AndroidManifest.xml
+Merging manifest with lower [androidx.versionedparcelable:versionedparcelable:1.1.1] AndroidManifest.xml:17:1-27:12
+uses-sdk defined in both files...
+Merging uses-sdk with lower [androidx.versionedparcelable:versionedparcelable:1.1.1] AndroidManifest.xml:20:5-22:41
+application defined in both files...
+Merging application with lower [androidx.versionedparcelable:versionedparcelable:1.1.1] AndroidManifest.xml:24:5-25:19
+Merging library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\5b4ba3044052d1ffb9bcfc2101a6f2ae\transformed\core-viewtree-1.0.0\AndroidManifest.xml
+Merging manifest with lower [androidx.core:core-viewtree:1.0.0] AndroidManifest.xml:2:1-7:12
+uses-sdk defined in both files...
+Merging uses-sdk with lower [androidx.core:core-viewtree:1.0.0] AndroidManifest.xml:5:5-44
+Merging library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\338b78cecba34ccd78a105217d4a1542\transformed\profileinstaller-1.4.0\AndroidManifest.xml
+Merging manifest with lower [androidx.profileinstaller:profileinstaller:1.4.0] AndroidManifest.xml:17:1-55:12
+uses-sdk defined in both files...
+Merging uses-sdk with lower [androidx.profileinstaller:profileinstaller:1.4.0] AndroidManifest.xml:21:5-44
+application defined in both files...
+Merging application with lower [androidx.profileinstaller:profileinstaller:1.4.0] AndroidManifest.xml:23:5-53:19
+provider#androidx.startup.InitializationProvider defined in both files...
+Merging provider#androidx.startup.InitializationProvider with lower [androidx.profileinstaller:profileinstaller:1.4.0] AndroidManifest.xml:24:9-32:20
+Adopted [meta-data: null]
+Adopted [receiver: null]
+Merging library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\844ec3381d66c1bcb8bb77ecc8780357\transformed\startup-runtime-1.1.1\AndroidManifest.xml
+Merging manifest with lower [androidx.startup:startup-runtime:1.1.1] AndroidManifest.xml:17:1-33:12
+uses-sdk defined in both files...
+Merging uses-sdk with lower [androidx.startup:startup-runtime:1.1.1] AndroidManifest.xml:21:5-23:41
+application defined in both files...
+Merging application with lower [androidx.startup:startup-runtime:1.1.1] AndroidManifest.xml:25:5-31:19
+provider#androidx.startup.InitializationProvider defined in both files...
+Merging provider#androidx.startup.InitializationProvider with lower [androidx.startup:startup-runtime:1.1.1] AndroidManifest.xml:26:9-30:34
+Merging library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\66dbfce9a1c34049fafab733893f3d93\transformed\tracing-1.2.0\AndroidManifest.xml
+Merging manifest with lower [androidx.tracing:tracing:1.2.0] AndroidManifest.xml:17:1-22:12
+uses-sdk defined in both files...
+Merging uses-sdk with lower [androidx.tracing:tracing:1.2.0] AndroidManifest.xml:20:5-44
+Merging library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\299162fdd02a4ce2f0241524d86c47cd\transformed\interpolator-1.0.0\AndroidManifest.xml
+Merging manifest with lower [androidx.interpolator:interpolator:1.0.0] AndroidManifest.xml:17:1-22:12
+uses-sdk defined in both files...
+Merging uses-sdk with lower [androidx.interpolator:interpolator:1.0.0] AndroidManifest.xml:20:5-44
+Merging library manifest C:\Users\Banespire\.gradle\caches\9.6.0\transforms\3b180667a7cf8c275b8e3fb6eadc133b\transformed\core-runtime-2.2.0\AndroidManifest.xml
+Merging manifest with lower [androidx.arch.core:core-runtime:2.2.0] AndroidManifest.xml:17:1-22:12
+uses-sdk defined in both files...
+Merging uses-sdk with lower [androidx.arch.core:core-runtime:2.2.0] AndroidManifest.xml:20:5-44
+Merging result: SUCCESS
+1<?xml version="1.0" encoding="utf-8"?>
+2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+3    package="com.anchor.mine"
+4    android:versionCode="10000"
+5    android:versionName="1.0.0" >
+6
+7    <uses-sdk
+7-->INJECTED
+8        android:minSdkVersion="34"
+8-->INJECTED
+9        android:targetSdkVersion="35" />
+9-->INJECTED
+10
+11    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+11-->C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\AndroidManifest.xml:4:5-77
+11-->C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\AndroidManifest.xml:4:22-74
+12    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+12-->C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\AndroidManifest.xml:5:5-81
+12-->C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\AndroidManifest.xml:5:22-78
+13    <uses-permission android:name="android.permission.INTERNET" />
+13-->C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\AndroidManifest.xml:6:5-67
+13-->C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\AndroidManifest.xml:6:22-64
+14    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+14-->C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\AndroidManifest.xml:7:5-74
+14-->C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\AndroidManifest.xml:7:22-71
+15
+16    <permission
+16-->[androidx.core:core:1.16.0] C:\Users\Banespire\.gradle\caches\9.6.0\transforms\2f2eb5646db8441a1caac971eec394cf\transformed\core-1.16.0\AndroidManifest.xml:22:5-24:47
+17        android:name="com.anchor.mine.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+17-->[androidx.core:core:1.16.0] C:\Users\Banespire\.gradle\caches\9.6.0\transforms\2f2eb5646db8441a1caac971eec394cf\transformed\core-1.16.0\AndroidManifest.xml:23:9-81
+18        android:protectionLevel="signature" />
+18-->[androidx.core:core:1.16.0] C:\Users\Banespire\.gradle\caches\9.6.0\transforms\2f2eb5646db8441a1caac971eec394cf\transformed\core-1.16.0\AndroidManifest.xml:24:9-44
+19
+20    <uses-permission android:name="com.anchor.mine.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" />
+20-->[androidx.core:core:1.16.0] C:\Users\Banespire\.gradle\caches\9.6.0\transforms\2f2eb5646db8441a1caac971eec394cf\transformed\core-1.16.0\AndroidManifest.xml:26:5-97
+20-->[androidx.core:core:1.16.0] C:\Users\Banespire\.gradle\caches\9.6.0\transforms\2f2eb5646db8441a1caac971eec394cf\transformed\core-1.16.0\AndroidManifest.xml:26:22-94
+21
+22    <application
+22-->C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\AndroidManifest.xml:8:5-39:19
+23        android:name="com.anchor.mine.MineApp"
+23-->C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\AndroidManifest.xml:9:9-32
+24        android:allowBackup="false"
+24-->C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\AndroidManifest.xml:10:9-36
+25        android:appComponentFactory="androidx.core.app.CoreComponentFactory"
+25-->[androidx.core:core:1.16.0] C:\Users\Banespire\.gradle\caches\9.6.0\transforms\2f2eb5646db8441a1caac971eec394cf\transformed\core-1.16.0\AndroidManifest.xml:28:18-86
+26        android:dataExtractionRules="@xml/data_extraction_rules"
+26-->C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\AndroidManifest.xml:11:9-65
+27        android:debuggable="true"
+28        android:extractNativeLibs="false"
+28-->INJECTED
+29        android:fullBackupContent="@xml/backup_rules"
+29-->C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\AndroidManifest.xml:12:9-54
+30        android:icon="@mipmap/ic_launcher"
+30-->C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\AndroidManifest.xml:13:9-43
+31        android:label="Mine"
+31-->C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\AndroidManifest.xml:14:9-29
+32        android:roundIcon="@mipmap/ic_launcher_round"
+32-->C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\AndroidManifest.xml:15:9-54
+33        android:supportsRtl="true"
+33-->C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\AndroidManifest.xml:16:9-35
+34        android:theme="@style/Theme.Mine" >
+34-->C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\AndroidManifest.xml:17:9-42
+35        <activity
+35-->C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\AndroidManifest.xml:19:9-27:20
+36            android:name="com.anchor.mine.MainActivity"
+36-->C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\AndroidManifest.xml:20:13-41
+37            android:exported="true"
+37-->C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\AndroidManifest.xml:21:13-36
+38            android:theme="@style/Theme.Mine" >
+38-->C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\AndroidManifest.xml:22:13-46
+39            <intent-filter>
+39-->C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\AndroidManifest.xml:23:13-26:29
+40                <action android:name="android.intent.action.MAIN" />
+40-->C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\AndroidManifest.xml:24:17-69
+40-->C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\AndroidManifest.xml:24:25-66
+41
+42                <category android:name="android.intent.category.LAUNCHER" />
+42-->C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\AndroidManifest.xml:25:17-77
+42-->C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\AndroidManifest.xml:25:27-74
+43            </intent-filter>
+44        </activity>
+45
+46        <receiver
+46-->C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\AndroidManifest.xml:29:9-83
+47            android:name="com.anchor.mine.alarms.AlarmReceiver"
+47-->C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\AndroidManifest.xml:29:19-55
+48            android:exported="false" />
+48-->C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\AndroidManifest.xml:29:56-80
+49        <receiver
+49-->C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\AndroidManifest.xml:30:9-88
+50            android:name="com.anchor.mine.quotes.QuoteAlarmReceiver"
+50-->C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\AndroidManifest.xml:30:19-60
+51            android:exported="false" />
+51-->C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\AndroidManifest.xml:30:61-85
+52        <receiver
+52-->C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\AndroidManifest.xml:31:9-38:20
+53            android:name="com.anchor.mine.alarms.BootReceiver"
+53-->C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\AndroidManifest.xml:31:19-54
+54            android:exported="true" >
+54-->C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\AndroidManifest.xml:31:55-78
+55            <intent-filter>
+55-->C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\AndroidManifest.xml:32:13-37:29
+56                <action android:name="android.intent.action.BOOT_COMPLETED" />
+56-->C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\AndroidManifest.xml:33:17-79
+56-->C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\AndroidManifest.xml:33:25-76
+57                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+57-->C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\AndroidManifest.xml:34:17-84
+57-->C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\AndroidManifest.xml:34:25-81
+58                <action android:name="android.intent.action.TIME_SET" />
+58-->C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\AndroidManifest.xml:35:17-73
+58-->C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\AndroidManifest.xml:35:25-70
+59                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+59-->C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\AndroidManifest.xml:36:17-81
+59-->C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\AndroidManifest.xml:36:25-78
+60            </intent-filter>
+61        </receiver>
+62
+63        <activity
+63-->[androidx.compose.ui:ui-tooling-android:1.12.1] C:\Users\Banespire\.gradle\caches\9.6.0\transforms\961cbe86dcca34acfd6834949727d35e\transformed\ui-tooling\AndroidManifest.xml:23:9-25:39
+64            android:name="androidx.compose.ui.tooling.PreviewActivity"
+64-->[androidx.compose.ui:ui-tooling-android:1.12.1] C:\Users\Banespire\.gradle\caches\9.6.0\transforms\961cbe86dcca34acfd6834949727d35e\transformed\ui-tooling\AndroidManifest.xml:24:13-71
+65            android:exported="true" />
+65-->[androidx.compose.ui:ui-tooling-android:1.12.1] C:\Users\Banespire\.gradle\caches\9.6.0\transforms\961cbe86dcca34acfd6834949727d35e\transformed\ui-tooling\AndroidManifest.xml:25:13-36
+66
+67        <provider
+67-->[androidx.emoji2:emoji2:1.4.0] C:\Users\Banespire\.gradle\caches\9.6.0\transforms\715d9e67181bc83f0673d5015f444987\transformed\emoji2-1.4.0\AndroidManifest.xml:24:9-32:20
+68            android:name="androidx.startup.InitializationProvider"
+68-->[androidx.emoji2:emoji2:1.4.0] C:\Users\Banespire\.gradle\caches\9.6.0\transforms\715d9e67181bc83f0673d5015f444987\transformed\emoji2-1.4.0\AndroidManifest.xml:25:13-67
+69            android:authorities="com.anchor.mine.androidx-startup"
+69-->[androidx.emoji2:emoji2:1.4.0] C:\Users\Banespire\.gradle\caches\9.6.0\transforms\715d9e67181bc83f0673d5015f444987\transformed\emoji2-1.4.0\AndroidManifest.xml:26:13-68
+70            android:exported="false" >
+70-->[androidx.emoji2:emoji2:1.4.0] C:\Users\Banespire\.gradle\caches\9.6.0\transforms\715d9e67181bc83f0673d5015f444987\transformed\emoji2-1.4.0\AndroidManifest.xml:27:13-37
+71            <meta-data
+71-->[androidx.emoji2:emoji2:1.4.0] C:\Users\Banespire\.gradle\caches\9.6.0\transforms\715d9e67181bc83f0673d5015f444987\transformed\emoji2-1.4.0\AndroidManifest.xml:29:13-31:52
+72                android:name="androidx.emoji2.text.EmojiCompatInitializer"
+72-->[androidx.emoji2:emoji2:1.4.0] C:\Users\Banespire\.gradle\caches\9.6.0\transforms\715d9e67181bc83f0673d5015f444987\transformed\emoji2-1.4.0\AndroidManifest.xml:30:17-75
+73                android:value="androidx.startup" />
+73-->[androidx.emoji2:emoji2:1.4.0] C:\Users\Banespire\.gradle\caches\9.6.0\transforms\715d9e67181bc83f0673d5015f444987\transformed\emoji2-1.4.0\AndroidManifest.xml:31:17-49
+74            <meta-data
+74-->[androidx.lifecycle:lifecycle-process:2.9.4] C:\Users\Banespire\.gradle\caches\9.6.0\transforms\7bc033e07580c3544d7f293fef11f81e\transformed\lifecycle-process-2.9.4\AndroidManifest.xml:29:13-31:52
+75                android:name="androidx.lifecycle.ProcessLifecycleInitializer"
+75-->[androidx.lifecycle:lifecycle-process:2.9.4] C:\Users\Banespire\.gradle\caches\9.6.0\transforms\7bc033e07580c3544d7f293fef11f81e\transformed\lifecycle-process-2.9.4\AndroidManifest.xml:30:17-78
+76                android:value="androidx.startup" />
+76-->[androidx.lifecycle:lifecycle-process:2.9.4] C:\Users\Banespire\.gradle\caches\9.6.0\transforms\7bc033e07580c3544d7f293fef11f81e\transformed\lifecycle-process-2.9.4\AndroidManifest.xml:31:17-49
+77            <meta-data
+77-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Banespire\.gradle\caches\9.6.0\transforms\338b78cecba34ccd78a105217d4a1542\transformed\profileinstaller-1.4.0\AndroidManifest.xml:29:13-31:52
+78                android:name="androidx.profileinstaller.ProfileInstallerInitializer"
+78-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Banespire\.gradle\caches\9.6.0\transforms\338b78cecba34ccd78a105217d4a1542\transformed\profileinstaller-1.4.0\AndroidManifest.xml:30:17-85
+79                android:value="androidx.startup" />
+79-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Banespire\.gradle\caches\9.6.0\transforms\338b78cecba34ccd78a105217d4a1542\transformed\profileinstaller-1.4.0\AndroidManifest.xml:31:17-49
+80        </provider>
+81
+82        <uses-library
+82-->[androidx.window:window:1.5.0] C:\Users\Banespire\.gradle\caches\9.6.0\transforms\249982f79aeffcbbc14e892f4783b2a8\transformed\window-1.5.0\AndroidManifest.xml:23:9-25:40
+83            android:name="androidx.window.extensions"
+83-->[androidx.window:window:1.5.0] C:\Users\Banespire\.gradle\caches\9.6.0\transforms\249982f79aeffcbbc14e892f4783b2a8\transformed\window-1.5.0\AndroidManifest.xml:24:13-54
+84            android:required="false" />
+84-->[androidx.window:window:1.5.0] C:\Users\Banespire\.gradle\caches\9.6.0\transforms\249982f79aeffcbbc14e892f4783b2a8\transformed\window-1.5.0\AndroidManifest.xml:25:13-37
+85        <uses-library
+85-->[androidx.window:window:1.5.0] C:\Users\Banespire\.gradle\caches\9.6.0\transforms\249982f79aeffcbbc14e892f4783b2a8\transformed\window-1.5.0\AndroidManifest.xml:26:9-28:40
+86            android:name="androidx.window.sidecar"
+86-->[androidx.window:window:1.5.0] C:\Users\Banespire\.gradle\caches\9.6.0\transforms\249982f79aeffcbbc14e892f4783b2a8\transformed\window-1.5.0\AndroidManifest.xml:27:13-51
+87            android:required="false" />
+87-->[androidx.window:window:1.5.0] C:\Users\Banespire\.gradle\caches\9.6.0\transforms\249982f79aeffcbbc14e892f4783b2a8\transformed\window-1.5.0\AndroidManifest.xml:28:13-37
+88
+89        <receiver
+89-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Banespire\.gradle\caches\9.6.0\transforms\338b78cecba34ccd78a105217d4a1542\transformed\profileinstaller-1.4.0\AndroidManifest.xml:34:9-52:20
+90            android:name="androidx.profileinstaller.ProfileInstallReceiver"
+90-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Banespire\.gradle\caches\9.6.0\transforms\338b78cecba34ccd78a105217d4a1542\transformed\profileinstaller-1.4.0\AndroidManifest.xml:35:13-76
+91            android:directBootAware="false"
+91-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Banespire\.gradle\caches\9.6.0\transforms\338b78cecba34ccd78a105217d4a1542\transformed\profileinstaller-1.4.0\AndroidManifest.xml:36:13-44
+92            android:enabled="true"
+92-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Banespire\.gradle\caches\9.6.0\transforms\338b78cecba34ccd78a105217d4a1542\transformed\profileinstaller-1.4.0\AndroidManifest.xml:37:13-35
+93            android:exported="true"
+93-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Banespire\.gradle\caches\9.6.0\transforms\338b78cecba34ccd78a105217d4a1542\transformed\profileinstaller-1.4.0\AndroidManifest.xml:38:13-36
+94            android:permission="android.permission.DUMP" >
+94-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Banespire\.gradle\caches\9.6.0\transforms\338b78cecba34ccd78a105217d4a1542\transformed\profileinstaller-1.4.0\AndroidManifest.xml:39:13-57
+95            <intent-filter>
+95-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Banespire\.gradle\caches\9.6.0\transforms\338b78cecba34ccd78a105217d4a1542\transformed\profileinstaller-1.4.0\AndroidManifest.xml:40:13-42:29
+96                <action android:name="androidx.profileinstaller.action.INSTALL_PROFILE" />
+96-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Banespire\.gradle\caches\9.6.0\transforms\338b78cecba34ccd78a105217d4a1542\transformed\profileinstaller-1.4.0\AndroidManifest.xml:41:17-91
+96-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Banespire\.gradle\caches\9.6.0\transforms\338b78cecba34ccd78a105217d4a1542\transformed\profileinstaller-1.4.0\AndroidManifest.xml:41:25-88
+97            </intent-filter>
+98            <intent-filter>
+98-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Banespire\.gradle\caches\9.6.0\transforms\338b78cecba34ccd78a105217d4a1542\transformed\profileinstaller-1.4.0\AndroidManifest.xml:43:13-45:29
+99                <action android:name="androidx.profileinstaller.action.SKIP_FILE" />
+99-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Banespire\.gradle\caches\9.6.0\transforms\338b78cecba34ccd78a105217d4a1542\transformed\profileinstaller-1.4.0\AndroidManifest.xml:44:17-85
+99-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Banespire\.gradle\caches\9.6.0\transforms\338b78cecba34ccd78a105217d4a1542\transformed\profileinstaller-1.4.0\AndroidManifest.xml:44:25-82
+100            </intent-filter>
+101            <intent-filter>
+101-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Banespire\.gradle\caches\9.6.0\transforms\338b78cecba34ccd78a105217d4a1542\transformed\profileinstaller-1.4.0\AndroidManifest.xml:46:13-48:29
+102                <action android:name="androidx.profileinstaller.action.SAVE_PROFILE" />
+102-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Banespire\.gradle\caches\9.6.0\transforms\338b78cecba34ccd78a105217d4a1542\transformed\profileinstaller-1.4.0\AndroidManifest.xml:47:17-88
+102-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Banespire\.gradle\caches\9.6.0\transforms\338b78cecba34ccd78a105217d4a1542\transformed\profileinstaller-1.4.0\AndroidManifest.xml:47:25-85
+103            </intent-filter>
+104            <intent-filter>
+104-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Banespire\.gradle\caches\9.6.0\transforms\338b78cecba34ccd78a105217d4a1542\transformed\profileinstaller-1.4.0\AndroidManifest.xml:49:13-51:29
+105                <action android:name="androidx.profileinstaller.action.BENCHMARK_OPERATION" />
+105-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Banespire\.gradle\caches\9.6.0\transforms\338b78cecba34ccd78a105217d4a1542\transformed\profileinstaller-1.4.0\AndroidManifest.xml:50:17-95
+105-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Banespire\.gradle\caches\9.6.0\transforms\338b78cecba34ccd78a105217d4a1542\transformed\profileinstaller-1.4.0\AndroidManifest.xml:50:25-92
+106            </intent-filter>
+107        </receiver>
+108    </application>
+109
+110</manifest>
+
+Merged manifest saved to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_manifest\debug\processDebugMainManifest\AndroidManifest.xml
+Resolve mutations for :app:processDebugManifest (Thread[#1104,Execution worker Thread 10,5,main]) started.
+:app:processDebugManifest (Thread[#1104,Execution worker Thread 10,5,main]) started.
+
+> Task :app:processDebugManifest
+Caching disabled for task ':app:processDebugManifest' because:
+  Build cache is disabled
+Task ':app:processDebugManifest' is not up-to-date because:
+  Executed with '--rerun-tasks'.
+Resolve mutations for :app:processDebugManifestForPackage (Thread[#1104,Execution worker Thread 10,5,main]) started.
+:app:processDebugManifestForPackage (Thread[#1104,Execution worker Thread 10,5,main]) started.
+
+> Task :app:processDebugManifestForPackage
+Caching disabled for task ':app:processDebugManifestForPackage' because:
+  Build cache is disabled
+Task ':app:processDebugManifestForPackage' is not up-to-date because:
+  Executed with '--rerun-tasks'.
+
+> Task :app:generateDebugRFile
+Caching disabled for task ':app:generateDebugRFile' because:
+  Build cache is disabled
+Task ':app:generateDebugRFile' is not up-to-date because:
+  Executed with '--rerun-tasks'.
+The input changes require a full rebuild for incremental task ':app:generateDebugRFile'.
+
+> Task :core:compileKotlin
+Caching disabled for task ':core:compileKotlin' because:
+  Build cache is disabled
+Task ':core:compileKotlin' is not up-to-date because:
+  Executed with '--rerun-tasks'.
+The input changes require a full rebuild for incremental task ':core:compileKotlin'.
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\main\kotlin', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\main\kotlin', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\main\kotlin', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\main\kotlin', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\main\kotlin', not found
+Kotlin source files: C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\main\java\com\anchor\core\alarms\AlarmReconciler.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\main\java\com\anchor\core\alarms\AlarmScheduler.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\main\java\com\anchor\core\context\ContextBuilder.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\main\java\com\anchor\core\context\PromptSanitizer.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\main\java\com\anchor\core\export\ExportManager.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\main\java\com\anchor\core\gateway\EnvelopeParser.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\main\java\com\anchor\core\gateway\Gateway.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\main\java\com\anchor\core\models\Memory.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\main\java\com\anchor\core\models\Nudge.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\main\java\com\anchor\core\models\Quote.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\main\java\com\anchor\core\models\Stats.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\main\java\com\anchor\core\models\ToolContracts.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\main\java\com\anchor\core\nudge\CheckinBuilder.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\main\java\com\anchor\core\nudge\NudgeEngine.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\main\java\com\anchor\core\provider\Models.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\main\java\com\anchor\core\provider\ProviderOrchestrator.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\main\java\com\anchor\core\provider\RateLimiter.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\main\java\com\anchor\core\provider\SseModels.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\main\java\com\anchor\core\quotes\PresetQuotes.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\main\java\com\anchor\core\quotes\QuoteManager.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\main\java\com\anchor\core\reliability\ReliabilityManager.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\main\java\com\anchor\core\resolver\Resolver.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\main\java\com\anchor\core\storage\Storage.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\main\java\com\anchor\core\time\Clock.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\main\java\com\anchor\core\time\DateResolver.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\main\java\com\anchor\core\time\DayRollover.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\main\java\com\anchor\core\ui\ChatContract.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\main\java\com\anchor\core\ui\ChatController.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\main\java\com\anchor\core\ui\ReceiptFormatter.kt
+Java source files: 
+Script source files: 
+Script file extensions: 
+Using Kotlin/JVM incremental compilation
+[KOTLIN] Kotlin compilation 'jdkHome' argument: C:\Users\Banespire\.gradle\jdks\eclipse_adoptium-17-amd64-windows.2
+i: Options for KOTLIN DAEMON: IncrementalCompilationOptions(super=CompilationOptions(compilerMode=INCREMENTAL_COMPILER, targetPlatform=JVM, reportCategories=[0], reportSeverity=2, requestedCompilationResults=[0], kotlinScriptExtensions=[], generateCompilerRefIndex=false), sourceChanges=org.jetbrains.kotlin.buildtools.api.SourcesChanges$Unknown@76c181, classpathChanges=NotAvailableDueToMissingClasspathSnapshot, workingDir=C:\Users\Banespire\AndroidStudioProjects\Mine\core\build\kotlin\compileKotlin\cacheable, multiModuleICSettings=null, icFeatures=IncrementalCompilationFeatures(usePreciseJavaTracking=true, withAbiSnapshot=false, preciseCompilationResultsBackup=true, keepIncrementalCompilationCachesInMemory=true, enableUnsafeIncrementalCompilationForMultiplatform=false, enableMonotonousIncrementalCompileSetExpansion=true), outputFiles=[C:\Users\Banespire\AndroidStudioProjects\Mine\core\build\classes\kotlin\main, C:\Users\Banespire\AndroidStudioProjects\Mine\core\build\kotlin\compileKotlin\cacheable, C:\Users\Banespire\AndroidStudioProjects\Mine\core\build\kotlin\compileKotlin\local-state])
+
+> Task :app:mergeDebugResources
+Caching disabled for task ':app:mergeDebugResources' because:
+  Build cache is disabled
+Task ':app:mergeDebugResources' is not up-to-date because:
+  Executed with '--rerun-tasks'.
+The input changes require a full rebuild for incremental task ':app:mergeDebugResources'.
+[MergeResources] Inputs are non-incremental full task action.
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-lo\values-lo.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-lo_values-lo.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-de\values-de.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-de_values-de.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-hu\values-hu.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-hu_values-hu.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-en-rIN\values-en-rIN.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-en-rIN_values-en-rIN.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-lv\values-lv.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-lv_values-lv.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values\values.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values_values.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-hi\values-hi.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-hi_values-hi.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-hy\values-hy.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-hy_values-hy.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-pt\values-pt.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-pt_values-pt.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-hr\values-hr.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-hr_values-hr.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-lt\values-lt.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-lt_values-lt.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-ms\values-ms.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-ms_values-ms.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-mn\values-mn.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-mn_values-mn.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-in\values-in.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-in_values-in.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-fr-rCA\values-fr-rCA.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-fr-rCA_values-fr-rCA.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-el\values-el.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-el_values-el.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-uz\values-uz.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-uz_values-uz.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-af\values-af.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-af_values-af.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-ml\values-ml.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-ml_values-ml.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-mr\values-mr.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-mr_values-mr.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-mk\values-mk.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-mk_values-mk.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-eu\values-eu.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-eu_values-eu.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-zu\values-zu.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-zu_values-zu.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-iw\values-iw.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-iw_values-iw.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-et\values-et.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-et_values-et.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-am\values-am.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-am_values-am.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-es\values-es.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-es_values-es.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-my\values-my.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-my_values-my.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-it\values-it.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-it_values-it.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-b+sr+Latn\values-b+sr+Latn.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-b+sr+Latn_values-b+sr+Latn.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-ar\values-ar.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-ar_values-ar.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-is\values-is.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-is_values-is.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-bs\values-bs.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-bs_values-bs.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-fa\values-fa.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-fa_values-fa.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-es-rUS\values-es-rUS.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-es-rUS_values-es-rUS.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-ja\values-ja.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-ja_values-ja.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-en-rCA\values-en-rCA.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-en-rCA_values-en-rCA.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-ro\values-ro.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-ro_values-ro.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-pt-rPT\values-pt-rPT.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-pt-rPT_values-pt-rPT.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-sv\values-sv.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-sv_values-sv.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-fi\values-fi.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-fi_values-fi.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-km\values-km.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-km_values-km.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-ur\values-ur.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-ur_values-ur.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-pa\values-pa.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-pa_values-pa.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-bn\values-bn.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-bn_values-bn.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-v21\values-v21.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-v21_values-v21.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-v30\values-v30.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-v30_values-v30.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-sl\values-sl.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-sl_values-sl.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-ne\values-ne.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-ne_values-ne.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-zh-rHK\values-zh-rHK.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-zh-rHK_values-zh-rHK.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-ru\values-ru.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-ru_values-ru.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-te\values-te.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-te_values-te.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-kn\values-kn.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-kn_values-kn.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-az\values-az.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-az_values-az.arsc.flat
+Compiling file C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\res\mipmap-hdpi\ic_launcher_round.webp to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\mipmap-hdpi_ic_launcher_round.webp.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-nb\values-nb.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-nb_values-nb.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-kk\values-kk.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-kk_values-kk.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-ta\values-ta.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-ta_values-ta.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-vi\values-vi.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-vi_values-vi.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-th\values-th.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-th_values-th.arsc.flat
+Compiling xml file C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\res\mipmap-anydpi\ic_launcher.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\mipmap-anydpi_ic_launcher.xml.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-bg\values-bg.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-bg_values-bg.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-en-rXC\values-en-rXC.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-en-rXC_values-en-rXC.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-sk\values-sk.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-sk_values-sk.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-fr\values-fr.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-fr_values-fr.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-en-rAU\values-en-rAU.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-en-rAU_values-en-rAU.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-cs\values-cs.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-cs_values-cs.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-be\values-be.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-be_values-be.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-uk\values-uk.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-uk_values-uk.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-zh-rCN\values-zh-rCN.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-zh-rCN_values-zh-rCN.arsc.flat
+Compiling file C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\res\mipmap-hdpi\ic_launcher.webp to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\mipmap-hdpi_ic_launcher.webp.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-ca\values-ca.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-ca_values-ca.arsc.flat
+Compiling xml file C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\res\mipmap-anydpi\ic_launcher_round.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\mipmap-anydpi_ic_launcher_round.xml.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-ka\values-ka.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-ka_values-ka.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-sr\values-sr.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-sr_values-sr.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-zh-rTW\values-zh-rTW.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-zh-rTW_values-zh-rTW.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-si\values-si.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-si_values-si.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-gu\values-gu.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-gu_values-gu.arsc.flat
+Compiling xml file C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\res\drawable\ic_launcher_foreground.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\drawable_ic_launcher_foreground.xml.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-as\values-as.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-as_values-as.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-ko\values-ko.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-ko_values-ko.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-gl\values-gl.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-gl_values-gl.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-pt-rBR\values-pt-rBR.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-pt-rBR_values-pt-rBR.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-sw\values-sw.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-sw_values-sw.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-sq\values-sq.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-sq_values-sq.arsc.flat
+Compiling xml file C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\res\xml\data_extraction_rules.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\xml_data_extraction_rules.xml.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-nl\values-nl.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-nl_values-nl.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-pl\values-pl.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-pl_values-pl.arsc.flat
+Compiling file C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\res\mipmap-mdpi\ic_launcher.webp to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\mipmap-mdpi_ic_launcher.webp.flat
+Compiling file C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\res\mipmap-xxhdpi\ic_launcher_round.webp to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\mipmap-xxhdpi_ic_launcher_round.webp.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-en-rGB\values-en-rGB.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-en-rGB_values-en-rGB.arsc.flat
+Compiling xml file C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\res\drawable\ic_launcher_background.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\drawable_ic_launcher_background.xml.flat
+Compiling file C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\res\mipmap-xhdpi\ic_launcher.webp to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\mipmap-xhdpi_ic_launcher.webp.flat
+Compiling file C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\res\mipmap-xxxhdpi\ic_launcher_round.webp to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\mipmap-xxxhdpi_ic_launcher_round.webp.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-tr\values-tr.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-tr_values-tr.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-ky\values-ky.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-ky_values-ky.arsc.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-or\values-or.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-or_values-or.arsc.flat
+Compiling file C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\res\mipmap-xhdpi\ic_launcher_round.webp to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\mipmap-xhdpi_ic_launcher_round.webp.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-da\values-da.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-da_values-da.arsc.flat
+Compiling file C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\res\mipmap-xxxhdpi\ic_launcher.webp to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\mipmap-xxxhdpi_ic_launcher.webp.flat
+Compiling XML table C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\incremental\debug\mergeDebugResources\merged.dir\values-tl\values-tl.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\values-tl_values-tl.arsc.flat
+Compiling file C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\res\mipmap-xxhdpi\ic_launcher.webp to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\mipmap-xxhdpi_ic_launcher.webp.flat
+Compiling file C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\res\mipmap-mdpi\ic_launcher_round.webp to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\mipmap-mdpi_ic_launcher_round.webp.flat
+Compiling xml file C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\res\xml\backup_rules.xml to C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\merged_res\debug\mergeDebugResources\xml_backup_rules.xml.flat
+Resolve mutations for :app:processDebugResources (Thread[#1101,Execution worker Thread 7,5,main]) started.
+:app:processDebugResources (Thread[#1101,Execution worker Thread 7,5,main]) started.
+
+> Task :app:processDebugResources
+Caching disabled for task ':app:processDebugResources' because:
+  Build cache is disabled
+Task ':app:processDebugResources' is not up-to-date because:
+  Executed with '--rerun-tasks'.
+The input changes require a full rebuild for incremental task ':app:processDebugResources'.
+AAPT2 aapt2-9.4.0-15978811-windows Daemon #0: starting
+Aapt output file C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\linked_resources_binary_format\debug\processDebugResources\linked-resources-binary-format-debug.ap_
+
+> Task :core:compileKotlin
+w: file:///C:/Users/Banespire/AndroidStudioProjects/Mine/core/src/main/java/com/anchor/core/quotes/QuoteManager.kt:172:29 Condition is always 'true'.
+w: file:///C:/Users/Banespire/AndroidStudioProjects/Mine/core/src/main/java/com/anchor/core/quotes/QuoteManager.kt:184:62 Unnecessary safe call on a non-null receiver of type 'Quote'.
+i: Finished executing kotlin compiler using DAEMON strategy
+Resolve mutations for :core:compileJava (Thread[#1095,Execution worker,5,main]) started.
+:core:compileJava (Thread[#1095,Execution worker,5,main]) started.
+
+> Task :core:compileJava NO-SOURCE
+Skipping task ':core:compileJava' as it has no source files and no previous output files.
+Resolve mutations for :core:classes (Thread[#1095,Execution worker,5,main]) started.
+:core:classes (Thread[#1095,Execution worker,5,main]) started.
+
+> Task :core:classes UP-TO-DATE
+Skipping task ':core:classes' as it has no actions.
+Resolve mutations for :core:jar (Thread[#1101,Execution worker Thread 7,5,main]) started.
+:core:jar (Thread[#1101,Execution worker Thread 7,5,main]) started.
+
+> Task :core:jar
+Caching disabled for task ':core:jar' because:
+  Build cache is disabled
+  Not worth caching
+Task ':core:jar' is not up-to-date because:
+  Executed with '--rerun-tasks'.
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\core\build\classes\java\main', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\core\build\resources\main', not found
+work action resolve core.jar (project ':core') (Thread[#1101,Execution worker Thread 7,5,main]) started.
+IdentityTransform (Thread[#1101,Execution worker Thread 7,5,main]) started.
+IdentityTransform (Thread[#1095,Execution worker,5,main]) started.
+IdentityTransform (Thread[#1096,Execution worker Thread 2,5,main]) started.
+Resolve mutations for :app:compileDebugKotlin (Thread[#1101,Execution worker Thread 7,5,main]) started.
+:app:compileDebugKotlin (Thread[#1101,Execution worker Thread 7,5,main]) started.
+
+> Task :app:compileDebugKotlin
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\kotlin', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\debug\java', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\debug\kotlin', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\debug\java', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\kotlin', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\debug\java', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\debug\kotlin', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\debug\java', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\kotlin', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\debug\java', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\debug\kotlin', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\debug\java', not found
+Caching disabled for task ':app:compileDebugKotlin' because:
+  Build cache is disabled
+Task ':app:compileDebugKotlin' is not up-to-date because:
+  Executed with '--rerun-tasks'.
+The input changes require a full rebuild for incremental task ':app:compileDebugKotlin'.
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\kotlin', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\kotlin', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\debug\java', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\debug\java', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\debug\kotlin', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\debug\kotlin', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\debug\java', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\debug\java', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\kotlin', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\debug\java', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\debug\kotlin', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\debug\java', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\kotlin', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\kotlin', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\debug\java', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\debug\java', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\debug\kotlin', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\debug\kotlin', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\debug\java', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\debug\java', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\kotlin', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\kotlin', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\debug\java', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\debug\java', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\debug\kotlin', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\debug\kotlin', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\debug\java', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\debug\java', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\kotlin', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\kotlin', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\debug\java', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\debug\java', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\debug\kotlin', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\debug\kotlin', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\debug\java', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\debug\java', not found
+Kotlin source files: C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\java\com\anchor\mine\alarms\AlarmReceiver.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\java\com\anchor\mine\alarms\AndroidAlarmScheduler.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\java\com\anchor\mine\alarms\BootReceiver.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\java\com\anchor\mine\export\AndroidExportManager.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\java\com\anchor\mine\MainActivity.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\java\com\anchor\mine\MainViewModel.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\java\com\anchor\mine\MineApp.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\java\com\anchor\mine\provider\AndroidHttpTransport.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\java\com\anchor\mine\quotes\QuoteAlarmReceiver.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\java\com\anchor\mine\quotes\QuoteAlarmScheduler.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\java\com\anchor\mine\storage\AndroidStorage.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\java\com\anchor\mine\storage\DbKeyProvider.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\java\com\anchor\mine\storage\MineDatabaseHelper.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\java\com\anchor\mine\ui\theme\Color.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\java\com\anchor\mine\ui\theme\Theme.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\java\com\anchor\mine\ui\theme\Type.kt
+Java source files: 
+Script source files: 
+Script file extensions: 
+Using Kotlin/JVM incremental compilation
+[KOTLIN] Kotlin compilation 'jdkHome' argument: C:\Program Files\Eclipse Adoptium\jdk-25.0.4.101-hotspot
+i: Options for KOTLIN DAEMON: IncrementalCompilationOptions(super=CompilationOptions(compilerMode=INCREMENTAL_COMPILER, targetPlatform=JVM, reportCategories=[0], reportSeverity=2, requestedCompilationResults=[0], kotlinScriptExtensions=[], generateCompilerRefIndex=false), sourceChanges=org.jetbrains.kotlin.buildtools.api.SourcesChanges$Unknown@76c181, classpathChanges=NotAvailableDueToMissingClasspathSnapshot, workingDir=C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\kotlin\compileDebugKotlin\cacheable, multiModuleICSettings=null, icFeatures=IncrementalCompilationFeatures(usePreciseJavaTracking=true, withAbiSnapshot=false, preciseCompilationResultsBackup=true, keepIncrementalCompilationCachesInMemory=true, enableUnsafeIncrementalCompilationForMultiplatform=false, enableMonotonousIncrementalCompileSetExpansion=true), outputFiles=[C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\built_in_kotlinc\debug\compileDebugKotlin\classes, C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\kotlin\compileDebugKotlin\cacheable, C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\kotlin\compileDebugKotlin\local-state])
+i: Finished executing kotlin compiler using DAEMON strategy
+Resolve mutations for :app:compileDebugJavaWithJavac (Thread[#1101,Execution worker Thread 7,5,main]) started.
+Resolve mutations for :app:processDebugJavaRes (Thread[#1096,Execution worker Thread 2,5,main]) started.
+:app:processDebugJavaRes (Thread[#1096,Execution worker Thread 2,5,main]) started.
+:app:compileDebugJavaWithJavac (Thread[#1101,Execution worker Thread 7,5,main]) started.
+
+> Task :app:compileDebugJavaWithJavac NO-SOURCE
+Skipping task ':app:compileDebugJavaWithJavac' as it has no source files and no previous output files.
+Resolve mutations for :app:bundleDebugClassesToRuntimeJar (Thread[#1101,Execution worker Thread 7,5,main]) started.
+Resolve mutations for :app:bundleDebugClassesToCompileJar (Thread[#1104,Execution worker Thread 10,5,main]) started.
+:app:bundleDebugClassesToRuntimeJar (Thread[#1101,Execution worker Thread 7,5,main]) started.
+:app:bundleDebugClassesToCompileJar (Thread[#1104,Execution worker Thread 10,5,main]) started.
+
+> Task :app:processDebugJavaRes
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\resources', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\debug\resources', not found
+Caching disabled for task ':app:processDebugJavaRes' because:
+  Build cache is disabled
+  Caching has been disabled for the task
+Task ':app:processDebugJavaRes' is not up-to-date because:
+  Executed with '--rerun-tasks'.
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\resources', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\debug\resources', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\main\resources', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\debug\resources', not found
+work action resolve out (project ':app') (Thread[#1096,Execution worker Thread 2,5,main]) started.
+
+> Task :app:bundleDebugClassesToRuntimeJar
+Caching disabled for task ':app:bundleDebugClassesToRuntimeJar' because:
+  Build cache is disabled
+  Caching has been disabled for the task
+Task ':app:bundleDebugClassesToRuntimeJar' is not up-to-date because:
+  Executed with '--rerun-tasks'.
+work action resolve classes.jar (project ':app') (Thread[#1101,Execution worker Thread 7,5,main]) started.
+
+> Task :app:bundleDebugClassesToCompileJar
+Caching disabled for task ':app:bundleDebugClassesToCompileJar' because:
+  Build cache is disabled
+  Caching has been disabled for the task
+Task ':app:bundleDebugClassesToCompileJar' is not up-to-date because:
+  Executed with '--rerun-tasks'.
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\javac\debug\compileDebugJavaWithJavac\classes', not found
+work action resolve classes.jar (project ':app') (Thread[#1104,Execution worker Thread 10,5,main]) started.
+Resolve mutations for :app:compileDebugUnitTestKotlin (Thread[#1104,Execution worker Thread 10,5,main]) started.
+:app:compileDebugUnitTestKotlin (Thread[#1104,Execution worker Thread 10,5,main]) started.
+
+> Task :app:compileDebugUnitTestKotlin
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\test\kotlin', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\testDebug\java', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\testDebug\kotlin', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\testDebug\java', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\test\kotlin', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\testDebug\java', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\testDebug\kotlin', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\testDebug\java', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\test\kotlin', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\testDebug\java', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\testDebug\kotlin', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\testDebug\java', not found
+Caching disabled for task ':app:compileDebugUnitTestKotlin' because:
+  Build cache is disabled
+Task ':app:compileDebugUnitTestKotlin' is not up-to-date because:
+  Executed with '--rerun-tasks'.
+The input changes require a full rebuild for incremental task ':app:compileDebugUnitTestKotlin'.
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\test\kotlin', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\test\kotlin', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\testDebug\java', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\testDebug\java', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\testDebug\kotlin', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\testDebug\kotlin', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\testDebug\java', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\testDebug\java', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\test\kotlin', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\testDebug\java', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\testDebug\kotlin', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\testDebug\java', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\test\kotlin', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\test\kotlin', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\testDebug\java', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\testDebug\java', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\testDebug\kotlin', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\testDebug\kotlin', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\testDebug\java', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\testDebug\java', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\test\kotlin', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\test\kotlin', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\testDebug\java', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\testDebug\java', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\testDebug\kotlin', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\testDebug\kotlin', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\testDebug\java', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\testDebug\java', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\test\kotlin', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\test\kotlin', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\testDebug\java', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\testDebug\java', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\testDebug\kotlin', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\testDebug\kotlin', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\testDebug\java', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\testDebug\java', not found
+Kotlin source files: C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\test\java\com\anchor\mine\export\ChunkedAesStreamTest.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\test\java\com\anchor\mine\quotes\QuoteAlarmSchedulerTest.kt
+Java source files: 
+Script source files: 
+Script file extensions: 
+Using Kotlin/JVM incremental compilation
+[KOTLIN] Kotlin compilation 'jdkHome' argument: C:\Program Files\Eclipse Adoptium\jdk-25.0.4.101-hotspot
+i: Options for KOTLIN DAEMON: IncrementalCompilationOptions(super=CompilationOptions(compilerMode=INCREMENTAL_COMPILER, targetPlatform=JVM, reportCategories=[0], reportSeverity=2, requestedCompilationResults=[0], kotlinScriptExtensions=[], generateCompilerRefIndex=false), sourceChanges=org.jetbrains.kotlin.buildtools.api.SourcesChanges$Unknown@76c181, classpathChanges=NotAvailableDueToMissingClasspathSnapshot, workingDir=C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\kotlin\compileDebugUnitTestKotlin\cacheable, multiModuleICSettings=null, icFeatures=IncrementalCompilationFeatures(usePreciseJavaTracking=true, withAbiSnapshot=false, preciseCompilationResultsBackup=true, keepIncrementalCompilationCachesInMemory=true, enableUnsafeIncrementalCompilationForMultiplatform=false, enableMonotonousIncrementalCompileSetExpansion=true), outputFiles=[C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\built_in_kotlinc\debugUnitTest\compileDebugUnitTestKotlin\classes, C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\kotlin\compileDebugUnitTestKotlin\cacheable, C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\kotlin\compileDebugUnitTestKotlin\local-state])
+i: Finished executing kotlin compiler using DAEMON strategy
+Resolve mutations for :app:compileDebugUnitTestJavaWithJavac (Thread[#1104,Execution worker Thread 10,5,main]) started.
+Resolve mutations for :app:processDebugUnitTestJavaRes (Thread[#1095,Execution worker,5,main]) started.
+:app:processDebugUnitTestJavaRes (Thread[#1095,Execution worker,5,main]) started.
+:app:compileDebugUnitTestJavaWithJavac (Thread[#1104,Execution worker Thread 10,5,main]) started.
+
+> Task :app:compileDebugUnitTestJavaWithJavac NO-SOURCE
+Skipping task ':app:compileDebugUnitTestJavaWithJavac' as it has no source files and no previous output files.
+
+> Task :app:processDebugUnitTestJavaRes
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\test\resources', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\testDebug\resources', not found
+Caching disabled for task ':app:processDebugUnitTestJavaRes' because:
+  Build cache is disabled
+  Caching has been disabled for the task
+Task ':app:processDebugUnitTestJavaRes' is not up-to-date because:
+  Executed with '--rerun-tasks'.
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\test\resources', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\testDebug\resources', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\test\resources', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\testDebug\resources', not found
+Resolve mutations for :app:testDebugUnitTest (Thread[#1095,Execution worker,5,main]) started.
+:app:testDebugUnitTest (Thread[#1095,Execution worker,5,main]) started.
+Gradle Test Executor 9 started executing tests.
+Gradle Test Executor 9 finished executing tests.
+
+> Task :app:testDebugUnitTest
+Caching disabled for task ':app:testDebugUnitTest' because:
+  Build cache is disabled
+Task ':app:testDebugUnitTest' is not up-to-date because:
+  Executed with '--rerun-tasks'.
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\intermediates\javac\debugUnitTest\compileDebugUnitTestJavaWithJavac\classes', not found
+Starting process 'Gradle Test Executor 9'. Working directory: C:\Users\Banespire\AndroidStudioProjects\Mine\app Command: C:\Program Files\Eclipse Adoptium\jdk-25.0.4.101-hotspot\bin\java.exe -Djava.awt.headless=true -Djava.library.path=C:\Program Files\Eclipse Adoptium\jdk-25.0.4.101-hotspot\bin;C:\WINDOWS\Sun\Java\bin;C:\WINDOWS\system32;C:\WINDOWS;C:\Program Files\Git\mingw64\bin;C:\Program Files\Git\usr\bin;C:\Users\Banespire\bin;C:\Program Files\Eclipse Adoptium\jdk-25.0.4.101-hotspot\bin;C:\WINDOWS\system32;C:\WINDOWS;C:\WINDOWS\System32\Wbem;C:\WINDOWS\System32\WindowsPowerShell\v1.0;C:\WINDOWS\System32\OpenSSH;C:\ProgramData\chocolatey\bin;C:\Program Files\Revision Tool;C:\Program Files\dotnet;C:\Program Files\NVIDIA Corporation\NVIDIA App\NvDLISR;C:\Program Files (x86)\NVIDIA Corporation\PhysX\Common;C:\Program Files\CMake\bin;C:\Program Files\Git\cmd;C:\Program Files\Go\bin;C:\Program Files\GitHub CLI;C:\Program Files\nodejs;C:\Program Files\Cloudflare\Cloudflare WARP;C:\platform-tools;C:\Program Files\PostgreSQL\18\bin;C:\Program Files (x86)\cloudflared;C:\Program Files\PowerToys\DSCModules;C:\Program Files\PowerToys\bin;C:\ttyd;C:\Users\Banespire\AppData\Local\agy\bin;C:\Users\Banespire\AppData\Local\Programs\Python\Python311\Scripts;C:\Users\Banespire\AppData\Local\Programs\Python\Python311;C:\Users\Banespire\AppData\Local\Microsoft\WindowsApps;C:\Users\Banespire\go\bin;C:\Users\Banespire\AppData\Roaming\npm;C:\Users\Banespire\AppData\Local\Microsoft\WinGet\Packages\pnpm.pnpm_Microsoft.Winget.Source_8wekyb3d8bbwe;C:\Users\Banespire\AppData\Local\Programs\Microsoft VS Code\bin;C:\Users\Banespire\AppData\Local\Programs\Microsoft VS Code\bin\copilot-shim;C:\Users\Banespire\.devrelay\bin;C:\Users\Banespire\AppData\Local\Microsoft\WinGet\Packages\jqlang.jq_Microsoft.Winget.Source_8wekyb3d8bbwe;C:\Users\Banespire\AppData\Local\Programs\ScreenPlus;.;C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\testDebug\jniLibs;C:\Users\Banespire\AndroidStudioProjects\Mine\app\src\test\jniLibs -Dorg.gradle.internal.worker.tmpdir=C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\tmp\testDebugUnitTest\work --add-opens=java.base/java.io=ALL-UNNAMED @C:\Users\Banespire\.gradle\.tmp\gradle-worker-classpath13652671464224103848txt -Xmx512m -Dfile.encoding=UTF-8 -Duser.country=IN -Duser.language=en -Duser.variant -ea worker.org.gradle.process.internal.worker.GradleWorkerMain 'Gradle Test Executor 9'
+Successfully started process 'Gradle Test Executor 9'
+Generating HTML test report...
+Finished generating test html results (0.008 secs) into: C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\reports\tests\testDebugUnitTest
+Finished generating test XML results (0.002 secs) into: C:\Users\Banespire\AndroidStudioProjects\Mine\app\build\test-results\testDebugUnitTest
+AAPT2 aapt2-9.4.0-15978811-windows Daemon #0: shutdown
+Build 9ae9ed31-49c8-459f-9ae1-37a232e0c0ed is closed
+
+[Incubating] Problems report is available at: file:///C:/Users/Banespire/AndroidStudioProjects/Mine/build/reports/problems/problems-report.html
+
+BUILD SUCCESSFUL in 22s
+26 actionable tasks: 26 executed
+Watched directory hierarchies: [C:\Users\Banespire\AndroidStudioProjects\Mine]
+Configuration cache entry reused.

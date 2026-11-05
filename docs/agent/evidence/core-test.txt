@@ -1,0 +1,150 @@
+Initialized native services in: C:\Users\Banespire\.gradle\native
+Initialized jansi services in: C:\Users\Banespire\.gradle\native
+The client will now receive all logging from the daemon (pid: 17044). The daemon log file: C:\Users\Banespire\.gradle\daemon\9.6.0\daemon-17044.out.log
+Starting 27th build in daemon [uptime: 3 hrs 12 mins 45.067 secs, performance: 100%, GC rate: 0.00/s, heap usage: 3% of 2 GiB]
+Using 12 worker leases.
+Operational build model parameters: {cachingModelBuilding=false, configurationCache=true, configurationCacheDisabledReason=null, configurationCacheParallelLoad=true, configurationCacheParallelStore=false, configureOnDemand=false, invalidateCoupledProjects=false, isolatedProjects=false, isolatedProjectsDiagnostics=false, modelAsProjectDependency=false, modelBuilding=false, parallelModelBuilding=false, parallelProjectConfiguration=false, parallelProjectExecution=false, resilientModelBuilding=false, vintage=false}
+Encryption key source: default Gradle keystore (pkcs12)
+Now considering [C:\Users\Banespire\AndroidStudioProjects\Mine] as hierarchies to watch
+Reusing configuration cache.
+Now considering [C:\Users\Banespire\AndroidStudioProjects\Mine] as hierarchies to watch
+Watching the file system is configured to be enabled if available
+File system watching is active
+Tasks to be executed: [task ':core:checkKotlinGradlePluginConfigurationErrors', task ':core:compileKotlin', task ':core:compileJava', task ':core:processResources', task ':core:classes', task ':core:jar', task ':core:compileTestKotlin', task ':core:compileTestJava', task ':core:processTestResources', task ':core:testClasses', task ':core:test']
+Tasks that were excluded: []
+Resolve mutations for :core:checkKotlinGradlePluginConfigurationErrors (Thread[#1720,Execution worker,5,main]) started.
+Resolve mutations for :core:processResources (Thread[#1721,Execution worker Thread 2,5,main]) started.
+Resolve mutations for :core:processTestResources (Thread[#1722,Execution worker Thread 3,5,main]) started.
+:core:checkKotlinGradlePluginConfigurationErrors (Thread[#1720,Execution worker,5,main]) started.
+:core:processTestResources (Thread[#1724,Execution worker Thread 5,5,main]) started.
+:core:processResources (Thread[#1730,Execution worker Thread 11,5,main]) started.
+
+> Task :core:checkKotlinGradlePluginConfigurationErrors SKIPPED
+Skipping task ':core:checkKotlinGradlePluginConfigurationErrors' as task onlyIf 'errorDiagnostics are present' is false.
+Build 3c48ad94-952f-4cd7-b4fa-cab43686af38 is started
+Resolve mutations for :core:compileKotlin (Thread[#1720,Execution worker,5,main]) started.
+
+> Task :core:processResources NO-SOURCE
+Skipping task ':core:processResources' as it has no source files and no previous output files.
+
+> Task :core:processTestResources NO-SOURCE
+Skipping task ':core:processTestResources' as it has no source files and no previous output files.
+:core:compileKotlin (Thread[#1724,Execution worker Thread 5,5,main]) started.
+
+> Task :core:compileKotlin
+Caching disabled for task ':core:compileKotlin' because:
+  Build cache is disabled
+Task ':core:compileKotlin' is not up-to-date because:
+  Executed with '--rerun-tasks'.
+The input changes require a full rebuild for incremental task ':core:compileKotlin'.
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\main\kotlin', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\main\kotlin', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\main\kotlin', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\main\kotlin', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\main\kotlin', not found
+Kotlin source files: C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\main\java\com\anchor\core\alarms\AlarmReconciler.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\main\java\com\anchor\core\alarms\AlarmScheduler.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\main\java\com\anchor\core\context\ContextBuilder.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\main\java\com\anchor\core\context\PromptSanitizer.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\main\java\com\anchor\core\export\ExportManager.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\main\java\com\anchor\core\gateway\EnvelopeParser.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\main\java\com\anchor\core\gateway\Gateway.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\main\java\com\anchor\core\models\Memory.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\main\java\com\anchor\core\models\Nudge.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\main\java\com\anchor\core\models\Quote.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\main\java\com\anchor\core\models\Stats.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\main\java\com\anchor\core\models\ToolContracts.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\main\java\com\anchor\core\nudge\CheckinBuilder.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\main\java\com\anchor\core\nudge\NudgeEngine.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\main\java\com\anchor\core\provider\Models.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\main\java\com\anchor\core\provider\ProviderOrchestrator.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\main\java\com\anchor\core\provider\RateLimiter.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\main\java\com\anchor\core\provider\SseModels.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\main\java\com\anchor\core\quotes\PresetQuotes.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\main\java\com\anchor\core\quotes\QuoteManager.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\main\java\com\anchor\core\reliability\ReliabilityManager.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\main\java\com\anchor\core\resolver\Resolver.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\main\java\com\anchor\core\storage\Storage.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\main\java\com\anchor\core\time\Clock.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\main\java\com\anchor\core\time\DateResolver.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\main\java\com\anchor\core\time\DayRollover.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\main\java\com\anchor\core\ui\ChatContract.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\main\java\com\anchor\core\ui\ChatController.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\main\java\com\anchor\core\ui\ReceiptFormatter.kt
+Java source files: 
+Script source files: 
+Script file extensions: 
+Using Kotlin/JVM incremental compilation
+[KOTLIN] Kotlin compilation 'jdkHome' argument: C:\Users\Banespire\.gradle\jdks\eclipse_adoptium-17-amd64-windows.2
+i: Options for KOTLIN DAEMON: IncrementalCompilationOptions(super=CompilationOptions(compilerMode=INCREMENTAL_COMPILER, targetPlatform=JVM, reportCategories=[0], reportSeverity=2, requestedCompilationResults=[0], kotlinScriptExtensions=[], generateCompilerRefIndex=false), sourceChanges=org.jetbrains.kotlin.buildtools.api.SourcesChanges$Unknown@76c181, classpathChanges=NotAvailableDueToMissingClasspathSnapshot, workingDir=C:\Users\Banespire\AndroidStudioProjects\Mine\core\build\kotlin\compileKotlin\cacheable, multiModuleICSettings=null, icFeatures=IncrementalCompilationFeatures(usePreciseJavaTracking=true, withAbiSnapshot=false, preciseCompilationResultsBackup=true, keepIncrementalCompilationCachesInMemory=true, enableUnsafeIncrementalCompilationForMultiplatform=false, enableMonotonousIncrementalCompileSetExpansion=true), outputFiles=[C:\Users\Banespire\AndroidStudioProjects\Mine\core\build\classes\kotlin\main, C:\Users\Banespire\AndroidStudioProjects\Mine\core\build\kotlin\compileKotlin\cacheable, C:\Users\Banespire\AndroidStudioProjects\Mine\core\build\kotlin\compileKotlin\local-state])
+w: file:///C:/Users/Banespire/AndroidStudioProjects/Mine/core/src/main/java/com/anchor/core/quotes/QuoteManager.kt:172:29 Condition is always 'true'.
+w: file:///C:/Users/Banespire/AndroidStudioProjects/Mine/core/src/main/java/com/anchor/core/quotes/QuoteManager.kt:184:62 Unnecessary safe call on a non-null receiver of type 'Quote'.
+i: Finished executing kotlin compiler using DAEMON strategy
+Resolve mutations for :core:compileJava (Thread[#1724,Execution worker Thread 5,5,main]) started.
+:core:compileJava (Thread[#1724,Execution worker Thread 5,5,main]) started.
+
+> Task :core:compileJava NO-SOURCE
+Skipping task ':core:compileJava' as it has no source files and no previous output files.
+Resolve mutations for :core:classes (Thread[#1724,Execution worker Thread 5,5,main]) started.
+:core:classes (Thread[#1724,Execution worker Thread 5,5,main]) started.
+
+> Task :core:classes UP-TO-DATE
+Skipping task ':core:classes' as it has no actions.
+Resolve mutations for :core:jar (Thread[#1724,Execution worker Thread 5,5,main]) started.
+:core:jar (Thread[#1724,Execution worker Thread 5,5,main]) started.
+
+> Task :core:jar
+Caching disabled for task ':core:jar' because:
+  Build cache is disabled
+  Not worth caching
+Task ':core:jar' is not up-to-date because:
+  Executed with '--rerun-tasks'.
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\core\build\classes\java\main', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\core\build\resources\main', not found
+Resolve mutations for :core:compileTestKotlin (Thread[#1724,Execution worker Thread 5,5,main]) started.
+:core:compileTestKotlin (Thread[#1724,Execution worker Thread 5,5,main]) started.
+
+> Task :core:compileTestKotlin
+Caching disabled for task ':core:compileTestKotlin' because:
+  Build cache is disabled
+Task ':core:compileTestKotlin' is not up-to-date because:
+  Executed with '--rerun-tasks'.
+The input changes require a full rebuild for incremental task ':core:compileTestKotlin'.
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\test\kotlin', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\test\kotlin', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\test\kotlin', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\test\kotlin', not found
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\test\kotlin', not found
+Kotlin source files: C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\test\java\com\anchor\core\alarms\AlarmReconcilerTest.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\test\java\com\anchor\core\context\ContextBuilderTest.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\test\java\com\anchor\core\gateway\EnvelopeParserTest.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\test\java\com\anchor\core\gateway\GatewayTest.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\test\java\com\anchor\core\gateway\R10cFollowUpTest.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\test\java\com\anchor\core\gateway\R11UntitledAlarmsTest.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\test\java\com\anchor\core\gateway\R1RescheduleAmbiguityTest.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\test\java\com\anchor\core\gateway\R2CandidateSelectionTest.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\test\java\com\anchor\core\gateway\R4TimeChipsTest.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\test\java\com\anchor\core\gateway\R6GentleTierTest.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\test\java\com\anchor\core\models\EdgeTest.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\test\java\com\anchor\core\models\ReminderTierTest.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\test\java\com\anchor\core\nudge\NudgeEngineTest.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\test\java\com\anchor\core\provider\ProviderTroubleTest.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\test\java\com\anchor\core\provider\RateLimiterTest.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\test\java\com\anchor\core\provider\SseParserTest.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\test\java\com\anchor\core\quotes\QuoteManagerTest.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\test\java\com\anchor\core\reliability\ReliabilityManagerTest.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\test\java\com\anchor\core\resolver\WhichDinnerTest.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\test\java\com\anchor\core\security\PrivacyAndInjectionTest.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\test\java\com\anchor\core\SharedFakeStorage.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\test\java\com\anchor\core\storage\ChatHistoryFtsTest.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\test\java\com\anchor\core\storage\StaleNodesClockTest.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\test\java\com\anchor\core\time\DateResolverR10fTest.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\test\java\com\anchor\core\time\DateResolverR4Test.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\test\java\com\anchor\core\time\DateResolverTest.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\test\java\com\anchor\core\time\DayRolloverTest.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\test\java\com\anchor\core\ui\CalendarQueriesTest.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\test\java\com\anchor\core\ui\ChatControllerEdgeCaseTest.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\test\java\com\anchor\core\ui\EndToEndChatTest.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\test\java\com\anchor\core\ui\R12ConcurrencyLifecycleTest.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\test\java\com\anchor\core\ui\R4StaleItemsTest.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\test\java\com\anchor\core\ui\R7ReceiptsTest.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\test\java\com\anchor\core\ui\SystemPromptTest.kt, C:\Users\Banespire\AndroidStudioProjects\Mine\core\src\test\java\com\anchor\core\ui\TurnCompletionTest.kt
+Java source files: 
+Script source files: 
+Script file extensions: 
+Using Kotlin/JVM incremental compilation
+[KOTLIN] Kotlin compilation 'jdkHome' argument: C:\Users\Banespire\.gradle\jdks\eclipse_adoptium-17-amd64-windows.2
+i: Options for KOTLIN DAEMON: IncrementalCompilationOptions(super=CompilationOptions(compilerMode=INCREMENTAL_COMPILER, targetPlatform=JVM, reportCategories=[0], reportSeverity=2, requestedCompilationResults=[0], kotlinScriptExtensions=[], generateCompilerRefIndex=false), sourceChanges=org.jetbrains.kotlin.buildtools.api.SourcesChanges$Unknown@76c181, classpathChanges=NotAvailableDueToMissingClasspathSnapshot, workingDir=C:\Users\Banespire\AndroidStudioProjects\Mine\core\build\kotlin\compileTestKotlin\cacheable, multiModuleICSettings=null, icFeatures=IncrementalCompilationFeatures(usePreciseJavaTracking=true, withAbiSnapshot=false, preciseCompilationResultsBackup=true, keepIncrementalCompilationCachesInMemory=true, enableUnsafeIncrementalCompilationForMultiplatform=false, enableMonotonousIncrementalCompileSetExpansion=true), outputFiles=[C:\Users\Banespire\AndroidStudioProjects\Mine\core\build\classes\kotlin\test, C:\Users\Banespire\AndroidStudioProjects\Mine\core\build\kotlin\compileTestKotlin\cacheable, C:\Users\Banespire\AndroidStudioProjects\Mine\core\build\kotlin\compileTestKotlin\local-state])
+w: file:///C:/Users/Banespire/AndroidStudioProjects/Mine/core/src/test/java/com/anchor/core/gateway/R1RescheduleAmbiguityTest.kt:268:43 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///C:/Users/Banespire/AndroidStudioProjects/Mine/core/src/test/java/com/anchor/core/gateway/R1RescheduleAmbiguityTest.kt:268:72 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///C:/Users/Banespire/AndroidStudioProjects/Mine/core/src/test/java/com/anchor/core/gateway/R6GentleTierTest.kt:219:60 Unnecessary non-null assertion (!!) on a non-null receiver of type 'String'.
+w: file:///C:/Users/Banespire/AndroidStudioProjects/Mine/core/src/test/java/com/anchor/core/security/PrivacyAndInjectionTest.kt:78:23 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///C:/Users/Banespire/AndroidStudioProjects/Mine/core/src/test/java/com/anchor/core/security/PrivacyAndInjectionTest.kt:79:13 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///C:/Users/Banespire/AndroidStudioProjects/Mine/core/src/test/java/com/anchor/core/security/PrivacyAndInjectionTest.kt:132:23 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///C:/Users/Banespire/AndroidStudioProjects/Mine/core/src/test/java/com/anchor/core/security/PrivacyAndInjectionTest.kt:133:13 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///C:/Users/Banespire/AndroidStudioProjects/Mine/core/src/test/java/com/anchor/core/security/PrivacyAndInjectionTest.kt:278:23 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///C:/Users/Banespire/AndroidStudioProjects/Mine/core/src/test/java/com/anchor/core/security/PrivacyAndInjectionTest.kt:279:13 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///C:/Users/Banespire/AndroidStudioProjects/Mine/core/src/test/java/com/anchor/core/time/DateResolverR10fTest.kt:188:81 Cast is redundant.
+w: file:///C:/Users/Banespire/AndroidStudioProjects/Mine/core/src/test/java/com/anchor/core/ui/EndToEndChatTest.kt:67:34 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///C:/Users/Banespire/AndroidStudioProjects/Mine/core/src/test/java/com/anchor/core/ui/EndToEndChatTest.kt:67:63 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///C:/Users/Banespire/AndroidStudioProjects/Mine/core/src/test/java/com/anchor/core/ui/SystemPromptTest.kt:64:23 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///C:/Users/Banespire/AndroidStudioProjects/Mine/core/src/test/java/com/anchor/core/ui/SystemPromptTest.kt:64:52 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///C:/Users/Banespire/AndroidStudioProjects/Mine/core/src/test/java/com/anchor/core/ui/SystemPromptTest.kt:108:23 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///C:/Users/Banespire/AndroidStudioProjects/Mine/core/src/test/java/com/anchor/core/ui/SystemPromptTest.kt:108:52 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+i: Finished executing kotlin compiler using DAEMON strategy
+Resolve mutations for :core:compileTestJava (Thread[#1724,Execution worker Thread 5,5,main]) started.
+:core:compileTestJava (Thread[#1724,Execution worker Thread 5,5,main]) started.
+
+> Task :core:compileTestJava NO-SOURCE
+Skipping task ':core:compileTestJava' as it has no source files and no previous output files.
+Resolve mutations for :core:testClasses (Thread[#1724,Execution worker Thread 5,5,main]) started.
+:core:testClasses (Thread[#1724,Execution worker Thread 5,5,main]) started.
+
+> Task :core:testClasses UP-TO-DATE
+Skipping task ':core:testClasses' as it has no actions.
+Resolve mutations for :core:test (Thread[#1724,Execution worker Thread 5,5,main]) started.
+:core:test (Thread[#1721,Execution worker Thread 2,5,main]) started.
+Gradle Test Executor 13 started executing tests.
+
+> Task :core:test
+Caching disabled for task ':core:test' because:
+  Build cache is disabled
+Task ':core:test' is not up-to-date because:
+  Executed with '--rerun-tasks'.
+file or directory 'C:\Users\Banespire\AndroidStudioProjects\Mine\core\build\classes\java\test', not found
+Starting process 'Gradle Test Executor 13'. Working directory: C:\Users\Banespire\AndroidStudioProjects\Mine\core Command: C:\Users\Banespire\.gradle\jdks\eclipse_adoptium-17-amd64-windows.2\bin\java.exe -Dorg.gradle.internal.worker.tmpdir=C:\Users\Banespire\AndroidStudioProjects\Mine\core\build\tmp\test\work @C:\Users\Banespire\.gradle\.tmp\gradle-worker-classpath13836131509879571647txt -Xmx512m -Dfile.encoding=UTF-8 -Duser.country=IN -Duser.language=en -Duser.variant -ea worker.org.gradle.process.internal.worker.GradleWorkerMain 'Gradle Test Executor 13'
+Successfully started process 'Gradle Test Executor 13'
+
+Gradle Test Executor 13 finished executing tests.
+
+> Task :core:test
+Generating HTML test report...
+Finished generating test html results (0.04 secs) into: C:\Users\Banespire\AndroidStudioProjects\Mine\core\build\reports\tests\test
+Finished generating test XML results (0.024 secs) into: C:\Users\Banespire\AndroidStudioProjects\Mine\core\build\test-results\test
+Build 3c48ad94-952f-4cd7-b4fa-cab43686af38 is closed
+
+[Incubating] Problems report is available at: file:///C:/Users/Banespire/AndroidStudioProjects/Mine/build/reports/problems/problems-report.html
+
+BUILD SUCCESSFUL in 31s
+4 actionable tasks: 4 executed
+Watched directory hierarchies: [C:\Users\Banespire\AndroidStudioProjects\Mine]
+Configuration cache entry reused.
