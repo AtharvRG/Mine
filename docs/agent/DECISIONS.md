@@ -32,4 +32,41 @@ D-114 (2026-11-03): Alarm reconciliation semantics (reconcile(force: Boolean)) a
 - On scheduling failure, reliability_state is updated to score = "at_risk" with issues_json containing error details and timestamp, and UiState.schedulingError is exposed to notify the user.
 Reason: Eliminate silent alarm drops and permission desynchronization; unify disparate scheduling loops across BootReceiver and ChatController into a single tested core reconciler.
 Rejected: Silently degrading ALARM to GENTLE on SecurityException; swallowing schedule failures; re-registering unchanged alarms on every UI event.
-(Next free: D-115. Add: date, decision, reason, rejected.)
+D-115 (2026-11-04): Receipts sourced from raw_event operation log (T6).
+- raw_event table's existing cause_msg_id column is populated on all mutations: ChatController passes userMsgId to executeTool, while chip, undo, and stale actions pass null cause.
+- Core ReceiptFormatter deterministically transforms raw_event (op_type, before/after JSON) into device-formatted receipt strings (using DateResolver) without model prose.
+- Storage.getRecentEvents(limit) queries UI-visible operations where undo_of IS NULL in chronological order.
+- UiState.receipts is dynamically reconstructed from raw_event; undoToken is exposed if and only if undoValid = (clock.now() - event.tsUtc < 24h) && !storage.hasUndo(event.opId). Undone receipts retain their message but omit the undo token. Receipts preserve causeMsgId for message anchoring.
+Reason: Eliminate ephemeral in-memory receipts, preserve undoability across app restarts/controller recreation within the 24h window, ensure deterministic device-formatted receipt presentation, and anchor receipts to their causing user messages.
+Rejected: Storing LLM-generated prose in receipts; persisting receipts in a separate non-log table; losing undo capability upon process death.
+(Next free: D-116. Add: date, decision, reason, rejected.)
+D-102b (2026-11-05): Manifest exact-alarm permissions and empirical API 34 verification.
+- AlarmManager.setAlarmClock() on Android 14 (API 34, targetSdk 35, minSdk 34) strictly requires either android.permission.SCHEDULE_EXACT_ALARM or android.permission.USE_EXACT_ALARM. Without either declared in the manifest, setAlarmClock() throws java.lang.SecurityException: Caller com.anchor.mine needs to hold android.permission.SCHEDULE_EXACT_ALARM or android.permission.USE_EXACT_ALARM to set exact alarms. (empirically reproduced on physical moto g73 5G - Android 14 in R12c).
+- USE_EXACT_ALARM is declared in AndroidManifest.xml. It is a normal, install-time auto-granted permission for alarm/reminder applications, avoiding the disruptive user-facing AppOps toggle required by SCHEDULE_EXACT_ALARM.
+- SCHEDULE_EXACT_ALARM, VIBRATE, and WAKE_LOCK remain strictly forbidden and absent from the manifest. Zero-vibration hardware safety protocol strictly enforced.
+Reason: Factual OS requirement on Android 14+; prevents app crash/SecurityException when arming ALARM-tier reminders; preserves zero-vibration and privacy invariants.
+Rejected: Declaring SCHEDULE_EXACT_ALARM (requires manual user toggle in system settings); omitting USE_EXACT_ALARM (causes fatal SecurityException on setAlarmClock).
+D-116 (2026-11-04): Chat history search indexing via msg_chunk and msg_chunk_fts (R10j).
+- insertRawMessage atomically populates msg_chunk for non-blank user and assistant messages (excluding system messages) within the write transaction.
+- External content sync triggers (trg_msg_chunk_fts_insert, trg_msg_chunk_fts_delete, trg_msg_chunk_fts_update) keep msg_chunk_fts in strict sync with msg_chunk.
+- searchMemoryFts queries node_fts, soul_fts, and msg_chunk_fts, returning unified SearchResult with kind = "chat", title = day_key, details = text.
+- Redaction via redactMessage removes the corresponding msg_chunk row, triggering automatic cleanup in msg_chunk_fts.
+- SharedFakeStorage mirrors this behavior for deterministic in-memory testing.
+Reason: Fulfill memory search covering past conversation history; ensure immediate consistency and full privacy compliance upon redaction.
+Rejected: Asynchronous background indexing worker (lag breaks immediate search testability); multi-message chunking (complicates single-message redaction).
+D-117 (2026-11-05): Proposal CAS and confirm-path concurrency semantics (R12 / R12c).
+- Proposal consumption uses atomic Compare-And-Swap (CAS) directly in storage: UPDATE proposal SET status='consumed' WHERE id=? AND status='open'. The first caller receives rowsAffected=1 and proceeds; concurrent or duplicate callers receive rowsAffected=0 and are rejected with "Proposal already resolved".
+- Two-phase execution with status rollback: Gateway.handleConfirmChange performs atomic CAS first. If node mutation, reminder arming, or option validation subsequently fails (or throws), a compensating rollback invokes updateProposalStatus(id, "open").
+- updateProposalStatus updates only the status column, strictly preserving the proposal's immutable created_at timestamp. This prevents resetting the 24-hour expiration window upon rollback.
+- Terminal entity failures ("Node not found", "Node is no longer active", expired timestamps) leave the proposal "consumed" to clear dead UI chips.
+- ChatController suppresses error receipts/banners for losing concurrent taps when the winning tap succeeds.
+Reason: Prevents race conditions and duplicate node/alarm creation across rapid UI double-taps; preserves 24-hour proposal expiration integrity; provides graceful error recovery without leaking dead proposals.
+Rejected: Transactional CAS inside effect (would require passing proposal ID down into every individual storage mutation and coupling Gateway orchestration into SQLite transactions); in-memory Mutex (does not protect cross-process or DB-level concurrency).
+
+### Note on Knowledge Pack Numbering Differences
+The Session 1 remediation pack cited decision numbers that differed from the chronological sequence recorded in DECISIONS.md:
+- Pack "D-112" referred to Architectural Logic Fix 1 (Time chip pre-validation & untitled/label payload preservation), whereas in this repo D-112 is "Compound duration parsing, prompt date compliance, and untitled alarm fallbacks" (R11).
+- Pack "D-114" referred to Architectural Logic Fix 3 (Gentle reminders RTC_WAKEUP & Doze disclosure), whereas in this repo D-114 is "Alarm reconciliation semantics (reconcile(force: Boolean)) and zero-silent-failure contract" (R3).
+- Pack cited "Next free: D-113" before R2 was merged, while R2 recorded D-113 for keyset candidate pagination and 5000-item cap.
+Repo DECISIONS.md is the authoritative source of truth.
+(Next free: D-118. Add: date, decision, reason, rejected.)
