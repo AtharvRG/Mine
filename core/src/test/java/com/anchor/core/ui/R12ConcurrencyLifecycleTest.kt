@@ -17,6 +17,7 @@ import com.anchor.core.provider.RateLimiter
 import com.anchor.core.provider.StreamEvent
 import com.anchor.core.provider.Target
 import com.anchor.core.resolver.Resolver
+import com.anchor.core.storage.Storage
 import com.anchor.core.time.DateResolver
 import com.anchor.core.time.FakeClock
 import kotlinx.coroutines.*
@@ -664,4 +665,89 @@ class R12ConcurrencyLifecycleTest {
             testScope.cancel()
         }
     }
+
+    // R12d Item 3: Expiry parity between SharedFakeStorage and SQLite (missing created_at must return null)
+    @Test
+    fun testFakeStorage_ProposalExpiryParity_MissingCreatedAtReturnsNull() = runBlocking {
+        val clock = FakeClock(1000L)
+        val storage = SharedFakeStorage(clock)
+        val proposal = Proposal("p_missing_created", "time", IntentType.CREATE, listOf(ProposalOption("1", "Opt 1")), status = "open")
+        storage.saveProposal(proposal)
+        storage.proposalCreatedAt.remove("p_missing_created")
+
+        // In real SQLite, if created_at is missing/null, query WHERE created_at > threshold returns 0 rows (null).
+        // SharedFakeStorage must match SQLite semantics and return null instead of falling back to clock.now().
+        val fetched = storage.getProposal("p_missing_created")
+        assertNull("getProposal must return null when created_at is missing (matching SQLite)", fetched)
+    }
+
+    // R12d Item 3: Crash-window: effect transaction throws => proposal remains open and no effect row exists
+    @Test
+    fun testCrashWindow_EffectTransactionThrows_ProposalRemainsOpenAndNoEffectRow() = runBlocking {
+        val clock = FakeClock(1000L)
+        val storage = SharedFakeStorage(clock)
+        val dateResolver = DateResolver(clock)
+        val gateway = Gateway(storage, Resolver(), dateResolver, clock)
+
+        val fireAt = clock.now() + 3600_000L
+        val payload = ProposalPayload(intent = IntentType.CREATE, title = "Crash Test Task", untitled = true)
+        val proposal = Proposal("p_crash_1", "time", IntentType.CREATE, listOf(ProposalOption(fireAt.toString(), "11:00 AM")), status = "open", payload = Json.encodeToString(payload))
+        storage.saveProposal(proposal)
+
+        // Make effect throw to simulate a crash/disk error inside the effect transaction
+        var callCount = 0
+        val crashingStorage = object : Storage by storage {
+            override suspend fun createNodeAndCommit(
+                node: Node,
+                event: RawEvent,
+                reminder: Reminder?,
+                edge: Edge?,
+                edgeEvent: RawEvent?,
+                consumeProposalId: String?
+            ) {
+                callCount++
+                // Option (b) proof: at the moment createNodeAndCommit is entered, the proposal must still be "open".
+                // In Option (a), Gateway had already marked it "consumed" before calling createNodeAndCommit.
+                assertEquals("Proposal must still be 'open' upon entering effect transaction in Option (b)", "open", storage.getProposal("p_crash_1")?.status)
+                throw java.sql.SQLException("Simulated SQLite disk I/O failure inside effect transaction")
+            }
+        }
+        val crashGateway = Gateway(crashingStorage, Resolver(), dateResolver, clock)
+
+        try {
+            crashGateway.executeTool(ToolCall("confirm_change", mapOf("proposal" to JsonPrimitive("p_crash_1"), "choice" to JsonPrimitive(fireAt.toString()))))
+        } catch (e: Exception) {
+            // expected failure
+        }
+
+        assertEquals("Effect must have been called", 1, callCount)
+        assertEquals("Proposal must remain 'open' when effect transaction fails", "open", storage.getProposal("p_crash_1")?.status)
+        assertTrue("No node must be created in storage when effect fails", storage.activeNodes.isEmpty())
+    }
+
+    // R12d Item 3: In-transaction CAS single winner: second confirm with consumed proposal aborts effect transaction
+    @Test
+    fun testInTransactionCas_ConsumedProposalAbortsEffectTransaction() = runBlocking {
+        val clock = FakeClock(1000L)
+        val storage = SharedFakeStorage(clock)
+
+        val proposal = Proposal("p_consumed_cas", "time", IntentType.CREATE, listOf(ProposalOption("1", "Opt 1")), status = "consumed")
+        storage.saveProposal(proposal)
+        storage.proposalCreatedAt["p_consumed_cas"] = clock.now()
+
+        val node = Node("n_should_not_exist", "task", "Ghost Task", "active")
+        val event = RawEvent("op_ghost", "CREATE", "node", "n_should_not_exist")
+
+        var aborted = false
+        try {
+            storage.createNodeAndCommit(node, event, reminder = null, consumeProposalId = "p_consumed_cas")
+        } catch (e: Exception) {
+            aborted = true
+        }
+
+        assertTrue("createNodeAndCommit with consumed proposal must abort/throw", aborted)
+        assertNull("Node must NOT be committed when in-transaction CAS fails", storage.getNode("n_should_not_exist"))
+        assertTrue("Logged events must NOT contain aborted event", storage.loggedEvents.none { it.opId == "op_ghost" })
+    }
 }
+

@@ -8,7 +8,11 @@ import android.content.Intent
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.anchor.core.models.*
+import com.anchor.core.storage.ProposalAlreadyResolvedException
 import com.anchor.mine.alarms.BootReceiver
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.*
@@ -1276,5 +1280,101 @@ class AndroidStorageTest {
             }
         }
         assertTrue("saveProposal overwrites created_at with current time", overwrittenCreatedAt > agedCreatedAt + (20 * 3600 * 1000L))
+    }
+
+    @Test
+    fun testInTransactionCas_RealSqlite_AbortOnAlreadyConsumed(): Unit = runBlocking {
+        val p = Proposal("p_cas_abort", "time", IntentType.CREATE, listOf(ProposalOption("1", "Opt 1")), status = "consumed")
+        storage.saveProposal(p)
+
+        val node = Node("n_abort", "task", "Abort Task", "active")
+        val event = RawEvent("e_abort", "CREATE", "node", "n_abort")
+
+        var exceptionThrown = false
+        try {
+            storage.createNodeAndCommit(node, event, reminder = null, consumeProposalId = "p_cas_abort")
+        } catch (e: ProposalAlreadyResolvedException) {
+            exceptionThrown = true
+        }
+
+        assertTrue("In-transaction CAS must abort with ProposalAlreadyResolvedException when proposal is not open", exceptionThrown)
+        assertNull("Transaction rollback must ensure node was not inserted", storage.getNode("n_abort"))
+        assertNull("Transaction rollback must ensure raw_event was not inserted", storage.getEvent("e_abort"))
+    }
+
+    @Test
+    fun testReopenProposal_RealSqlite_GuardedSemantics(): Unit = runBlocking {
+        val p = Proposal("p_reopen_test", "time", IntentType.CREATE, listOf(ProposalOption("1", "Opt 1")), status = "open")
+        storage.saveProposal(p)
+
+        // 1. Reopening an already open proposal must return false (no-op)
+        val reopenOpen = storage.reopenProposal("p_reopen_test")
+        assertFalse("reopenProposal on open proposal must return false", reopenOpen)
+        assertEquals("open", storage.getProposal("p_reopen_test")?.status)
+
+        // 2. Consume proposal
+        storage.consumeProposal("p_reopen_test")
+        assertEquals("consumed", storage.getProposal("p_reopen_test")?.status)
+
+        // 3. Reopen consumed proposal must succeed and return true
+        val reopenConsumed = storage.reopenProposal("p_reopen_test")
+        assertTrue("reopenProposal on consumed proposal must return true", reopenConsumed)
+        assertEquals("open", storage.getProposal("p_reopen_test")?.status)
+
+        // 4. Reopening non-existent proposal must return false
+        val reopenMissing = storage.reopenProposal("p_nonexistent")
+        assertFalse("reopenProposal on non-existent proposal must return false", reopenMissing)
+    }
+
+    @Test
+    fun testConcurrentConfirm_RealSqlite_SingleWinnerSemantics(): Unit = runBlocking {
+        val p = Proposal("p_race_test", "time", IntentType.CREATE, listOf(ProposalOption("1", "Opt 1")), status = "open")
+        storage.saveProposal(p)
+
+        val node1 = Node("n_race_1", "task", "Race Task 1", "active")
+        val event1 = RawEvent("e_race_1", "CREATE", "node", "n_race_1")
+
+        val node2 = Node("n_race_2", "task", "Race Task 2", "active")
+        val event2 = RawEvent("e_race_2", "CREATE", "node", "n_race_2")
+
+        val results = listOf(
+            async(Dispatchers.IO) {
+                try {
+                    storage.createNodeAndCommit(node1, event1, reminder = null, consumeProposalId = "p_race_test")
+                    "SUCCESS_1"
+                } catch (e: ProposalAlreadyResolvedException) {
+                    "ALREADY_RESOLVED_1"
+                }
+            },
+            async(Dispatchers.IO) {
+                try {
+                    storage.createNodeAndCommit(node2, event2, reminder = null, consumeProposalId = "p_race_test")
+                    "SUCCESS_2"
+                } catch (e: ProposalAlreadyResolvedException) {
+                    "ALREADY_RESOLVED_2"
+                }
+            }
+        ).awaitAll()
+
+        val successes = results.filter { it.startsWith("SUCCESS") }
+        val resolved = results.filter { it.startsWith("ALREADY_RESOLVED") }
+
+        assertEquals("Exactly one concurrent confirm must succeed", 1, successes.size)
+        assertEquals("Exactly one concurrent confirm must receive ProposalAlreadyResolvedException", 1, resolved.size)
+
+        val hasNode1 = storage.getNode("n_race_1") != null
+        val hasNode2 = storage.getNode("n_race_2") != null
+        assertTrue("Exactly one node row must exist in SQLite", hasNode1 xor hasNode2)
+        assertEquals("Proposal must end in consumed state", "consumed", storage.getProposal("p_race_test")?.status)
+    }
+
+    @Test
+    fun testExpiryParity_MissingCreatedAtReturnsNull_RealSqlite(): Unit = runBlocking {
+        // Direct SQLite insert with NULL or 0 created_at
+        dbHelper.writableDatabase.execSQL(
+            "INSERT INTO proposal (id, kind, intent, options, status, created_at) VALUES ('p_zero_created', 'ambiguous', 'RESCHEDULE', '[]', 'open', 0)"
+        )
+        assertNull("Proposal with created_at = 0 is expired and must return null", storage.getProposal("p_zero_created"))
+        assertEquals("getOpenProposals must not return expired proposals", 0, storage.getOpenProposals().filter { it.id == "p_zero_created" }.size)
     }
 }

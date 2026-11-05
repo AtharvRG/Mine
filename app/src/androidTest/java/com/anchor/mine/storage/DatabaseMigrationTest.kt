@@ -51,6 +51,12 @@ class DatabaseMigrationTest {
         storage.consumeProposalCas("p_fresh")
         assertEquals("consumed", storage.getProposal("p_fresh")?.status)
         assertEquals(0, storage.getOpenProposals().size)
+        val reopened = storage.reopenProposal("p_fresh")
+        assertTrue(reopened)
+        assertEquals("open", storage.getProposal("p_fresh")?.status)
+        assertEquals(1, storage.getOpenProposals().size)
+        val reopenAgain = storage.reopenProposal("p_fresh")
+        org.junit.Assert.assertFalse(reopenAgain)
 
         // 3. Settings
         storage.saveSetting("set1", "val1")
