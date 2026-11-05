@@ -70,3 +70,16 @@ The Session 1 remediation pack cited decision numbers that differed from the chr
 - Pack cited "Next free: D-113" before R2 was merged, while R2 recorded D-113 for keyset candidate pagination and 5000-item cap.
 Repo DECISIONS.md is the authoritative source of truth.
 (Next free: D-118. Add: date, decision, reason, rejected.)
+
+D-118 (2026-11-05): Transactional Proposal CAS inside Effect Transaction (R12d).
+- Atomicity Option (b) (developer confirmed): For node and reminder mutations (CREATE time-chip, CANCEL, COMPLETE, RESCHEDULE, UPDATE-reminder), proposal consumption is embedded directly inside the database effect write transaction via consumeProposalId.
+- In-transaction CAS: Storage implementations (AndroidStorage and SharedFakeStorage) execute UPDATE proposal SET status = 'consumed' WHERE id = ? AND status = 'open' inside the transaction. If rowsAffected == 0, the entire effect transaction is aborted (rolling back all node, reminder, edge, and event mutations) and ProposalAlreadyResolvedException is thrown.
+- Single-winner semantics: Two concurrent confirms on the same proposal yield exactly one committed effect; the losing caller's transaction rolls back with 0 changes and receives ToolResult.Error("Proposal already resolved").
+- Gateway orchestration: Gateway keeps pre-check validation (status == 'open', valid choice option, user message match), but no longer calls consumeProposalCas before invoking effect transactions for these paths.
+- Terminal vs Non-terminal failures: Terminal failures where the underlying entity is permanently unusable ("Node not found", "Node is no longer active", target node missing) explicitly consume the proposal (marking status='consumed') to clear dead UI chips. Non-terminal failures (user choice invalid, past time, duplicate active title) leave the proposal open.
+- Guarded rollback: Storage.reopenProposal(id) executes UPDATE proposal SET status = 'open' WHERE id = ? AND status = 'consumed' (preserving created_at and 24h expiration), replacing blind status updates and preventing accidental reopening of proposals consumed by other turns.
+Reason: Ensures strict database-level atomicity without crash-window vulnerabilities between proposal CAS and effect commit; eliminates orphan consumed proposals on mid-effect failure; preserves single-winner concurrency semantics.
+Rejected: Option (a) Two-phase CAS before effect with compensating rollback (leaves crash-window vulnerability if process is killed or power cut between CAS and commit); blind updateProposalStatus("open") rollback (can corrupt state if called on an already-resolved proposal).
+
+(Next free: D-119. Add: date, decision, reason, rejected.)
+

@@ -194,7 +194,7 @@ open class SharedFakeStorage(var clock: Clock = SystemClock()) : Storage {
     }
 
     override suspend fun getProposal(id: String): Proposal? = synchronized(savedProposals) {
-        val created = proposalCreatedAt[id] ?: clock.now()
+        val created = proposalCreatedAt[id] ?: return null
         val expiryThreshold = clock.now() - (24 * 3600 * 1000L)
         if (created <= expiryThreshold) return null
         savedProposals.find { it.id == id }
@@ -229,6 +229,16 @@ open class SharedFakeStorage(var clock: Clock = SystemClock()) : Storage {
         }
     }
 
+    override suspend fun reopenProposal(id: String): Boolean = synchronized(savedProposals) {
+        val idx = savedProposals.indexOfFirst { it.id == id }
+        if (idx != -1 && savedProposals[idx].status == "consumed") {
+            savedProposals[idx] = savedProposals[idx].copy(status = "open")
+            true
+        } else {
+            false
+        }
+    }
+
     override suspend fun saveReminder(reminder: Reminder) {
         reminders.removeAll { it.id == reminder.id }
         reminders.add(reminder)
@@ -247,54 +257,64 @@ open class SharedFakeStorage(var clock: Clock = SystemClock()) : Storage {
     }
 
     override suspend fun createNodeAndCommit(node: Node, event: RawEvent, reminder: Reminder?, edge: Edge?, edgeEvent: RawEvent?, consumeProposalId: String?) {
-        activeNodes.removeAll { it.id == node.id }
-        activeNodes.add(node)
-        if (reminder != null) {
-            reminders.removeAll { it.id == reminder.id }
-            reminders.add(reminder)
-        }
-        if (edge != null) {
-            edges.removeAll { it.id == edge.id }
-            edges.add(edge)
-        }
-        if (consumeProposalId != null) {
-            val idx = savedProposals.indexOfFirst { it.id == consumeProposalId }
-            if (idx != -1) savedProposals[idx] = savedProposals[idx].copy(status = "consumed")
-        }
-        loggedEvents.add(event)
-        if (edgeEvent != null) {
-            loggedEvents.add(edgeEvent)
+        synchronized(this) {
+            if (consumeProposalId != null) {
+                val idx = savedProposals.indexOfFirst { it.id == consumeProposalId }
+                if (idx == -1 || savedProposals[idx].status != "open") {
+                    throw com.anchor.core.storage.ProposalAlreadyResolvedException("Proposal already resolved")
+                }
+                savedProposals[idx] = savedProposals[idx].copy(status = "consumed")
+            }
+            activeNodes.removeAll { it.id == node.id }
+            activeNodes.add(node)
+            if (reminder != null) {
+                reminders.removeAll { it.id == reminder.id }
+                reminders.add(reminder)
+            }
+            if (edge != null) {
+                edges.removeAll { it.id == edge.id }
+                edges.add(edge)
+            }
+            loggedEvents.add(event)
+            if (edgeEvent != null) {
+                loggedEvents.add(edgeEvent)
+            }
         }
     }
 
     override suspend fun getOpenProposals(): List<Proposal> = synchronized(savedProposals) {
         val expiryThreshold = clock.now() - (24 * 3600 * 1000L)
         savedProposals.filter {
-            it.status == "open" && it.id.isNotBlank() && (proposalCreatedAt[it.id] ?: clock.now()) > expiryThreshold
+            it.status == "open" && it.id.isNotBlank() && (proposalCreatedAt[it.id] ?: 0L) > expiryThreshold
         }
     }
     override suspend fun getUrgentNodes(): List<Node> = activeNodes.filter { it.status == "active" || it.status == "in_progress" }.sortedWith(compareBy<Node> { it.dueAt == null }.thenBy { it.dueAt }).take(3)
     override suspend fun getActiveSoulFacts(): List<SoulFact> = soulFacts.filter { (it.status == "active" || it.status == "pinned") && !it.localOnly }
 
     override suspend fun updateNodeAndCommit(node: Node, event: RawEvent, deleteReminderId: String?, upsertReminder: Reminder?, consumeProposalId: String?, softDeleteEdgeIds: List<String>) {
-        activeNodes.removeAll { it.id == node.id }
-        activeNodes.add(node)
-        if (deleteReminderId != null) reminders.removeAll { it.id == deleteReminderId }
-        if (upsertReminder != null) {
-            reminders.removeAll { it.id == upsertReminder.id }
-            reminders.add(upsertReminder)
-        }
-        if (consumeProposalId != null) {
-            val idx = savedProposals.indexOfFirst { it.id == consumeProposalId }
-            if (idx != -1) savedProposals[idx] = savedProposals[idx].copy(status = "consumed")
-        }
-        for (edgeId in softDeleteEdgeIds) {
-            val idx = edges.indexOfFirst { it.id == edgeId }
-            if (idx != -1) {
-                edges[idx] = edges[idx].copy(deletedAt = event.tsUtc, updatedAt = event.tsUtc)
+        synchronized(this) {
+            if (consumeProposalId != null) {
+                val idx = savedProposals.indexOfFirst { it.id == consumeProposalId }
+                if (idx == -1 || savedProposals[idx].status != "open") {
+                    throw com.anchor.core.storage.ProposalAlreadyResolvedException("Proposal already resolved")
+                }
+                savedProposals[idx] = savedProposals[idx].copy(status = "consumed")
             }
+            activeNodes.removeAll { it.id == node.id }
+            activeNodes.add(node)
+            if (deleteReminderId != null) reminders.removeAll { it.id == deleteReminderId }
+            if (upsertReminder != null) {
+                reminders.removeAll { it.id == upsertReminder.id }
+                reminders.add(upsertReminder)
+            }
+            for (edgeId in softDeleteEdgeIds) {
+                val idx = edges.indexOfFirst { it.id == edgeId }
+                if (idx != -1) {
+                    edges[idx] = edges[idx].copy(deletedAt = event.tsUtc, updatedAt = event.tsUtc)
+                }
+            }
+            loggedEvents.add(event)
         }
-        loggedEvents.add(event)
     }
 
     override suspend fun undoChangeAndCommit(node: Node, event: RawEvent, restoreReminder: Reminder?) {
@@ -308,13 +328,18 @@ open class SharedFakeStorage(var clock: Clock = SystemClock()) : Storage {
     }
 
     override suspend fun createReminderAndCommit(reminder: Reminder, event: RawEvent, consumeProposalId: String?) {
-        reminders.removeAll { it.id == reminder.id }
-        reminders.add(reminder)
-        if (consumeProposalId != null) {
-            val idx = savedProposals.indexOfFirst { it.id == consumeProposalId }
-            if (idx != -1) savedProposals[idx] = savedProposals[idx].copy(status = "consumed")
+        synchronized(this) {
+            if (consumeProposalId != null) {
+                val idx = savedProposals.indexOfFirst { it.id == consumeProposalId }
+                if (idx == -1 || savedProposals[idx].status != "open") {
+                    throw com.anchor.core.storage.ProposalAlreadyResolvedException("Proposal already resolved")
+                }
+                savedProposals[idx] = savedProposals[idx].copy(status = "consumed")
+            }
+            reminders.removeAll { it.id == reminder.id }
+            reminders.add(reminder)
+            loggedEvents.add(event)
         }
-        loggedEvents.add(event)
     }
 
     override suspend fun deleteReminderAndCommit(reminderId: String, event: RawEvent) {

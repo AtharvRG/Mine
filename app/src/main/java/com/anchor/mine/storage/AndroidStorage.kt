@@ -7,6 +7,7 @@ package com.anchor.mine.storage
 import androidx.sqlite.db.SupportSQLiteOpenHelper
 import com.anchor.core.models.*
 import com.anchor.core.models.Reminder
+import com.anchor.core.storage.ProposalAlreadyResolvedException
 import com.anchor.core.storage.Storage
 import com.anchor.core.time.DayRollover
 import kotlinx.coroutines.CoroutineDispatcher
@@ -337,6 +338,29 @@ class AndroidStorage(private val dbHelper: SupportSQLiteOpenHelper) : Storage {
         dbHelper.writableDatabase.execSQL("UPDATE proposal SET status = ? WHERE id = ?", arrayOf(status, id))
     }
 
+    override suspend fun reopenProposal(id: String): Boolean = withContext(ioDispatcher) {
+        val stmt = dbHelper.writableDatabase.compileStatement("UPDATE proposal SET status = 'open' WHERE id = ? AND status = 'consumed'")
+        try {
+            stmt.bindString(1, id)
+            stmt.executeUpdateDelete() > 0
+        } finally {
+            stmt.close()
+        }
+    }
+
+    private fun consumeProposalInTx(db: androidx.sqlite.db.SupportSQLiteDatabase, proposalId: String) {
+        val stmt = db.compileStatement("UPDATE proposal SET status = 'consumed' WHERE id = ? AND status = 'open'")
+        val affected = try {
+            stmt.bindString(1, proposalId)
+            stmt.executeUpdateDelete()
+        } finally {
+            stmt.close()
+        }
+        if (affected == 0) {
+            throw ProposalAlreadyResolvedException("Proposal already resolved")
+        }
+    }
+
     override suspend fun consumeProposalCas(id: String): Boolean = withContext(ioDispatcher) {
         val stmt = dbHelper.writableDatabase.compileStatement("UPDATE proposal SET status = 'consumed' WHERE id = ? AND status = 'open'")
         try {
@@ -500,7 +524,7 @@ class AndroidStorage(private val dbHelper: SupportSQLiteOpenHelper) : Storage {
                 )
             }
             consumeProposalId?.let {
-                db.execSQL("UPDATE proposal SET status = 'consumed' WHERE id = ?", arrayOf(it))
+                consumeProposalInTx(db, it)
             }
             db.execSQL("INSERT INTO raw_event (op_id, target_id, op_type, target_type, ts_utc, device_id, actor, before_json, after_json, cause_msg_id) VALUES (?, ?, ?, ?, ?, ?, 'chat_ai', ?, ?, ?)",
                 arrayOf<Any?>(event.opId, event.targetId, event.opType, event.targetType, event.tsUtc, deviceId, event.beforeJson, event.afterJson, event.causeMsgId))
@@ -528,7 +552,7 @@ class AndroidStorage(private val dbHelper: SupportSQLiteOpenHelper) : Storage {
 
             // B5: Atomic Proposal Consumption
             consumeProposalId?.let {
-                db.execSQL("UPDATE proposal SET status = 'consumed' WHERE id = ?", arrayOf(it))
+                consumeProposalInTx(db, it)
             }
 
             for (edgeId in softDeleteEdgeIds) {
@@ -563,7 +587,7 @@ class AndroidStorage(private val dbHelper: SupportSQLiteOpenHelper) : Storage {
         try {
             db.execSQL("INSERT OR REPLACE INTO reminder (id, node_id, text, fire_at, tier) VALUES (?, ?, ?, ?, ?)", arrayOf<Any?>(reminder.id, reminder.nodeId, reminder.text, reminder.fireAtMillis, reminder.tier.name.lowercase()))
             consumeProposalId?.let {
-                db.execSQL("UPDATE proposal SET status = 'consumed' WHERE id = ?", arrayOf(it))
+                consumeProposalInTx(db, it)
             }
             db.execSQL("INSERT INTO raw_event (op_id, target_id, op_type, target_type, ts_utc, device_id, actor, before_json, after_json, cause_msg_id) VALUES (?, ?, ?, ?, ?, ?, 'chat_ai', ?, ?, ?)",
                 arrayOf<Any?>(event.opId, event.targetId, event.opType, event.targetType, event.tsUtc, deviceId, event.beforeJson, event.afterJson, event.causeMsgId))

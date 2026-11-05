@@ -6,6 +6,7 @@ package com.anchor.core.gateway
 
 import com.anchor.core.models.*
 import com.anchor.core.resolver.Resolver
+import com.anchor.core.storage.ProposalAlreadyResolvedException
 import com.anchor.core.storage.Storage
 import com.anchor.core.storage.TooManyActiveNodesException
 import com.anchor.core.storage.getAllActiveNodesPaged
@@ -285,11 +286,14 @@ class Gateway(
         return handleScheduleReminderWithTime(targetRef, fireAt, tier, causeMsgId)
     }
 
-    private suspend fun handleScheduleReminderWithTime(targetRef: String, fireAt: Long, tier: AlarmTier = AlarmTier.ALARM, causeMsgId: String? = null): ToolResult {
+    private suspend fun handleScheduleReminderWithTime(targetRef: String, fireAt: Long, tier: AlarmTier = AlarmTier.ALARM, causeMsgId: String? = null, consumeProposalId: String? = null): ToolResult {
         val node = if (targetRef.isNotBlank()) storage.getNode(targetRef) else null
 
         // A8: Reject bad target refs silently making orphan "Reminder"s
         if (targetRef.isNotBlank() && node == null) {
+            if (consumeProposalId != null) {
+                storage.consumeProposal(consumeProposalId)
+            }
             return ToolResult.Error("Target node not found for reference '$targetRef'")
         }
 
@@ -302,7 +306,7 @@ class Gateway(
         val beforeJson = existingRem?.let { json.encodeToString(it) }
         val afterJson = json.encodeToString(reminder)
         val event = RawEvent(uId, "SCHEDULE", "reminder", rId, beforeJson = beforeJson, afterJson = afterJson, tsUtc = clock.now(), causeMsgId = causeMsgId)
-        storage.createReminderAndCommit(reminder, event)
+        storage.createReminderAndCommit(reminder, event, consumeProposalId)
 
         return ToolResult.Committed("SCHEDULE", rId, "Reminder set for ${dateResolver.format(fireAt)}", uId)
     }
@@ -315,10 +319,6 @@ class Gateway(
 
         if (userMessage != null && !matchesUserMessage(userMessage, chosenOption, choice)) {
             return ToolResult.Error("Cannot confirm proposal: choice '$choice' does not match user's response")
-        }
-
-        if (!storage.consumeProposalCas(proposalId)) {
-            return ToolResult.Error("Proposal already resolved")
         }
 
         if (proposal.kind == "time") {
@@ -351,7 +351,6 @@ class Gateway(
                         if (!isUntitled) {
                             val duplicate = storage.findActiveNodeByTitle(title)
                             if (duplicate != null) {
-                                storage.updateProposalStatus(proposal.id, "open")
                                 return ToolResult.Error("An active item named '${duplicate.title}' already exists.")
                             }
                         }
@@ -362,40 +361,43 @@ class Gateway(
                         val severity = payload?.severity ?: 0
                         val pinned = payload?.pinned ?: false
                         val tier = payload?.tier ?: AlarmTier.ALARM
-                        val res = handleCreate(title, type, chosenMillis, followUpTo, priority, severity, pinned, tier)
-                        if (res is ToolResult.Error) {
-                            storage.updateProposalStatus(proposal.id, "open")
-                        }
-                        res
+                        handleCreate(title, type, chosenMillis, followUpTo, priority, severity, pinned, tier, consumeProposalId = proposal.id)
                     }
                     IntentType.RESCHEDULE -> {
                         val hint = payload?.hint ?: ""
-                        val res = handleResolveChange(IntentType.RESCHEDULE, hint, timeForResolver = null, destinationTimeMillis = chosenMillis)
-                        if (res is ToolResult.Error) {
-                            storage.updateProposalStatus(proposal.id, "open")
-                        }
-                        res
+                        handleResolveChange(IntentType.RESCHEDULE, hint, timeForResolver = null, destinationTimeMillis = chosenMillis, consumeProposalId = proposal.id)
                     }
                     IntentType.UPDATE -> {
                         val targetRef = payload?.targetId ?: ""
                         val tier = payload?.tier ?: AlarmTier.ALARM
-                        val res = handleScheduleReminderWithTime(targetRef, chosenMillis, tier)
-                        if (res is ToolResult.Error) {
-                            storage.updateProposalStatus(proposal.id, "open")
-                        }
-                        res
+                        handleScheduleReminderWithTime(targetRef, chosenMillis, tier, consumeProposalId = proposal.id)
                     }
                     else -> ToolResult.Error("${proposal.intent.name} is not supported for time chips")
                 }
+            } catch (e: ProposalAlreadyResolvedException) {
+                ToolResult.Error("Proposal already resolved")
             } catch (t: Throwable) {
-                storage.updateProposalStatus(proposal.id, "open")
+                storage.reopenProposal(proposal.id)
                 throw t
             }
         }
 
         val nodeId = choice
-        val node = storage.getNode(nodeId) ?: return ToolResult.Error("Node not found")
-        if (node.status !in listOf("active", "in_progress", "paused")) return ToolResult.Error("Node is no longer active")
+        val node = storage.getNode(nodeId)
+        if (node == null) {
+            if (storage.getProposal(proposalId)?.status != "open") {
+                return ToolResult.Error("Proposal already resolved")
+            }
+            storage.consumeProposal(proposal.id)
+            return ToolResult.Error("Node not found")
+        }
+        if (node.status !in listOf("active", "in_progress", "paused")) {
+            if (storage.getProposal(proposalId)?.status != "open") {
+                return ToolResult.Error("Proposal already resolved")
+            }
+            storage.consumeProposal(proposal.id)
+            return ToolResult.Error("Node is no longer active")
+        }
 
         val now = clock.now()
         val oldRem = storage.getReminderByNodeId(node.id) ?: storage.getPendingReminders().find { it.nodeId == node.id || it.id == "r_${node.id}" }
@@ -408,7 +410,7 @@ class Gateway(
                     val afterJson = json.encodeToString(NodeStateSnapshot(newNode, null))
                     val uId = "u_${UUID.randomUUID().toString().take(6)}"
                     val event = RawEvent(uId, "CANCEL", "node", newNode.id, beforeJson = beforeJson, afterJson = afterJson, tsUtc = now)
-                    storage.updateNodeAndCommit(newNode, event, deleteReminderId = oldRem?.id, upsertReminder = null)
+                    storage.updateNodeAndCommit(newNode, event, deleteReminderId = oldRem?.id, upsertReminder = null, consumeProposalId = proposal.id)
                     ToolResult.Committed("CANCEL", newNode.id, "Applied CANCEL: ${newNode.title}", uId)
                 }
                 IntentType.COMPLETE -> {
@@ -417,7 +419,7 @@ class Gateway(
                     val afterJson = json.encodeToString(NodeStateSnapshot(newNode, null))
                     val uId = "u_${UUID.randomUUID().toString().take(6)}"
                     val event = RawEvent(uId, "COMPLETE", "node", newNode.id, beforeJson = beforeJson, afterJson = afterJson, tsUtc = now)
-                    storage.updateNodeAndCommit(newNode, event, deleteReminderId = oldRem?.id, upsertReminder = null)
+                    storage.updateNodeAndCommit(newNode, event, deleteReminderId = oldRem?.id, upsertReminder = null, consumeProposalId = proposal.id)
                     ToolResult.Committed("COMPLETE", newNode.id, "Applied COMPLETE: ${newNode.title}", uId)
                 }
                 IntentType.RESCHEDULE -> {
@@ -426,6 +428,7 @@ class Gateway(
                     }
                     val target = payload?.targetAtMillis
                     if (target == null || target <= clock.now()) {
+                        storage.consumeProposal(proposal.id)
                         return ToolResult.Error("That time has already passed; tell me the new time again")
                     }
                     val newNode = node.copy(dueAt = target, updatedAt = now)
@@ -440,13 +443,15 @@ class Gateway(
                     val afterJson = json.encodeToString(NodeStateSnapshot(newNode, newRem))
                     val uId = "u_${UUID.randomUUID().toString().take(6)}"
                     val event = RawEvent(uId, "RESCHEDULE", "node", newNode.id, beforeJson = beforeJson, afterJson = afterJson, tsUtc = now)
-                    storage.updateNodeAndCommit(newNode, event, deleteReminderId = null, upsertReminder = newRem)
+                    storage.updateNodeAndCommit(newNode, event, deleteReminderId = null, upsertReminder = newRem, consumeProposalId = proposal.id)
                     ToolResult.Committed("RESCHEDULE", newNode.id, "Rescheduled: ${newNode.title} to ${dateResolver.format(target)}", uId)
                 }
                 else -> ToolResult.Error("${proposal.intent.name} is not supported yet")
             }
+        } catch (e: ProposalAlreadyResolvedException) {
+            ToolResult.Error("Proposal already resolved")
         } catch (t: Throwable) {
-            storage.updateProposalStatus(proposal.id, "open")
+            storage.reopenProposal(proposal.id)
             throw t
         }
     }
@@ -483,7 +488,8 @@ class Gateway(
         severity: Int = 0,
         pinned: Boolean = false,
         tier: AlarmTier = AlarmTier.ALARM,
-        causeMsgId: String? = null
+        causeMsgId: String? = null,
+        consumeProposalId: String? = null
     ): ToolResult {
         val followUpEdge: Edge?
         val followUpEdgeEvent: RawEvent?
@@ -529,7 +535,7 @@ class Gateway(
         val uId = "u_${UUID.randomUUID().toString().take(6)}"
         val event = RawEvent(uId, IntentType.CREATE.name, "node", nId, afterJson = afterJson, tsUtc = now, causeMsgId = causeMsgId)
 
-        storage.createNodeAndCommit(node, event, reminder, followUpEdge, followUpEdgeEvent)
+        storage.createNodeAndCommit(node, event, reminder, followUpEdge, followUpEdgeEvent, consumeProposalId)
 
         val timeStr = if (dueAt != null) " (Due: ${dateResolver.format(dueAt)})" else ""
         return ToolResult.Committed(IntentType.CREATE.name, nId, "Created: $title$timeStr", uId)
@@ -540,7 +546,8 @@ class Gateway(
         hint: String,
         timeForResolver: Long?,
         destinationTimeMillis: Long?,
-        causeMsgId: String? = null
+        causeMsgId: String? = null,
+        consumeProposalId: String? = null
     ): ToolResult {
         if (intent == IntentType.RESCHEDULE && destinationTimeMillis == null) {
             return ToolResult.Error("To when?")
@@ -553,8 +560,16 @@ class Gateway(
         val resolution = resolver.resolve(intent, hint, timeForResolver, candidates)
 
         return when (resolution) {
-            is Resolution.NotFound -> ToolResult.NotFound(hint)
+            is Resolution.NotFound -> {
+                if (consumeProposalId != null) {
+                    storage.consumeProposal(consumeProposalId)
+                }
+                ToolResult.NotFound(hint)
+            }
             is Resolution.Ambiguous -> {
+                if (consumeProposalId != null) {
+                    storage.consumeProposal(consumeProposalId)
+                }
                 val pId = "p_${UUID.randomUUID().toString().take(6)}"
                 val opts = resolution.options.map { node ->
                     val dueStr = if (node.dueAt != null) dateResolver.format(node.dueAt) else null
@@ -604,7 +619,7 @@ class Gateway(
                 val uId = "u_${UUID.randomUUID().toString().take(6)}"
                 val event = RawEvent(uId, intent.name, "node", newNode.id, beforeJson = beforeJson, afterJson = afterJson, tsUtc = clock.now(), causeMsgId = causeMsgId)
 
-                storage.updateNodeAndCommit(newNode, event, deleteReminderId, newRem)
+                storage.updateNodeAndCommit(newNode, event, deleteReminderId, newRem, consumeProposalId)
                 val receiptText = if (intent == IntentType.RESCHEDULE) {
                     val dest = destinationTimeMillis ?: return ToolResult.Error("To when?")
                     "Rescheduled: ${newNode.title} to ${dateResolver.format(dest)}"

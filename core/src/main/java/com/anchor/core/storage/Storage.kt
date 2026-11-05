@@ -46,6 +46,7 @@ interface Storage {
     suspend fun consumeProposal(id: String)
     suspend fun consumeProposalCas(id: String): Boolean
     suspend fun updateProposalStatus(id: String, status: String)
+    suspend fun reopenProposal(id: String): Boolean
 
     suspend fun saveReminder(reminder: Reminder)
     suspend fun deleteReminder(id: String)
@@ -115,6 +116,8 @@ interface Storage {
 }
 
 class TooManyActiveNodesException(val cap: Int) : Exception("Too many active items (exceeded $cap). Please be more specific.")
+
+class ProposalAlreadyResolvedException(message: String = "Proposal already resolved") : IllegalStateException(message)
 
 suspend fun Storage.getAllActiveNodesPaged(pageSize: Int = 200, hardCap: Int = 5000): List<Node> {
     val all = mutableListOf<Node>()
