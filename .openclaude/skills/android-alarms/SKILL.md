@@ -2,7 +2,7 @@
 name: android-alarms
 description: Rules and tests for reminders: setAlarmClock, reconcile, boot, sweeper, receiver fallback.
 ---
-- Use setAlarmClock; no exact-alarm permission is needed. Do not add USE_EXACT_ALARM, SCHEDULE_EXACT_ALARM, VIBRATE, WAKE_LOCK.
+- Use setAlarmClock; requires USE_EXACT_ALARM declared in manifest on Android 14+ (throws SecurityException without it per D-102b). Do not add SCHEDULE_EXACT_ALARM, VIBRATE, WAKE_LOCK.
 - Reminder lookup is by node_id column, never by string-concatenated ids.
 - Arm only after the DB transaction commits. Registry (alarm_registry) is a hint, not truth: force-stop clears all alarms. Run reconcile at app start, boot, time/zone change, and after every commit. Compare fire time, not only ids.
 - Receiver: tiny; reads the row by id; if DB unavailable, post a fallback notification from intent extras; never swallow silently.

@@ -34,7 +34,7 @@ class ManifestPermissionTest {
             requestedPermissions.contains("android.permission.SCHEDULE_EXACT_ALARM")
         )
         org.junit.Assert.assertTrue(
-            "Manifest must declare USE_EXACT_ALARM for setAlarmClock (Decision D-102 amended)",
+            "Manifest must declare USE_EXACT_ALARM for setAlarmClock (Decision D-102b: setAlarmClock throws SecurityException on API 34 without it)",
             requestedPermissions.contains("android.permission.USE_EXACT_ALARM")
         )
         assertFalse(
