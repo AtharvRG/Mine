@@ -67,6 +67,32 @@ class AlarmSelfTest {
     }
 
     @Test
+    fun testGentleReminderFires_SetsFlag() = runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val app = context.applicationContext as MineApp
+        val storage = app.sharedStorage.await()
+        val scheduler = AndroidAlarmScheduler(context)
+
+        val testId = "test_gentle_1"
+        // Schedule for ~1.5 seconds in the future
+        val fireTime = System.currentTimeMillis() + 1500L
+        val reminder = Reminder(testId, "Gentle Test Reminder", fireTime, tier = AlarmTier.GENTLE)
+
+        storage.saveReminder(reminder)
+        val scheduleResult = scheduler.schedule(reminder)
+        assertTrue("Schedule must succeed as Armed unconditionally, but was $scheduleResult", scheduleResult is com.anchor.core.alarms.ScheduleResult.Armed)
+
+        // Wait for Android's AlarmManager to wake us up (timeout at 10s)
+        var elapsed = 0
+        while (AlarmReceiver.lastFiredId != testId && elapsed < 10000) {
+            kotlinx.coroutines.delay(250)
+            elapsed += 250
+        }
+
+        assertEquals("Gentle alarm receiver should have updated the static flag", testId, AlarmReceiver.lastFiredId)
+    }
+
+    @Test
     fun testAlarmClock_NextAlarmClockVerification() = runBlocking {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager

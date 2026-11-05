@@ -7,6 +7,8 @@ package com.anchor.core.models
 sealed interface ToolResult {
     data class Committed(val op: String, val targetId: String, val message: String, val undoToken: String) : ToolResult
     data class Ambiguous(val proposalId: String, val message: String, val options: List<String>) : ToolResult
+    data class NeedsConfirm(val proposalId: String, val message: String, val options: List<String>) : ToolResult
+    data class NeedsTime(val proposalId: String, val chipLabels: List<String>) : ToolResult
     data class NotFound(val hint: String) : ToolResult
     data class Error(val reason: String) : ToolResult
     data class Data(val text: String) : ToolResult
@@ -20,5 +22,6 @@ data class RawEvent(
     val undoOf: String? = null,
     val beforeJson: String? = null,
     val afterJson: String? = null,
-    val tsUtc: Long = 0L // B16: Track time for Undo expiration
+    val tsUtc: Long = 0L, // B16: Track time for Undo expiration
+    val causeMsgId: String? = null
 )

@@ -28,8 +28,44 @@ import kotlinx.serialization.json.*
 class AndroidExportManager(
     private val context: android.content.Context,
     private val dbHelper: SupportSQLiteOpenHelper,
-    private val dbKey: ByteArray
+    private val dbKey: ByteArray,
+    private val liveDbName: String = "mine_encrypted.db",
+    private val scheduler: com.anchor.core.alarms.AlarmScheduler? = null,
+    private val clock: com.anchor.core.time.Clock = com.anchor.core.time.SystemClock(),
+    private val reconciler: com.anchor.core.alarms.AlarmReconciler? = null
 ) : ExportManager {
+
+    companion object {
+        val EXPORTED_TABLES = setOf(
+            "raw_message",
+            "raw_event",
+            "node",
+            "edge",
+            "soul_fact",
+            "app_meta",
+            "day_rule",
+            "reminder",
+            "proposal",
+            "quote_slot"
+        )
+
+        internal fun generateKek(passphrase: String, salt: ByteArray, mem: Int = 65536, iters: Int = 3, par: Int = 1): ByteArray {
+            val params = Argon2Parameters.Builder(Argon2Parameters.ARGON2_id)
+                .withVersion(Argon2Parameters.ARGON2_VERSION_13)
+                .withIterations(iters).withMemoryAsKB(mem).withParallelism(par)
+                .withSalt(salt).build()
+            val gen = Argon2BytesGenerator().apply { init(params) }
+            val kek = ByteArray(32)
+            gen.generateBytes(passphrase.toByteArray(Charsets.UTF_8), kek)
+            return kek
+        }
+
+        internal fun wrapKey(dek: ByteArray, kek: ByteArray, nonce: ByteArray): ByteArray {
+            val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+            cipher.init(Cipher.ENCRYPT_MODE, SecretKeySpec(kek, "AES"), GCMParameterSpec(128, nonce))
+            return cipher.doFinal(dek)
+        }
+    }
 
     override suspend fun exportTo(file: File, passphrase: String, includeApiKeys: Boolean, includeEmbeddings: Boolean): ExportStats = withContext(Dispatchers.IO) {
         if (passphrase.length < 8) throw IllegalArgumentException("Passphrase too weak (minimum 8 characters)")
@@ -93,6 +129,7 @@ class AndroidExportManager(
                             exportTable(db, "day_rule", writer, includeApiKeys)
                             exportTable(db, "reminder", writer, includeApiKeys)
                             exportTable(db, "proposal", writer, includeApiKeys)
+                            exportTable(db, "quote_slot", writer, includeApiKeys)
                             
                             writer.flush()
                             val footer = buildJsonObject {
@@ -122,7 +159,7 @@ class AndroidExportManager(
         verifyOrImportInternal(file, passphrase, isImport)
     }
 
-    private fun verifyOrImportInternal(file: File, passphrase: String, isImport: Boolean): ExportStats {
+    private suspend fun verifyOrImportInternal(file: File, passphrase: String, isImport: Boolean): ExportStats {
         FileInputStream(file).use { fis ->
             val headerBytes = ByteArray(106)
             var read = 0
@@ -136,32 +173,38 @@ class AndroidExportManager(
             val magic = ByteArray(4).apply { buf.get(this) }
             if (String(magic) != "MNEX") throw SecurityException("Invalid file magic")
             if (buf.short.toInt() != 1) throw SecurityException("Unsupported format version")
-            buf.short 
+            buf.short
             if (buf.get().toInt() != 1) throw SecurityException("Unsupported KDF")
-            
+
             val mem = buf.int
             val iters = buf.int
             val par = buf.get().toInt()
+            if (mem <= 0 || mem > 131072 || iters !in 1..10 || par !in 1..4) {
+                throw SecurityException("KDF parameters out of safe bounds: mem=$mem, iters=$iters, par=$par")
+            }
             val salt = ByteArray(16).apply { buf.get(this) }
             val wrapNonce = ByteArray(12).apply { buf.get(this) }
             val wrappedDek = ByteArray(48).apply { buf.get(this) }
-            buf.int 
+            val chunkSize = buf.int
+            if (chunkSize !in 1024..(16 * 1024 * 1024)) {
+                throw SecurityException("Invalid chunkSize in header: $chunkSize")
+            }
             val noncePrefix = ByteArray(8).apply { buf.get(this) }
-            
+
             val headerHash = MessageDigest.getInstance("SHA-256").digest(headerBytes)
-            
+
             val kek = generateKek(passphrase, salt, mem, iters, par)
-            val dek = unwrapKey(wrappedDek, kek, wrapNonce) 
-            
+            val dek = unwrapKey(wrappedDek, kek, wrapNonce)
+
             var msgCount = 0
             var nodeCount = 0
             var eventCount = 0
-            
+
             val tempDbName = "mine_import_temp.db"
             var importHelper: SupportSQLiteOpenHelper? = null
             var db: SupportSQLiteDatabase? = null
             var dbTransactionActive = false
-            
+
             try {
                 if (isImport) {
                     context.deleteDatabase(tempDbName)
@@ -170,17 +213,33 @@ class AndroidExportManager(
                     db.beginTransaction()
                     dbTransactionActive = true
                 }
-                
-                ChunkedAesInputStream(fis, dek, noncePrefix, headerHash).use { chunkedIn ->
+
+                // Pre-fetch column whitelist for all valid exported tables from fresh temp DB
+                val validColumnsPerTable = mutableMapOf<String, Set<String>>()
+                if (isImport && db != null) {
+                    for (tName in EXPORTED_TABLES) {
+                        val colSet = mutableSetOf<String>()
+                        db.query("PRAGMA table_info(\"$tName\")").use { cursor ->
+                            val nameColIdx = cursor.getColumnIndexOrThrow("name")
+                            while (cursor.moveToNext()) {
+                                colSet.add(cursor.getString(nameColIdx))
+                            }
+                        }
+                        validColumnsPerTable[tName] = colSet
+                    }
+                }
+
+                ChunkedAesInputStream(fis, dek, noncePrefix, headerHash, chunkSize).use { chunkedIn ->
                     java.util.zip.GZIPInputStream(chunkedIn).use { gzipIn ->
                         val digestStream = java.security.MessageDigest.getInstance("SHA-256")
                         java.io.BufferedReader(java.io.InputStreamReader(gzipIn, kotlin.text.Charsets.UTF_8)).use { reader ->
                             var line: String?
                             while (reader.readLine().also { line = it } != null) {
-                                if (line!!.isBlank()) continue
-                                val obj = Json.parseToJsonElement(line!!).jsonObject
+                                val currentLine = line ?: break
+                                if (currentLine.isBlank()) continue
+                                val obj = Json.parseToJsonElement(currentLine).jsonObject
                                 val type = obj["t"]?.jsonPrimitive?.content
-                                
+
                                 if (type == "footer") {
                                     val expectedHash = obj["d"]?.jsonObject?.get("sha256")?.jsonPrimitive?.content
                                     val actualHash = digestStream.digest().joinToString("") { "%02x".format(it) }
@@ -188,23 +247,36 @@ class AndroidExportManager(
                                     break
                                 }
 
-                                digestStream.update(line!!.toByteArray(Charsets.UTF_8))
+                                digestStream.update(currentLine.toByteArray(Charsets.UTF_8))
                                 digestStream.update('\n'.code.toByte())
 
-                                val data = obj["d"]?.jsonObject
+                                if (type == "manifest") continue
+
+                                if (type !in EXPORTED_TABLES) {
+                                    throw SecurityException("Disallowed or unknown table in export: $type")
+                                }
+
+                                val data = obj["d"]?.jsonObject ?: throw SecurityException("Missing data object for table $type")
                                 when (type) {
                                     "raw_message" -> msgCount++
                                     "node" -> nodeCount++
                                     "raw_event" -> eventCount++
                                 }
-                                
-                                if (isImport && type != null && data != null && type != "manifest") {
+
+                                if (isImport && db != null) {
+                                    val validCols = validColumnsPerTable[type]
+                                        ?: throw SecurityException("Unknown table schema: $type")
+                                    for (colKey in data.keys) {
+                                        if (colKey !in validCols) {
+                                            throw SecurityException("Disallowed or unknown column '$colKey' for table '$type'")
+                                        }
+                                    }
                                     val cols = data.keys.joinToString(",") { "\"$it\"" }
                                     val placeholders = data.keys.joinToString(",") { "?" }
-                                    val vals = data.values.map { 
-                                        if (it is JsonNull) null else it.jsonPrimitive.content 
+                                    val vals = data.values.map {
+                                        if (it is JsonNull) null else it.jsonPrimitive.content
                                     }.toTypedArray()
-                                    db?.execSQL("INSERT INTO $type ($cols) VALUES ($placeholders)", vals)
+                                    db.execSQL("INSERT INTO \"$type\" ($cols) VALUES ($placeholders)", vals)
                                 }
                             }
                         }
@@ -213,25 +285,39 @@ class AndroidExportManager(
                     while (chunkedIn.read() != -1) {}
                     if (!chunkedIn.isFinalSeen) throw SecurityException("Truncated or tampered file: missing final flag")
                 }
-                
+
                 if (isImport) {
                     db?.setTransactionSuccessful()
                     db?.endTransaction()
                     dbTransactionActive = false
                     importHelper?.close()
                     importHelper = null
-                    
+
                     // ISSUE 2: SAFE SWAP. The active DB is overwritten only AFTER successful verification.
                     dbHelper.close()
-                    val originalFile = context.getDatabasePath("mine_encrypted.db")
+                    val originalFile = context.getDatabasePath(liveDbName)
                     val tempFile = context.getDatabasePath(tempDbName)
                     tempFile.copyTo(originalFile, overwrite = true)
-                    
-                    context.getDatabasePath("mine_encrypted.db-wal").delete()
-                    context.getDatabasePath("mine_encrypted.db-shm").delete()
+
+                    context.getDatabasePath("$liveDbName-wal").delete()
+                    context.getDatabasePath("$liveDbName-shm").delete()
                     tempFile.delete()
-                    context.getDatabasePath("mine_import_temp.db-wal").delete()
-                    context.getDatabasePath("mine_import_temp.db-shm").delete()
+                    context.getDatabasePath("$tempDbName-wal").delete()
+                    context.getDatabasePath("$tempDbName-shm").delete()
+
+                    // Post-import alarm reconciliation
+                    if (reconciler != null) {
+                        reconciler.reconcile(force = true)
+                    } else if (scheduler != null) {
+                        val postImportHelper = com.anchor.mine.storage.DatabaseProvider.getHelper(context, dbKey, liveDbName)
+                        try {
+                            val postImportStorage = com.anchor.mine.storage.AndroidStorage(postImportHelper)
+                            val postReconciler = com.anchor.core.alarms.AlarmReconciler(postImportStorage, scheduler, clock)
+                            postReconciler.reconcile(force = true)
+                        } finally {
+                            postImportHelper.close()
+                        }
+                    }
                 }
             } catch (e: Exception) {
                 if (dbTransactionActive) db?.endTransaction()
@@ -278,27 +364,10 @@ class AndroidExportManager(
         return count
     }
 
-    private fun generateKek(passphrase: String, salt: ByteArray, mem: Int = 65536, iters: Int = 3, par: Int = 1): ByteArray {
-        val params = Argon2Parameters.Builder(Argon2Parameters.ARGON2_id)
-            .withVersion(Argon2Parameters.ARGON2_VERSION_13)
-            .withIterations(iters).withMemoryAsKB(mem).withParallelism(par)
-            .withSalt(salt).build()
-        val gen = Argon2BytesGenerator().apply { init(params) }
-        val kek = ByteArray(32)
-        gen.generateBytes(passphrase.toByteArray(Charsets.UTF_8), kek)
-        return kek
-    }
-
-    private fun wrapKey(dek: ByteArray, kek: ByteArray, nonce: ByteArray): ByteArray {
-        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-        cipher.init(Cipher.ENCRYPT_MODE, SecretKeySpec(kek, "AES"), GCMParameterSpec(128, nonce))
-        return cipher.doFinal(dek)
-    }
-
     private fun unwrapKey(wrapped: ByteArray, kek: ByteArray, nonce: ByteArray): ByteArray {
         val cipher = Cipher.getInstance("AES/GCM/NoPadding")
         cipher.init(Cipher.DECRYPT_MODE, SecretKeySpec(kek, "AES"), GCMParameterSpec(128, nonce))
-        return cipher.doFinal(wrapped) 
+        return cipher.doFinal(wrapped)
     }
 }
 
@@ -349,8 +418,11 @@ class ChunkedAesOutputStream(
 }
 
 class ChunkedAesInputStream(
-    private val ins: InputStream, private val dek: ByteArray, private val noncePrefix: ByteArray,
-    private val headerHash: ByteArray
+    private val ins: InputStream,
+    private val dek: ByteArray,
+    private val noncePrefix: ByteArray,
+    private val headerHash: ByteArray,
+    private val chunkSize: Int = 1024 * 1024
 ) : InputStream() {
     private var buffer = ByteArray(0)
     private var pos = 0
@@ -392,6 +464,9 @@ class ChunkedAesInputStream(
             r += c
         }
         val len = ByteBuffer.wrap(lenBuf).int
+        if (len < 16 || len > chunkSize + 16) {
+            throw SecurityException("Invalid chunk length: $len (expected 16..${chunkSize + 16})")
+        }
         val cipherBuf = ByteArray(len)
         r = 0
         while(r < len) {

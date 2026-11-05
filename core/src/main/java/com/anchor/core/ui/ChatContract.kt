@@ -11,7 +11,9 @@ data class ReceiptState(
     val id: String,
     val message: String,
     val undoToken: String?,
-    val isError: Boolean = false
+    val isError: Boolean = false,
+    val causeMsgId: String? = null,
+    val timestamp: Long = 0L
 )
 
 data class UiState(
@@ -19,6 +21,7 @@ data class UiState(
     val receipts: List<ReceiptState> = emptyList(),
     val openProposals: List<com.anchor.core.models.Proposal> = emptyList(),
     val proposedSoulFacts: List<com.anchor.core.models.SoulFact> = emptyList(),
+    val staleItems: List<com.anchor.core.models.Node> = emptyList(),
     val inboxCount: Int = 0,
     val urgentItems: List<com.anchor.core.models.Node> = emptyList(),
     val isChatLoading: Boolean = false,
@@ -34,13 +37,20 @@ data class UiState(
     val schedulingError: String? = null,
     val schedulingFailedCount: Int = 0,
     val showResetConfirm: Boolean = false,
-    val alarmDisclosureText: String = "Urgent/alarm reminders use Android Alarm Clock (setAlarmClock) to guarantee delivery in Doze mode. This causes an alarm icon to appear in the system status bar while pending. Gentle reminders use notification-only scheduling without showing the status bar alarm icon.",
+    val alarmDisclosureText: String = "Urgent/alarm reminders use Android Alarm Clock (setAlarmClock) to guarantee delivery in Doze mode. This causes an alarm icon to appear in the system status bar while pending. Gentle reminders use notification-only scheduling (RTC_WAKEUP) without showing the status bar alarm icon, but may be delayed by Doze mode.",
     val selectedDayKey: String? = null,
     val selectedDayMessages: List<ChatMessage> = emptyList(),
-    val selectedDayReminders: List<Reminder> = emptyList()
-)
+    val selectedDayReminders: List<Reminder> = emptyList(),
+    val homeQuote: com.anchor.core.models.Quote? = null
+) {
+    override fun toString(): String {
+        val redactedKey = if (providerKey.isBlank()) "" else "***"
+        return "UiState(chatMessages=$chatMessages, receipts=$receipts, openProposals=$openProposals, proposedSoulFacts=$proposedSoulFacts, staleItems=$staleItems, inboxCount=$inboxCount, urgentItems=$urgentItems, isChatLoading=$isChatLoading, activeReminders=$activeReminders, selfTestStatus=$selfTestStatus, providerEndpoint=$providerEndpoint, providerKey=$redactedKey, providerModel=$providerModel, debugStats=$debugStats, composerDraft=$composerDraft, connectionError=$connectionError, globalError=$globalError, schedulingError=$schedulingError, schedulingFailedCount=$schedulingFailedCount, showResetConfirm=$showResetConfirm, alarmDisclosureText=$alarmDisclosureText, selectedDayKey=$selectedDayKey, selectedDayMessages=$selectedDayMessages, selectedDayReminders=$selectedDayReminders, homeQuote=$homeQuote)"
+    }
+}
 
 sealed interface UiAction {
+    data object OpenHome : UiAction
     data class UpdateDraft(val text: String) : UiAction
     data object SendMessage : UiAction
     data object Stop : UiAction
@@ -59,4 +69,6 @@ sealed interface UiAction {
     data class ConfirmResetDatabase(val confirm: Boolean) : UiAction
     data class AddFollowUp(val srcNodeId: String, val dstNodeId: String) : UiAction
     data class RemoveFollowUp(val edgeId: String) : UiAction
+    data class KeepStale(val nodeId: String) : UiAction
+    data class CancelStale(val nodeId: String) : UiAction
 }

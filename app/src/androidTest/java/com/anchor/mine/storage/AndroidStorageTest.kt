@@ -270,10 +270,13 @@ class AndroidStorageTest {
         db.execSQL("INSERT INTO node (id, type, title, status, due_at, created_at, updated_at) VALUES ('n_done', 'task', 'Walk the dog', 'done', ?, ?, ?)", arrayOf(now - 10_000L, now - 2000L, now - 1000L))
         db.execSQL("INSERT INTO node (id, type, title, status, due_at, created_at, updated_at) VALUES ('n_deleted', 'task', 'Walk the dog', 'deleted', ?, ?, ?)", arrayOf(now - 10_000L, now - 2000L, now - 1000L))
 
-        // 1. findActiveNodeByTitle
+        // 1. findActiveNodeByTitle & findActiveNodesByTitle
         val foundWalk = storage.findActiveNodeByTitle("  walk the DOG  ")
         assertNotNull(foundWalk)
         assertEquals("n_walk", foundWalk?.id)
+
+        val foundWalks = storage.findActiveNodesByTitle("  walk the DOG  ")
+        assertEquals(listOf("n_walk"), foundWalks.map { it.id })
 
         val foundGroceries = storage.findActiveNodeByTitle("buy groceries")
         assertNotNull(foundGroceries)
@@ -281,6 +284,7 @@ class AndroidStorageTest {
 
         val foundMissing = storage.findActiveNodeByTitle("does not exist")
         assertEquals(null, foundMissing)
+        assertTrue(storage.findActiveNodesByTitle("does not exist").isEmpty())
 
         // 2. getNodesDueBetween
         val dueSoon = storage.getNodesDueBetween(now, now + 86400000L, limit = 10)

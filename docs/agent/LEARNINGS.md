@@ -15,3 +15,8 @@
 - Unbounded prompt additions (e.g., soul facts, proposals) threaten context token budgets; sections must have hard length/count bounds.
 - Catching `Throwable` in application components masks fatal JVM errors; catch `Exception` and handle specific subclasses like `SecurityException`.
 - Reliability state must be bounded (max 5 distinct recent issues) and recover to `healthy` on clean passes to avoid permanently stuck failure flags.
+- `DateResolution.Exact` is future-only by contract (past input resolves to `PastTime`); a redundant `<= clock.now()` re-check after the when-branch is dead code and a compiler warning — trust the resolver's sealed hierarchy.
+- Persisting the full change-set in `ProposalPayload` (not just the time) lets time-chip and ambiguity confirmations replay UPDATEs with zero model calls; every new proposal kind must carry `newTitle`/priority/severity/pinned/tier or the confirm path silently drops fields.
+- Blank-string args shadow populated aliases via elvis (`blank ?: fallback` never reaches the fallback): normalize blank to null (`ifBlank { null }`) BEFORE combining. Caught by review in UPDATE `new_due_text` vs `due_text`.
+- A change that would be a silent no-op must return an Error, not Committed: tier lives on the reminder, so tier-only UPDATE on an undated node (no reminder) reports false success. Guard "X-only change with nowhere to apply it" paths.
+- Dead guards are not free documentation: the unreachable `deleteReminderId` branch in `applyNodeUpdate` was flagged by review and removed; the honest hook (`updateNodeAndCommit(deleteReminderId=...)`) is recorded in HANDOFF traps instead.

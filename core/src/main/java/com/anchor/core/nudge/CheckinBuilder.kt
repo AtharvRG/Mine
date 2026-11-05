@@ -4,16 +4,18 @@
 
 package com.anchor.core.nudge
 
+import com.anchor.core.context.PromptSanitizer
 import com.anchor.core.storage.Storage
 import com.anchor.core.time.Clock
 import com.anchor.core.time.DateResolver
 
 class CheckinBuilder(private val storage: Storage, private val clock: Clock, private val dateResolver: DateResolver) {
-    
+
     suspend fun buildMorningFacts(): String {
         val now = clock.now()
 
-        val rolloverMin = storage.getSetting("day_start_minute")?.toIntOrNull() ?: 240
+        val dayRule = storage.getEffectiveDayRule(now)
+        val rolloverMin = dayRule.startMinute
         val logicalTodayStart = dateResolver.getLogicalDayStart(now, rolloverMin)
         val logicalTodayEnd = logicalTodayStart + 86400000L // +24 hours
 
@@ -21,7 +23,7 @@ class CheckinBuilder(private val storage: Storage, private val clock: Clock, pri
         val staleCutoffMs = 30L * 24 * 3600 * 1000L
         val rawDueToday = storage.getNodesDueBetween(logicalTodayStart, logicalTodayEnd, limit = 5000)
         val dueToday = rawDueToday.filter {
-            maxOf(it.updatedAt, it.createdAt) == 0L || (now - maxOf(it.updatedAt, it.createdAt) <= staleCutoffMs)
+            !it.localOnly && (maxOf(it.updatedAt, it.createdAt) == 0L || (now - maxOf(it.updatedAt, it.createdAt) <= staleCutoffMs))
         }
         val overdueCount = storage.getActiveNodeCounts(logicalTodayStart, staleCutoffMs).overdue
 
@@ -33,10 +35,11 @@ class CheckinBuilder(private val storage: Storage, private val clock: Clock, pri
         if (dueToday.isNotEmpty()) {
             builder.append("\nAgenda:\n")
             dueToday.take(5).forEach {
-                builder.append("  * ${it.title} (Due: ${dateResolver.format(it.dueAt!!)})\n")
+                val sanitizedTitle = PromptSanitizer.sanitize(it.title, 80)
+                builder.append("  * $sanitizedTitle (Due: ${dateResolver.format(it.dueAt!!)})\n")
             }
         }
-        
+
         return builder.toString()
     }
 }

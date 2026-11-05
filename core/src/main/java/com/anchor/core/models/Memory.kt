@@ -18,7 +18,9 @@ data class Node(
     val closedAt: Long? = null,
     val priority: Int = 0,
     val severity: Int = 0,
-    val pinned: Boolean = false
+    val pinned: Boolean = false,
+    val localOnly: Boolean = false,
+    val sensitive: Boolean = false
 )
 
 @Serializable
@@ -40,6 +42,13 @@ data class Reminder(
     val fireAtMillis: Long,
     val nodeId: String? = null, // D5: Explicit relational tie to the Node
     val tier: AlarmTier = AlarmTier.ALARM
+)
+
+@Serializable
+data class RegisteredAlarm(
+    val reminderId: String,
+    val registeredFor: Long,
+    val api: String = "alarm_clock"
 )
 
 object EdgeTypes {
@@ -95,7 +104,16 @@ data class ProposalPayload(
     val title: String? = null,
     val type: String? = null,
     val followUpTo: String? = null,
-    val tier: AlarmTier? = null
+    val tier: AlarmTier? = null,
+    val intent: IntentType? = null,
+    val hint: String? = null,
+    val priority: Int? = null,
+    val severity: Int? = null,
+    val pinned: Boolean? = null,
+    val targetId: String? = null,
+    val untitled: Boolean = false,
+    val label: String? = null,
+    val newTitle: String? = null
 )
 
 @Serializable
@@ -113,7 +131,7 @@ data class DayRule(
     val id: String,
     val effectiveFrom: Long,
     val startMinute: Int,
-    val endMinute: Int,
+    val endMinute: Int = 1320,
     val tzId: String,
     val createdAt: Long
 )
@@ -127,7 +145,9 @@ data class SoulFact(
     val source: String,
     val origin: String,
     val status: String,
-    val createdAt: Long
+    val createdAt: Long,
+    val localOnly: Boolean = false,
+    val sensitive: Boolean = false
 )
 
 @Serializable

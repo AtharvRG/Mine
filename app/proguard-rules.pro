@@ -16,4 +16,27 @@
 -keep class com.anchor.core.models.NodeStateSnapshot { *; }
 
 # ADD this to the bottom of the file to protect the Models from minification crashes (B20):
--keep class com.anchor.core.models.** { *; }
+-keep class com.anchor.core.** { *; }
+-keep interface com.anchor.core.** { *; }
+-keep class com.anchor.mine.storage.** { *; }
+-keep class com.anchor.mine.export.** { *; }
+-keep class com.anchor.mine.alarms.** { *; }
+-keep class com.anchor.mine.MineApp { *; }
+
+# Bouncy Castle (Export Encryption)
+-keep class org.bouncycastle.** { *; }
+-dontwarn org.bouncycastle.**
+
+# Test Runner & ErrorProne annotations
+-keep class androidx.test.** { *; }
+-keep class androidx.tracing.** { *; }
+-keep class kotlin.** { *; }
+-keep class org.junit.** { *; }
+-keep class kotlinx.coroutines.** { *; }
+-dontwarn androidx.test.**
+-dontwarn androidx.tracing.**
+-dontwarn kotlin.**
+-dontwarn org.junit.**
+-dontwarn kotlinx.coroutines.**
+-dontwarn com.google.errorprone.annotations.**
+

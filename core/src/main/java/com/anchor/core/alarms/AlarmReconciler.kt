@@ -28,10 +28,10 @@ class AlarmReconciler(
     suspend fun reconcile(force: Boolean): List<ScheduleResult> {
         val now = clock.now()
         val pending = storage.getPendingReminders()
-        val registered = storage.getRegisteredAlarms()
+        val registered = storage.getRegisteredAlarmRecords()
 
         val pendingMap = pending.associateBy { it.id }
-        val registeredMap = registered.toMap()
+        val registeredMap = registered.associateBy { it.reminderId }
 
         // 1. Cancel and delete orphans (present in registry but no longer in pending)
         val toCancel = registeredMap.keys - pendingMap.keys
@@ -45,12 +45,14 @@ class AlarmReconciler(
         val results = mutableListOf<ScheduleResult>()
 
         for (reminder in validPending) {
-            val needsSchedule = force || registeredMap[reminder.id] != reminder.fireAtMillis
+            val reg = registeredMap[reminder.id]
+            val expectedApi = if (reminder.tier == com.anchor.core.models.AlarmTier.GENTLE) "rtc_wakeup" else "alarm_clock"
+            val needsSchedule = force || reg == null || reg.registeredFor != reminder.fireAtMillis || reg.api != expectedApi
             if (needsSchedule) {
                 val result = scheduler.schedule(reminder)
                 results.add(result)
                 if (result is ScheduleResult.Armed) {
-                    storage.saveRegisteredAlarm(reminder.id, reminder.id.hashCode(), reminder.fireAtMillis)
+                    storage.saveRegisteredAlarm(reminder.id, reminder.id.hashCode(), reminder.fireAtMillis, expectedApi)
                 }
             }
         }

@@ -210,20 +210,20 @@ class R1RescheduleAmbiguityTest {
         ))
         val updateResult = gateway.executeTool(updateCall)
         assertTrue("UPDATE direct must return ToolResult.Error, got $updateResult", updateResult is ToolResult.Error)
-        assertEquals("UPDATE is not supported yet", (updateResult as ToolResult.Error).reason)
+        assertEquals("No changes specified for UPDATE: provide new_title, due_text, priority, severity, pinned, or tier", (updateResult as ToolResult.Error).reason)
 
         // Node unchanged, no events logged
         assertEquals(1000L, storage.getNode("n1")!!.updatedAt)
         assertEquals(0, storage.loggedEvents.size)
 
-        // 2. Proposal with intent UPDATE confirmed must return Error
+        // 2. Proposal with intent UPDATE confirmed without changes must return Error
         storage.saveProposal(Proposal("p_upd", "ambiguous", IntentType.UPDATE, listOf(ProposalOption("n1", "Old Title"))))
         val confirmUpdate = gateway.executeTool(ToolCall("confirm_change", mapOf(
             "proposal" to JsonPrimitive("p_upd"),
             "choice" to JsonPrimitive("n1")
         )))
         assertTrue("UPDATE via proposal must return ToolResult.Error, got $confirmUpdate", confirmUpdate is ToolResult.Error)
-        assertEquals("UPDATE is not supported yet", (confirmUpdate as ToolResult.Error).reason)
+        assertEquals("No changes specified for UPDATE: provide new_title, due_text, priority, severity, pinned, or tier", (confirmUpdate as ToolResult.Error).reason)
         assertEquals("active", storage.getNode("n1")!!.status)
         assertEquals(0, storage.loggedEvents.size)
     }
@@ -294,5 +294,62 @@ class R1RescheduleAmbiguityTest {
 
         // Proposal consumed
         assertEquals("consumed", storage.getProposal(proposalId)!!.status)
+    }
+
+    @Test
+    fun testReschedule_BlankDueText_ReturnsToWhenError_NoChange() = runBlocking {
+        val baseTime = 1_700_000_000_000L
+        val clock = FakeClock(baseTime)
+        val dateResolver = DateResolver(clock)
+        val storage = SharedFakeStorage()
+        val resolver = Resolver()
+        val gateway = Gateway(storage, resolver, dateResolver, clock)
+
+        val node = Node("n1", "task", "Doctor Appointment", "active", dueAt = baseTime + 3600000L, createdAt = baseTime, updatedAt = baseTime)
+        storage.createNodeAndCommit(node, RawEvent("u_doc", "CREATE", "node", "n1"), Reminder("r_doc", "Doctor Appointment", node.dueAt!!, "n1"))
+
+        // Blank due_text
+        val call = ToolCall("propose_change", mapOf(
+            "intent" to JsonPrimitive("RESCHEDULE"),
+            "hint" to JsonPrimitive("Doctor Appointment"),
+            "due_text" to JsonPrimitive("")
+        ))
+        val result = gateway.executeTool(call)
+
+        assertTrue("Expected Error for blank due_text, got $result", result is ToolResult.Error)
+        val err = result as ToolResult.Error
+        assertEquals("To when?", err.reason)
+
+        // Verify node and reminder untouched, no proposal saved
+        val currentNode = storage.getNode("n1")!!
+        assertEquals(baseTime + 3600000L, currentNode.dueAt)
+        assertEquals(baseTime, currentNode.updatedAt)
+        assertTrue(storage.getOpenProposals().isEmpty())
+    }
+
+    @Test
+    fun testReschedule_BlankDueText_AmbiguousTarget_ReturnsToWhenErrorBeforeResolving() = runBlocking {
+        val baseTime = 1_700_000_000_000L
+        val clock = FakeClock(baseTime)
+        val dateResolver = DateResolver(clock)
+        val storage = SharedFakeStorage()
+        val resolver = Resolver()
+        val gateway = Gateway(storage, resolver, dateResolver, clock)
+
+        val dinner1 = Node("n1", "event", "Dinner with Alice", "active", baseTime + 3600000L, createdAt = baseTime, updatedAt = baseTime)
+        val dinner2 = Node("n2", "event", "Dinner with Bob", "active", baseTime + 7200000L, createdAt = baseTime, updatedAt = baseTime)
+        storage.createNodeAndCommit(dinner1, RawEvent("u_1", "CREATE", "node", "n1"), null)
+        storage.createNodeAndCommit(dinner2, RawEvent("u_2", "CREATE", "node", "n2"), null)
+
+        val call = ToolCall("propose_change", mapOf(
+            "intent" to JsonPrimitive("RESCHEDULE"),
+            "hint" to JsonPrimitive("dinner"),
+            "due_text" to JsonPrimitive("   ")
+        ))
+        val result = gateway.executeTool(call)
+
+        assertTrue("Expected To when? before resolving ambiguous target, got $result", result is ToolResult.Error)
+        assertEquals("To when?", (result as ToolResult.Error).reason)
+        assertTrue("No proposal should be saved", storage.getOpenProposals().isEmpty())
     }
 }

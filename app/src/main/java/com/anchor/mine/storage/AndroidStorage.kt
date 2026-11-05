@@ -210,9 +210,13 @@ class AndroidStorage(private val dbHelper: SupportSQLiteOpenHelper) : Storage {
     }
 
     override suspend fun findActiveNodeByTitle(title: String): Node? = withContext(ioDispatcher) {
+        findActiveNodesByTitle(title).firstOrNull()
+    }
+
+    override suspend fun findActiveNodesByTitle(title: String): List<Node> = withContext(ioDispatcher) {
         val trimmed = title.trim()
-        val sql = "SELECT id, type, title, status, due_at, created_at, updated_at, closed_at, priority, severity, attrs, local_only FROM node WHERE (status = 'active' OR status = 'in_progress' OR status = 'paused') AND TRIM(title) = ? COLLATE NOCASE LIMIT 1"
-        queryNodes(sql, arrayOf(trimmed)).firstOrNull()
+        val sql = "SELECT id, type, title, status, due_at, created_at, updated_at, closed_at, priority, severity, attrs, local_only FROM node WHERE (status = 'active' OR status = 'in_progress' OR status = 'paused') AND TRIM(title) = ? COLLATE NOCASE ORDER BY due_at IS NULL, due_at ASC, id ASC"
+        queryNodes(sql, arrayOf(trimmed))
     }
 
     override suspend fun getNodesDueBetween(startMs: Long, endMs: Long, limit: Int): List<Node> = withContext(ioDispatcher) {

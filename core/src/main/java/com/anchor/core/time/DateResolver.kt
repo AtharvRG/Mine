@@ -7,17 +7,21 @@ package com.anchor.core.time
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
+import java.util.TimeZone
 
 sealed class DateResolution {
     data class Exact(val timeMillis: Long) : DateResolution()
     data class NeedsClarification(val candidateMillis: List<Long>, val chipLabels: List<String>) : DateResolution()
+    data object PastTime : DateResolution()
     object Failed : DateResolution()
 }
 
 class DateResolver(
     private val clock: Clock,
-    private val is24HourFormat: () -> Boolean = { false }
+    private val is24HourFormat: () -> Boolean = { false },
+    val timeZone: TimeZone = TimeZone.getDefault()
 ) {
+    constructor(clock: Clock, is24HourFormat: () -> Boolean) : this(clock, is24HourFormat, TimeZone.getDefault())
     companion object {
         private val PREFIX_RE = Regex("""^(?:in|after|within)\s+""")
         private val UNIT_RE = Regex("""(\d+)\s*(seconds?|secs?|minutes?|mins?|hours?|hrs?|days?|s|m|h|d)\b""")
@@ -26,15 +30,31 @@ class DateResolver(
         private val H_REGEX = Regex("""^(?:at\s+)?(\d{1,2})h(\d{2})?$""")
         private val COLON_REGEX = Regex("""^(?:at\s+)?(\d{1,2}):(\d{2})$""")
         private val BARE_HOUR_REGEX = Regex("""^(?:at\s+)?(\d{1,2})$""")
+
+        private val WEEKDAYS = mapOf(
+            "sunday" to Calendar.SUNDAY, "sun" to Calendar.SUNDAY,
+            "monday" to Calendar.MONDAY, "mon" to Calendar.MONDAY,
+            "tuesday" to Calendar.TUESDAY, "tue" to Calendar.TUESDAY, "tues" to Calendar.TUESDAY,
+            "wednesday" to Calendar.WEDNESDAY, "wed" to Calendar.WEDNESDAY,
+            "thursday" to Calendar.THURSDAY, "thu" to Calendar.THURSDAY, "thur" to Calendar.THURSDAY, "thurs" to Calendar.THURSDAY,
+            "friday" to Calendar.FRIDAY, "fri" to Calendar.FRIDAY,
+            "saturday" to Calendar.SATURDAY, "sat" to Calendar.SATURDAY
+        )
+        private val WEEKDAY_REGEX = Regex(
+            """^(?:(on\s+next|this\s+coming|coming|on|this|next|last|past)\s+)?""" +
+            """(sunday|sun|monday|mon|tuesday|tue|tues|wednesday|wed|thursday|thu|thur|thurs|friday|fri|saturday|sat)""" +
+            """(?:\s+(?:at\s+)?(.+))?$"""
+        )
     }
 
     fun parseDuration(text: String?): Long? {
         if (text == null) return null
         val normalized = normalizeDigits(text).lowercase(Locale.US).trim()
         if (normalized.isBlank()) return null
-        if (normalized == "in a minute" || normalized == "in a min" || normalized == "in 1 min" || normalized == "in 1 minute") return 60_000L
-        if (normalized == "in an hour" || normalized == "in 1 hr" || normalized == "in 1 hour") return 3_600_000L
-        if (normalized == "in half an hour" || normalized == "in 30 mins") return 1_800_000L
+        if (normalized == "in a minute" || normalized == "in a min" || normalized == "in 1 min" || normalized == "in 1 minute" || normalized == "a minute") return 60_000L
+        if (normalized == "in an hour" || normalized == "in 1 hr" || normalized == "in 1 hour" || normalized == "an hour") return 3_600_000L
+        if (normalized == "in half an hour" || normalized == "in a half hour" || normalized == "half an hour" || normalized == "in 30 mins") return 1_800_000L
+        if (normalized == "in a day" || normalized == "in 1 day" || normalized == "a day") return 86_400_000L
 
         var body = normalized
         var hasPrefix = false
@@ -55,17 +75,58 @@ class DateResolver(
         return if (total in 1..366L * 86_400_000L) total else null
     }
 
-    fun parse(dueText: String?, rolloverMinuteOfDay: Int = 240): Long? {
-        return (resolve(dueText, rolloverMinuteOfDay) as? DateResolution.Exact)?.timeMillis
+    fun parseOffsetDuration(text: String?): Long? {
+        if (text == null) return null
+        val normalized = normalizeDigits(text).lowercase(Locale.US).trim()
+        val cleaned = normalized
+            .replace(Regex("""\b(?:before|prior to|prior|ahead of|ahead)\b"""), "")
+            .trim()
+        return parseDuration(cleaned)
     }
 
-    fun resolve(dueText: String?, rolloverMinuteOfDay: Int = 240): DateResolution {
+    fun parse(dueText: String?, rolloverMinuteOfDay: Int = 240, timeZone: TimeZone? = null, severity: Int? = null): Long? {
+        return (resolve(dueText, rolloverMinuteOfDay, timeZone, severity) as? DateResolution.Exact)?.timeMillis
+    }
+
+    private data class DayPartWindow(val startMinute: Int, val endMinute: Int, val defaultMinute: Int)
+
+    private fun resolveDayPartWindow(part: String, severity: Int?): Pair<Int, Int>? {
+        val window = when (part) {
+            "morning" -> DayPartWindow(7 * 60, 11 * 60, 9 * 60)
+            "afternoon" -> DayPartWindow(12 * 60, 16 * 60, 14 * 60)
+            "evening" -> DayPartWindow(17 * 60, 20 * 60, 19 * 60)
+            "night" -> DayPartWindow(20 * 60, 23 * 60, 21 * 60)
+            else -> return null
+        }
+        val targetMinuteOfDay = if (severity == null) {
+            window.defaultMinute
+        } else {
+            val duration = window.endMinute - window.startMinute
+            val percent = when (severity) {
+                3 -> 10
+                2 -> 35
+                1 -> 60
+                0 -> 75
+                else -> 75
+            }
+            window.startMinute + (duration * percent / 100)
+        }
+        return Pair(targetMinuteOfDay / 60, targetMinuteOfDay % 60)
+    }
+
+    fun resolve(
+        dueText: String?,
+        rolloverMinuteOfDay: Int = 240,
+        timeZone: TimeZone? = null,
+        severity: Int? = null
+    ): DateResolution {
         if (dueText == null) return DateResolution.Failed
         val normalized = normalizeDigits(dueText).lowercase(Locale.getDefault()).trim()
         if (normalized.isBlank()) return DateResolution.Failed
 
+        val effectiveTz = timeZone ?: this.timeZone
         val now = clock.now()
-        val absCal = Calendar.getInstance().apply {
+        val absCal = Calendar.getInstance(effectiveTz).apply {
             timeInMillis = now
             set(Calendar.SECOND, 0)
             set(Calendar.MILLISECOND, 0)
@@ -83,56 +144,229 @@ class DateResolver(
         }
 
         // 2. Named dates without time
+        if (normalized == "soon") {
+            return DateResolution.Exact(now + 30 * 60 * 1000L)
+        }
+        if (normalized == "later") {
+            return DateResolution.Exact(now + 2 * 60 * 60 * 1000L)
+        }
+
+        if (normalized == "yesterday" || normalized.startsWith("yesterday at ") || normalized.startsWith("yesterday ")) {
+            return DateResolution.PastTime
+        }
         if (normalized == "tomorrow") {
-            logicalCal.add(Calendar.DAY_OF_YEAR, 1)
-            logicalCal.set(Calendar.HOUR_OF_DAY, 9)
-            logicalCal.set(Calendar.MINUTE, 0)
-            return DateResolution.Exact(logicalCal.timeInMillis)
+            val tomCal = absCal.clone() as Calendar
+            tomCal.add(Calendar.DAY_OF_YEAR, 1)
+            tomCal.set(Calendar.HOUR_OF_DAY, 9)
+            tomCal.set(Calendar.MINUTE, 0)
+            tomCal.set(Calendar.SECOND, 0)
+            tomCal.set(Calendar.MILLISECOND, 0)
+            return DateResolution.Exact(tomCal.timeInMillis)
         }
         if (normalized == "tonight") {
-            logicalCal.set(Calendar.HOUR_OF_DAY, 21)
-            logicalCal.set(Calendar.MINUTE, 0)
+            val (hr, min) = resolveDayPartWindow("night", severity) ?: Pair(21, 0)
+            logicalCal.set(Calendar.HOUR_OF_DAY, hr)
+            logicalCal.set(Calendar.MINUTE, min)
+            logicalCal.set(Calendar.SECOND, 0)
+            logicalCal.set(Calendar.MILLISECOND, 0)
             if (logicalCal.timeInMillis < now) logicalCal.add(Calendar.DAY_OF_YEAR, 1)
             return DateResolution.Exact(logicalCal.timeInMillis)
         }
-        if (normalized == "next monday") {
-            do { logicalCal.add(Calendar.DAY_OF_YEAR, 1) } while (logicalCal.get(Calendar.DAY_OF_WEEK) != Calendar.MONDAY)
-            logicalCal.set(Calendar.HOUR_OF_DAY, 9)
-            logicalCal.set(Calendar.MINUTE, 0)
-            return DateResolution.Exact(logicalCal.timeInMillis)
+
+        if (normalized == "this morning" || normalized == "today morning") {
+            val (hr, min) = resolveDayPartWindow("morning", severity) ?: Pair(9, 0)
+            val targetCal = absCal.clone() as Calendar
+            targetCal.set(Calendar.HOUR_OF_DAY, hr)
+            targetCal.set(Calendar.MINUTE, min)
+            targetCal.set(Calendar.SECOND, 0)
+            targetCal.set(Calendar.MILLISECOND, 0)
+            return if (targetCal.timeInMillis < now) DateResolution.PastTime else DateResolution.Exact(targetCal.timeInMillis)
+        }
+        if (normalized == "this afternoon" || normalized == "today afternoon") {
+            val (hr, min) = resolveDayPartWindow("afternoon", severity) ?: Pair(14, 0)
+            val targetCal = absCal.clone() as Calendar
+            targetCal.set(Calendar.HOUR_OF_DAY, hr)
+            targetCal.set(Calendar.MINUTE, min)
+            targetCal.set(Calendar.SECOND, 0)
+            targetCal.set(Calendar.MILLISECOND, 0)
+            return if (targetCal.timeInMillis < now) DateResolution.PastTime else DateResolution.Exact(targetCal.timeInMillis)
+        }
+        if (normalized == "this evening" || normalized == "today evening") {
+            val (hr, min) = resolveDayPartWindow("evening", severity) ?: Pair(19, 0)
+            val targetCal = absCal.clone() as Calendar
+            targetCal.set(Calendar.HOUR_OF_DAY, hr)
+            targetCal.set(Calendar.MINUTE, min)
+            targetCal.set(Calendar.SECOND, 0)
+            targetCal.set(Calendar.MILLISECOND, 0)
+            return if (targetCal.timeInMillis < now) DateResolution.PastTime else DateResolution.Exact(targetCal.timeInMillis)
+        }
+        if (normalized == "this night" || normalized == "today night") {
+            val (hr, min) = resolveDayPartWindow("night", severity) ?: Pair(21, 0)
+            val targetCal = absCal.clone() as Calendar
+            targetCal.set(Calendar.HOUR_OF_DAY, hr)
+            targetCal.set(Calendar.MINUTE, min)
+            targetCal.set(Calendar.SECOND, 0)
+            targetCal.set(Calendar.MILLISECOND, 0)
+            return if (targetCal.timeInMillis < now) DateResolution.PastTime else DateResolution.Exact(targetCal.timeInMillis)
+        }
+
+        val bareDayPart = when (normalized) {
+            "morning", "in the morning" -> "morning"
+            "afternoon", "in the afternoon" -> "afternoon"
+            "evening", "in the evening" -> "evening"
+            "night", "at night" -> "night"
+            else -> null
+        }
+        if (bareDayPart != null) {
+            val (hr, min) = resolveDayPartWindow(bareDayPart, severity) ?: Pair(9, 0)
+            val targetCal = absCal.clone() as Calendar
+            targetCal.set(Calendar.HOUR_OF_DAY, hr)
+            targetCal.set(Calendar.MINUTE, min)
+            targetCal.set(Calendar.SECOND, 0)
+            targetCal.set(Calendar.MILLISECOND, 0)
+            if (targetCal.timeInMillis < now) {
+                targetCal.add(Calendar.DAY_OF_YEAR, 1)
+            }
+            return DateResolution.Exact(targetCal.timeInMillis)
+        }
+
+        if (normalized == "tomorrow morning") {
+            val (hr, min) = resolveDayPartWindow("morning", severity) ?: Pair(9, 0)
+            val tomCal = absCal.clone() as Calendar
+            tomCal.add(Calendar.DAY_OF_YEAR, 1)
+            tomCal.set(Calendar.HOUR_OF_DAY, hr)
+            tomCal.set(Calendar.MINUTE, min)
+            tomCal.set(Calendar.SECOND, 0)
+            tomCal.set(Calendar.MILLISECOND, 0)
+            return DateResolution.Exact(tomCal.timeInMillis)
+        }
+        if (normalized == "tomorrow afternoon") {
+            val (hr, min) = resolveDayPartWindow("afternoon", severity) ?: Pair(14, 0)
+            val tomCal = absCal.clone() as Calendar
+            tomCal.add(Calendar.DAY_OF_YEAR, 1)
+            tomCal.set(Calendar.HOUR_OF_DAY, hr)
+            tomCal.set(Calendar.MINUTE, min)
+            tomCal.set(Calendar.SECOND, 0)
+            tomCal.set(Calendar.MILLISECOND, 0)
+            return DateResolution.Exact(tomCal.timeInMillis)
+        }
+        if (normalized == "tomorrow evening") {
+            val (hr, min) = resolveDayPartWindow("evening", severity) ?: Pair(19, 0)
+            val tomCal = absCal.clone() as Calendar
+            tomCal.add(Calendar.DAY_OF_YEAR, 1)
+            tomCal.set(Calendar.HOUR_OF_DAY, hr)
+            tomCal.set(Calendar.MINUTE, min)
+            tomCal.set(Calendar.SECOND, 0)
+            tomCal.set(Calendar.MILLISECOND, 0)
+            return DateResolution.Exact(tomCal.timeInMillis)
+        }
+        if (normalized == "tomorrow night") {
+            val (hr, min) = resolveDayPartWindow("night", severity) ?: Pair(21, 0)
+            val tomCal = absCal.clone() as Calendar
+            tomCal.add(Calendar.DAY_OF_YEAR, 1)
+            tomCal.set(Calendar.HOUR_OF_DAY, hr)
+            tomCal.set(Calendar.MINUTE, min)
+            tomCal.set(Calendar.SECOND, 0)
+            tomCal.set(Calendar.MILLISECOND, 0)
+            return DateResolution.Exact(tomCal.timeInMillis)
+        }
+
+        val weekdayMatch = WEEKDAY_REGEX.find(normalized)
+        if (weekdayMatch != null) {
+            val prefix = weekdayMatch.groupValues[1].lowercase(Locale.US)
+            if (prefix.contains("last") || prefix.contains("past")) {
+                return DateResolution.PastTime
+            }
+            val dayName = weekdayMatch.groupValues[2].lowercase(Locale.US)
+            val timePart = weekdayMatch.groupValues[3].takeIf { it.isNotBlank() }
+            val targetDay = WEEKDAYS[dayName]
+            if (targetDay != null) {
+                val targetCal = logicalCal.clone() as Calendar
+                val isSameDay = targetCal.get(Calendar.DAY_OF_WEEK) == targetDay
+                val isNext = prefix.contains("next")
+                if (isSameDay && !isNext) {
+                    if (timePart == null) {
+                        targetCal.set(Calendar.HOUR_OF_DAY, 9)
+                        targetCal.set(Calendar.MINUTE, 0)
+                        targetCal.set(Calendar.SECOND, 0)
+                        targetCal.set(Calendar.MILLISECOND, 0)
+                        if (targetCal.timeInMillis > now) {
+                            return DateResolution.Exact(targetCal.timeInMillis)
+                        } else {
+                            do {
+                                targetCal.add(Calendar.DAY_OF_YEAR, 1)
+                            } while (targetCal.get(Calendar.DAY_OF_WEEK) != targetDay)
+                            return DateResolution.Exact(targetCal.timeInMillis)
+                        }
+                    } else {
+                        val parsed = parseTimePart(timePart, severity = severity) ?: return DateResolution.Failed
+                        val sameDayResolution = resolveTargetTime(parsed, targetCal, now, allowPastRollForward = false, timeZone = effectiveTz)
+                        val hasFutureOption = when (sameDayResolution) {
+                            is DateResolution.Exact -> sameDayResolution.timeMillis > now
+                            is DateResolution.NeedsClarification -> sameDayResolution.candidateMillis.any { it > now }
+                            else -> false
+                        }
+                        if (hasFutureOption) {
+                            return sameDayResolution
+                        } else {
+                            do {
+                                targetCal.add(Calendar.DAY_OF_YEAR, 1)
+                            } while (targetCal.get(Calendar.DAY_OF_WEEK) != targetDay)
+                            return resolveTargetTime(parsed, targetCal, now, allowPastRollForward = false, timeZone = effectiveTz)
+                        }
+                    }
+                } else {
+                    do {
+                        targetCal.add(Calendar.DAY_OF_YEAR, 1)
+                    } while (targetCal.get(Calendar.DAY_OF_WEEK) != targetDay)
+
+                    if (timePart == null) {
+                        targetCal.set(Calendar.HOUR_OF_DAY, 9)
+                        targetCal.set(Calendar.MINUTE, 0)
+                        targetCal.set(Calendar.SECOND, 0)
+                        targetCal.set(Calendar.MILLISECOND, 0)
+                        return DateResolution.Exact(targetCal.timeInMillis)
+                    } else {
+                        val parsed = parseTimePart(timePart, severity = severity) ?: return DateResolution.Failed
+                        return resolveTargetTime(parsed, targetCal, now, allowPastRollForward = false, timeZone = effectiveTz)
+                    }
+                }
+            }
         }
 
         // 3. Day prefix handling
         when {
             normalized.startsWith("tomorrow at ") || normalized.startsWith("tomorrow ") -> {
                 val timePart = normalized.removePrefix("tomorrow at ").removePrefix("tomorrow ").trim()
-                val parsed = parseTimePart(timePart) ?: return DateResolution.Failed
-                logicalCal.add(Calendar.DAY_OF_YEAR, 1)
-                return resolveTargetTime(parsed, logicalCal, now, allowPastRollForward = false)
+                val parsed = parseTimePart(timePart, severity = severity) ?: return DateResolution.Failed
+                val tomCal = absCal.clone() as Calendar
+                tomCal.add(Calendar.DAY_OF_YEAR, 1)
+                return resolveTargetTime(parsed, tomCal, now, allowPastRollForward = false, timeZone = effectiveTz)
             }
             normalized.startsWith("today at ") || normalized.startsWith("today ") -> {
                 val timePart = normalized.removePrefix("today at ").removePrefix("today ").trim()
-                val parsed = parseTimePart(timePart) ?: return DateResolution.Failed
+                val parsed = parseTimePart(timePart, severity = severity) ?: return DateResolution.Failed
                 if (isLateNight) {
                     logicalCal.add(Calendar.DAY_OF_YEAR, 1)
                 }
-                return resolveTargetTime(parsed, logicalCal, now, allowPastRollForward = false)
+                return resolveTargetTime(parsed, logicalCal, now, allowPastRollForward = false, timeZone = effectiveTz)
             }
             normalized.startsWith("tonight at ") || normalized.startsWith("tonight ") -> {
                 val timePart = normalized.removePrefix("tonight at ").removePrefix("tonight ").trim()
-                val parsed = parseTimePart(timePart, defaultToEvening = true) ?: return DateResolution.Failed
+                val parsed = parseTimePart(timePart, defaultToEvening = true, severity = severity) ?: return DateResolution.Failed
                 if (isLateNight) {
                     logicalCal.add(Calendar.DAY_OF_YEAR, 1)
                 }
                 if (parsed.hour == 0) {
                     logicalCal.add(Calendar.DAY_OF_YEAR, 1)
                 }
-                return resolveTargetTime(parsed, logicalCal, now, allowPastRollForward = false)
+                val allowRoll = parsed.isAmbiguousBare12
+                return resolveTargetTime(parsed, logicalCal, now, allowPastRollForward = allowRoll, timeZone = effectiveTz)
             }
             else -> {
                 val timePart = if (normalized.startsWith("at ")) normalized.removePrefix("at ").trim() else normalized
-                val parsed = parseTimePart(timePart) ?: return DateResolution.Failed
-                return resolveTargetTime(parsed, absCal, now, allowPastRollForward = true)
+                val parsed = parseTimePart(timePart, severity = severity) ?: return DateResolution.Failed
+                return resolveTargetTime(parsed, absCal, now, allowPastRollForward = true, timeZone = effectiveTz)
             }
         }
     }
@@ -143,8 +377,28 @@ class DateResolver(
         val isAmbiguousBare12: Boolean
     )
 
-    private fun parseTimePart(timeStr: String, defaultToEvening: Boolean = false): ParsedTime? {
-        val text = timeStr.trim()
+    private fun parseTimePart(timeStr: String, defaultToEvening: Boolean = false, severity: Int? = null): ParsedTime? {
+        val text = timeStr.trim().lowercase(Locale.US)
+
+        // Pattern 0: named day-part words ("morning", "afternoon", "evening", "night", "in the morning", etc.)
+        when (text) {
+            "morning", "in the morning" -> {
+                val (hr, min) = resolveDayPartWindow("morning", severity) ?: Pair(9, 0)
+                return ParsedTime(hr, min, isAmbiguousBare12 = false)
+            }
+            "afternoon", "in the afternoon" -> {
+                val (hr, min) = resolveDayPartWindow("afternoon", severity) ?: Pair(14, 0)
+                return ParsedTime(hr, min, isAmbiguousBare12 = false)
+            }
+            "evening", "in the evening" -> {
+                val (hr, min) = resolveDayPartWindow("evening", severity) ?: Pair(19, 0)
+                return ParsedTime(hr, min, isAmbiguousBare12 = false)
+            }
+            "night", "at night" -> {
+                val (hr, min) = resolveDayPartWindow("night", severity) ?: Pair(21, 0)
+                return ParsedTime(hr, min, isAmbiguousBare12 = false)
+            }
+        }
 
         // Pattern 1: explicit am/pm
         AM_PM_REGEX.find(text)?.let { m ->
@@ -163,12 +417,36 @@ class DateResolver(
             val min = m.groupValues[2].takeIf { it.isNotEmpty() }?.toInt() ?: 0
             val part = m.groupValues[3]
             if (hr !in 1..12 || min !in 0..59) return null
-            if (part == "morning" || (part == "night" && hr == 12)) {
-                if (hr == 12) hr = 0
-            } else {
-                if (hr < 12) hr += 12
+
+            when (part) {
+                "night" -> {
+                    when (hr) {
+                        12 -> return ParsedTime(0, min, isAmbiguousBare12 = false)
+                        in 6..11 -> return ParsedTime(hr + 12, min, isAmbiguousBare12 = false)
+                        else -> return ParsedTime(hr, min, isAmbiguousBare12 = true)
+                    }
+                }
+                "evening" -> {
+                    when (hr) {
+                        12 -> return ParsedTime(12, min, isAmbiguousBare12 = true)
+                        else -> return ParsedTime(if (hr < 12) hr + 12 else hr, min, isAmbiguousBare12 = false)
+                    }
+                }
+                "afternoon" -> {
+                    when (hr) {
+                        12 -> return ParsedTime(12, min, isAmbiguousBare12 = true)
+                        in 1..5 -> return ParsedTime(hr + 12, min, isAmbiguousBare12 = false)
+                        else -> return ParsedTime(hr, min, isAmbiguousBare12 = true)
+                    }
+                }
+                "morning" -> {
+                    when (hr) {
+                        12 -> return ParsedTime(0, min, isAmbiguousBare12 = false)
+                        else -> return ParsedTime(hr, min, isAmbiguousBare12 = false)
+                    }
+                }
+                else -> return null
             }
-            return ParsedTime(hr, min, isAmbiguousBare12 = false)
         }
 
         // Pattern 3: "15h" or "15h30"
@@ -195,8 +473,12 @@ class DateResolver(
             val min = m.groupValues[2].toInt()
             if (hr !in 0..23 || min !in 0..59) return null
             if (defaultToEvening) {
-                val finalHr = if (hr == 12) 0 else if (hr < 12) hr + 12 else hr
-                return ParsedTime(finalHr, min, isAmbiguousBare12 = false)
+                return when (hr) {
+                    12 -> ParsedTime(0, min, isAmbiguousBare12 = false)
+                    in 6..11 -> ParsedTime(hr + 12, min, isAmbiguousBare12 = false)
+                    in 1..5 -> ParsedTime(hr, min, isAmbiguousBare12 = true)
+                    else -> ParsedTime(hr, min, isAmbiguousBare12 = false)
+                }
             }
             if (hr == 0 || hr in 13..23) {
                 return ParsedTime(hr, min, isAmbiguousBare12 = false)
@@ -209,8 +491,12 @@ class DateResolver(
             val hr = m.groupValues[1].toInt()
             if (hr !in 0..23) return null
             if (defaultToEvening) {
-                val finalHr = if (hr == 12) 0 else if (hr < 12) hr + 12 else hr
-                return ParsedTime(finalHr, 0, isAmbiguousBare12 = false)
+                return when (hr) {
+                    12 -> ParsedTime(0, 0, isAmbiguousBare12 = false)
+                    in 6..11 -> ParsedTime(hr + 12, 0, isAmbiguousBare12 = false)
+                    in 1..5 -> ParsedTime(hr, 0, isAmbiguousBare12 = true)
+                    else -> ParsedTime(hr, 0, isAmbiguousBare12 = false)
+                }
             }
             if (hr == 0 || hr in 13..23) {
                 return ParsedTime(hr, 0, isAmbiguousBare12 = false)
@@ -225,7 +511,8 @@ class DateResolver(
         parsed: ParsedTime,
         baseCal: Calendar,
         now: Long,
-        allowPastRollForward: Boolean
+        allowPastRollForward: Boolean,
+        timeZone: TimeZone = this.timeZone
     ): DateResolution {
         if (!parsed.isAmbiguousBare12) {
             val targetCal = baseCal.clone() as Calendar
@@ -238,7 +525,7 @@ class DateResolver(
                 if (allowPastRollForward) {
                     targetCal.add(Calendar.DAY_OF_YEAR, 1)
                 } else {
-                    return DateResolution.Failed
+                    return DateResolution.PastTime
                 }
             }
             return DateResolution.Exact(targetCal.timeInMillis)
@@ -264,18 +551,54 @@ class DateResolver(
             } else {
                 val amPassed = calAm.timeInMillis < now
                 val pmPassed = calPm.timeInMillis < now
-                if (amPassed && pmPassed) return DateResolution.Failed
+                if (amPassed && pmPassed) return DateResolution.PastTime
                 if (amPassed) return DateResolution.Exact(calPm.timeInMillis)
             }
 
             val chipLabels = listOf(
-                String.format(Locale.US, "%02d:%02d", hrAm, parsed.minute),
-                String.format(Locale.US, "%02d:%02d", hrPm, parsed.minute)
+                formatTimeOfDay(calAm.timeInMillis, timeZone),
+                formatTimeOfDay(calPm.timeInMillis, timeZone)
             )
             return DateResolution.NeedsClarification(
                 candidateMillis = listOf(calAm.timeInMillis, calPm.timeInMillis),
                 chipLabels = chipLabels
             )
+        }
+    }
+
+    fun formatTimeOnly(timeMillis: Long, timeZone: TimeZone? = null): String {
+        return formatChipLabel(timeMillis, timeZone = timeZone)
+    }
+
+    fun formatChipLabel(timeMillis: Long, now: Long = clock.now(), timeZone: TimeZone? = null): String {
+        val effectiveTz = timeZone ?: this.timeZone
+        val calNow = Calendar.getInstance(effectiveTz).apply {
+            timeInMillis = now
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        val calTarget = Calendar.getInstance(effectiveTz).apply {
+            timeInMillis = timeMillis
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        val timeStr = formatTimeOfDay(timeMillis, effectiveTz)
+        val diffDays = ((calTarget.timeInMillis - calNow.timeInMillis) / 86_400_000L).toInt()
+        return when {
+            diffDays == 1 -> "Tomorrow $timeStr"
+            diffDays in 2..6 -> {
+                val dayName = SimpleDateFormat("EEE", Locale.US).apply { this.timeZone = effectiveTz }.format(timeMillis)
+                "$dayName $timeStr"
+            }
+            diffDays > 6 -> {
+                val dateStr = SimpleDateFormat("EEE d MMM", Locale.US).apply { this.timeZone = effectiveTz }.format(timeMillis)
+                "$dateStr, $timeStr"
+            }
+            else -> timeStr
         }
     }
 
@@ -295,8 +618,9 @@ class DateResolver(
         return sb.toString()
     }
 
-    fun getLogicalDayStart(timeMillis: Long, rolloverMinuteOfDay: Int): Long {
-        val cal = Calendar.getInstance().apply { timeInMillis = timeMillis }
+    fun getLogicalDayStart(timeMillis: Long, rolloverMinuteOfDay: Int, timeZone: TimeZone? = null): Long {
+        val effectiveTz = timeZone ?: this.timeZone
+        val cal = Calendar.getInstance(effectiveTz).apply { timeInMillis = timeMillis }
         val currentMin = cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE)
         if (currentMin < rolloverMinuteOfDay) {
             cal.add(Calendar.DAY_OF_YEAR, -1)
@@ -308,13 +632,15 @@ class DateResolver(
         return cal.timeInMillis
     }
 
-    fun format(timeMillis: Long): String {
+    fun format(timeMillis: Long, timeZone: TimeZone? = null): String {
+        val effectiveTz = timeZone ?: this.timeZone
         val pattern = if (is24HourFormat()) "EEE d MMM, HH:mm" else "EEE d MMM, h:mm a"
-        return SimpleDateFormat(pattern, Locale.US).format(timeMillis)
+        return SimpleDateFormat(pattern, Locale.US).apply { this.timeZone = effectiveTz }.format(timeMillis)
     }
 
-    fun formatTimeOfDay(timeMillis: Long): String {
+    fun formatTimeOfDay(timeMillis: Long, timeZone: TimeZone? = null): String {
+        val effectiveTz = timeZone ?: this.timeZone
         val pattern = if (is24HourFormat()) "HH:mm" else "h:mm a"
-        return SimpleDateFormat(pattern, Locale.US).format(timeMillis)
+        return SimpleDateFormat(pattern, Locale.US).apply { this.timeZone = effectiveTz }.format(timeMillis)
     }
 }

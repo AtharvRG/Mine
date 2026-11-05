@@ -223,7 +223,7 @@ class ContextBuilderTest {
             activeNodes = mutableListOf(staleNode, activeNode)
         }
 
-        val staleNodes = storage.getStaleNodes(30L * 24 * 3600 * 1000L, now = now)
+        val staleNodes = storage.getStaleNodes(now)
         assertEquals(1, staleNodes.size)
         assertEquals("stale_1", staleNodes[0].id)
     }

@@ -56,8 +56,8 @@ object PresetQuotes {
             QuoteSlot.EVENING -> eveningQuotes
             QuoteSlot.NIGHT -> nightQuotes
         }
-        val hash = abs("$slot:$dayKey".hashCode())
-        val index = hash % pool.size
+        val hash = "$slot:$dayKey".hashCode()
+        val index = Math.floorMod(hash, pool.size)
         return pool[index]
     }
 }

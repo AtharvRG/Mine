@@ -105,10 +105,11 @@ class R2CandidateSelectionTest {
             )
         )
 
-        assertTrue("Must return ToolResult.Error for duplicate title, got: $result", result is ToolResult.Error)
-        val error = result as ToolResult.Error
-        assertTrue("Error message must state active item already exists: ${error.reason}",
-            error.reason.contains("already exists", ignoreCase = true) && error.reason.contains("Walk the dog"))
+        assertTrue("Must return ToolResult.NeedsConfirm for duplicate title under P1-B 17, got: $result", result is ToolResult.NeedsConfirm)
+        val needsConfirm = result as ToolResult.NeedsConfirm
+        assertTrue("Message must state similar item already exists: ${needsConfirm.message}",
+            needsConfirm.message.contains("already exists", ignoreCase = true) && needsConfirm.message.contains("Walk the dog"))
+        assertEquals(listOf("Update existing", "Add anyway", "Cancel"), needsConfirm.options)
     }
 
     @Test

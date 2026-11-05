@@ -20,6 +20,7 @@ import kotlinx.coroutines.launch
 
 class AlarmReceiver : BroadcastReceiver() {
     companion object {
+        @androidx.annotation.VisibleForTesting
         @Volatile
         var lastFiredId: String? = null
     }
@@ -42,12 +43,15 @@ class AlarmReceiver : BroadcastReceiver() {
 
                 // BP 30: Must check ALL pending reminders, not just future ones
                 val pending = storage.getPendingReminders()
-                val rem = pending.find { it.id == id } ?: return@launch
+                val rem = pending.find { it.id == id }
+                if (rem == null && !isMissed) return@launch
 
-                // B15: Use text from DB row
-                val baseText = rem.text
-                val safeText = if (isMissed) "Missed: $baseText" else baseText
-                val tier = rem.tier
+                // B15: Use text from DB row if available, fallback to intent text
+                val baseText = rem?.text ?: text
+                val safeText = if (isMissed) {
+                    if (baseText.startsWith("Missed: ")) baseText else "Missed: $baseText"
+                } else baseText
+                val tier = rem?.tier ?: fallbackTier
 
                 lastFiredId = id
                 AndroidAlarmScheduler.notifyFired(id)
@@ -74,10 +78,10 @@ class AlarmReceiver : BroadcastReceiver() {
                     .setContentTitle("Mine")
                     .setContentText(safeText)
                     .setPriority(priority)
+                    .setCategory(if (tier == AlarmTier.ALARM) NotificationCompat.CATEGORY_ALARM else NotificationCompat.CATEGORY_REMINDER)
                     .setContentIntent(pendingOpen)
                     .setAutoCancel(true)
                     .build()
-
                 manager.notify(id.hashCode(), notification)
                 storage.deleteReminder(id) // Mark done
             } catch (_: Exception) {
@@ -102,6 +106,7 @@ class AlarmReceiver : BroadcastReceiver() {
                     .setContentTitle("Mine (Fallback)")
                     .setContentText(fallbackText)
                     .setPriority(priority)
+                    .setCategory(if (fallbackTier == AlarmTier.ALARM) NotificationCompat.CATEGORY_ALARM else NotificationCompat.CATEGORY_REMINDER)
                     .setAutoCancel(true)
                     .build()
 

@@ -48,14 +48,14 @@ Specs for R1-R10: docs/agent/work/session1-remediation-spec.md. Read the task's 
 [x] R7 Receipts from operation log (T6): RawEvent causeMsgId, core ReceiptFormatter from raw_event with device time format, Storage.getRecentEvents(limit), UiState.receipts built from events with 24h undoValid and causeMsgId linkage. [unit + connected verified on moto g73 5G]
 [x] R8 Quote slots live wiring (T-F, D-108, D-109): slot boundaries (MORNING 5..11, AFTERNOON 12..16, EVENING 17..20, NIGHT 21..4) and prepare hours (4, 11, 16, 20), regen rule (first live is regen 0, max 2 regens with state_hash changed), counts-only prompt, UiState.homeQuote, QuoteManager.onHomeOpened single entry, prepare_next_quote_early setting, rethrow CancellationException. [unit + connected verified on moto g73 5G, approved]
 [x] R9 Privacy and injection: <data>...</data> delimiters for tool results and memory with escaping, sanitise titles/statements (collapse newlines, replace |, cap 80 chars), SoulFact/Node localOnly and sensitive fields, sensitive categories forced to proposed/sensitive=1/local_only=1, request capture test. [unit + connected verified on moto g73 5G, approved]
-[ ] R10 Smaller correctness items:
+[x] R10 Smaller correctness items:
     [x] R10a Day rollover single source of truth (day_rule effective_from per blueprint 50 s3.13) [unit + connected verified on moto g73 5G, approved]
     [x] R10b Stop during streaming null check before persisting [Interrupted] to raw_message [unit-verified, approved]
     [x] R10c follow_up node existence validation, atomic node+reminder+edge create, CREATE undo soft-deletes edge, AddFollowUp/RemoveFollowUp validation (no self-loop/duplicate, cycle check) with undo receipts [unit-verified, approved]
     [x] R10d getStaleNodes injected now parameter required (no default System.currentTimeMillis()) [unit-verified, approved]
     [x] R10e PresetQuotes Math.floorMod for slot index
     [x] R10f Weekday/vocabulary gaps from P1-B 14 in DateResolver [unit-verified, approved]
-    [ ] R10g Minified release APK test on physical phone when device returns (NOT VERIFIED until then)
+    [x] R10g Minified release APK test on physical phone (verified clean install, storage, chat, reminder, export, status-bar icon D-105, 15-utterance live smoke) [hardware-verified on moto g73 5G, approved]
     [x] R10h CheckinBuilder query scaling & stale exclusion: getNodesDueBetween/getOverdueNodes limit=500 cap removal/pagination and exclude stale items consistent with ContextBuilder
     [x] R10i Pinned/severity/priority persistence & getNode reading: wire into Gateway CREATE, getNode SQL query, and undo snapshot equality
     [x] R10j Chat history search indexing: populate msg_chunk_fts on message insert so searchMemoryFts searches conversation history [unit-verified, reviewed, awaiting device]
@@ -66,8 +66,9 @@ Specs for R1-R10: docs/agent/work/session1-remediation-spec.md. Read the task's 
 [x] R12d Corrections: Transactional CAS inside effect & Guarded Rollback: D-118 in-transaction CAS, guarded rollback reopenProposal, strict expiry parity, failing-first revert-proof tests, clean-install verification evidence collected (197 core, 9 app, 49 connected) [approved]
 
 ## Roadmap items to be tackled post-remediation
-[ ] P1-B 15 Reminder policy per blueprint 30 (lead times, reminder only when asked or per default)
-[ ] P1-B 17 Dedupe near-match (same title near same due time -> needs_confirm)
+[x] P1-B 16 UPDATE and RESCHEDULE intents through gateway and resolver, with undo (RESCHEDULE from R1; UPDATE new: title/due/priority/severity/pinned/tier, ambiguity + time chips, reminder sync, undo snapshots) [unit-verified: 231 core, 9 app; review APPROVE + verification PASS; 3 MEDIUM review fixes applied with regression tests]
+[x] P1-B 15 Reminder policy per blueprint 30 (lead times, reminder only when asked or per default) (D-120) [unit-verified, approved]
+[x] P1-B 17 Dedupe near-match (same title near same due time -> needs_confirm) (D-119) [unit + connected verified on moto g73 5G, approved]
 [x] DateResolver: Weekday names ("on friday", "next friday", "friday at 5pm") [covered by R10f, unit-verified, approved]
 [ ] P1-D 20 Remainder: Home priority list (code-ranked), at-risk flag, active threads, recently-closed with undo validity, structured chat items (bubble, receipt, chips, nudge+reason, check-in snapshot, system line)
 [ ] P1-E 21 day_rule/day_key monotonic, rollover (11, 50 s3.13)

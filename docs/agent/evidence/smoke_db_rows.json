@@ -1,0 +1,287 @@
+{
+  "raw_message": [
+    {
+      "id": "u_b68abebb-f0b2-431a-b956-d45b7381b72c",
+      "role": "user",
+      "content": "remind me to check oven in 1 min",
+      "ts_utc": 1793888828639
+    },
+    {
+      "id": "a_2e9fe8fc-30fc-4b61-b9fa-bc401bd0a272",
+      "role": "assistant",
+      "content": "Setting a reminder to check oven.",
+      "ts_utc": 1793888829606
+    },
+    {
+      "id": "u_c05de35f-6019-4869-8c58-f679653c8b19",
+      "role": "user",
+      "content": "remaind me to check my laptop in 10 secs",
+      "ts_utc": 1793888830158
+    },
+    {
+      "id": "a_74f41145-5c92-4c17-9515-3c80a1885ef8",
+      "role": "assistant",
+      "content": "Setting a reminder to check laptop.",
+      "ts_utc": 1793888831097
+    },
+    {
+      "id": "u_7f8d68c5-d14a-49e4-a876-6bcd11204de9",
+      "role": "user",
+      "content": "cue me in after 2 mins",
+      "ts_utc": 1793888831689
+    },
+    {
+      "id": "a_cde06c11-a11a-4855-8da6-aa58b4ba4139",
+      "role": "assistant",
+      "content": "For what?",
+      "ts_utc": 1793888832276
+    },
+    {
+      "id": "u_7c54f769-0343-411c-9e62-588b0494c585",
+      "role": "user",
+      "content": "for checking laptop",
+      "ts_utc": 1793888832813
+    },
+    {
+      "id": "a_fc5b0330-b0e6-40bd-b5f3-bcbe2d6a3303",
+      "role": "assistant",
+      "content": "An active item named 'Check laptop' already exists.",
+      "ts_utc": 1793888833601
+    },
+    {
+      "id": "u_e292102c-b395-4d44-a530-e68c2e285e75",
+      "role": "user",
+      "content": "notify me in 2 mins",
+      "ts_utc": 1793888834151
+    },
+    {
+      "id": "a_d833264b-de68-4f17-ab8b-7c40d5522fdb",
+      "role": "assistant",
+      "content": "For what?",
+      "ts_utc": 1793888834802
+    },
+    {
+      "id": "u_f047d34a-26e5-4919-9578-36811920f3ea",
+      "role": "user",
+      "content": "no reason, just an alarm",
+      "ts_utc": 1793888835374
+    },
+    {
+      "id": "a_03b7c41c-c3a8-435c-8c96-9206ea18a862",
+      "role": "assistant",
+      "content": "Alarm set.",
+      "ts_utc": 1793888836144
+    },
+    {
+      "id": "u_edea5ebe-c181-4b99-9aa4-804ef37613a9",
+      "role": "user",
+      "content": "notify me in 2 mins for coffee",
+      "ts_utc": 1793888836696
+    },
+    {
+      "id": "a_ee7d692a-e7d2-4059-a546-aad2ad48346a",
+      "role": "assistant",
+      "content": "Setting a reminder for coffee.",
+      "ts_utc": 1793888837490
+    },
+    {
+      "id": "u_5456f16a-5902-4e3b-bd09-eff9307a7065",
+      "role": "user",
+      "content": "give me a heads up in 1 mins",
+      "ts_utc": 1793888838033
+    },
+    {
+      "id": "a_6e825e7a-019c-42db-89e9-2e5d3310ef20",
+      "role": "assistant",
+      "content": "For what?",
+      "ts_utc": 1793888838874
+    },
+    {
+      "id": "u_37928c41-4a5f-4107-b7ce-c03050307960",
+      "role": "user",
+      "content": "remind me to take bread out in 2 min 32 seconds",
+      "ts_utc": 1793888839456
+    },
+    {
+      "id": "a_42abb4c3-f1fe-4aea-b0e7-36fa5d7d06c8",
+      "role": "assistant",
+      "content": "Setting a reminder to take bread out.",
+      "ts_utc": 1793888839982
+    },
+    {
+      "id": "u_2965b2fb-9cc2-4ef1-9c31-9af37dd153cf",
+      "role": "user",
+      "content": "remind me at 5 to call doctor",
+      "ts_utc": 1793888840580
+    },
+    {
+      "id": "a_efc5be2a-49ee-4717-bb8b-bd94789483bb",
+      "role": "assistant",
+      "content": "Setting a reminder to call doctor.",
+      "ts_utc": 1793888841342
+    },
+    {
+      "id": "u_6d267aa1-5912-4e59-ad4e-a82e1bab9a18",
+      "role": "user",
+      "content": "remind me to submit report tomorrow at 4pm",
+      "ts_utc": 1793888841906
+    },
+    {
+      "id": "a_eb041f9c-eae9-4486-a57a-11ff7abf6716",
+      "role": "assistant",
+      "content": "Setting a reminder to submit report.",
+      "ts_utc": 1793888842491
+    },
+    {
+      "id": "u_395744d1-b57e-41fc-9329-bf410fd6d80c",
+      "role": "user",
+      "content": "remind me in २ mins to take medicine",
+      "ts_utc": 1793888843024
+    },
+    {
+      "id": "a_a59261e7-fe26-4024-b5c0-18a71e333e50",
+      "role": "assistant",
+      "content": "Setting a reminder to take medicine.",
+      "ts_utc": 1793888843508
+    },
+    {
+      "id": "u_a7fcba16-c546-45c2-be38-a91bbddc3cc7",
+      "role": "user",
+      "content": "remind me to prepare the presentation slides for the quarterly review meeting tomorrow at 10am",
+      "ts_utc": 1793888844047
+    },
+    {
+      "id": "a_c8706d20-e30a-44e1-b9e5-7b4069f06715",
+      "role": "assistant",
+      "content": "Setting a reminder to prepare presentation slides for the quarterly review meeting.",
+      "ts_utc": 1793888844635
+    },
+    {
+      "id": "u_7d3d42de-8890-4741-95df-30afed9668f6",
+      "role": "user",
+      "content": "remind me to buy 🍎 and 🥛 at 6pm",
+      "ts_utc": 1793888845165
+    },
+    {
+      "id": "a_249243b5-8095-422e-a647-7a112d064333",
+      "role": "assistant",
+      "content": "Setting a reminder to buy 🍎 and 🥛.",
+      "ts_utc": 1793888845753
+    },
+    {
+      "id": "u_dd450004-85a4-4039-a785-5722862cd68d",
+      "role": "user",
+      "content": "remind me to call mom at 6 and cancel the gym thing",
+      "ts_utc": 1793888846284
+    },
+    {
+      "id": "a_82bc84a7-a4bc-416c-81e2-0c3493e21b69",
+      "role": "assistant",
+      "content": "Reminder set to call mom at 6pm.",
+      "ts_utc": 1793888847287
+    }
+  ],
+  "node": [
+    {
+      "id": "n_gym_seed",
+      "title": "Gym session",
+      "type": "task",
+      "status": "cancelled",
+      "created_at": 1793888827757
+    },
+    {
+      "id": "n_892e6e90",
+      "title": "Check oven",
+      "type": "task",
+      "status": "active",
+      "due_at": 1793888889536,
+      "created_at": 1793888829539
+    },
+    {
+      "id": "n_6f5c2353",
+      "title": "Check laptop",
+      "type": "task",
+      "status": "active",
+      "due_at": 1793888841037,
+      "created_at": 1793888831047
+    },
+    {
+      "id": "n_bce92a74",
+      "title": "02:00 Alarm",
+      "type": "task",
+      "status": "active",
+      "due_at": 1793888956086,
+      "created_at": 1793888836093
+    }
+  ],
+  "reminder": [
+    {
+      "id": "r_n_6f5c2353",
+      "node_id": "n_6f5c2353",
+      "text": "Check laptop",
+      "fire_at": 1793888841037,
+      "tier": "alarm"
+    },
+    {
+      "id": "r_n_892e6e90",
+      "node_id": "n_892e6e90",
+      "text": "Check oven",
+      "fire_at": 1793888889536,
+      "tier": "alarm"
+    },
+    {
+      "id": "r_n_bce92a74",
+      "node_id": "n_bce92a74",
+      "text": "02:00 Alarm",
+      "fire_at": 1793888956086,
+      "tier": "alarm"
+    }
+  ],
+  "raw_event": [
+    {
+      "op_id": "u_seed",
+      "op_type": "CREATE",
+      "target_type": "node",
+      "target_id": "n_gym_seed",
+      "ts_utc": 1793888827757
+    },
+    {
+      "op_id": "u_b8a605",
+      "op_type": "CREATE",
+      "target_type": "node",
+      "target_id": "n_892e6e90",
+      "after_json": "{\"node\":{\"id\":\"n_892e6e90\",\"type\":\"task\",\"title\":\"Check oven\",\"status\":\"active\",\"dueAt\":1793888889536,\"createdAt\":1793888829539,\"updatedAt\":1793888829539},\"reminder\":{\"id\":\"r_n_892e6e90\",\"text\":\"Check oven\",\"fireAtMillis\":1793888889536,\"nodeId\":\"n_892e6e90\"}}",
+      "ts_utc": 1793888829539,
+      "cause_msg_id": "u_b68abebb-f0b2-431a-b956-d45b7381b72c"
+    },
+    {
+      "op_id": "u_4e7898",
+      "op_type": "CREATE",
+      "target_type": "node",
+      "target_id": "n_6f5c2353",
+      "after_json": "{\"node\":{\"id\":\"n_6f5c2353\",\"type\":\"task\",\"title\":\"Check laptop\",\"status\":\"active\",\"dueAt\":1793888841037,\"createdAt\":1793888831047,\"updatedAt\":1793888831047},\"reminder\":{\"id\":\"r_n_6f5c2353\",\"text\":\"Check laptop\",\"fireAtMillis\":1793888841037,\"nodeId\":\"n_6f5c2353\"}}",
+      "ts_utc": 1793888831047,
+      "cause_msg_id": "u_c05de35f-6019-4869-8c58-f679653c8b19"
+    },
+    {
+      "op_id": "u_7c6781",
+      "op_type": "CREATE",
+      "target_type": "node",
+      "target_id": "n_bce92a74",
+      "after_json": "{\"node\":{\"id\":\"n_bce92a74\",\"type\":\"task\",\"title\":\"02:00 Alarm\",\"status\":\"active\",\"dueAt\":1793888956086,\"createdAt\":1793888836093,\"updatedAt\":1793888836093},\"reminder\":{\"id\":\"r_n_bce92a74\",\"text\":\"02:00 Alarm\",\"fireAtMillis\":1793888956086,\"nodeId\":\"n_bce92a74\"}}",
+      "ts_utc": 1793888836093,
+      "cause_msg_id": "u_f047d34a-26e5-4919-9578-36811920f3ea"
+    },
+    {
+      "op_id": "u_cd1b8e",
+      "op_type": "CANCEL",
+      "target_type": "node",
+      "target_id": "n_gym_seed",
+      "before_json": "{\"node\":{\"id\":\"n_gym_seed\",\"type\":\"task\",\"title\":\"Gym session\",\"status\":\"active\",\"createdAt\":1793888827757},\"reminder\":null}",
+      "after_json": "{\"node\":{\"id\":\"n_gym_seed\",\"type\":\"task\",\"title\":\"Gym session\",\"status\":\"cancelled\",\"createdAt\":1793888827757,\"updatedAt\":1793888847268,\"closedAt\":1793888847268},\"reminder\":null}",
+      "ts_utc": 1793888847271,
+      "cause_msg_id": "u_dd450004-85a4-4039-a785-5722862cd68d"
+    }
+  ],
+  "proposal": []
+}

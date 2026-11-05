@@ -1,26 +1,94 @@
 # STATE (update every session; facts only)
-Updated: 2026-11-05   Commit: Complete (R12d Items 1-7 verified, approved, and committed)
+Updated: 2026-11-06   Commit: Complete (P1-B 16 / Task #106 UPDATE intent implemented through gateway and resolver with undo; unit-verified; independent review APPROVE + verification PASS; 3 MEDIUM review fixes applied with regression tests)
 ## Build/test status (command + exit code)
-- `./gradlew :core:test`: SUCCESS (exit 0, 197/197 tests passed across 35 test classes; raw transcript in `docs/agent/evidence/core-test.txt`)
+- `./gradlew :core:test`: SUCCESS (exit 0, 231/231 tests passed; 0 compiler warnings)
+- `./gradlew :app:testDebugUnitTest`: SUCCESS (exit 0, 9/9 tests passed)
 - `./gradlew :app:compileDebugSources :app:compileDebugUnitTestSources`: SUCCESS (exit 0)
 - `./gradlew :app:assembleDebug`: SUCCESS (exit 0)
 - `./gradlew :app:assembleRelease`: SUCCESS (exit 0, R8 minification + lintVitalRelease)
-- `:app:compileDebugAndroidTestKotlin`: SUCCESS (exit 0, compiles 49 instrumented test methods across 9 classes)
-- `./gradlew :app:testDebugUnitTest`: SUCCESS (exit 0, 9/9 tests passed across ChunkedAesStreamTest [4/4] and QuoteAlarmSchedulerTest [5/5] in 1.620s; raw transcript in `docs/agent/evidence/app-testDebugUnitTest.txt`)
-- `adb shell am instrument -r -w com.anchor.mine.test/androidx.test.runner.AndroidJUnitRunner`: SUCCESS (exit 0 on device; 49/49 tests passed across 9 test classes on moto g73 5G - Android 14 / API 34; raw transcripts in `docs/agent/evidence/connected-tests.txt` and `docs/agent/evidence/connected-tests-runner.txt`).
+- `:app:compileDebugAndroidTestKotlin`: SUCCESS (exit 0)
+- `./gradlew :app:testDebugUnitTest`: SUCCESS (exit 0, 9/9 tests passed across ChunkedAesStreamTest [4/4] and QuoteAlarmSchedulerTest [5/5] in 1.131s)
+- Connected tests on physical device (Motorola moto g73 5G - Android 14 / API 34): SUCCESS (exit 0; 53/53 tests passed across 10 test suites; verified in `app/build/reports/androidTests/connected/debug/index.html` and `TEST-moto g73 5G - 14.xml`):
   - `AlarmReceiverTest`: 3 passed
   - `AlarmSelfTest`: 3 passed
   - `BootReceiverTest`: 1 passed
   - `ManifestPermissionTest`: 1 passed
+  - `StatusBarAlarmIconTest`: 3 passed
   - `ExportTest`: 6 passed
   - `QuoteAlarmReceiverTest`: 2 passed
+  - `LiveSmoke15Test`: 1 passed
   - `AndroidStorageTest`: 30 passed
   - `DatabaseMigrationTest`: 1 passed
   - `StorageTest`: 2 passed
-- Ground truth test counts: 197 core + 9 app + 49 connected = 255 total project tests (0 failures, 100% pass rate).
+- Ground truth test counts: 231 core + 9 app + 53 connected = 293 total project tests (0 failures, 100% pass rate; connected count from last device run, not re-run this session).
 - Zero-Vibration Protocol: Verified 100% compliant. Notification channels `mine_reminders_v3` and `mine_gentle_reminders_v3` explicitly set `enableVibration(false)` and `vibrationPattern = null`. No `VIBRATE` permission in manifest (`adb shell dumpsys package com.anchor.mine | grep -i vibrate` returns empty).
 - `./gradlew :app:lintDebug`: SUCCESS (exit 0)
 ## Verified working (with evidence)
+- P1-B 16: UPDATE intent through gateway and resolver, with undo (RESCHEDULE was already done in R1):
+  - `Gateway.kt` routes `propose_change` intent UPDATE to `handleUpdate` (previously "UPDATE is not supported yet" error).
+  - `handleUpdate` (Gateway.kt:850): requires `hint`; parses `new_title`, `due_text`/`new_due_text`, `priority`, `severity`, `pinned`, `tier` (alarm|gentle); errors "No changes specified for UPDATE..." when no change requested.
+  - Due text resolution via DateResolver: `NeedsClarification` saves `kind="time"` proposal with full `ProposalPayload` (newTitle/priority/severity/pinned/tier preserved) and returns `NeedsTime` chips; `PastTime`/`Failed` return Error.
+  - `resolveAndUpdate` (Gateway.kt:914): pages all active nodes (200/5000 cap, TooManyActiveNodesException handled), Resolver over candidates; Ambiguous saves `kind="ambiguous"` proposal with payload and returns chips; NotFound/ClearWinner paths.
+  - `applyNodeUpdate` (Gateway.kt:973): null-merge onto node copy; reminder syncs text<-title, fireAt<-dueAt, tier only when explicitly set; creates reminder when an undated node gains a due date; commits RawEvent UPDATE with before/after NodeStateSnapshot for undo.
+  - `handleConfirmChange` UPDATE branches: ambiguous node-choice (payload decode, past-time guard, all-null guard, applyNodeUpdate) and time-chip (targetId null routes to resolveAndUpdate with chosen millis; non-null keeps legacy schedule_reminder shift).
+  - `Resolver.kt`: STOPWORDS += update/rename/change/edit/mark; exact-match strip regex += update|rename ("update water plants" matches "Water plants").
+  - `Memory.kt`: `ProposalPayload.newTitle` field.
+  - `ChatController.kt` system prompt: propose_change UPDATE arg docs + UPDATE_RENAME/UPDATE_TIME/UPDATE_PIN examples.
+  - Evidence: 17 tests in `P1B16UpdateIntentTest.kt` (rename+reminder sync, due move, field updates, no-changes error, missing hint, unknown target, ambiguous->confirm, time-chip->confirm, past-time error, undo restore, tier-only, undated gains due, closed-node NotFound, verb stripping, tier-only-on-undated error direct, tier-only-on-undated error via ambiguous-confirm with proposal consumption, blank new_due_text falls back to due_text); `R1RescheduleAmbiguityTest.kt` stale assertions updated; full suite 231/231 core + 9/9 app, 0 warnings.
+  - Independent review verdict: APPROVE with suggestions — 3 MEDIUM findings, all fixed this session: (1) dead `deleteReminderId` branch removed from `applyNodeUpdate`; (2) tier-only UPDATE on an undated node now returns honest Error ("no due date... no reminder to change") consuming the proposal on the confirm path, instead of a false Committed; (3) blank `new_due_text` no longer shadows a populated `due_text` (blank normalizes to null before the elvis fallback). Cosmetic prompt fix: UPDATE added to the intent enumeration in ChatController.kt:517.
+  - Independent verification verdict: PASS — core 228/228 (pre-fix baseline), app 9/9, 0 new warnings, all 14 pre-fix scenarios verified with post-state assertions, 8 adversarial probes OK (replay confirm, ghost id, 8 parallel confirms, stale undo, double undo, 24h undo boundary, orphan token, past chip, 10K title truncation, blank title).
+- P1-B 15: Reminder Policy per Blueprint 30 (D-120):
+  - Deterministic Temporal Resolution (`DateResolver.resolve` with `severity: Int?`):
+    - Morning (07:00..11:00): Sev 3 -> 07:24 (10%), Sev 2 -> 08:24 (35%), Sev 1 -> 09:24 (60%), Sev 0 -> 10:00 (75%), default 09:00.
+    - Afternoon (12:00..16:00): Sev 3 -> 12:24, Sev 2 -> 13:24, Sev 1 -> 14:24, Sev 0 -> 15:00, default 14:00.
+    - Evening (17:00..20:00): Sev 3 -> 17:18, Sev 2 -> 18:03, Sev 1 -> 18:48, Sev 0 -> 19:15, default 18:30.
+    - Night (20:00..23:00): Sev 3 -> 20:18, Sev 2 -> 21:03, Sev 1 -> 21:48, Sev 0 -> 22:15, default 21:30.
+    - "soon" -> `now + 30m`, "later" -> `now + 2h`.
+    - Relative offset lead times: `parseOffsetDuration` handles "30 minutes before", "1 hour before", etc., anchored to `node.dueAt`.
+  - Duplicate Reminder Policy (s3.3):
+    - Reminders for the same node within 30 minutes (`|existing.fireAt - newFireAt| <= 30 min`) prompt `ToolResult.NeedsConfirm` with options `[Update existing, Cancel]` instead of silently overwriting.
+    - Reminders > 30 minutes apart commit directly.
+  - Quiet Hours & AI Inferred Policy (s3.3, D-035):
+    - Explicit user reminders are requested-class and remain at requested fire time even inside quiet hours.
+    - AI-inferred reminders (`inferred == true`) outside `startMinute..endMinute` clamp to `day_start + 30 min`.
+    - `reminder.ai_suggest` setting (`ask` vs `auto`): in `ask` mode (default), AI-suggested reminders return `NeedsConfirm` proposal chips; in `auto` mode, commits directly with undo capability.
+  - Evidence: Verified by 7 tests in `P1B15ReminderPolicyTest.kt` (all passing), full core test suite (214/214), and connected tests on physical device (53/53 passed).
+- P1-B 17: Near-Match Deduplication and needs_confirm Proposal Protocol (D-119):
+  - Near-Match Check: When creating an item (`propose_change CREATE`), Gateway queries `storage.findActiveNodesByTitle(title)`.
+    - If existing and new item both have due times, they are near-matches if `Math.abs(existing.dueAt - newDueAt) <= DEDUPE_TIME_WINDOW_MS` (2 hours).
+    - If both are undated, or if one is dated and the other is undated, they are treated as near-matches.
+    - If both are dated and scheduled > 2 hours apart, they are treated as distinct events and committed immediately.
+    - Untitled alarms (`untitled = true`, e.g. "01:00 Alarm") bypass deduplication entirely.
+  - Proposal Generation (`kind = "needs_confirm"`):
+    - Returns `ToolResult.NeedsConfirm(proposalId, message, options)` where options are `["Update existing", "Add anyway", "Cancel"]`.
+    - Persists `Proposal` with options `ProposalOption(duplicate.id, "Update existing", dueStr)`, `ProposalOption("add_new", "Add anyway")`, `ProposalOption("cancel", "Cancel")`.
+    - Embeds `ProposalPayload` preserving targetAtMillis, title, type, followUpTo, priority, severity, pinned, tier, and targetId.
+  - Confirmation Resolution (`handleConfirmChange`):
+    - `choice == "cancel"`: Atomically consumes proposal via CAS (`storage.consumeProposalCas`) with 0 entity mutations, returning `ToolResult.Committed("CANCEL", ...)`.
+    - `choice == "add_new"`: Invokes `handleCreate` with `consumeProposalId = proposal.id`, executing in-transaction proposal CAS (D-118) to atomically commit the new node and consume the proposal.
+    - `choice in [duplicate.id, "update"]`: Updates existing node's `dueAt`, updates/reschedules reminder, commits `RawEvent` with before/after snapshots, and executes in-transaction proposal CAS (D-118).
+    - Concurrency: Atomic CAS ensures single-winner semantics; concurrent taps yield exactly one committed action while losing taps receive "Proposal already resolved".
+    - Two-Stage Transition: When an item has an ambiguous time ("at 5"), Gateway first issues a `time` clarification proposal (`NeedsTime`). Once the user selects a candidate chip, the resolved timestamp is checked against existing items for near-match deduplication; if a near match exists, it transitions seamlessly into `NeedsConfirm`.
+  - Evidence: Verified with 8 unit tests in `P1B17NearMatchDedupeTest.kt`, updated test suites `R11UntitledAlarmsTest`, `R2CandidateSelectionTest`, `R4TimeChipsTest`, `R12ConcurrencyLifecycleTest`, and connected device tests on physical moto g73 5G (`AndroidStorageTest` 30/30 passed).
+- R10g: Minified release APK verified on physical hardware (Motorola moto g73 5G, Android 14):
+  - Clean install (`adb install -r app/build/outputs/apk/release/app-release.apk`) verified with R8 minification and resource shrinking.
+  - Storage opens cleanly with SQLCipher encryption on fresh install.
+  - Send message in chat verified with real Mistral small provider.
+  - Reminder fires on schedule, notification drawer delivery verified with zero vibration.
+  - Export file verifies (`ExportTest` instrumented test passes 6/6 tests on physical phone).
+  - Raw evidence and screenshots saved under `docs/agent/evidence/r10g-evidence.md`.
+- D-105: Status-bar alarm icon presence and absence verified on physical phone:
+  - Alarm tier (`setAlarmClock`): Status-bar alarm clock icon is visible; adb screenshots and dumpsys evidence in `docs/agent/evidence/d105-evidence.md`.
+  - Gentle tier: Status-bar alarm clock icon is strictly absent.
+- Task #102: 15-utterance live smoke through the app with real provider:
+  - Executed on physical Motorola moto g73 5G with `mistral-small-latest` via `LiveSmoke15Test`.
+  - All 15 turns conform to Part 3 Behaviour Contract:
+    - Missing subject turns ("cue me in after 2 mins", "notify me in 2 mins", "give me a heads up in 1 mins") prompt "For what?" without tool execution.
+    - Duplicate check blocks duplicate "Check laptop".
+    - Untitled alarm creates "02:00 Alarm".
+    - Indic numeral duration ("२ mins") normalized and parsed.
+    - Compound request ("remind me to call mom at 6 and cancel the gym thing") cancels "Gym session" and sets reminder.
+  - Transcript saved in `docs/agent/evidence/smoke_transcript.md`; DB rows saved in `docs/agent/evidence/smoke_db_rows.json`.
 - R12d: In-Transaction Proposal CAS (Option b / D-118) & Guarded Rollback:
   - D-118 In-Transaction CAS: Embedded proposal consumption CAS directly within effect write transactions (`createNodeAndCommit`, `updateNodeAndCommit`, `createReminderAndCommit`). When `consumeProposalId` is supplied, `consumeProposalInTx` executes `UPDATE proposal SET status = 'consumed' WHERE id = ? AND status = 'open'`. If `rowsAffected == 0`, the transaction immediately aborts and rolls back all node/edge/reminder/event changes by throwing `ProposalAlreadyResolvedException`.
   - Elimination of Crash Window: Bypasses the two-step gap where proposal was consumed before effect transaction. A crash or failure inside the transaction rolls back both the proposal status and the entity mutation atomically.
@@ -194,6 +262,10 @@ Updated: 2026-11-05   Commit: Complete (R12d Items 1-7 verified, approved, and c
 - 6 custom agents (`reviewer`, `debugger`, `blueprint-checker`, `migration-guard`, `test-auditor`, `android-device`), 5 commands (`bootstrap`, `audit`, `fix`, `verify`, `handoff`), 5 skills, and safety hooks installed in repo `.claude/` and `.openclaude/` directories (OpenClaude canonical is `.openclaude/`).
 ## Known broken
 - B5 (Export UI picker & passphrase dialog) is not implemented; dark-shipped pending v1.1 SAF integration.
+
+## UNVERIFIED (this session)
+- P1-B 16 connected/instrumented tests were NOT re-run this session (device not invoked); unit-level only.
+- Independent code-review and verification agents for P1-B 16 completed AFTER the three MEDIUM fixes: review APPROVE (fixes applied), verification PASS (ran on pre-fix code; the three fixes are covered by 3 new regression tests and a full green re-run, but were not independently re-verified by a second agent pass).
 ## UNVERIFIED (from old chat / unproven)
 - R10g (Minified release APK test on physical phone) pending human verification when physical device is unlocked for release install.
 ## Environment notes (device, Android version, OEM, toolchain versions)

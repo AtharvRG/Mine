@@ -173,13 +173,15 @@ class R11UntitledAlarmsTest {
         assertEquals("01:00 Alarm", storage.getNode((res2 as ToolResult.Committed).targetId)!!.title)
         assertEquals(2, storage.activeNodes.size)
 
-        // Non-untitled duplicate MUST still be rejected
+        // Non-untitled duplicate returns NeedsConfirm under P1-B 17 near-match dedupe
         val titledCall1 = ToolCall("propose_change", mapOf("intent" to JsonPrimitive("CREATE"), "hint" to JsonPrimitive("Buy milk")))
         assertTrue(gateway.executeTool(titledCall1) is ToolResult.Committed)
         val titledCall2 = ToolCall("propose_change", mapOf("intent" to JsonPrimitive("CREATE"), "hint" to JsonPrimitive("Buy milk")))
         val dupResult = gateway.executeTool(titledCall2)
-        assertTrue(dupResult is ToolResult.Error)
-        assertEquals("An active item named 'Buy milk' already exists.", (dupResult as ToolResult.Error).reason)
+        assertTrue(dupResult is ToolResult.NeedsConfirm)
+        val needsConfirm = dupResult as ToolResult.NeedsConfirm
+        assertEquals(listOf("Update existing", "Add anyway", "Cancel"), needsConfirm.options)
+        assertTrue(needsConfirm.message.contains("Buy milk"))
     }
 
     @Test

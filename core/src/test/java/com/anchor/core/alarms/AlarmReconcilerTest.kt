@@ -75,6 +75,25 @@ class AlarmReconcilerTest {
     }
 
     @Test
+    fun testReconcile_TierMismatch_ReschedulesAndUpdatesApi() = runBlocking {
+        val clock = FakeClock(1000L)
+        val storage = SharedFakeStorage()
+        val scheduler = RecordingScheduler()
+
+        // r1 is gentle, but previously registered as alarm_clock
+        val r1 = Reminder("r1", "Gentle Task", 5000L, tier = AlarmTier.GENTLE)
+        storage.saveReminder(r1)
+        storage.saveRegisteredAlarm("r1", "r1".hashCode(), 5000L, api = "alarm_clock")
+
+        val reconciler = AlarmReconciler(storage, scheduler, clock)
+        reconciler.reconcile(force = false)
+
+        assertTrue("r1 with tier/api mismatch must be rescheduled", scheduler.scheduled.any { it.id == "r1" })
+        val updatedReg = storage.getRegisteredAlarmRecords().find { it.reminderId == "r1" }
+        assertEquals("rtc_wakeup", updatedReg?.api)
+    }
+
+    @Test
     fun testReconcile_ForceFalse_CancelsOrphans() = runBlocking {
         val clock = FakeClock(1000L)
         val storage = SharedFakeStorage()

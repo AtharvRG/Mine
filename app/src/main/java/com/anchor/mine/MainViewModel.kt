@@ -45,8 +45,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 val app = application as MineApp
                 val loadedStorage = app.sharedStorage.await() // Can throw if keys/DB corrupt
                 storage = loadedStorage
-                val limiter = RateLimiter { System.currentTimeMillis() }
-                val orchestrator = ProviderOrchestrator(limiter, AndroidHttpTransport())
+                val orchestrator = app.orchestrator
                 val clock = SystemClock()
                 val is24HourFormat = { android.text.format.DateFormat.is24HourFormat(application) }
                 val dateResolver = DateResolver(clock, is24HourFormat)
@@ -59,7 +58,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 controller = ChatController(
                     loadedStorage, orchestrator, contextBuilder,
                     gateway, AndroidAlarmScheduler(application),
-                    viewModelScope, Dispatchers.Default, clock
+                    viewModelScope, Dispatchers.Default, clock,
+                    dateResolver = dateResolver
                 )
 
                 reliabilityManager.runSweeper().forEach { missedRem ->

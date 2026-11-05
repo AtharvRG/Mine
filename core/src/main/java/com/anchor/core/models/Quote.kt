@@ -30,3 +30,12 @@ data class Quote(
     val source: QuoteSource = QuoteSource.PRESET,
     val regenCount: Int = 0
 )
+
+@Serializable
+data class QuoteStateCounts(
+    val open: Int,
+    val overdue: Int,
+    val completedToday: Int,
+    val atRisk: Boolean
+)
+

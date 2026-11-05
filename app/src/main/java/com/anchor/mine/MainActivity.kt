@@ -109,7 +109,7 @@ fun MineAppUI(viewModel: MainViewModel) {
 @Composable
 fun ChatScreen(state: UiState, onAction: (UiAction) -> Unit) {
     val listState = rememberLazyListState()
-    val totalItems = state.chatMessages.size + state.receipts.size + state.openProposals.size + state.proposedSoulFacts.size + (if (state.isChatLoading) 1 else 0)
+    val totalItems = state.chatMessages.size + state.receipts.size + state.openProposals.size + state.proposedSoulFacts.size + state.staleItems.size + (if (state.isChatLoading) 1 else 0)
     LaunchedEffect(totalItems) {
         if (totalItems > 0) {
             listState.animateScrollToItem(totalItems - 1)
@@ -118,6 +118,28 @@ fun ChatScreen(state: UiState, onAction: (UiAction) -> Unit) {
 
     // SEC 4: Added imePadding to prevent keyboard overlap
     Column(modifier = Modifier.fillMaxSize().imePadding()) {
+        val quote = state.homeQuote
+        if (quote != null) {
+            Card(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+            ) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Text(
+                        text = "\"${quote.text}\"",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "${quote.slot.name.lowercase().replaceFirstChar { it.uppercase() }} reflection",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    )
+                }
+            }
+        }
+
         val connErr = state.connectionError
         if (connErr != null) {
             Text(connErr, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(8.dp))
@@ -151,14 +173,25 @@ fun ChatScreen(state: UiState, onAction: (UiAction) -> Unit) {
             // RENDER PROPOSALS (Ambiguity Chips)
             items(state.openProposals) { prop ->
                 Column(modifier = Modifier.fillMaxWidth().padding(8.dp).background(Color.Yellow.copy(alpha=0.2f)).padding(8.dp)) {
-                    Text("Clarify: Which one?")
+                    Text(if (prop.kind == "time") "Clarify: Which time?" else "Clarify: Which one?")
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         // Use the new structured options to display the real title on the button!
                         prop.options.forEach { opt ->
-                            Button(onClick = { onAction(UiAction.ConfirmProposal(prop.id, opt.id)) }) { 
-                                Text(opt.title) 
+                            Button(onClick = { onAction(UiAction.ConfirmProposal(prop.id, opt.id)) }) {
+                                Text(opt.title)
                             }
                         }
+                    }
+                }
+            }
+
+            // RENDER STALE ITEMS (Keep / Cancel)
+            items(state.staleItems) { staleNode ->
+                Column(modifier = Modifier.fillMaxWidth().padding(8.dp).background(Color.Magenta.copy(alpha=0.1f)).padding(8.dp)) {
+                    Text("Stale (30+ days idle): ${staleNode.title}")
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(onClick = { onAction(UiAction.KeepStale(staleNode.id)) }) { Text("Keep") }
+                        Button(onClick = { onAction(UiAction.CancelStale(staleNode.id)) }) { Text("Cancel") }
                     }
                 }
             }

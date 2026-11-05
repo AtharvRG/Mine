@@ -7,7 +7,7 @@ gradle = "gradlew.bat" if os.name == "nt" else "./gradlew"
 
 def open_tasks():
     t = open("docs/agent/TASKS.md", encoding="utf-8").read()
-    return len(re.findall(r"^\[ \]|\[~\]", t, re.M))
+    return len(re.findall(r"^\[[ ~]\]", t, re.M))
 
 for i in range(MAX):
     print(f"--- iteration {i+1}/{MAX}")

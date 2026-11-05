@@ -531,9 +531,9 @@ class R12ConcurrencyLifecycleTest {
         assertEquals("Proposal must be rolled back to 'open' when commit fails", "open", storage.getProposal("p_fail_1")?.status)
     }
 
-    // B3: Proposal rolls back to "open" on non-terminal duplicate title error during time chip creation
+    // P1-B 17: Proposal transitions to "needs_confirm" on near-match duplicate during time chip creation
     @Test
-    fun testConfirmProposal_RollbackOnDuplicateTitle() = runBlocking {
+    fun testConfirmProposal_TransitionsToNeedsConfirmOnNearMatchDuplicate() = runBlocking {
         val clock = FakeClock(1000L)
         val storage = SharedFakeStorage(clock)
         val dateResolver = DateResolver(clock)
@@ -563,9 +563,12 @@ class R12ConcurrencyLifecycleTest {
             ToolCall("confirm_change", mapOf("proposal" to JsonPrimitive("p_dup_1"), "choice" to JsonPrimitive(fireAt.toString())))
         )
 
-        assertTrue("Must return error: $result", result is ToolResult.Error)
-        assertTrue("Reason mentions duplicate title", (result as ToolResult.Error).reason.contains("Gym Workout"))
-        assertEquals("Proposal must be rolled back to 'open' on duplicate title", "open", storage.getProposal("p_dup_1")?.status)
+        assertTrue("Must return NeedsConfirm: $result", result is ToolResult.NeedsConfirm)
+        val needsConfirm = result as ToolResult.NeedsConfirm
+        assertTrue("Message mentions duplicate title", needsConfirm.message.contains("Gym Workout"))
+        assertEquals("Old time proposal is consumed", "consumed", storage.getProposal("p_dup_1")?.status)
+        assertNotNull("New needs_confirm proposal is open", storage.getProposal(needsConfirm.proposalId))
+        assertEquals("open", storage.getProposal(needsConfirm.proposalId)?.status)
     }
 
     // R12c Item 1: Proposal rollback must NOT extend 24h expiry
@@ -573,13 +576,24 @@ class R12ConcurrencyLifecycleTest {
     fun testRollbackDoesNotExtend24hExpiry_ExpiryMustNotExtendAfterRolledBackConfirm() = runBlocking {
         val t0 = 1_000_000L
         val clock = FakeClock(t0)
-        val storage = SharedFakeStorage(clock)
+        var shouldFailCommit = false
+        val storage = object : SharedFakeStorage(clock) {
+            override suspend fun createNodeAndCommit(
+                node: Node,
+                event: RawEvent,
+                reminder: Reminder?,
+                edge: Edge?,
+                edgeEvent: RawEvent?,
+                consumeProposalId: String?
+            ) {
+                if (shouldFailCommit && consumeProposalId == "p_rollback_expiry_1") {
+                    throw RuntimeException("Simulated disk error during commit")
+                }
+                super.createNodeAndCommit(node, event, reminder, edge, edgeEvent, consumeProposalId)
+            }
+        }
         val dateResolver = DateResolver(clock)
         val gateway = Gateway(storage, Resolver(), dateResolver, clock)
-
-        // Existing active item to cause duplicate title rollback
-        val existing = Node("n_exist_exp", "task", "Gym Workout", "active")
-        storage.activeNodes.add(existing)
 
         val fireAt = t0 + (25 * 3600 * 1000L)
         val payload = ProposalPayload(
@@ -603,11 +617,18 @@ class R12ConcurrencyLifecycleTest {
         val tRollback = t0 + (23 * 3600 * 1000L) + (50 * 60 * 1000L)
         clock.currentTime = tRollback
 
-        // Attempt confirm; triggers duplicate title error and rolls back proposal
-        val result = gateway.executeTool(
-            ToolCall("confirm_change", mapOf("proposal" to JsonPrimitive("p_rollback_expiry_1"), "choice" to JsonPrimitive(fireAt.toString())))
-        )
-        assertTrue("Confirm must return duplicate title error: $result", result is ToolResult.Error)
+        // Attempt confirm with simulated commit failure; catches and rolls back proposal
+        shouldFailCommit = true
+        var caught = false
+        try {
+            gateway.executeTool(
+                ToolCall("confirm_change", mapOf("proposal" to JsonPrimitive("p_rollback_expiry_1"), "choice" to JsonPrimitive(fireAt.toString())))
+            )
+        } catch (e: RuntimeException) {
+            caught = true
+            assertEquals("Simulated disk error during commit", e.message)
+        }
+        assertTrue("Simulated exception must be thrown", caught)
         assertEquals("Proposal must be rolled back to 'open'", "open", storage.getProposal("p_rollback_expiry_1")?.status)
 
         // Advance clock to 24 hours and 10 minutes after T0 (past original 24h expiry)

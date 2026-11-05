@@ -48,7 +48,7 @@ class AndroidAlarmScheduler(private val context: Context) : AlarmScheduler {
                     alarmManager.setAlarmClock(AlarmManager.AlarmClockInfo(reminder.fireAtMillis, pendingShow), pendingIntent)
                 }
                 AlarmTier.GENTLE -> {
-                    alarmManager.setAndAllowWhileIdle(AlarmManager.RTC, reminder.fireAtMillis, pendingIntent)
+                    alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, reminder.fireAtMillis, pendingIntent)
                 }
             }
             ScheduleResult.Armed
@@ -68,5 +68,22 @@ class AndroidAlarmScheduler(private val context: Context) : AlarmScheduler {
             alarmManager.cancel(pendingIntent)
             pendingIntent.cancel()
         }
+    }
+
+    override fun checkHealth(): ScheduleResult {
+        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? android.app.NotificationManager
+            ?: return ScheduleResult.Armed
+        if (!notificationManager.areNotificationsEnabled()) {
+            return ScheduleResult.Failed("Notifications are disabled for Mine in system settings")
+        }
+        val alarmChannel = notificationManager.getNotificationChannel("mine_reminders_v3")
+        if (alarmChannel != null && alarmChannel.importance == android.app.NotificationManager.IMPORTANCE_NONE) {
+            return ScheduleResult.Failed("Notification channel 'Reminders' is blocked")
+        }
+        val gentleChannel = notificationManager.getNotificationChannel("mine_gentle_reminders_v3")
+        if (gentleChannel != null && gentleChannel.importance == android.app.NotificationManager.IMPORTANCE_NONE) {
+            return ScheduleResult.Failed("Notification channel 'Gentle Reminders' is blocked")
+        }
+        return ScheduleResult.Armed
     }
 }

@@ -83,7 +83,7 @@ class DateResolverTest {
     fun testD103_BareHourAmbiguity_ReturnsNeedsClarificationWithTwoChips() {
         val cal = Calendar.getInstance().apply { set(2026, Calendar.OCTOBER, 25, 12, 0, 0); set(Calendar.MILLISECOND, 0) }
         val fakeClock = FakeClock(cal.timeInMillis)
-        val resolver = DateResolver(fakeClock)
+        val resolver = DateResolver(fakeClock, is24HourFormat = { true })
 
         val morningFiveThirty = Calendar.getInstance().apply { set(2026, Calendar.OCTOBER, 26, 5, 30, 0); set(Calendar.MILLISECOND, 0) }.timeInMillis
         val eveningFiveThirty = Calendar.getInstance().apply { set(2026, Calendar.OCTOBER, 25, 17, 30, 0); set(Calendar.MILLISECOND, 0) }.timeInMillis
@@ -254,5 +254,31 @@ class DateResolverTest {
         assertNull(resolver.parse("in 100001 seconds"))
         assertNull(resolver.parse("in 367 days"))
         assertEquals(now + 365L * 86_400_000L, resolver.parse("in 365 days"))
+    }
+
+    @Test
+    fun testPastTimeAndMultiDayChipLabels() {
+        // Base time: Sunday, Oct 25, 2026, 12:00:00 PM
+        val cal = Calendar.getInstance().apply { set(2026, Calendar.OCTOBER, 25, 12, 0, 0); set(Calendar.MILLISECOND, 0) }
+        val now = cal.timeInMillis
+        val fakeClock = FakeClock(now)
+        val resolver = DateResolver(fakeClock)
+
+        // Past keywords and times must resolve to DateResolution.PastTime
+        assertEquals(DateResolution.PastTime, resolver.resolve("yesterday"))
+        assertEquals(DateResolution.PastTime, resolver.resolve("last friday"))
+        assertEquals(DateResolution.PastTime, resolver.resolve("past monday"))
+        assertEquals(DateResolution.PastTime, resolver.resolve("today at 9am"))
+
+        // Multi-day chip labels test
+        val sameDay5pm = Calendar.getInstance().apply { set(2026, Calendar.OCTOBER, 25, 17, 0, 0); set(Calendar.MILLISECOND, 0) }.timeInMillis
+        val tomorrow5pm = Calendar.getInstance().apply { set(2026, Calendar.OCTOBER, 26, 17, 0, 0); set(Calendar.MILLISECOND, 0) }.timeInMillis
+        val friday5pm = Calendar.getInstance().apply { set(2026, Calendar.OCTOBER, 30, 17, 0, 0); set(Calendar.MILLISECOND, 0) }.timeInMillis
+        val nextMonth5pm = Calendar.getInstance().apply { set(2026, Calendar.NOVEMBER, 15, 17, 0, 0); set(Calendar.MILLISECOND, 0) }.timeInMillis
+
+        assertEquals("5:00 PM", resolver.formatChipLabel(sameDay5pm, now))
+        assertEquals("Tomorrow 5:00 PM", resolver.formatChipLabel(tomorrow5pm, now))
+        assertEquals("Fri 5:00 PM", resolver.formatChipLabel(friday5pm, now))
+        assertEquals("Sun 15 Nov, 5:00 PM", resolver.formatChipLabel(nextMonth5pm, now))
     }
 }

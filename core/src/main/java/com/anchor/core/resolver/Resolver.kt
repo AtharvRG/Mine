@@ -14,7 +14,8 @@ class Resolver {
         private val STOPWORDS = setOf(
             "with", "the", "and", "for", "to", "at", "my", "a", "an", "of", "on", "in",
             "tomorrow", "today", "yesterday", "tonight", "am", "pm",
-            "cancel", "delete", "remove", "complete", "finish", "done"
+            "cancel", "delete", "remove", "complete", "finish", "done",
+            "update", "rename", "change", "edit", "mark"
         )
     }
 
@@ -34,41 +35,105 @@ class Resolver {
         return tokens
     }
 
+    private fun normalizeTitle(text: String): String {
+        return text.lowercase(Locale.getDefault())
+            .replace("’", "'")
+            .replace(Regex("'s\\b"), "")
+            .replace(Regex("[^\\p{L}\\p{M}\\p{N}\\s]+"), " ")
+            .trim()
+            .replace(Regex("\\s+"), " ")
+    }
+
+    private fun isExactMatch(title: String, hint: String, hintTokens: List<String>): Boolean {
+        val normTitle = normalizeTitle(title)
+        val normHint = normalizeTitle(hint)
+        if (normTitle.isNotBlank() && normTitle == normHint) return true
+
+        // Strip common leading intent action words from hint: cancel, complete, delete, remove, finish, done, reschedule, update, rename
+        val strippedHint = hint.replace(Regex("^(cancel|complete|delete|remove|finish|done|reschedule|update|rename)\\s+", RegexOption.IGNORE_CASE), "")
+        val normStripped = normalizeTitle(strippedHint)
+        if (normTitle.isNotBlank() && normTitle == normStripped) return true
+
+        // Token-level exact match (ignoring stopwords)
+        val titleTokens = tokenize(title)
+        if (titleTokens.isNotEmpty() && titleTokens == hintTokens) return true
+
+        return false
+    }
+
     fun resolve(intent: IntentType, hint: String, targetTimeMillis: Long?, candidates: List<Node>): Resolution {
         if (candidates.isEmpty()) return Resolution.NotFound
+
+        val hintTokens = tokenize(hint)
+        if (hintTokens.isEmpty()) return Resolution.NotFound
+
+        // Prefer exact normalised title match: if two items both contain the hint (e.g. "Dinner" vs "Dinner with Alice" for hint "dinner"),
+        // the exact title match wins without ambiguity.
+        val exactMatches = candidates.filter { isExactMatch(it.title, hint, hintTokens) }
+        if (exactMatches.isNotEmpty()) {
+            if (exactMatches.size == 1) {
+                if (targetTimeMillis == null) {
+                    return Resolution.ClearWinner(exactMatches[0])
+                } else {
+                    val due = exactMatches[0].dueAt
+                    if (due == null || Math.abs(due - targetTimeMillis) < (1000L * 60 * 60 * 24)) {
+                        return Resolution.ClearWinner(exactMatches[0])
+                    }
+                }
+            } else {
+                // Multiple items with the exact same title
+                if (targetTimeMillis != null) {
+                    val timeMatches = exactMatches.filter { it.dueAt != null && Math.abs(it.dueAt - targetTimeMillis) < (1000L * 60 * 60 * 24) }
+                    if (timeMatches.size == 1) {
+                        return Resolution.ClearWinner(timeMatches[0])
+                    }
+                }
+                return Resolution.Ambiguous(exactMatches)
+            }
+        }
 
         val scores = candidates.map { node -> node to calculateScore(node, hint, targetTimeMillis) }
             .sortedByDescending { it.second.total }
 
         val top = scores[0]
-        
+
         // Strict baseline: Must have at least 30% word match
-        if (top.second.textMatch < 0.30) return Resolution.NotFound 
+        if (top.second.textMatch < 0.30) return Resolution.NotFound
 
-        // Clear winner by pure text distinction
-        if (scores.size == 1 || (top.second.textMatch - scores[1].second.textMatch >= 0.30)) {
-            return Resolution.ClearWinner(top.first)
-        }
+        val isClosing = intent == IntentType.CANCEL || intent == IntentType.COMPLETE
+        val autoCommitThreshold = if (isClosing) 0.80 else 0.70
+        val requiredMargin = if (isClosing) 0.25 else 0.20
 
-        // Time Override
+        // Time Override: If target time is specified, prefer candidate matching the time if text matches threshold
         if (targetTimeMillis != null) {
             val timeMatches = scores.filter { (node, _) -> node.dueAt != null && Math.abs(node.dueAt - targetTimeMillis) < (1000L * 60 * 60 * 24) }
-            if (timeMatches.size == 1 && timeMatches[0].second.textMatch >= 0.30) return Resolution.ClearWinner(timeMatches[0].first)
+            if (timeMatches.size == 1 && timeMatches[0].second.textMatch >= autoCommitThreshold) {
+                return Resolution.ClearWinner(timeMatches[0].first)
+            }
+        }
+
+        // Single candidate: Must meet auto-commit threshold, otherwise show a chip
+        if (scores.size == 1) {
+            return if (top.second.textMatch >= autoCommitThreshold) {
+                Resolution.ClearWinner(top.first)
+            } else {
+                Resolution.Ambiguous(listOf(top.first))
+            }
         }
 
         val second = scores[1]
-        val margin = top.second.total - second.second.total
-        val isClosing = intent == IntentType.CANCEL || intent == IntentType.COMPLETE
-        
-        // Simplified thresholds: Pure overlap ratio (0.0 to 1.0) + Time bonus
-        val requiredScore = if (isClosing) 0.80 else 0.70
-        val requiredMargin = if (isClosing) 0.25 else 0.20
+        val textMargin = top.second.textMatch - second.second.textMatch
+        val totalMargin = top.second.total - second.second.total
 
-        if (top.second.total >= requiredScore && margin >= requiredMargin) {
+        if (top.second.textMatch >= autoCommitThreshold && (textMargin >= requiredMargin || totalMargin >= requiredMargin)) {
             return Resolution.ClearWinner(top.first)
         }
 
-        val ambiguousOptions = scores.filter { it.second.total >= top.second.total - 0.30 }.map { it.first }
+        val ambiguousOptions = scores
+            .filter { it.second.textMatch >= 0.30 && it.second.total >= top.second.total - 0.30 }
+            .map { it.first }
+            .ifEmpty { listOf(top.first) }
+
         return Resolution.Ambiguous(ambiguousOptions)
     }
 

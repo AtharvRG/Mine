@@ -57,18 +57,27 @@ class DbKeyProvider(private val context: Context) {
         }
 
         // Unwrap existing
-        val bytes = keyFile.readBytes()
-        val ivSize = bytes[0].toInt()
-        val iv = bytes.copyOfRange(1, 1 + ivSize)
-        val encrypted = bytes.copyOfRange(1 + ivSize, bytes.size)
-
         try {
+            val bytes = keyFile.readBytes()
+            if (bytes.isEmpty()) {
+                throw IllegalStateException("KEYSTORE_LOST")
+            }
+            val ivSize = bytes[0].toInt()
+            if (ivSize <= 0 || bytes.size < 1 + ivSize) {
+                throw IllegalStateException("KEYSTORE_LOST")
+            }
+            val iv = bytes.copyOfRange(1, 1 + ivSize)
+            val encrypted = bytes.copyOfRange(1 + ivSize, bytes.size)
+
             val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-            val secretKey = keyStore.getKey(ALIAS, null) as SecretKey
+            val secretKey = (keyStore.getKey(ALIAS, null) as? SecretKey)
+                ?: throw IllegalStateException("KEYSTORE_LOST")
             cipher.init(Cipher.DECRYPT_MODE, secretKey, GCMParameterSpec(128, iv))
             return cipher.doFinal(encrypted)
+        } catch (e: IllegalStateException) {
+            throw e
         } catch (_: Exception) {
-            // A8: If keystore is wiped but the file exists, we cannot recover. 
+            // A8: If keystore is wiped or the file is corrupted, we cannot recover.
             // We must throw specifically so the ViewModel offers a Reset.
             throw IllegalStateException("KEYSTORE_LOST")
         }

@@ -101,6 +101,11 @@ class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(5) {
         createTriggers(db)
     }
 
+    override fun onOpen(db: SupportSQLiteDatabase) {
+        super.onOpen(db)
+        createTriggers(db)
+    }
+
     companion object {
         fun createTriggers(db: SupportSQLiteDatabase) {
             db.execSQL("""
@@ -137,6 +142,10 @@ class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(5) {
             db.execSQL("CREATE TRIGGER IF NOT EXISTS trg_soul_fts_insert AFTER INSERT ON soul_fact BEGIN INSERT INTO soul_fts (rowid, statement) VALUES (new.rowid, new.statement); END;")
             db.execSQL("CREATE TRIGGER IF NOT EXISTS trg_soul_fts_delete AFTER DELETE ON soul_fact BEGIN INSERT INTO soul_fts (soul_fts, rowid, statement) VALUES ('delete', old.rowid, old.statement); END;")
             db.execSQL("CREATE TRIGGER IF NOT EXISTS trg_soul_fts_update AFTER UPDATE ON soul_fact BEGIN INSERT INTO soul_fts (soul_fts, rowid, statement) VALUES ('delete', old.rowid, old.statement); INSERT INTO soul_fts (rowid, statement) VALUES (new.rowid, new.statement); END;")
+
+            db.execSQL("CREATE TRIGGER IF NOT EXISTS trg_msg_chunk_fts_insert AFTER INSERT ON msg_chunk BEGIN INSERT INTO msg_chunk_fts (rowid, text) VALUES (new.rowid, new.text); END;")
+            db.execSQL("CREATE TRIGGER IF NOT EXISTS trg_msg_chunk_fts_delete AFTER DELETE ON msg_chunk BEGIN INSERT INTO msg_chunk_fts (msg_chunk_fts, rowid, text) VALUES ('delete', old.rowid, old.text); END;")
+            db.execSQL("CREATE TRIGGER IF NOT EXISTS trg_msg_chunk_fts_update AFTER UPDATE ON msg_chunk BEGIN INSERT INTO msg_chunk_fts (msg_chunk_fts, rowid, text) VALUES ('delete', old.rowid, old.text); INSERT INTO msg_chunk_fts (rowid, text) VALUES (new.rowid, new.text); END;")
         }
     }
 }

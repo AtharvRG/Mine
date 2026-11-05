@@ -33,6 +33,7 @@ interface Storage {
 
     suspend fun getActiveNodes(limit: Int, cursor: String? = null): List<Node>
     suspend fun findActiveNodeByTitle(title: String): Node?
+    suspend fun findActiveNodesByTitle(title: String): List<Node>
     suspend fun getNodesDueBetween(startMs: Long, endMs: Long, limit: Int): List<Node>
     suspend fun getOverdueNodes(beforeMs: Long, limit: Int): List<Node>
     suspend fun getRankedCandidates(now: Long, staleCutoffMs: Long, perTierLimit: Int = 25): List<Node>

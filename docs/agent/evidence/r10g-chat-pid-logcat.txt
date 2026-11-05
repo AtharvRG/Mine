@@ -1,0 +1,11 @@
+--------- beginning of main
+11-05 17:00:52.857 21355 21355 D InsetsController: show(ime(), fromIme=true)
+11-05 17:00:52.857 21355 21355 I ImeTracker: com.anchor.mine:e393fef: onCancelled at PHASE_CLIENT_APPLY_ANIMATION
+11-05 17:02:01.702 21355 21355 W WindowOnBackDispatcher: sendCancelIfRunning: isInProgress=falsecallback=ImeCallback=ImeOnBackInvokedCallback@213726889 Callback=android.window.IOnBackInvokedCallback$Stub$Proxy@5e833f1
+11-05 17:02:01.841 21355 21374 D Surface : Surface::disconnect
+11-05 17:02:01.850 21355 21355 D BLASTBufferQueue: [VRI[MainActivity]#6](f:0,a:2) destructor()
+11-05 17:02:01.850 21355 21355 D BufferQueueConsumer: [VRI[MainActivity]#6(BLAST Consumer)6](id:536b00000006,api:0,p:-1,c:21355) disconnect
+11-05 17:02:01.861 21355 21355 I ImeTracker: com.anchor.mine:7e3710e3: onCancelled at PHASE_CLIENT_ANIMATION_CANCEL
+11-05 17:02:01.863 21355 21355 I ImeTracker: com.anchor.mine:c248e76f: onRequestHide at ORIGIN_CLIENT_HIDE_SOFT_INPUT reason HIDE_SOFT_INPUT_BY_INSETS_API
+11-05 17:02:01.864 21355 21355 I ImeTracker: com.anchor.mine:c248e76f: onFailed at PHASE_CLIENT_VIEW_SERVED
+11-05 17:02:01.904 21355 21374 I OpenGLRenderer: setGrContext validptr-->nullptr

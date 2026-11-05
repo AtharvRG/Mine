@@ -214,4 +214,35 @@ class GatewayTest {
         org.junit.Assert.assertEquals(1, storage.reminders.size)
         org.junit.Assert.assertEquals(1000L + (20 * 60000L), storage.reminders[0].fireAtMillis)
     }
+
+    @Test
+    fun testGateway_PastTime_ReturnsHelpfulError() = kotlinx.coroutines.runBlocking {
+        val storage = com.anchor.core.SharedFakeStorage()
+        val cal = java.util.Calendar.getInstance().apply { set(2026, java.util.Calendar.OCTOBER, 25, 12, 0, 0); set(java.util.Calendar.MILLISECOND, 0) }
+        val clock = com.anchor.core.time.FakeClock(cal.timeInMillis)
+        val resolver = com.anchor.core.resolver.Resolver()
+        val dateResolver = com.anchor.core.time.DateResolver(clock)
+        val gateway = Gateway(storage, resolver, dateResolver, clock)
+
+        val node = com.anchor.core.models.Node("n1", "event", "Dentist", "active", cal.timeInMillis + 3600_000L)
+        storage.activeNodes.add(node)
+
+        // 1. CREATE with past time
+        val createCall = com.anchor.core.gateway.ToolCall("propose_change", mapOf("intent" to JsonPrimitive("CREATE"), "hint" to JsonPrimitive("Dentist appointment"), "due_text" to JsonPrimitive("yesterday")))
+        val createResult = gateway.executeTool(createCall)
+        org.junit.Assert.assertTrue(createResult is com.anchor.core.models.ToolResult.Error)
+        org.junit.Assert.assertEquals("That time is in the past; tell me a future time.", (createResult as com.anchor.core.models.ToolResult.Error).reason)
+
+        // 2. RESCHEDULE with past time
+        val rescheduleCall = com.anchor.core.gateway.ToolCall("propose_change", mapOf("intent" to JsonPrimitive("RESCHEDULE"), "hint" to JsonPrimitive("Dentist"), "due_text" to JsonPrimitive("last friday")))
+        val rescheduleResult = gateway.executeTool(rescheduleCall)
+        org.junit.Assert.assertTrue(rescheduleResult is com.anchor.core.models.ToolResult.Error)
+        org.junit.Assert.assertEquals("That time has already passed; tell me the new time again", (rescheduleResult as com.anchor.core.models.ToolResult.Error).reason)
+
+        // 3. schedule_reminder with past time
+        val remCall = com.anchor.core.gateway.ToolCall("schedule_reminder", mapOf("target_ref" to JsonPrimitive("n1"), "when" to JsonPrimitive("yesterday")))
+        val remResult = gateway.executeTool(remCall)
+        org.junit.Assert.assertTrue(remResult is com.anchor.core.models.ToolResult.Error)
+        org.junit.Assert.assertEquals("That time is in the past; tell me a future time.", (remResult as com.anchor.core.models.ToolResult.Error).reason)
+    }
 }

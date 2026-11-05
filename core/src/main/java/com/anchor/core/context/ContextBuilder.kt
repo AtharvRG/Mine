@@ -28,7 +28,7 @@ class ContextBuilder(
         // D-104: Paged, deterministic code-ranking, token-budget capped active items
         val staleCutoffMs = 30L * 24 * 3600 * 1000L
         val counts = storage.getActiveNodeCounts(now, staleCutoffMs)
-        val candidates = storage.getRankedCandidates(now, staleCutoffMs, perTierLimit = 25)
+        val candidates = storage.getRankedCandidates(now, staleCutoffMs, perTierLimit = 25).filter { !it.localOnly }
 
         val rankedNodes = candidates.sortedWith(createDeterministicNodeComparator(now))
 
@@ -38,7 +38,8 @@ class ContextBuilder(
         val shownNodes = mutableListOf<Node>()
         for (node in rankedNodes.take(25)) {
             val due = if (node.dueAt != null) "Due: ${dateResolver.format(node.dueAt)}" else "No time"
-            val line = "${node.id} | ${node.type} | ${node.title} | $due"
+            val sanitizedTitle = PromptSanitizer.sanitize(node.title, 80)
+            val line = "${node.id} | ${node.type} | $sanitizedTitle | $due"
             if (shownNodes.isNotEmpty() && currentChars + line.length > maxChars) {
                 break
             }
@@ -56,7 +57,8 @@ class ContextBuilder(
         } else {
             val itemsLines = shownNodes.joinToString("\n") {
                 val due = if (it.dueAt != null) "Due: ${dateResolver.format(it.dueAt)}" else "No time"
-                "${it.id} | ${it.type} | ${it.title} | $due"
+                val sanitizedTitle = PromptSanitizer.sanitize(it.title, 80)
+                "${it.id} | ${it.type} | $sanitizedTitle | $due"
             }
             "$itemsLines\n$countLine"
         }
@@ -77,12 +79,14 @@ class ContextBuilder(
         val proposalsText = if (shownProposals.isEmpty()) "No open proposals."
         else shownProposals.joinToString("\n")
 
-        val soulFacts = storage.getActiveSoulFacts()
+        val soulFacts = storage.getActiveSoulFacts().filter { !it.localOnly }
         val maxSoulChars = 1250
         var currentSoulChars = 0
         val shownSoulFacts = mutableListOf<String>()
         for (fact in soulFacts) {
-            val line = "${fact.category}: ${fact.statement}"
+            val sanitizedCat = PromptSanitizer.sanitize(fact.category, 40)
+            val sanitizedStmt = PromptSanitizer.sanitize(fact.statement, 80)
+            val line = "$sanitizedCat: $sanitizedStmt"
             if (shownSoulFacts.isNotEmpty() && currentSoulChars + line.length > maxSoulChars) {
                 break
             }

@@ -92,5 +92,6 @@ class ReminderTierTest {
         assertTrue("Disclosure text must mention status bar", state.alarmDisclosureText.contains("status bar", ignoreCase = true))
         assertTrue("Disclosure text must mention alarm", state.alarmDisclosureText.contains("alarm", ignoreCase = true))
         assertTrue("Disclosure text must mention gentle", state.alarmDisclosureText.contains("gentle", ignoreCase = true))
+        assertTrue("Disclosure text must mention Doze delay", state.alarmDisclosureText.contains("delayed by Doze mode", ignoreCase = true))
     }
 }

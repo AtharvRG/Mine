@@ -124,5 +124,9 @@ class SystemPromptTest {
         assertTrue("Prompt must instruct to ask For what?", sysMsg.contains("For what?"))
         assertTrue("Prompt must describe untitled=true", sysMsg.contains("untitled=true"))
         assertTrue("Prompt must specify label whitelist", sysMsg.contains("alarm, reminder or notification"))
+
+        // R6: Gentle tier documentation and rules
+        assertTrue("Prompt must document tier argument", sysMsg.contains("tier: optional \"alarm\"|\"gentle\""))
+        assertTrue("Prompt must specify gentle tier rule", sysMsg.contains("Use tier=\"gentle\" only when the user says low priority, quiet, or no alarm"))
     }
 }

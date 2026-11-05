@@ -45,6 +45,9 @@ class BootReceiver : BroadcastReceiver() {
                     }
                     context.sendBroadcast(missedIntent)
                 }
+
+                // 3. Reschedule quote preparation alarm
+                com.anchor.mine.quotes.QuoteAlarmScheduler.scheduleNext(context)
             } finally {
                 pendingResult?.finish()
             }

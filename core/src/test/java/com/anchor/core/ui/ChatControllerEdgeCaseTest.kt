@@ -29,30 +29,45 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import kotlin.coroutines.cancellation.CancellationException
 
+@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class ChatControllerEdgeCaseTest {
+
+    private suspend fun waitUntil(timeoutMs: Long = 1000L, condition: suspend () -> Boolean) {
+        val deadline = System.currentTimeMillis() + timeoutMs
+        while (!condition()) {
+            if (System.currentTimeMillis() > deadline) {
+                org.junit.Assert.fail("Timed out waiting for condition after ${timeoutMs}ms")
+            }
+            kotlinx.coroutines.yield()
+            kotlinx.coroutines.delay(5)
+        }
+    }
 
     @Test
     fun testStopCancelsStreamAndPersistsInterrupted() = runBlocking {
         val storage = SharedFakeStorage().apply { settings["key"] = "test-key" }
         val clock = FakeClock(1000L)
-        
+        val halfwayEmitted = kotlinx.coroutines.CompletableDeferred<Unit>()
+
         val transport = object : HttpTransport {
             override suspend fun postStream(target: Target, body: String): Flow<String> = flow {
                 emit("""data: {"choices":[{"delta":{"content":"Halfway "}}]}""")
-                kotlinx.coroutines.delay(100) // Yield to allow Stop action
-                throw CancellationException("Stream cancelled by user")
+                halfwayEmitted.complete(Unit)
+                while (true) {
+                    kotlinx.coroutines.delay(10)
+                }
             }
         }
-        
+
         val controller = buildController(storage, clock, transport)
         controller.onAction(UiAction.UpdateDraft("Tell me a story"))
         controller.onAction(UiAction.SendMessage)
-        
+
+        halfwayEmitted.await()
         controller.onAction(UiAction.Stop)
-        
-        // Wait for coroutines to settle
-        kotlinx.coroutines.delay(200)
-        
+
+        waitUntil { !controller.state.value.isChatLoading && storage.messages.any { it.role == "assistant" && it.content?.contains("[Interrupted]") == true } }
+
         val lastMsg = storage.messages.last()
         assertEquals("assistant", lastMsg.role)
         assertTrue("Must append [Interrupted] to partial text", lastMsg.content!!.contains("Halfway  [Interrupted]"))
@@ -63,17 +78,17 @@ class ChatControllerEdgeCaseTest {
     fun testProviderErrorRemovesLoadingAndShowsErrorBubble() = runBlocking {
         val storage = SharedFakeStorage().apply { settings["key"] = "test-key" }
         val clock = FakeClock(1000L)
-        
+
         val transport = object : HttpTransport {
             override suspend fun postStream(target: Target, body: String): Flow<String> = flow {
                 throw Exception("Provider error: HTTP 500")
             }
         }
-        
+
         val controller = buildController(storage, clock, transport)
         controller.onAction(UiAction.UpdateDraft("Hello"))
         controller.onAction(UiAction.SendMessage)
-        
+
         assertEquals(false, controller.state.value.isChatLoading)
         assertEquals("Error: All providers failed or in cooldown. Last error: Provider error: HTTP 500", controller.state.value.connectionError)
         // Ensure "Thinking..." bubble is removed
@@ -84,17 +99,17 @@ class ChatControllerEdgeCaseTest {
     fun testReconcileAlarms_UpdatesTime_And_CancelsOrphans() = runBlocking {
         val storage = SharedFakeStorage().apply { settings["key"] = "test-key" }
         val clock = FakeClock(1000L)
-        
+
         // 1. Initial State: DB has reminder at 5000, OS has it registered at 5000
         storage.reminders.add(Reminder("r1", "Task", 5000L))
         storage.saveRegisteredAlarm("r1", 1, 5000L)
-        
+
         // 2. Orphan State: OS has an alarm that doesn't exist in DB
         storage.saveRegisteredAlarm("r2_orphan", 2, 8000L)
-        
+
         val canceledIds = mutableListOf<String>()
         val scheduledIds = mutableListOf<String>()
-        
+
         val scheduler = object : AlarmScheduler {
             override val lastFiredId = MutableStateFlow<String?>(null)
             override fun schedule(reminder: Reminder): com.anchor.core.alarms.ScheduleResult {
@@ -103,21 +118,21 @@ class ChatControllerEdgeCaseTest {
             }
             override fun cancel(reminderId: String) { canceledIds.add(reminderId) }
         }
-        
+
         val controller = ChatController(
-            storage, ProviderOrchestrator(RateLimiter { clock.now() }, object : HttpTransport { override suspend fun postStream(t: Target, b: String): Flow<String> = flow{} }), 
+            storage, ProviderOrchestrator(RateLimiter { clock.now() }, object : HttpTransport { override suspend fun postStream(target: Target, body: String): Flow<String> = flow{} }),
             com.anchor.core.context.ContextBuilder(storage, clock, DateResolver(clock), com.anchor.core.nudge.CheckinBuilder(storage, clock, DateResolver(clock))),
             Gateway(storage, Resolver(), DateResolver(clock), clock), scheduler, kotlinx.coroutines.CoroutineScope(UnconfinedTestDispatcher()), UnconfinedTestDispatcher(), clock
         )
-        
+
         // 3. Change time in DB to 9000 (Simulating a RESCHEDULE)
         storage.reminders.clear()
         storage.reminders.add(Reminder("r1", "Task", 9000L))
-        
+
         // Trigger reconcile via RefreshStats
         controller.onAction(UiAction.RefreshStats)
-        kotlinx.coroutines.delay(100)
-        
+        waitUntil { canceledIds.contains("r2_orphan") && scheduledIds.contains("r1") }
+
         assertTrue("Orphan alarm must be cancelled", canceledIds.contains("r2_orphan"))
         assertTrue("Rescheduled alarm must be re-scheduled because time changed", scheduledIds.contains("r1"))
     }
@@ -144,7 +159,7 @@ class ChatControllerEdgeCaseTest {
 
         // Fresh controller startup (simulating app start after force stop)
         val controller = ChatController(
-            storage, ProviderOrchestrator(RateLimiter { clock.now() }, object : HttpTransport { override suspend fun postStream(t: Target, b: String): Flow<String> = flow{} }),
+            storage, ProviderOrchestrator(RateLimiter { clock.now() }, object : HttpTransport { override suspend fun postStream(target: Target, body: String): Flow<String> = flow{} }),
             com.anchor.core.context.ContextBuilder(storage, clock, DateResolver(clock), com.anchor.core.nudge.CheckinBuilder(storage, clock, DateResolver(clock))),
             Gateway(storage, Resolver(), DateResolver(clock), clock),
             scheduler,
@@ -152,7 +167,7 @@ class ChatControllerEdgeCaseTest {
             kotlinx.coroutines.Dispatchers.Unconfined,
             clock
         )
-        kotlinx.coroutines.delay(100)
+        waitUntil { scheduledIds.contains("r_pending") }
 
         // Pending reminder MUST be re-armed despite being present in registry hint
         assertTrue("Pending reminder must be re-armed after app start/force-stop recovery", scheduledIds.contains("r_pending"))
@@ -163,21 +178,21 @@ class ChatControllerEdgeCaseTest {
         val storage = SharedFakeStorage().apply { settings["key"] = "test-key" }
         var postedTargetUrl: String? = null
         val transport = object : HttpTransport {
-            override suspend fun postStream(t: Target, b: String): Flow<String> = flow {
-                postedTargetUrl = t.id
+            override suspend fun postStream(target: Target, body: String): Flow<String> = flow {
+                postedTargetUrl = target.id
                 emit("""data: {"choices":[{"delta":{"content":"ok"}}]}""")
             }
         }
         val controller = buildController(storage, FakeClock(1000L), transport)
 
         controller.onAction(UiAction.SaveProvider("https://api.openai.com/v1/chat/completions", "key", "mod"))
-        kotlinx.coroutines.delay(100)
+        waitUntil { controller.state.value.providerEndpoint == "https://api.openai.com/v1/chat/completions" }
 
         assertEquals("https://api.openai.com/v1/chat/completions", controller.state.value.providerEndpoint)
 
         controller.onAction(UiAction.UpdateDraft("Test message"))
         controller.onAction(UiAction.SendMessage)
-        kotlinx.coroutines.delay(200)
+        waitUntil { postedTargetUrl != null }
 
         assertEquals("https://api.openai.com/v1/chat/completions", postedTargetUrl)
     }
@@ -232,7 +247,7 @@ class ChatControllerEdgeCaseTest {
         storage.saveProposal(proposal)
 
         val controller = ChatController(
-            storage, ProviderOrchestrator(RateLimiter { clock.now() }, object : HttpTransport { override suspend fun postStream(t: Target, b: String): Flow<String> = flow{} }),
+            storage, ProviderOrchestrator(RateLimiter { clock.now() }, object : HttpTransport { override suspend fun postStream(target: Target, body: String): Flow<String> = flow{} }),
             com.anchor.core.context.ContextBuilder(storage, clock, DateResolver(clock), com.anchor.core.nudge.CheckinBuilder(storage, clock, DateResolver(clock))),
             Gateway(storage, Resolver(), DateResolver(clock), clock),
             scheduler,
@@ -242,7 +257,7 @@ class ChatControllerEdgeCaseTest {
         )
 
         controller.onAction(UiAction.ConfirmProposal("prop_cancel", "n_cancel"))
-        kotlinx.coroutines.delay(100)
+        waitUntil { storage.getNode("n_cancel")?.status == "cancelled" }
 
         // Verify Node is cancelled
         val updatedNode = storage.getNode("n_cancel")
@@ -347,7 +362,7 @@ class ChatControllerEdgeCaseTest {
         val clock = FakeClock(1000L)
         var llmCalled = false
         val transport = object : HttpTransport {
-            override suspend fun postStream(t: Target, b: String): Flow<String> = flow {
+            override suspend fun postStream(target: Target, body: String): Flow<String> = flow {
                 llmCalled = true
                 emit("""data: [DONE]""")
             }
@@ -366,7 +381,7 @@ class ChatControllerEdgeCaseTest {
         storage.saveProposal(proposal)
 
         controller.onAction(UiAction.ConfirmProposal("p_ambig", "n1"))
-        kotlinx.coroutines.delay(100)
+        waitUntil { storage.getNode("n1")?.status == "done" }
 
         org.junit.Assert.assertFalse("LLM should not be called on chip confirm", llmCalled)
         assertEquals("Node should be completed", "done", storage.getNode("n1")?.status)
@@ -382,7 +397,7 @@ class ChatControllerEdgeCaseTest {
         val clock = FakeClock(1000L)
         var llmCalled = false
         val transport = object : HttpTransport {
-            override suspend fun postStream(t: Target, b: String): Flow<String> = flow {
+            override suspend fun postStream(target: Target, body: String): Flow<String> = flow {
                 llmCalled = true
                 emit("""data: [DONE]""")
             }
@@ -397,7 +412,7 @@ class ChatControllerEdgeCaseTest {
         val res = gateway.executeTool(createCall) as com.anchor.core.models.ToolResult.Committed
 
         controller.onAction(UiAction.Undo(res.undoToken))
-        kotlinx.coroutines.delay(100)
+        waitUntil { controller.state.value.receipts.isNotEmpty() }
 
         org.junit.Assert.assertFalse("LLM should not be called on chip undo", llmCalled)
         val receipts = controller.state.value.receipts
@@ -411,7 +426,7 @@ class ChatControllerEdgeCaseTest {
         val storage = SharedFakeStorage().apply { settings["key"] = "test-key" }
         val clock = FakeClock(1000L)
         val transport = object : HttpTransport {
-            override suspend fun postStream(t: Target, b: String): Flow<String> = flow { emit("""data: [DONE]""") }
+            override suspend fun postStream(target: Target, body: String): Flow<String> = flow { emit("""data: [DONE]""") }
         }
         val controller = buildController(storage, clock, transport)
 
@@ -435,7 +450,7 @@ class ChatControllerEdgeCaseTest {
 
         // Undo CREATE
         controller.onAction(UiAction.Undo(res.undoToken))
-        kotlinx.coroutines.delay(100)
+        waitUntil { storage.getNode(res.targetId)?.status == "cancelled" }
 
         val receipts = controller.state.value.receipts
         org.junit.Assert.assertTrue("Should create receipt for undo", receipts.isNotEmpty())
@@ -449,7 +464,7 @@ class ChatControllerEdgeCaseTest {
         val storage = SharedFakeStorage().apply { settings["key"] = "test-key" }
         val clock = FakeClock(1000L)
         val transport = object : HttpTransport {
-            override suspend fun postStream(t: Target, b: String): Flow<String> = flow {
+            override suspend fun postStream(target: Target, body: String): Flow<String> = flow {
                 emit("""data: {"choices":[{"delta":{"content":"{\"reply\":\"Done!\",\"calls\":[{\"tool\":\"propose_change\",\"args\":{\"intent\":\"CREATE\",\"hint\":\"Buy groceries\"}}]}"}}]}""")
                 emit("data: [DONE]")
             }
@@ -458,7 +473,7 @@ class ChatControllerEdgeCaseTest {
 
         controller.onAction(UiAction.UpdateDraft("Buy groceries"))
         controller.onAction(UiAction.SendMessage)
-        kotlinx.coroutines.delay(200)
+        waitUntil { controller.state.value.receipts.isNotEmpty() }
 
         val receipts = controller.state.value.receipts
         assertEquals(1, receipts.size)
@@ -506,7 +521,7 @@ class ChatControllerEdgeCaseTest {
         val storage = SharedFakeStorage().apply { settings["key"] = "test-key" }
         val clock = FakeClock(1000L)
         val transport = object : HttpTransport {
-            override suspend fun postStream(t: Target, b: String): Flow<String> = flow {
+            override suspend fun postStream(target: Target, body: String): Flow<String> = flow {
                 emit("""data: {"choices":[{"delta":{"content":"{\"reply\":\"Handling your request.\",\"calls\":[{\"tool\":\"propose_change\",\"args\":{\"intent\":\"CREATE\",\"hint\":\"Valid task\"}},{\"tool\":\"propose_change\",\"args\":{}}]}"}}]}""")
                 emit("data: [DONE]")
             }
@@ -515,7 +530,7 @@ class ChatControllerEdgeCaseTest {
 
         controller.onAction(UiAction.UpdateDraft("Create valid and invalid"))
         controller.onAction(UiAction.SendMessage)
-        kotlinx.coroutines.delay(200)
+        waitUntil { controller.state.value.receipts.size == 2 && !controller.state.value.isChatLoading }
 
         val receipts = controller.state.value.receipts
         assertEquals("Must produce 2 receipts for mixed envelope", 2, receipts.size)
@@ -524,8 +539,8 @@ class ChatControllerEdgeCaseTest {
 
         val lastMsg = storage.messages.last()
         assertEquals("assistant", lastMsg.role)
-        org.junit.Assert.assertTrue(lastMsg.content!!.contains("Handling your request."))
-        org.junit.Assert.assertTrue(lastMsg.content!!.contains("Missing intent"))
+        org.junit.Assert.assertTrue(lastMsg.content?.contains("Handling your request.") == true)
+        org.junit.Assert.assertTrue(lastMsg.content?.contains("Missing intent") == true)
     }
 
     @Test
@@ -535,7 +550,7 @@ class ChatControllerEdgeCaseTest {
         val dateResolver = DateResolver(clock)
         val checkinBuilder = com.anchor.core.nudge.CheckinBuilder(storage, clock, dateResolver)
         val contextBuilder = ContextBuilder(storage, clock, dateResolver, checkinBuilder)
-        val controller = buildController(storage, clock, object : HttpTransport { override suspend fun postStream(t: Target, b: String): Flow<String> = flow{} })
+        val controller = buildController(storage, clock, object : HttpTransport { override suspend fun postStream(target: Target, body: String): Flow<String> = flow{} })
 
         val fact1 = com.anchor.core.models.SoulFact("sf1", "food", "Likes chai", 0.9, "user", "stated", "proposed", clock.now())
         val fact2 = com.anchor.core.models.SoulFact("sf2", "sport", "Plays tennis", 0.8, "user", "stated", "proposed", clock.now())
@@ -543,11 +558,11 @@ class ChatControllerEdgeCaseTest {
         storage.createSoulFactAndCommit(fact2, com.anchor.core.models.RawEvent("e_sf2", "CREATE", "soul_fact", "sf2"))
 
         controller.onAction(UiAction.AcceptSoulFact("sf1"))
-        kotlinx.coroutines.delay(50)
+        waitUntil { storage.soulFacts.find { it.id == "sf1" }?.status == "active" }
         assertEquals("active", storage.soulFacts.find { it.id == "sf1" }?.status)
 
         controller.onAction(UiAction.RejectSoulFact("sf2"))
-        kotlinx.coroutines.delay(50)
+        waitUntil { storage.soulFacts.find { it.id == "sf2" }?.status == "rejected" }
         assertEquals("rejected", storage.soulFacts.find { it.id == "sf2" }?.status)
 
         val pack = contextBuilder.buildPack()
@@ -584,24 +599,19 @@ class ChatControllerEdgeCaseTest {
         // Turn 1: "notify me in 10 secs" -> LLM asks "For what?"
         controller.onAction(UiAction.UpdateDraft("notify me in 10 secs"))
         controller.onAction(UiAction.SendMessage)
-        kotlinx.coroutines.delay(50)
+        waitUntil { !controller.state.value.isChatLoading && storage.messages.any { it.role == "assistant" && it.content?.contains("For what?") == true } }
 
         // Turn 2: "nothing specific just do it" -> LLM calls propose_change untitled=true
         controller.onAction(UiAction.UpdateDraft("nothing specific just do it"))
         controller.onAction(UiAction.SendMessage)
-        kotlinx.coroutines.delay(50)
+        waitUntil { !controller.state.value.isChatLoading && storage.getActiveNodes(100).any { it.title.contains("Notification") } }
 
         // Turn 3: "remaind me in 15 secs for checking laptop" -> With subject present, LLM must propose_change CREATE directly
         controller.onAction(UiAction.UpdateDraft("remaind me in 15 secs for checking laptop"))
         controller.onAction(UiAction.SendMessage)
-        kotlinx.coroutines.delay(50)
+        waitUntil { !controller.state.value.isChatLoading && storage.getActiveNodes(100).size == 2 }
 
         val nodes = storage.getActiveNodes(100)
-        println("Payloads: ${interceptedPayloads.size}")
-        for ((idx, p) in interceptedPayloads.withIndex()) {
-            println("Payload $idx: $p")
-        }
-        println("Receipts: ${controller.state.value.receipts}")
         assertEquals("Nodes found: ${nodes.map { it.title }}", 2, nodes.size)
         assertTrue(nodes.any { it.title == "checking laptop" })
         assertTrue(nodes.any { it.title.contains("Notification") })
@@ -624,7 +634,7 @@ class ChatControllerEdgeCaseTest {
 
         val controller = ChatController(
             storage,
-            ProviderOrchestrator(RateLimiter { clock.now() }, object : HttpTransport { override suspend fun postStream(t: Target, b: String): Flow<String> = flow{} }),
+            ProviderOrchestrator(RateLimiter { clock.now() }, object : HttpTransport { override suspend fun postStream(target: Target, body: String): Flow<String> = flow{} }),
             com.anchor.core.context.ContextBuilder(storage, clock, DateResolver(clock), com.anchor.core.nudge.CheckinBuilder(storage, clock, DateResolver(clock))),
             Gateway(storage, Resolver(), DateResolver(clock), clock),
             failingScheduler,
@@ -634,7 +644,7 @@ class ChatControllerEdgeCaseTest {
         )
 
         controller.onAction(UiAction.RefreshStats)
-        kotlinx.coroutines.delay(100)
+        waitUntil { controller.state.value.schedulingError != null }
 
         assertEquals("OS security restriction", controller.state.value.schedulingError)
         assertEquals(1, controller.state.value.schedulingFailedCount)
@@ -664,7 +674,7 @@ class ChatControllerEdgeCaseTest {
 
         val controller = ChatController(
             storage,
-            ProviderOrchestrator(RateLimiter { clock.now() }, object : HttpTransport { override suspend fun postStream(t: Target, b: String): Flow<String> = flow{} }),
+            ProviderOrchestrator(RateLimiter { clock.now() }, object : HttpTransport { override suspend fun postStream(target: Target, body: String): Flow<String> = flow{} }),
             com.anchor.core.context.ContextBuilder(storage, clock, DateResolver(clock), com.anchor.core.nudge.CheckinBuilder(storage, clock, DateResolver(clock))),
             Gateway(storage, Resolver(), DateResolver(clock), clock),
             configurableScheduler,
@@ -674,7 +684,7 @@ class ChatControllerEdgeCaseTest {
         )
 
         controller.onAction(UiAction.RefreshStats)
-        kotlinx.coroutines.delay(100)
+        waitUntil { controller.state.value.schedulingFailedCount == 2 }
 
         assertEquals("Failure for r1", controller.state.value.schedulingError)
         assertEquals(2, controller.state.value.schedulingFailedCount)
@@ -682,10 +692,122 @@ class ChatControllerEdgeCaseTest {
         // Now fix the scheduler (clean pass)
         failScheduler = false
         controller.onAction(UiAction.RefreshStats)
-        kotlinx.coroutines.delay(100)
+        waitUntil { controller.state.value.schedulingFailedCount == 0 }
 
         assertEquals(null, controller.state.value.schedulingError)
         assertEquals(0, controller.state.value.schedulingFailedCount)
+    }
+
+    @Test
+    fun testExtractReplyFromJsonStream_ReturnsNullUntilRealReplyExists() {
+        assertEquals(null, ChatController.extractReplyFromJsonStream(""))
+        assertEquals(null, ChatController.extractReplyFromJsonStream("   "))
+        assertEquals(null, ChatController.extractReplyFromJsonStream("{"))
+        assertEquals(null, ChatController.extractReplyFromJsonStream("""{"thought":"pondering..."}"""))
+        assertEquals(null, ChatController.extractReplyFromJsonStream("""{"calls":[{"tool":"propose_change"}]}"""))
+        assertEquals(null, ChatController.extractReplyFromJsonStream("""{"reply":"""))
+        assertEquals(null, ChatController.extractReplyFromJsonStream("""{"reply":""""))
+        assertEquals("Hello", ChatController.extractReplyFromJsonStream("""{"reply":"Hello"""))
+        assertEquals("Hello\nWorld", ChatController.extractReplyFromJsonStream("""{"reply":"Hello\nWorld"}"""))
+        assertEquals("Quote: \"Mine\"", ChatController.extractReplyFromJsonStream("""{"reply":"Quote: \"Mine\""}"""))
+        assertEquals("Non-JSON raw text", ChatController.extractReplyFromJsonStream("Non-JSON raw text"))
+    }
+
+    @Test
+    fun testStopDuringThinking_DoesNotPersistInterruptedToRawMessage() = runBlocking {
+        val storage = SharedFakeStorage().apply { settings["key"] = "test-key" }
+        val clock = FakeClock(1000L)
+        val thinkingEmitted = kotlinx.coroutines.CompletableDeferred<Unit>()
+
+        val transport = object : HttpTransport {
+            override suspend fun postStream(target: Target, body: String): Flow<String> = flow {
+                emit("""data: {"choices":[{"delta":{"content":"{\"thought\":\"evaluating input...\",\"calls\":[]"}}]}""")
+                thinkingEmitted.complete(Unit)
+                while (true) {
+                    kotlinx.coroutines.delay(10)
+                }
+            }
+        }
+
+        val controller = buildController(storage, clock, transport)
+        controller.onAction(UiAction.UpdateDraft("Hello"))
+        controller.onAction(UiAction.SendMessage)
+
+        thinkingEmitted.await()
+        controller.onAction(UiAction.Stop)
+
+        waitUntil { !controller.state.value.isChatLoading }
+
+        assertTrue("Must NOT persist any interrupted message if no real reply text existed",
+            storage.messages.none { it.content?.contains("[Interrupted]") == true })
+        assertTrue("Must NOT persist any assistant message to raw_message",
+            storage.messages.none { it.role == "assistant" })
+        assertTrue("UI chatMessages must NOT have Thinking...",
+            controller.state.value.chatMessages.none { it.content?.contains("Thinking") == true })
+    }
+
+    @Test
+    fun testStopDuringRealReply_PersistsInterruptedWithRealText() = runBlocking {
+        val storage = SharedFakeStorage().apply { settings["key"] = "test-key" }
+        val clock = FakeClock(1000L)
+        val replyEmitted = kotlinx.coroutines.CompletableDeferred<Unit>()
+
+        val transport = object : HttpTransport {
+            override suspend fun postStream(target: Target, body: String): Flow<String> = flow {
+                emit("""data: {"choices":[{"delta":{"content":"{\"reply\":\"The capital is Paris and"}}]}""")
+                replyEmitted.complete(Unit)
+                while (true) {
+                    kotlinx.coroutines.delay(10)
+                }
+            }
+        }
+
+        val controller = buildController(storage, clock, transport)
+        controller.onAction(UiAction.UpdateDraft("What is the capital?"))
+        controller.onAction(UiAction.SendMessage)
+
+        replyEmitted.await()
+        controller.onAction(UiAction.Stop)
+
+        waitUntil { !controller.state.value.isChatLoading && storage.messages.any { it.role == "assistant" && it.content?.contains("[Interrupted]") == true } }
+
+        val lastMsg = storage.messages.last()
+        assertEquals("assistant", lastMsg.role)
+        assertTrue("Must append [Interrupted] to partial real reply text",
+            lastMsg.content!!.contains("The capital is Paris and [Interrupted]"))
+    }
+
+    @Test
+    fun testConfirmProposal_ConcurrentOrDuplicateClicks_OnlyOneCommitsAndLoserNoErrorBanner() = runBlocking {
+        val storage = SharedFakeStorage().apply { settings["key"] = "test-key" }
+        val clock = FakeClock(1000L)
+        val transport = object : HttpTransport {
+            override suspend fun postStream(target: Target, body: String): Flow<String> = flow { emit("""data: [DONE]""") }
+        }
+        val controller = buildController(storage, clock, transport)
+
+        val node1 = com.anchor.core.models.Node("n1", "task", "Clean garage", "active", 5000L)
+        storage.activeNodes.add(node1)
+        val proposal = com.anchor.core.models.Proposal(
+            id = "p_ambig",
+            kind = "ambiguous",
+            intent = com.anchor.core.models.IntentType.COMPLETE,
+            options = listOf(com.anchor.core.models.ProposalOption("n1", "Clean garage")),
+            status = "open"
+        )
+        storage.saveProposal(proposal)
+
+        // Winner tap
+        controller.onAction(UiAction.ConfirmProposal("p_ambig", "n1"))
+        // Immediate duplicate/loser tap
+        controller.onAction(UiAction.ConfirmProposal("p_ambig", "n1"))
+
+        waitUntil { storage.getNode("n1")?.status == "done" }
+
+        val receipts = controller.state.value.receipts
+        assertEquals("Exactly 1 commit receipt should be produced", 1, receipts.count { !it.isError })
+        assertEquals("No error receipts should be shown for loser/duplicate confirm", 0, receipts.count { it.isError })
+        assertEquals("Proposal must be consumed", "consumed", storage.getProposal("p_ambig")?.status)
     }
 
     private fun buildController(storage: com.anchor.core.storage.Storage, clock: Clock, transport: HttpTransport): ChatController {

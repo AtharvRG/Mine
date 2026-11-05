@@ -83,3 +83,55 @@ Rejected: Option (a) Two-phase CAS before effect with compensating rollback (lea
 
 (Next free: D-119. Add: date, decision, reason, rejected.)
 
+D-119 (2026-11-05): Near-Match Deduplication and needs_confirm Proposal Protocol (P1-B 17 / Task #103).
+- Near-Match Check: When creating an active item (`propose_change CREATE`), Gateway queries `storage.findActiveNodesByTitle(title)`.
+  - If existing and new item both have due times, they are near-matches if `Math.abs(existing.dueAt - newDueAt) <= DEDUPE_TIME_WINDOW_MS` (2 hours).
+  - If both are undated, or if one is dated and the other is undated, they are treated as near-matches.
+  - If both are dated and scheduled > 2 hours apart, they are treated as distinct events and committed immediately.
+  - Untitled alarms (`untitled = true`, e.g. "01:00 Alarm") bypass deduplication entirely.
+- Proposal Generation (`kind = "needs_confirm"`):
+  - Returns `ToolResult.NeedsConfirm(proposalId, message, options)` where options are `["Update existing", "Add anyway", "Cancel"]`.
+  - Persists `Proposal` with options `ProposalOption(duplicate.id, "Update existing", dueStr)`, `ProposalOption("add_new", "Add anyway")`, `ProposalOption("cancel", "Cancel")`.
+  - Embeds `ProposalPayload` preserving targetAtMillis, title, type, followUpTo, priority, severity, pinned, tier, and targetId.
+- Confirmation Resolution (`handleConfirmChange`):
+  - `choice == "cancel"`: Atomically consumes proposal via CAS (`storage.consumeProposalCas`) with 0 entity mutations, returning `ToolResult.Committed("CANCEL", ...)`.
+  - `choice == "add_new"`: Invokes `handleCreate` with `consumeProposalId = proposal.id`, executing in-transaction proposal CAS (D-118) to atomically commit the new node and consume the proposal.
+  - `choice in [duplicate.id, "update"]`: Updates existing node's `dueAt`, updates/reschedules reminder, commits `RawEvent` with before/after snapshots, and executes in-transaction proposal CAS (D-118).
+  - Concurrency: Atomic CAS ensures single-winner semantics; concurrent taps yield exactly one committed action while losing taps receive "Proposal already resolved".
+  - Two-Stage Transition: When an item has an ambiguous time ("at 5"), Gateway first issues a `time` clarification proposal (`NeedsTime`). Once the user selects a candidate chip, the resolved timestamp is checked against existing items for near-match deduplication; if a near match exists, it transitions seamlessly into `NeedsConfirm`.
+Reason: Conforms strictly to blueprint 22 s3.8 and blueprint 23 s6; prevents duplicate alarms/tasks while giving the user flexible options to update existing items or add anyway; maintains transactional atomicity and concurrency safety.
+Rejected: Rejecting duplicate creation with a hard error; silently creating duplicate items without confirmation; overwriting existing items without user consent.
+
+D-120 (2026-11-05): Reminder Policy per Blueprint 30 (P1-B 15 / Task #104).
+- Sections Cited: Blueprint 30 sections 3.1, 3.2, 3.3, 3.4, 3.9; Blueprint 52 line 174; D-035.
+- Creation Policy (s3.1, s3.3, D-035):
+  - Explicit user temporal commands create reminders directly (lead time = 0 at `dueAt` for dated tasks); undated items do not automatically generate alarms.
+  - AI-inferred reminders check setting `reminder.ai_suggest` (default `ask`): in `ask` mode, Gateway emits `ToolResult.NeedsConfirm` with chips `[Set <time>, Change, Cancel]`; in `auto` mode, creates immediately with undo capability.
+- Vague Day-Part Windows & Severity Positioning (s3.4):
+  - Resolves vague day-part expressions deterministically using standard windows:
+    - Morning: 07:00 to 11:00 (240 min)
+    - Afternoon: 12:00 to 16:00 (240 min)
+    - Evening: 17:00 to 20:00 (180 min)
+    - Night: 20:00 to 23:00 (180 min, clamped to day end)
+    - Soon: `now + 30 min`
+    - Later: `now + 2 hours`
+  - Position inside window is determined by node severity:
+    - Sev 3 (critical): 10% into window
+    - Sev 2 (high): 35% into window
+    - Sev 1 (normal): 60% into window
+    - Sev 0 (low/default): 75% into window
+    - Unspecified: window default/midpoint.
+- Relative Lead Times & Offsets (s3.2, s3.4, Blueprint 23 s6):
+  - `schedule_reminder` accepts `offset_text` (e.g., "15 minutes before", "1 hour before") anchored to `node.dueAt` (`fireAt = node.dueAt - offsetMillis`).
+  - Errors if node is missing or undated, or if calculated fire time is in the past.
+- Near-Duplicate Reminder Policy (s3.3):
+  - If a reminder for the same node already exists within 30 minutes (`|existing.fireAt - newFireAt| <= 30 min`), `schedule_reminder` returns `ToolResult.NeedsConfirm` ("A reminder is already set for <existing>. Update it to <new>, or cancel?") with options `[Update existing, Cancel]` instead of silently overwriting.
+  - User can confirm "update" to adjust existing reminder or "cancel" to dismiss.
+- Quiet Hours / Day Window Policy (s3.3, D-035):
+  - Explicit user reminders are requested-class and ring even outside the day window.
+  - AI-inferred reminders outside `dayRule.startMinute..dayRule.endMinute` are clamped to `day_start + 30 min`.
+Reason: Fully enforces deterministic code-side reminder scheduling rules without LLM guessing (Rule 1 & Rule 4); respects quiet hours and user autonomy; prevents duplicate alarm spam while allowing multi-offset reminders (> 30 min apart).
+Rejected: Silently overwriting reminders within 30 minutes; moving explicit user alarms outside quiet hours; guessing times for undated items without user request.
+
+(Next free: D-121. Add: date, decision, reason, rejected.)
+

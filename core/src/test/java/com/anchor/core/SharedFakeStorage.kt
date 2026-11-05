@@ -99,11 +99,17 @@ open class SharedFakeStorage(var clock: Clock = SystemClock()) : Storage {
     }
 
     override suspend fun findActiveNodeByTitle(title: String): Node? {
+        return findActiveNodesByTitle(title).firstOrNull()
+    }
+
+    override suspend fun findActiveNodesByTitle(title: String): List<Node> {
         val trimmed = title.trim()
-        return activeNodes.find {
-            (it.status == "active" || it.status == "in_progress" || it.status == "paused") &&
-            it.title.trim().equals(trimmed, ignoreCase = true)
-        }
+        return activeNodes
+            .filter {
+                (it.status == "active" || it.status == "in_progress" || it.status == "paused") &&
+                it.title.trim().equals(trimmed, ignoreCase = true)
+            }
+            .sortedWith(compareBy<Node> { it.dueAt == null }.thenBy { it.dueAt }.thenBy { it.id })
     }
 
     override suspend fun getNodesDueBetween(startMs: Long, endMs: Long, limit: Int): List<Node> {

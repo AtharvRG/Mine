@@ -20,12 +20,14 @@ android {
         versionName = "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        testProguardFile("proguard-rules.pro")
     }
 
     buildTypes {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
+            signingConfig = signingConfigs.getByName("debug")
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
@@ -64,6 +66,7 @@ dependencies {
     androidTestImplementation("junit:junit:4.13.2") // THIS FIXES THE JUNIT ERRORS
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test:runner:1.6.2")
+    androidTestImplementation("androidx.tracing:tracing:1.2.0")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
 }

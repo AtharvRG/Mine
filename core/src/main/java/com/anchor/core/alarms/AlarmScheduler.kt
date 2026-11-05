@@ -16,4 +16,5 @@ interface AlarmScheduler {
     val lastFiredId: StateFlow<String?>
     fun schedule(reminder: Reminder): ScheduleResult
     fun cancel(reminderId: String)
+    fun checkHealth(): ScheduleResult = ScheduleResult.Armed
 }
