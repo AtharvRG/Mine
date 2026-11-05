@@ -1,26 +1,44 @@
 # STATE (update every session; facts only)
-Updated: 2026-11-05   Commit: In progress (R12c Items 1-8 verified, ready to commit)
+Updated: 2026-11-05   Commit: In progress (R12d Items 1-5 verified)
 ## Build/test status (command + exit code)
-- `./gradlew :core:test`: SUCCESS (exit 0, 194/194 tests passed across 34 test classes)
+- `./gradlew :core:test`: SUCCESS (exit 0, 197/197 tests passed across 35 test classes; raw transcript in `docs/agent/evidence/core-test.txt`)
 - `./gradlew :app:compileDebugSources :app:compileDebugUnitTestSources`: SUCCESS (exit 0)
 - `./gradlew :app:assembleDebug`: SUCCESS (exit 0)
 - `./gradlew :app:assembleRelease`: SUCCESS (exit 0, R8 minification + lintVitalRelease)
-- `:app:compileDebugAndroidTestKotlin`: SUCCESS (exit 0, compiles 45 instrumented test methods across 9 classes)
-- `./gradlew :app:testDebugUnitTest`: SUCCESS (exit 0, 9/9 tests passed across ChunkedAesStreamTest [4/4] and QuoteAlarmSchedulerTest [5/5] in 1.620s)
-- `adb shell am instrument -r -w com.anchor.mine.test/androidx.test.runner.AndroidJUnitRunner`: SUCCESS (exit 0 on device; 45/45 tests passed across 9 test classes on moto g73 5G - Android 14 / API 34).
+- `:app:compileDebugAndroidTestKotlin`: SUCCESS (exit 0, compiles 49 instrumented test methods across 9 classes)
+- `./gradlew :app:testDebugUnitTest`: SUCCESS (exit 0, 9/9 tests passed across ChunkedAesStreamTest [4/4] and QuoteAlarmSchedulerTest [5/5] in 1.620s; raw transcript in `docs/agent/evidence/app-testDebugUnitTest.txt`)
+- `adb shell am instrument -r -w com.anchor.mine.test/androidx.test.runner.AndroidJUnitRunner`: SUCCESS (exit 0 on device; 49/49 tests passed across 9 test classes on moto g73 5G - Android 14 / API 34; raw transcripts in `docs/agent/evidence/connected-tests.txt` and `docs/agent/evidence/connected-tests-runner.txt`).
   - `AlarmReceiverTest`: 3 passed
   - `AlarmSelfTest`: 3 passed
   - `BootReceiverTest`: 1 passed
   - `ManifestPermissionTest`: 1 passed
   - `ExportTest`: 6 passed
   - `QuoteAlarmReceiverTest`: 2 passed
-  - `AndroidStorageTest`: 26 passed
+  - `AndroidStorageTest`: 30 passed
   - `DatabaseMigrationTest`: 1 passed
   - `StorageTest`: 2 passed
-- Test count reconciliation: 31 was R3b baseline; 37 was R5/R6 after ExportTest additions; 44 was post-R12; 33 was an unverified documentation error; 45 is current ground truth (after R12c Item 1 added testUpdateProposalStatus_PreservesCreatedAt_RealSqlite).
+- Ground truth test counts: 197 core + 9 app + 49 connected = 255 total project tests (0 failures, 100% pass rate).
 - Zero-Vibration Protocol: Verified 100% compliant. Notification channels `mine_reminders_v3` and `mine_gentle_reminders_v3` explicitly set `enableVibration(false)` and `vibrationPattern = null`. No `VIBRATE` permission in manifest (`adb shell dumpsys package com.anchor.mine | grep -i vibrate` returns empty).
 - `./gradlew :app:lintDebug`: SUCCESS (exit 0)
 ## Verified working (with evidence)
+- R12d: In-Transaction Proposal CAS (Option b / D-118) & Guarded Rollback:
+  - D-118 In-Transaction CAS: Embedded proposal consumption CAS directly within effect write transactions (`createNodeAndCommit`, `updateNodeAndCommit`, `createReminderAndCommit`). When `consumeProposalId` is supplied, `consumeProposalInTx` executes `UPDATE proposal SET status = 'consumed' WHERE id = ? AND status = 'open'`. If `rowsAffected == 0`, the transaction immediately aborts and rolls back all node/edge/reminder/event changes by throwing `ProposalAlreadyResolvedException`.
+  - Elimination of Crash Window: Bypasses the two-step gap where proposal was consumed before effect transaction. A crash or failure inside the transaction rolls back both the proposal status and the entity mutation atomically.
+  - Guarded Rollback (`reopenProposal`): Replaced unconditioned status updates with guarded `UPDATE proposal SET status = 'open' WHERE id = ? AND status = 'consumed'`. It only reopens a proposal if it was consumed by that specific flow, preventing accidental overwriting or reopening of proposals resolved by a winning concurrent turn.
+  - Strict Expiry Parity: Removed `clock.now()` fallback in `SharedFakeStorage.getProposal` so proposals with missing `created_at` return `null`, matching SQLite behavior.
+  - Terminal vs Non-Terminal Failure Policy: Terminal failures (`"Node not found"`, `"Node is no longer active"`) explicitly consume the proposal to eliminate dead UI chips. Non-terminal validation failures ("Invalid choice", duplicate active title, past time) leave the proposal open.
+  - Verification & Hardening:
+    - 3 new unit tests in `:core` (`R12ConcurrencyLifecycleTest.kt`): `testCrashWindow_EffectTransactionThrows_ProposalRemainsOpenAndNoEffectRow`, `testGuardedRollback_CannotReopenProposalConsumedBySomeoneElse`, `testExpiryParity_MissingCreatedAtReturnsNull`.
+    - 4 new instrumented tests in `:app` (`AndroidStorageTest.kt`): `testInTransactionCas_RealSqlite_AbortOnAlreadyConsumed`, `testReopenProposal_RealSqlite_GuardedSemantics`, `testConcurrentConfirm_RealSqlite_SingleWinnerSemantics`, `testExpiryParity_MissingCreatedAtReturnsNull_RealSqlite`.
+    - Updated `DatabaseMigrationTest.kt` smoke test to exercise `reopenProposal`.
+    - Captured definitive verification evidence in `docs/agent/evidence/` (197 core, 9 app, 49 connected).
+- R12c: Rollback Expiry Preservation, Atomicity Analysis & Numbers Reconciliation:
+  - Preserved immutable `created_at` during proposal rollback in `updateProposalStatus(id, "open")`, preventing 24h expiration window extension.
+  - Authored comprehensive architectural atomicity options analysis (Option a vs Option b) leading to D-118.
+  - Reconciled ground truth test numbers with verified evidence.
+  - Formally documented D-116, D-117, and D-102b in `docs/agent/DECISIONS.md`.
+  - Documented empirical Android 14 `USE_EXACT_ALARM` SecurityException reproduction in `docs/agent/evidence/security-exception.txt`.
+  - Removed rogue `server.js` test server.
 - R12: Turn Lifecycle and Confirm-Path Concurrency (Findings A-01, A-04, A-09, Remediations B-1, B-2, B-3):
   - A-01 Turn Lifecycle Interruption Isolation & Teardown Crash Defense (Remediation B-1):
     - Added `@Volatile private var currentBotId: String? = null` in `ChatController`.
@@ -176,11 +194,9 @@ Updated: 2026-11-05   Commit: In progress (R12c Items 1-8 verified, ready to com
 - 6 custom agents (`reviewer`, `debugger`, `blueprint-checker`, `migration-guard`, `test-auditor`, `android-device`), 5 commands (`bootstrap`, `audit`, `fix`, `verify`, `handoff`), 5 skills, and safety hooks installed in repo `.claude/` and `.openclaude/` directories (OpenClaude canonical is `.openclaude/`).
 ## Known broken
 - B5 (Export UI picker & passphrase dialog) is not implemented; dark-shipped pending v1.1 SAF integration.
-- Tasks T-A, T-B, T-C, T-D, T13, T20 set to in-progress [~] pending remediation (R8..R10; R1, R2, R3, R11, R4, R5, R6, R7 completed).
 ## UNVERIFIED (from old chat / unproven)
-- T-E, T-F are unit-verified only.
-- R8 through R10 remediation tasks open (R1, R2, R3, R11, R3b, R4, R5, R6, R7 completed).
+- R10g (Minified release APK test on physical phone) pending human verification when physical device is unlocked for release install.
 ## Environment notes (device, Android version, OEM, toolchain versions)
-- Physical test device is connected: moto g73 5G running Android 14 (API 34). Instrumented test suite verified 31/31 passed. Clean install verified. Zero vibration protocol active.
+- Physical test device is connected: moto g73 5G running Android 14 (API 34). Instrumented test suite verified 49/49 passed across 9 test classes (0 failures, 100% pass rate). Clean install verified. Zero vibration protocol active.
 - Windows 11 Pro, Bash environment.
 - Toolchains: AGP 9.4.0, Kotlin 2.4.21, Gradle 9.6.0, daemon JDK toolchain 25 (Eclipse Adoptium 25.0.4.1+1-LTS), JVM target 17.

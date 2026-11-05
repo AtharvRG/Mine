@@ -1,4 +1,4 @@
-# HANDOFF (Session 2 - Task R4 Complete)
+# HANDOFF (Session 2 - Task R12d Complete)
 
 ## 1. What Changed
 
@@ -286,43 +286,71 @@
   - **Item 8 (Test Auditor Escape Analysis)**:
     - Performed comprehensive test escape analysis on R12 unit and connected tests, documenting what the tests prove and what they would NOT catch (OS process death mid-CAS, device reboot between CAS and commit, multi-connection SQLite locking under background I/O, multi-process concurrency, digitizer multi-touch race conditions, socket-level TLS/HTTP2 teardown). Recorded under Section 5 in `docs/agent/work/r12c-review.md`.
 
+- **Task R12d (Corrections: Transactional CAS inside Effect & Guarded Rollback - Complete)**:
+  - **Item 1 (Architectural Directive D-118 - In-Transaction Proposal CAS)**:
+    - Implemented D-118 across `Gateway.handleConfirmChange` (`CREATE` time-chip, `CANCEL`, `COMPLETE`, `RESCHEDULE`, `UPDATE`-reminder).
+    - Embedded proposal consumption CAS directly within effect write transactions (`createNodeAndCommit`, `updateNodeAndCommit`, `createReminderAndCommit`) via `consumeProposalInTx` executing `UPDATE proposal SET status = 'consumed' WHERE id = ? AND status = 'open'`.
+    - Enforced single-winner semantics: two concurrent confirms result in exactly one committed effect; the second receives `ToolResult.Error("Proposal already resolved")` because `rowsAffected == 0` triggers `ProposalAlreadyResolvedException`, rolling back the entire write transaction.
+    - Implemented identical semantics in `AndroidStorage` (real SQLite) and `SharedFakeStorage`.
+    - Terminal failures (`"Node not found"`, `"Node is no longer active"`) explicitly consume the proposal to eliminate dead UI chips. Non-terminal input errors (`"Invalid choice"`, duplicate active title, past time) leave the proposal open.
+  - **Item 2 (Guarded Rollback & Expiry Parity)**:
+    - Replaced unconditioned status updates with guarded `reopenProposal(id): Boolean` in `Storage`, `AndroidStorage`, and `SharedFakeStorage`, executing `UPDATE proposal SET status = 'open' WHERE id = ? AND status = 'consumed'`.
+    - Guarded semantics ensure a rollback attempt can never reopen a proposal consumed by a winning concurrent turn.
+    - Removed `clock.now()` fallback in `SharedFakeStorage.getProposal` so proposals with missing `created_at` return `null`, matching SQLite behavior.
+  - **Item 3 (Failing-First Revert-Proof Tests)**:
+    - Authored unit and connected tests that failed as expected on old code before implementation:
+      - `testCrashWindow_EffectTransactionThrows_ProposalRemainsOpenAndNoEffectRow`: verified proposal remains open and no effect row exists if transaction fails.
+      - `testInTransactionCas_RealSqlite_AbortOnAlreadyConsumed` and `testConcurrentConfirm_RealSqlite_SingleWinnerSemantics`: verified single-winner semantics on real SQLCipher SQLite.
+      - `testGuardedRollback_CannotReopenProposalConsumedBySomeoneElse` & `testReopenProposal_RealSqlite_GuardedSemantics`: verified guarded rollback cannot reopen a proposal consumed by another turn.
+      - `testExpiryParity_MissingCreatedAtReturnsNull` & `testExpiryParity_MissingCreatedAtReturnsNull_RealSqlite`: verified exact expiry parity between fake and real SQLite.
+      - Updated `DatabaseMigrationTest.kt` fresh-install smoke test to call `reopenProposal`.
+  - **Item 4 (Evidence Collection)**:
+    - Captured and stored raw execution outputs in `docs/agent/evidence/`:
+      - `core-test.txt`: 197 tests, 0 failures, 100% pass.
+      - `app-testDebugUnitTest.txt`: 9 tests, 0 failures, 100% pass.
+      - `connected-tests.txt` & `connected-tests-runner.txt`: 49 tests, 0 failures, 100% pass on physical `moto g73 5G` (Android 14 / API 34).
+      - `security-exception.txt`: Android 14 `USE_EXACT_ALARM` SecurityException reproduction.
+      - `evidence-summary.md`: Documented ground-truth counts (255 total tests).
+  - **Item 5 (Doc Drift)**:
+    - Updated `HANDOFF.md` title and body.
+    - Updated `docs/agent/STATE.md` test counts and "Known broken" section.
+    - Updated `docs/agent/TASKS.md` statuses.
+    - Created and retired `docs/agent/PROJECT_STATE.md` with explicit resolution of stale topics (OkHttp, RTC bug, `USE_EXACT_ALARM`).
+
 ## 2. Verified Working (with Evidence)
 
 ### Command: `./gradlew :core:test` (Exit code: 0)
-194/194 unit tests passed across 34 `:core` test classes deterministically in 1.957s.
+197/197 unit tests passed across 35 `:core` test classes deterministically (raw output in `docs/agent/evidence/core-test.txt`).
 
 ### Command: `./gradlew :app:testDebugUnitTest` (Exit code: 0)
-9/9 unit tests passed across ChunkedAesStreamTest (4/4) and QuoteAlarmSchedulerTest (5/5) in 1.620s.
+9/9 unit tests passed across ChunkedAesStreamTest (4/4) and QuoteAlarmSchedulerTest (5/5) in 1.620s (raw output in `docs/agent/evidence/app-testDebugUnitTest.txt`).
 
 ### Command: `./gradlew :app:compileDebugSources :app:compileDebugUnitTestSources` (Exit code: 0)
 App and debug unit test compilation completely clean with 0 errors.
 
 ### Connected Tests on Physical Device (Clean Install):
-- Command: `adb shell am instrument -r -w com.anchor.mine.test/androidx.test.runner.AndroidJUnitRunner` (Exit code: 0)
-- Device: Motorola moto g73 5G (Android 14 / API 34), serial `[REDACTED]`.
-- Result: 45/45 passed across 9 test classes (100% success rate):
+- Command: `adb shell am instrument -r -w com.anchor.mine.test/androidx.test.runner.AndroidJUnitRunner` (Exit code: 0, Time: 96.954s)
+- Device: Motorola moto g73 5G (Android 14 / API 34).
+- Result: 49/49 passed across 9 test classes (100% success rate; raw transcripts in `docs/agent/evidence/connected-tests.txt` and `docs/agent/evidence/connected-tests-runner.txt`):
   - `AlarmReceiverTest`: 3 passed.
   - `AlarmSelfTest`: 3 passed.
   - `BootReceiverTest`: 1 passed.
   - `ManifestPermissionTest`: 1 passed.
   - `ExportTest`: 6 passed.
   - `QuoteAlarmReceiverTest`: 2 passed.
-  - `AndroidStorageTest`: 26 passed.
+  - `AndroidStorageTest`: 30 passed.
   - `DatabaseMigrationTest`: 1 passed.
   - `StorageTest`: 2 passed.
-- Test count reconciliation: 31 was R3b baseline; 37 was R5/R6 after ExportTest additions; 44 was post-R12; 33 was an unverified documentation error; 45 is current ground truth (after R12c Item 1 added testUpdateProposalStatus_PreservesCreatedAt_RealSqlite).
-- Raw output: verified via instrumented runner (Time: 94.238s, OK 45 tests).
+- Total Project Tests: 197 core + 9 app + 49 connected = 255 total tests (0 failures, 100% pass).
 
 ### Other Verified Builds:
 - `./gradlew :app:assembleDebug`: SUCCESS (exit 0)
 - `./gradlew :app:assembleRelease`: SUCCESS (exit 0, R8 minification + lintVitalRelease)
-- `:app:compileDebugAndroidTestKotlin`: SUCCESS (exit 0, compiles 45 instrumented test methods across 9 classes)
+- `:app:compileDebugAndroidTestKotlin`: SUCCESS (exit 0, compiles 49 instrumented test methods across 9 classes)
 - `./gradlew :app:lintDebug`: SUCCESS (exit 0)
 
 ## 3. NOT Verified
-- **D-105 Phone Gate**: Status-bar alarm clock icon display for Alarm-tier reminders remains to be checked on real UI while phone is active. Task T-C remains open.
-- **T-E (Calendar Queries) & T-F (Home Quotes)**: Unit-verified only.
-- **Remediation Task R10**: Smaller correctness items pending execution (R1, R2, R3, R4, R5, R6, R7, R8, R9, R11, R12, and R3b completed and reviewed).
+- **R10g**: Minified release APK test on physical phone pending user testing when physical device is unlocked for release install.
 - **B5 Export UI**: SAF picker and passphrase dialog dark-shipped pending v1.1.
 
 ## 4. Operating Rules
@@ -331,7 +359,6 @@ App and debug unit test compilation completely clean with 0 errors.
 - One task per run; stop and await user approval before proceeding to the next task.
 
 ## 5. Next Step
-- Task R12c (Corrections & Hardening) is completely finished, verified across all 8 items, and documented.
-- All tests in `:core` (194 tests), `:app` unit (9 tests), and connected `androidTest` (45 tests) are passing (248 total tests).
-- Remaining physical phone gates: R10g (minified release APK smoke test on physical phone), D-105 (visual check of alarm clock icon in Android status bar).
-- Stop after R12c per prompt instructions. Await user confirmation.
+- Task R12d (Corrections: Transactional CAS inside effect & Guarded Rollback) is complete and verified across all items.
+- All tests in `:core` (197 tests), `:app` unit (9 tests), and connected `androidTest` (49 tests) are passing (255 total project tests).
+- Ready for developer confirmation and next phase direction. Stop after R12d per prompt instructions.

@@ -14,7 +14,7 @@ Specs for R1-R10: docs/agent/work/session1-remediation-spec.md. Read the task's 
 [x] T10 Loop-limit branch re-inserts botId (PK violation); "Loop limit reached" fires wrongly.
 [x] T11 Remove polling coroutine in AndroidAlarmScheduler (while(isActive) delay(100)).
 [x] T12 MainActivity opens exact-alarm settings every launch; not needed for setAlarmClock.
-[~] T13 Sweeper may log same missed reminder twice; run on start/boot/periodic.
+[x] T13 Sweeper may log same missed reminder twice; run on start/boot/periodic.
 [x] T14 Soul facts: proposed never promoted; add accept/reject path and inject confirmed facts into context.
 [x] T15 Stop button in UI; remove dead ScheduleIn action.
 [x] T16 ChatScreen: imePadding, auto-scroll.
@@ -24,11 +24,11 @@ Specs for R1-R10: docs/agent/work/session1-remediation-spec.md. Read the task's 
 [x] T19 Release (R8) build smoke test; proguard keep rules for Node, Reminder, SoulFact.
 [ ] Database trigger upgrades: MineDatabaseCallback.onUpgrade only runs createTriggers with CREATE TRIGGER IF NOT EXISTS; updated trigger bodies do not apply to existing databases without DROP TRIGGER IF EXISTS.
 ## Backend needed before UI (see UI spec E6)
-[~] T20 Storage queries: day page by day_key, heat-map counts, reminder dates per month, Home priority list, structured chat items.
-[~] T-A DateResolver 24h + ambiguity chips (D-103)
-[~] T-B getActiveNodes paging + ContextBuilder budget + stale->Inbox (D-104)
-[~] T-C Alarm tiers: Alarm (setAlarmClock) vs Gentle; tier stored on the reminder; icon disclosure text exposed to UI (D-105) [unit + connected verified, human-gated status bar check]
-[~] T-D New edge type follow_up: migration + migration test + blueprint 13 patch + UiAction/Storage support (D-106)
+[x] T20 Storage queries: day page by day_key, heat-map counts, reminder dates per month, Home priority list, structured chat items.
+[x] T-A DateResolver 24h + ambiguity chips (D-103)
+[x] T-B getActiveNodes paging + ContextBuilder budget + stale->Inbox (D-104)
+[x] T-C Alarm tiers: Alarm (setAlarmClock) vs Gentle; tier stored on the reminder; icon disclosure text exposed to UI (D-105) [unit + connected verified, human-gated status bar check]
+[x] T-D New edge type follow_up: migration + migration test + blueprint 13 patch + UiAction/Storage support (D-106)
 [x] T-E Calendar queries: day exists with messages, reminder dates per month, heat counts per day, reminders for a day (tooltip) [unit-verified only]
 [x] T-F Quote slots: table quote_slot(slot, day_key, text, generated_at, state_hash, source=preset|live), preset pool of generic quotes per slot, generation job (see Part 3, Home), setting flags [unit-verified only]
 
@@ -62,7 +62,8 @@ Specs for R1-R10: docs/agent/work/session1-remediation-spec.md. Read the task's 
     [x] R10k Prompt context budgeting: add token/char cap on Soul facts and open proposals in ContextBuilder.buildPack
     [x] R10l SharedFakeStorage keyset pagination parity: do not reset to head when cursor ID is absent
 [x] R12 Turn lifecycle and confirm-path concurrency (findings A-01, A-04, A-09): atomic proposal CAS in Storage/AndroidStorage/SharedFakeStorage, Gateway handleConfirmChange pre-validation & single-winner CAS, accept paused nodes, terminal failure proposal consumption, ChatController currentBotId interruption isolation [unit-verified, live-endpoint verified, approved]
-[~] R12c Corrections only: Items 1-8 complete (Item 1 Rollback fix; Item 2 Atomicity analysis; Item 3 Numbers reconciliation; Item 4 Decisions D-116/D-117/D-102b; Item 5 USE_EXACT_ALARM proof; Item 6 Doc drift & redaction; Item 7 server.js removal; Item 8 Test-auditor escape analysis) [all verified & documented, awaiting OK]
+[x] R12c Corrections only: Items 1-8 complete (Item 1 Rollback fix; Item 2 Atomicity analysis; Item 3 Numbers reconciliation; Item 4 Decisions D-116/D-117/D-102b; Item 5 USE_EXACT_ALARM proof; Item 6 Doc drift & redaction; Item 7 server.js removal; Item 8 Test-auditor escape analysis) [approved]
+[~] R12d Corrections: Transactional CAS inside effect & Guarded Rollback: D-118 in-transaction CAS, guarded rollback reopenProposal, strict expiry parity, failing-first revert-proof tests, clean-install verification evidence collected (197 core, 9 app, 49 connected) [awaiting review & OK]
 
 ## Roadmap items to be tackled post-remediation
 [ ] P1-B 15 Reminder policy per blueprint 30 (lead times, reminder only when asked or per default)
