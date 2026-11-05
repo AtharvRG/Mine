@@ -1,13 +1,23 @@
 # STATE (update every session; facts only)
-Updated: 2026-11-05   Commit: In progress (R12c Item 1 verified)
+Updated: 2026-11-05   Commit: In progress (R12c Items 1-8 verified, ready to commit)
 ## Build/test status (command + exit code)
-- `./gradlew :core:test`: SUCCESS (exit 0, 194/194 tests passed across all 25 suites)
+- `./gradlew :core:test`: SUCCESS (exit 0, 194/194 tests passed across 34 test classes)
 - `./gradlew :app:compileDebugSources :app:compileDebugUnitTestSources`: SUCCESS (exit 0)
 - `./gradlew :app:assembleDebug`: SUCCESS (exit 0)
 - `./gradlew :app:assembleRelease`: SUCCESS (exit 0, R8 minification + lintVitalRelease)
-- `:app:compileDebugAndroidTestKotlin`: SUCCESS (exit 0, compiles 33 androidTest test methods across 8 classes)
+- `:app:compileDebugAndroidTestKotlin`: SUCCESS (exit 0, compiles 45 instrumented test methods across 9 classes)
 - `./gradlew :app:testDebugUnitTest`: SUCCESS (exit 0, 9/9 tests passed across ChunkedAesStreamTest [4/4] and QuoteAlarmSchedulerTest [5/5] in 1.620s)
-- `adb shell am instrument` / `:app:connectedDebugAndroidTest`: SUCCESS (exit 0 on device; 45/45 tests passed across 8 test classes on moto g73 5G - Android 14 / API 34).
+- `adb shell am instrument -r -w com.anchor.mine.test/androidx.test.runner.AndroidJUnitRunner`: SUCCESS (exit 0 on device; 45/45 tests passed across 9 test classes on moto g73 5G - Android 14 / API 34).
+  - `AlarmReceiverTest`: 3 passed
+  - `AlarmSelfTest`: 3 passed
+  - `BootReceiverTest`: 1 passed
+  - `ManifestPermissionTest`: 1 passed
+  - `ExportTest`: 6 passed
+  - `QuoteAlarmReceiverTest`: 2 passed
+  - `AndroidStorageTest`: 26 passed
+  - `DatabaseMigrationTest`: 1 passed
+  - `StorageTest`: 2 passed
+- Test count reconciliation: 31 was R3b baseline; 37 was R5/R6 after ExportTest additions; 44 was post-R12; 33 was an unverified documentation error; 45 is current ground truth (after R12c Item 1 added testUpdateProposalStatus_PreservesCreatedAt_RealSqlite).
 - Zero-Vibration Protocol: Verified 100% compliant. Notification channels `mine_reminders_v3` and `mine_gentle_reminders_v3` explicitly set `enableVibration(false)` and `vibrationPattern = null`. No `VIBRATE` permission in manifest (`adb shell dumpsys package com.anchor.mine | grep -i vibrate` returns empty).
 - `./gradlew :app:lintDebug`: SUCCESS (exit 0)
 ## Verified working (with evidence)

@@ -62,7 +62,7 @@ Specs for R1-R10: docs/agent/work/session1-remediation-spec.md. Read the task's 
     [x] R10k Prompt context budgeting: add token/char cap on Soul facts and open proposals in ContextBuilder.buildPack
     [x] R10l SharedFakeStorage keyset pagination parity: do not reset to head when cursor ID is absent
 [x] R12 Turn lifecycle and confirm-path concurrency (findings A-01, A-04, A-09): atomic proposal CAS in Storage/AndroidStorage/SharedFakeStorage, Gateway handleConfirmChange pre-validation & single-winner CAS, accept paused nodes, terminal failure proposal consumption, ChatController currentBotId interruption isolation [unit-verified, live-endpoint verified, approved]
-[~] R12c Corrections only: Item 1 Rollback fix (updateProposalStatus, revert-proof unit test, real-SQLite test, reviews approved) [awaiting confirmation]; Item 2 Atomicity analysis; Item 3 Numbers reconciliation; Item 4 Decisions (D-116/D-117); Item 5 USE_EXACT_ALARM proof/retraction; Item 6 Doc drift & redaction; Item 7 server.js removal; Item 8 Test-auditor on R12
+[~] R12c Corrections only: Items 1-8 complete (Item 1 Rollback fix; Item 2 Atomicity analysis; Item 3 Numbers reconciliation; Item 4 Decisions D-116/D-117/D-102b; Item 5 USE_EXACT_ALARM proof; Item 6 Doc drift & redaction; Item 7 server.js removal; Item 8 Test-auditor escape analysis) [all verified & documented, awaiting OK]
 
 ## Roadmap items to be tackled post-remediation
 [ ] P1-B 15 Reminder policy per blueprint 30 (lead times, reminder only when asked or per default)
