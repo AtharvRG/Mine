@@ -109,7 +109,7 @@ An independent audit of R0 through R3 (plus R11) discovered that several claims 
   - `SystemPromptTest`: 3 passed (temporal authority rule, ask what it is for rule).
 
 ### Connected Instrumented Tests on Physical Device (Clean Install)
-- Target Device: Motorola moto g73 5G (Android 14 / API 34), serial `10.175.15.5:5555`.
+- Target Device: Motorola moto g73 5G (Android 14 / API 34), device identifier `[DEVICE_REDACTED]`.
 - Pre-Execution Clean Install:
   - `./gradlew.bat :app:uninstallDebug :app:uninstallDebugAndroidTest`
   - Uninstalled old packages to guarantee clean AppOps and permissions state.
