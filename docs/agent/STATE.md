@@ -1,5 +1,5 @@
 # STATE (update every session; facts only)
-Updated: 2026-11-05   Commit: In progress (R12d Items 1-5 verified)
+Updated: 2026-11-05   Commit: Complete (R12d Items 1-7 verified, approved, and committed)
 ## Build/test status (command + exit code)
 - `./gradlew :core:test`: SUCCESS (exit 0, 197/197 tests passed across 35 test classes; raw transcript in `docs/agent/evidence/core-test.txt`)
 - `./gradlew :app:compileDebugSources :app:compileDebugUnitTestSources`: SUCCESS (exit 0)

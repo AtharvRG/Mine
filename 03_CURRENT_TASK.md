@@ -1,6 +1,6 @@
 # Current Task: R12d (Corrections: Transactional CAS inside effect & Guarded Rollback)
 
-Status: In Progress (Items 1-7 completed and verified; awaiting developer review and approval)
+Status: Complete (Approved by developer; all 7 items implemented, verified, reviewed, and committed)
 
 ## R12d Items:
 - [x] 1. Implement D-118 across Gateway.handleConfirmChange (CREATE time-chip, CANCEL, COMPLETE, RESCHEDULE, UPDATE-reminder). Single-winner semantics: two concurrent confirms => exactly one effect, other gets "Proposal already resolved". In-transaction consume CAS (UPDATE proposal SET status='consumed' WHERE id=? AND status='open') aborting effect transaction if rowsAffected==0 in AndroidStorage and SharedFakeStorage. Terminal failures (node not found / not active) consume proposal; non-terminal failures leave it open. Record D-118 in DECISIONS.md.
