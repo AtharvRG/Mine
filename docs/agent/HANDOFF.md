@@ -1,53 +1,63 @@
-# HANDOFF (P1-B 16 Complete — Reviewed, Verified, Fixes Applied; Next: P1-D 20)
+# HANDOFF (P1-D 20 Complete — Unit-Verified; Next: P1-E 21)
 
 ## Current Work & Status
-- **Task #106 / P1-B 16 [COMPLETED]**: UPDATE and RESCHEDULE intents through gateway and resolver, with undo. RESCHEDULE was already implemented in R1; this task implemented UPDATE end-to-end.
-- Independent review verdict: **Approve with suggestions** — 3 MEDIUM findings, all fixed this session with regression tests.
-- Independent verification verdict: **PASS** (ran on pre-fix code; fixes covered by 3 new tests + full green re-run).
-- Core suite: 231/231 passed, 0 compiler warnings. App unit suite: 9/9 passed.
+- **Task #108 / P1-D 20 [COMPLETED]**: Home priority list (code-ranked), at-risk flag, active threads, recently-closed with undo validity, structured chat items (bubble, receipt, chips, nudge+reason, check-in snapshot, system line). Queries and core wiring only — **no UI** (per task scope; UI consumes these in a later roadmap item).
+- Includes an in-scope bug fix: UPDATE op-type was missing from the UI-visible event filters and ReceiptFormatter, making P1-B 16 UPDATE receipts invisible (D-115 regression).
+- Decision **D-121** recorded in docs/agent/DECISIONS.md (next free: D-122).
+- Core suite: 242/242 passed (231 prior + 11 new), 0 compiler warnings. App unit suite: 9/9 passed.
 
 ## 1. What Changed (all uncommitted in working tree)
-- `core/src/main/java/com/anchor/core/gateway/Gateway.kt`:
-  - `propose_change` intent UPDATE routes to new `handleUpdate` (Gateway.kt:850) — previously returned "UPDATE is not supported yet".
-  - `handleUpdate`: requires `hint`; parses `new_title`, `due_text`/`new_due_text`, `priority`, `severity`, `pinned`, `tier` (alarm|gentle); errors "No changes specified for UPDATE..." if nothing requested; resolves due text via DateResolver (NeedsClarification -> `kind="time"` proposal carrying full ProposalPayload + NeedsTime chips; PastTime/Failed -> Error).
-  - `resolveAndUpdate` (Gateway.kt:914): pages active nodes (200/5000 cap), Resolver over candidates; Ambiguous -> `kind="ambiguous"` proposal with payload + chips; NotFound/ClearWinner paths; status guard ("active"/"in_progress"/"paused").
-  - `applyNodeUpdate` (Gateway.kt:973): null-merge of fields onto node copy; reminder sync (text<-title, fireAt<-dueAt, tier only if explicitly set); creates reminder when undated node gains due; RawEvent UPDATE with before/after NodeStateSnapshot for undo.
-  - `handleConfirmChange` UPDATE branches: ambiguous node-choice (payload decode, past-time guard, all-null guard) and time-chip (targetId==null -> resolveAndUpdate with chosen millis; non-null keeps legacy schedule_reminder shift).
-  - **Review fix 1**: dead `deleteReminderId` branch removed from `applyNodeUpdate` (was unreachable: `effectiveDue == null` implies `oldNode.dueAt == null`, contradicting the guard's `oldNode.dueAt != null`).
-  - **Review fix 2**: tier-only UPDATE on an undated node returns honest Error "Cannot change tier: 'X' has no due date, so there is no reminder to change. Set a due time first." (consuming the proposal on the confirm path) instead of a false Committed.
-  - **Review fix 3**: blank `new_due_text` no longer shadows a populated `due_text` — both normalize to null when blank before the elvis fallback (`new_due_text ?: dueText`).
-- `core/src/main/java/com/anchor/core/models/Memory.kt`: `ProposalPayload.newTitle: String? = null`.
-- `core/src/main/java/com/anchor/core/resolver/Resolver.kt`: STOPWORDS += update/rename/change/edit/mark; exact-match strip regex += update|rename.
-- `core/src/main/java/com/anchor/core/ui/ChatController.kt`: system prompt UPDATE tool docs + UPDATE_RENAME/UPDATE_TIME/UPDATE_PIN examples; UPDATE added to the intent enumeration (line 517).
-- `core/src/test/java/com/anchor/core/gateway/P1B16UpdateIntentTest.kt`: 17 tests (14 original + 3 new fix regressions).
+- `core/src/main/java/com/anchor/core/storage/Storage.kt`:
+  - Three new interface queries: `getHomePriorityList(now, limit=5)`, `getRecentlyClosed(now, limit=10)`, `getLatestEventForTarget(targetType, targetId)`.
+  - New top-level `rankHomeNodes(nodes, now)`: code-side Home ranking. Order: 1) overdue first; 2) in_progress; 3) pinned; 4) severity desc; 5) priority desc; 6) due soonest (undated last via `Long.MAX_VALUE`); 7) most recently updated; 8) id tiebreak.
+- `core/src/main/java/com/anchor/core/ui/ChatItems.kt` (new):
+  - `ChatItem` sealed interface: `DayHeader(dayKey, tsUtc)`, `TimeDivider` (reserved, not yet emitted), `Message(id, role, content, tsUtc)`, `SystemEvent(text, tsUtc)`, `ReceiptItem(receipt)`, `ProposalRow(proposal)`, `CheckinCard(title, summary, tsUtc)` (reserved for P1-E 25), `Nudge(content, tag, reason, tsUtc)` (reserved for P1-E 24), `StatusNotice(text, isError, tsUtc)`.
+  - `RecentlyClosed(node, undoValid, undoToken)`, `ActiveThread(msgId, openedAt)`.
+- `core/src/main/java/com/anchor/core/ui/ChatTimelineBuilder.kt` (new):
+  - `build(messages, receipts, openProposals)`: DayHeader inserted on dayKey change; system role with non-blank content -> SystemEvent; other roles -> Message; receipts anchored directly under their causeMsgId message; orphaned receipts (null cause or cause outside window) appended at end; open proposals -> ProposalRow at end.
+- `core/src/main/java/com/anchor/core/ui/ChatContract.kt`:
+  - UiState += `atRisk: Boolean`, `activeThread: ActiveThread?`, `homePriorityList: List<Node>`, `recentlyClosed: List<RecentlyClosed>`, `chatItems: List<ChatItem>` (toString updated).
+- `core/src/main/java/com/anchor/core/ui/ChatController.kt`:
+  - `init` + `refreshUI`: wire `getHomePriorityList`, `getRecentlyClosed` + per-node undo validity (`getLatestEventForTarget("node", id)` + `hasUndo`, D-115 formula `(now - tsUtc < 24h) && !hasUndo`), `atRisk` from ReliabilityState, `activeThread` from ProactiveState, and rebuild `chatItems` via ChatTimelineBuilder on every state update.
+  - Warning fix: `event!!.opId` -> smart-cast `event.opId` (2 sites).
+- `app/src/main/java/com/anchor/mine/storage/AndroidStorage.kt`:
+  - Implements the three queries (freshness filter mirrors D-104: `dueAt > now` OR recency within 30 days OR zero timestamps; recently-closed = done/cancelled + closedAt within 24h; latest event by max tsUtc). Calls shared `rankHomeNodes`.
+  - UPDATE added to the `getRecentEvents` SQL op-type IN list (UI-visible fix).
+- `core/src/test/java/com/anchor/core/SharedFakeStorage.kt`:
+  - Implements the three queries with SQLite parity; `import com.anchor.core.storage.rankHomeNodes` added (top-level fn lives in another package).
+  - UPDATE added to `uiVisibleOps` (UI-visible fix).
+- `core/src/main/java/com/anchor/core/ui/ReceiptFormatter.kt`:
+  - UPDATE branch added: "Updated: <new title> (<due time>)" from after-snapshot.
+- `core/src/test/java/com/anchor/core/ui/P1D20HomeAndTimelineTest.kt` (new): 11 tests.
+- Docs: `docs/ui-contract.md` (UiState fields; §1b ChatItem taxonomy + composition rules; §1c Home data ranking/undo-validity/activeThread; Home Queries line incl. UPDATE visibility), `docs/agent/DECISIONS.md` (D-121), `docs/agent/TASKS.md` (P1-D 20 -> [x]).
 
 ## 2. What Is Verified (command + result)
-- `./gradlew :core:test :app:testDebugUnitTest`: BUILD SUCCESSFUL (exit 0) — 231/231 core (37 suites, P1B16 17/17), 9/9 app (counts from build/test-results XML), 0 warnings.
-- New regression tests: `testUpdateTierOnly_UndatedNode_ReturnsErrorNoMutation` (direct path: Error, no mutation, no event, no reminder), `testUpdateTierOnly_UndatedNode_ViaAmbiguousConfirm_ConsumesProposalAndErrors` (confirm path: Error + proposal consumed, both nodes untouched), `testUpdateBlankNewDueText_FallsBackToDueText` (blank new_due_text falls back to due_text; due + reminder move to 4h).
-- Independent verification (pre-fix code): PASS — 228/228 core, 9/9 app, 0 new warnings, all 14 scenarios present with post-state assertions, 8 adversarial probes OK (replay confirm -> "Proposal already resolved"; ghost id -> "Invalid choice" with proposal kept open; 8 parallel confirms -> exactly 1 committed; stale undo -> "Node state has changed"; double undo -> "Already undone"; exact-24h undo ok / beyond -> "Cannot undo changes older than 24 hours."; orphan token not found; past chip refused; 10K title truncated to 200; blank title -> Error).
-- Independent review: APPROVE with suggestions; all 3 MEDIUM findings fixed this session (see section 1). LOW findings left as-is (unclamped priority/severity consistent with CREATE; corrupted-payload error text; "Mark's report" stopword edge; optional test gaps).
+- `./gradlew :core:test :app:testDebugUnitTest`: BUILD SUCCESSFUL (exit 0) — **242/242 core** (incl. P1D20HomeAndTimelineTest 11/11), **9/9 app** (counts from build/test-results XML), 0 compiler warnings.
+- First run was green but emitted 2 "Unnecessary non-null assertion" warnings (`event!!.opId` in ChatController init/refreshUI); fixed via smart-cast and re-run: exit 0, 0 warnings.
+- New tests cover: ranking order (overdue -> in_progress -> pinned -> severity -> priority -> dueAt; pinned/severity rank above plain due-sooner items), exclusion of closed/stale/localOnly + limit cap, recently-closed 24h window + undo validity + invalidation after undo, `getRecentEvents` includes UPDATE, ReceiptFormatter UPDATE branch, full timeline composition (day headers, receipt anchoring under causeMsgId, orphan receipts at end, proposal row), empty inputs, undated nodes last, priority breaks severity ties.
 
 ## 3. NOT Verified
-- Connected/instrumented tests NOT re-run this session (device not invoked). Last connected run: 53/53 (P1-B 15 session).
-- The three MEDIUM fixes passed a full green re-run with new regression tests but were NOT independently re-verified by a second verification-agent pass.
-- No live-model smoke of UPDATE utterances yet ("rename X to Y", "move X to 5pm").
+- Connected/instrumented tests NOT run this session (device not invoked). The three new Storage queries have no real-SQLite instrumented coverage yet (SharedFakeStorage only). Last connected run: 53/53 (P1-B 15 session).
+- No independent reviewer/verification agent pass for P1-D 20 yet (unit suite green; review pending).
+- No live-model smoke; UI does not yet consume `chatItems`/`homePriorityList`/`recentlyClosed`/`activeThread` (UI implementation is a later roadmap item).
 
 ## 4. Current Failing Tests
-- None (231 core + 9 app green).
+- None (242 core + 9 app green).
 
 ## 5. Open Decisions Needing User
-- None new. (D-121 still free in DECISIONS.md if you want the UPDATE design recorded as a decision entry.)
+- None new. D-121 recorded; next free D-122.
 
 ## 6. Exact Next Step
-- `git commit -s` the P1-B 16 changes (one commit), then start **P1-D 20** (Home priority list, at-risk flag, active threads, recently-closed with undo validity, structured chat items) per docs/agent/TASKS.md line 73.
+- `git commit -s` the P1-D 20 changes (one commit), then stop and await user approval. Next roadmap task after approval: **P1-E 21** (day_rule/day_key monotonic, rollover; Blueprint 11, 50 s3.13) per docs/agent/TASKS.md line 74.
 
 ## 7. Traps for the Next Run
-- `ProposalPayload.targetId` on time proposals is the discriminator in handleConfirmChange: non-null means legacy schedule_reminder shift, null means propose_change flow. Don't "simplify" this without checking both call sites.
-- `applyNodeUpdate` tier semantics: tier only changes when explicitly passed; resolver/undo paths rely on `NodeStateSnapshot` equality — partial hydration of reminder fields breaks undo (see LEARNINGS: partial column hydration). If a "clear due date" feature is requested, wire a reminder-delete branch back into `applyNodeUpdate` (the dead guard was removed; the R10-style `deleteReminderId` parameter on `updateNodeAndCommit` is the hook).
-- `R1RescheduleAmbiguityTest` now asserts the NEW error text; any change to the "No changes specified for UPDATE..." message breaks two tests there plus one in P1B16UpdateIntentTest.
-- Tier-only UPDATE on an undated node errors ("no due date... no reminder to change"); two P1B16 tests pin this text.
-- UPDATE cannot currently REMOVE a due date (only set/move it). If requested, see trap 2 for the hook.
-- Don't re-add a past-time re-check after the DateResolver when-branch: `DateResolution.Exact` is future-only; the check re-introduces the "Condition is always 'true'" warning.
+- **Ranking contract (D-121)**: pinned/severity/priority rank ABOVE due-soonness among non-overdue items. `testHomePriorityList_PinnedAndSeverityRankAbovePlainActive` pins this exact order — do not "fix" the comparator back to dueAt-first.
+- `rankHomeNodes` is a top-level function in `com.anchor.core.storage` (Storage.kt). SharedFakeStorage (package `com.anchor.core`) needs `import com.anchor.core.storage.rankHomeNodes` — removing it breaks compilation.
+- The UI-visible op filter lives in TWO places: `uiVisibleOps` in SharedFakeStorage AND the SQL IN list in AndroidStorage.getRecentEvents. Any new ReceiptFormatter op branch must be added to both.
+- Orphan receipts (null causeMsgId or cause outside the loaded message window) render at the END of the timeline, not dropped; `ProposalRow.tsUtc = 0L` (proposals are terminal items, not timestamp-ordered); `TimeDivider` exists but is never emitted yet.
+- `CheckinCard` and `Nudge` are reserved for P1-E 25 / P1-E 24 — the timeline builder does not produce them yet.
+- Test-helper freshness: nodes created with `createdAt = now` always pass the 30-day freshness filter; set `updatedAt`/`createdAt` in the past to test stale exclusion.
+- Undo validity formula is shared with receipts (D-115): `(now - event.tsUtc < 24h) && !storage.hasUndo(event.opId)`; recently-closed uses the LATEST closing event per node via `getLatestEventForTarget`.
 
 ## Operating Rules
 - Commit per task using `git commit -s`. Never commit failing tests. One task per run; stop and await user approval before proceeding to the next task.

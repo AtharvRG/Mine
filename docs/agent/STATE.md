@@ -1,8 +1,7 @@
 # STATE (update every session; facts only)
-Updated: 2026-11-06   Commit: Complete (P1-B 16 / Task #106 UPDATE intent implemented through gateway and resolver with undo; unit-verified; independent review APPROVE + verification PASS; 3 MEDIUM review fixes applied with regression tests)
+Updated: 2026-11-06   Commit: Complete (P1-D 20 / Task #108 Home priority list, at-risk flag, active threads, recently-closed with undo validity, structured chat items; unit-verified; D-121 recorded; queries only, no UI)
 ## Build/test status (command + exit code)
-- `./gradlew :core:test`: SUCCESS (exit 0, 231/231 tests passed; 0 compiler warnings)
-- `./gradlew :app:testDebugUnitTest`: SUCCESS (exit 0, 9/9 tests passed)
+- `./gradlew :core:test :app:testDebugUnitTest`: SUCCESS (exit 0, 242/242 core tests passed [231 prior + 11 new P1D20HomeAndTimelineTest], 9/9 app tests passed; first run green but with 2 `event!!` warnings in ChatController, fixed via smart-cast, re-run exit 0 with 0 warnings)
 - `./gradlew :app:compileDebugSources :app:compileDebugUnitTestSources`: SUCCESS (exit 0)
 - `./gradlew :app:assembleDebug`: SUCCESS (exit 0)
 - `./gradlew :app:assembleRelease`: SUCCESS (exit 0, R8 minification + lintVitalRelease)
@@ -20,10 +19,19 @@ Updated: 2026-11-06   Commit: Complete (P1-B 16 / Task #106 UPDATE intent implem
   - `AndroidStorageTest`: 30 passed
   - `DatabaseMigrationTest`: 1 passed
   - `StorageTest`: 2 passed
-- Ground truth test counts: 231 core + 9 app + 53 connected = 293 total project tests (0 failures, 100% pass rate; connected count from last device run, not re-run this session).
+- Ground truth test counts: 242 core + 9 app + 53 connected = 304 total project tests (0 failures, 100% pass rate; connected count from last device run [P1-B 15 session], not re-run this session).
 - Zero-Vibration Protocol: Verified 100% compliant. Notification channels `mine_reminders_v3` and `mine_gentle_reminders_v3` explicitly set `enableVibration(false)` and `vibrationPattern = null`. No `VIBRATE` permission in manifest (`adb shell dumpsys package com.anchor.mine | grep -i vibrate` returns empty).
 - `./gradlew :app:lintDebug`: SUCCESS (exit 0)
 ## Verified working (with evidence)
+- P1-D 20 (Task #108, D-121): Home priority list, at-risk flag, active threads, recently-closed with undo validity, structured chat items — queries and core wiring only, no UI:
+  - `Storage.kt`: three new queries `getHomePriorityList(now, limit=5)`, `getRecentlyClosed(now, limit=10)`, `getLatestEventForTarget(targetType, targetId)`; top-level `rankHomeNodes(nodes, now)` code-side ranking (D-121 order: 1) overdue first; 2) in_progress; 3) pinned; 4) severity desc; 5) priority desc; 6) due soonest (undated last); 7) recency desc; 8) id tiebreak).
+  - `SharedFakeStorage.kt` + `AndroidStorage.kt`: both implement the three queries with parity; freshness filter matches D-104 (`dueAt > now` OR recency within 30 days OR zero timestamps); recently-closed = done/cancelled with `closedAt` within 24h.
+  - `ChatItems.kt` (new): `ChatItem` sealed interface (DayHeader, TimeDivider, Message, SystemEvent, ReceiptItem, ProposalRow, CheckinCard, Nudge, StatusNotice) + `RecentlyClosed(node, undoValid, undoToken)` + `ActiveThread(msgId, openedAt)`.
+  - `ChatTimelineBuilder.kt` (new): composes `chatItems` from messages, receipts, and open proposals; DayHeader on dayKey change; receipts anchored under causeMsgId (orphans at end); ProposalRow at end.
+  - `ChatContract.kt`: UiState += `atRisk`, `activeThread`, `homePriorityList`, `recentlyClosed`, `chatItems`.
+  - `ChatController.kt`: init + refreshUI wire Home queries, undo validity via `getLatestEventForTarget` + `hasUndo` (D-115 formula), `atRisk` from ReliabilityState, `activeThread` from ProactiveState, and rebuild `chatItems` on every state update.
+  - UPDATE UI-visibility fix (D-115 regression from P1-B 16): UPDATE added to `uiVisibleOps` in SharedFakeStorage, to the SQL `IN` list in AndroidStorage.getRecentEvents, and to ReceiptFormatter — UPDATE receipts now render ("Updated: <title> (<time>)").
+  - Evidence: 11 tests in `P1D20HomeAndTimelineTest.kt` (ranking order incl. pinned/severity above plain, exclusion filter + limit, recently-closed 24h + undo validity/invalidation, getRecentEvents includes UPDATE, ReceiptFormatter UPDATE branch, timeline composition with day headers/receipt anchoring/orphan handling/proposal row, empty inputs, undated-last, priority tiebreak); full suite 242/242 core + 9/9 app, 0 warnings.
 - P1-B 16: UPDATE intent through gateway and resolver, with undo (RESCHEDULE was already done in R1):
   - `Gateway.kt` routes `propose_change` intent UPDATE to `handleUpdate` (previously "UPDATE is not supported yet" error).
   - `handleUpdate` (Gateway.kt:850): requires `hint`; parses `new_title`, `due_text`/`new_due_text`, `priority`, `severity`, `pinned`, `tier` (alarm|gentle); errors "No changes specified for UPDATE..." when no change requested.
@@ -264,8 +272,11 @@ Updated: 2026-11-06   Commit: Complete (P1-B 16 / Task #106 UPDATE intent implem
 - B5 (Export UI picker & passphrase dialog) is not implemented; dark-shipped pending v1.1 SAF integration.
 
 ## UNVERIFIED (this session)
-- P1-B 16 connected/instrumented tests were NOT re-run this session (device not invoked); unit-level only.
-- Independent code-review and verification agents for P1-B 16 completed AFTER the three MEDIUM fixes: review APPROVE (fixes applied), verification PASS (ran on pre-fix code; the three fixes are covered by 3 new regression tests and a full green re-run, but were not independently re-verified by a second agent pass).
+- P1-D 20 connected/instrumented tests were NOT run this session (device not invoked); unit-level only. The three new Storage queries have no real-SQLite instrumented coverage yet (SharedFakeStorage only).
+- No independent reviewer/verification agent pass for P1-D 20 yet (unit suite is green; review pending).
+- No live-model smoke of Home data wiring (UI does not consume chatItems/homePriorityList yet — UI implementation is a later roadmap item).
+- P1-B 16 independent re-verification of the 3 MEDIUM fixes (review APPROVE, verification PASS on pre-fix code) was not re-done by a second agent pass.
+- P1-B 16 connected/instrumented tests were NOT re-run (device not invoked); unit-level only.
 ## UNVERIFIED (from old chat / unproven)
 - R10g (Minified release APK test on physical phone) pending human verification when physical device is unlocked for release install.
 ## Environment notes (device, Android version, OEM, toolchain versions)

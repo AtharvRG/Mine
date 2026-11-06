@@ -75,6 +75,11 @@ interface Storage {
 
     suspend fun getOpenProposals(): List<Proposal>
     suspend fun getUrgentNodes(): List<Node>
+
+    // P1-D 20 (D-121): Home queries. Ranking is code-side (Kotlin), not SQL.
+    suspend fun getHomePriorityList(now: Long, limit: Int = 5): List<Node>
+    suspend fun getRecentlyClosed(now: Long, limit: Int = 10): List<Node>
+    suspend fun getLatestEventForTarget(targetType: String, targetId: String): RawEvent?
     suspend fun getActiveSoulFacts(): List<SoulFact>
     suspend fun getProposedSoulFacts(): List<SoulFact>
     suspend fun updateSoulFactStatus(id: String, status: String)
@@ -135,4 +140,23 @@ suspend fun Storage.getAllActiveNodesPaged(pageSize: Int = 200, hardCap: Int = 5
         cursor = "${last.dueAt ?: "null"}:${last.id}"
     }
     return all
+}
+
+/**
+ * P1-D 20 (D-121): Code-side Home ranking (no SQL ORDER BY).
+ * Rank: 1) overdue first; 2) in_progress; 3) pinned (explicit user boost);
+ * 4) higher severity; 5) higher priority; 6) due soonest (most overdue first);
+ * 7) most recently updated. Ties fall back to stable ordering by id.
+ */
+fun rankHomeNodes(nodes: List<Node>, now: Long): List<Node> {
+    return nodes.sortedWith(
+        compareBy<Node> { it.dueAt == null || it.dueAt >= now }                    // overdue (rank 1)
+            .thenBy { it.status != "in_progress" }                                 // in_progress (rank 2)
+            .thenBy { !it.pinned }                                                 // pinned (rank 3)
+            .thenByDescending { it.severity }                                      // severity (rank 4)
+            .thenByDescending { it.priority }                                     // priority (rank 5)
+            .thenBy { it.dueAt ?: Long.MAX_VALUE }                                 // due soonest / most overdue (rank 6)
+            .thenByDescending { maxOf(it.updatedAt, it.createdAt) }                // recency (rank 7)
+            .thenBy { it.id }                                                     // stable tiebreak
+    )
 }

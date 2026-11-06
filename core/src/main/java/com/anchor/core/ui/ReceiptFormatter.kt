@@ -65,6 +65,20 @@ class ReceiptFormatter(private val dateResolver: DateResolver) {
                         "Completed: ${event.targetId}"
                     }
                 }
+                "UPDATE" -> {
+                    // P1-B 16/P1-D 20: applyNodeUpdate writes before/after NodeStateSnapshot; the after-state titles the receipt.
+                    val snapshot = (event.afterJson ?: event.beforeJson)?.let { json.decodeFromString<NodeStateSnapshot>(it) }
+                    val node = snapshot?.node
+                    if (node != null) {
+                        if (node.dueAt != null) {
+                            "Updated: ${node.title} (${dateResolver.format(node.dueAt)})"
+                        } else {
+                            "Updated: ${node.title}"
+                        }
+                    } else {
+                        "Updated: ${event.targetId}"
+                    }
+                }
                 "RESCHEDULE" -> {
                     val snapshot = (event.afterJson ?: event.beforeJson)?.let { json.decodeFromString<NodeStateSnapshot>(it) }
                     val node = snapshot?.node

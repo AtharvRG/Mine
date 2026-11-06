@@ -30,6 +30,28 @@ The single source of truth for the UI at any given moment:
 - `selectedDayMessages`: List<ChatMessage> (Messages loaded for selected day)
 - `selectedDayReminders`: List<Reminder> (Reminders loaded for selected day)
 - `homeQuote`: Quote? (Current daily/slot home quote)
+- `atRisk`: Boolean (True when ReliabilityState.score == "at_risk"; schedulingError carries the reason)
+- `activeThread`: ActiveThread? (The single open proactive thread: msgId + openedAt, from ProactiveState.openThreadMsgId/threadOpenedAt)
+- `homePriorityList`: List<Node> (Code-ranked Home priority list; see D-121)
+- `recentlyClosed`: List<RecentlyClosed> (Nodes closed within 24h; each carries undoValid and undoToken)
+- `chatItems`: List<ChatItem> (Structured timeline composed from chatMessages, receipts, and open proposals)
+
+## 1b. Structured timeline items (`ChatItem`, D-121)
+`UiState.chatItems` is composed by `ChatTimelineBuilder.build(messages, receipts, openProposals)`; the UI renders each item by type:
+- `DayHeader(dayKey, tsUtc)`: Inserted whenever a message's dayKey changes.
+- `TimeDivider(tsUtc)`: Reserved for intra-day time dividers (not yet emitted).
+- `Message(id, role, content, tsUtc)`: A user/assistant bubble (from raw_message roles other than "system").
+- `SystemEvent(text, tsUtc)`: A quiet lifecycle line (system role with non-blank content).
+- `ReceiptItem(receipt)`: A ReceiptState attached directly under its cause message (matching causeMsgId); orphaned receipts (no cause or cause outside the loaded window) render at the end of the timeline.
+- `ProposalRow(proposal)`: An open disambiguation proposal rendered as a chip row at the end of the timeline.
+- `CheckinCard(title, summary, tsUtc)`: Check-in snapshot card (populated by P1-E 25).
+- `Nudge(content, tag, reason, tsUtc)`: A proactive nudge with its tag chip and "Why?" reason (populated by P1-E 24).
+- `StatusNotice(text, isError, tsUtc)`: An inline status/error notice.
+
+## 1c. Home data (D-121)
+- `homePriorityList`: fresh (non-stale, non-local-only, active/in_progress/paused) nodes ranked in code by `rankHomeNodes`: 1) overdue first; 2) in_progress; 3) pinned; 4) severity desc; 5) priority desc; 6) due soonest (most overdue first, undated last); 7) most recently updated; ties by id. Default limit 5.
+- `recentlyClosed`: nodes with status done/cancelled and closed_at within the last 24h, newest first (default limit 10). Each entry's `undoValid` = `(now - latestClosingEvent.tsUtc < 24h) && !storage.hasUndo(event.opId)`; `undoToken` is the event's opId when valid, null otherwise.
+- `activeThread`: derived from ProactiveState.openThreadMsgId/threadOpenedAt; null when no thread is open.
 
 ## 2. Actions (`UiAction`)
 The only events the UI can trigger:
@@ -63,3 +85,4 @@ The UI layer can query the `Storage` interface directly for data visualization w
 - **Soul/Memory Reads**: Query active/stale nodes, node counts, and soul facts from `node` and `soul_fact`.
 - **Quote Slots**: Query `getQuoteSlot(slot, dayKey)` from `quote_slot`.
 - **Follow-up Graph**: Query `getEdgesForSource(nodeId)` / `getEdgesForDestination(nodeId)` with `type = 'follow_up'` from `edge`.
+- **Home Queries (D-121)**: `getHomePriorityList(now, limit)` (fresh active nodes, code-ranked), `getRecentlyClosed(now, limit)` (closed within 24h), `getLatestEventForTarget(targetType, targetId)` (latest raw_event for undo validity). UPDATE is a UI-visible op type in `getRecentEvents` and renders as an "Updated:" receipt.

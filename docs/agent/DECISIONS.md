@@ -133,5 +133,14 @@ D-120 (2026-11-05): Reminder Policy per Blueprint 30 (P1-B 15 / Task #104).
 Reason: Fully enforces deterministic code-side reminder scheduling rules without LLM guessing (Rule 1 & Rule 4); respects quiet hours and user autonomy; prevents duplicate alarm spam while allowing multi-offset reminders (> 30 min apart).
 Rejected: Silently overwriting reminders within 30 minutes; moving explicit user alarms outside quiet hours; guessing times for undated items without user request.
 
-(Next free: D-121. Add: date, decision, reason, rejected.)
+D-121 (2026-11-06): Home data queries and structured chat timeline (P1-D 20).
+- Home priority list is ranked in code, not SQL: `rankHomeNodes(nodes, now)` sorts by 1) overdue first; 2) in_progress; 3) pinned (explicit user boost); 4) severity desc; 5) priority desc; 6) due soonest (most overdue first, undated last); 7) most recently updated; ties by id. `getHomePriorityList(now, limit = 5)` filters to fresh (non-stale per the D-104 rule), non-local-only, active/in_progress/paused nodes first.
+- Recently closed: `getRecentlyClosed(now, limit = 10)` returns done/cancelled nodes with closed_at within the last 24h, newest first. Undo validity mirrors D-115 receipts: `(now - latestClosingEvent.tsUtc < 24h) && !storage.hasUndo(event.opId)`; the token is that event's opId. ChatController resolves validity per node via new `getLatestEventForTarget(targetType, targetId)`.
+- At-risk flag: `UiState.atRisk = (ReliabilityState.score == "at_risk")`; the existing schedulingError carries the reason. Active thread: `ActiveThread(msgId, openedAt)` derived from ProactiveState.openThreadMsgId/threadOpenedAt.
+- Structured timeline: `ChatTimelineBuilder.build(messages, receipts, openProposals)` composes a `ChatItem` list (DayHeader, TimeDivider, Message, SystemEvent, ReceiptItem, ProposalRow, CheckinCard, Nudge, StatusNotice); receipts attach under their cause message, orphaned receipts and proposal rows render at the end. Exposed as `UiState.chatItems`.
+- UPDATE is now UI-visible: added to the `getRecentEvents` op filter in both AndroidStorage and SharedFakeStorage, and ReceiptFormatter gains an "Updated: <title> (<due>)" branch reading the after-snapshot — fixes P1-B 16 UPDATE receipts being invisible (D-115 regression).
+Reason: Blueprint 50 s3.2/s3.5 Home/timeline structure; code-side ranking keeps the rule testable and consistent across SQLite and fake storage; parity of the two Storage implementers is a project invariant.
+Rejected: SQL ORDER BY ranking (untestable rule, drifts between implementations); separate receipt table (D-115 already chose raw_event); exposing raw message+receipt lists to the UI without composition.
+
+(Next free: D-122. Add: date, decision, reason, rejected.)
 

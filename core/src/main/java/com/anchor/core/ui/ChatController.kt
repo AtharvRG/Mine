@@ -78,6 +78,17 @@ class ChatController(
                 relState.issuesJson ?: "Alarms or notifications at risk"
             } else null
             val recentReceipts = loadReceipts()
+            val priorityList = storage.getHomePriorityList(clock.now())
+            val closedNodes = storage.getRecentlyClosed(clock.now())
+            val dayMs = 24L * 3600 * 1000L
+            val nowMs = clock.now()
+            val recentlyClosed = closedNodes.map { node ->
+                val event = storage.getLatestEventForTarget("node", node.id)
+                val undoValid = event != null && (nowMs - event.tsUtc < dayMs) && !storage.hasUndo(event.opId)
+                RecentlyClosed(node, undoValid, if (undoValid) event.opId else null)
+            }
+            val proactive = storage.getProactiveState()
+            val activeThread = proactive.openThreadMsgId?.let { ActiveThread(it, proactive.threadOpenedAt ?: 0L) }
 
             _state.update { it.copy(
                 receipts = recentReceipts + transientReceipts,
@@ -92,8 +103,13 @@ class ChatController(
                 staleItems = stale,
                 inboxCount = proposals.size + soulFacts.size + stale.size,
                 urgentItems = storage.getUrgentNodes(),
-                schedulingError = schedError ?: it.schedulingError
+                schedulingError = schedError ?: it.schedulingError,
+                atRisk = relState.score == "at_risk",
+                activeThread = activeThread,
+                homePriorityList = priorityList,
+                recentlyClosed = recentlyClosed
             )}
+            _state.update { it.copy(chatItems = ChatTimelineBuilder.build(it.chatMessages, it.receipts, it.openProposals)) }
         }
         coroutineScope.launch(defaultDispatcher) {
             alarmScheduler.lastFiredId.collect { firedId ->
@@ -603,6 +619,18 @@ CRITICAL: Do NOT say "Done" or "Saved" unless you issue a tool call.
         val soulFacts = storage.getProposedSoulFacts()
         val stale = storage.getStaleNodes(now = clock.now())
         val recentReceipts = loadReceipts()
+        val nowMs = clock.now()
+        val priorityList = storage.getHomePriorityList(nowMs)
+        val closedNodes = storage.getRecentlyClosed(nowMs)
+        val dayMs = 24L * 3600 * 1000L
+        val recentlyClosed = closedNodes.map { node ->
+            val event = storage.getLatestEventForTarget("node", node.id)
+            val undoValid = event != null && (nowMs - event.tsUtc < dayMs) && !storage.hasUndo(event.opId)
+            RecentlyClosed(node, undoValid, if (undoValid) event.opId else null)
+        }
+        val proactive = storage.getProactiveState()
+        val activeThread = proactive.openThreadMsgId?.let { ActiveThread(it, proactive.threadOpenedAt ?: 0L) }
+        val relState = storage.getReliabilityState()
 
         _state.update { it.copy(
             receipts = recentReceipts + transientReceipts,
@@ -612,8 +640,13 @@ CRITICAL: Do NOT say "Done" or "Saved" unless you issue a tool call.
             proposedSoulFacts = soulFacts,
             staleItems = stale,
             inboxCount = proposals.size + soulFacts.size + stale.size,
-            urgentItems = storage.getUrgentNodes()
+            urgentItems = storage.getUrgentNodes(),
+            atRisk = relState.score == "at_risk",
+            activeThread = activeThread,
+            homePriorityList = priorityList,
+            recentlyClosed = recentlyClosed
         ) }
+        _state.update { it.copy(chatItems = ChatTimelineBuilder.build(it.chatMessages, it.receipts, it.openProposals)) }
     }
 
     companion object {

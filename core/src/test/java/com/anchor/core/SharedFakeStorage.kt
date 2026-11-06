@@ -6,6 +6,7 @@ package com.anchor.core
 
 import com.anchor.core.models.*
 import com.anchor.core.storage.Storage
+import com.anchor.core.storage.rankHomeNodes
 import com.anchor.core.time.Clock
 import com.anchor.core.time.SystemClock
 import kotlinx.coroutines.CoroutineDispatcher
@@ -256,10 +257,33 @@ open class SharedFakeStorage(var clock: Clock = SystemClock()) : Storage {
     override suspend fun getEvent(opId: String): RawEvent? = loggedEvents.find { it.opId == opId }
     override suspend fun hasUndo(token: String): Boolean = loggedEvents.any { it.undoOf == token }
     override suspend fun getRecentEvents(limit: Int): List<RawEvent> {
-        val uiVisibleOps = setOf("CREATE", "CANCEL", "COMPLETE", "RESCHEDULE", "SCHEDULE", "KEEP_STALE", "CANCEL_STALE", "DELETE", "CONFIRM", "ACCEPT", "REJECT", "LINK", "UNLINK")
+        val uiVisibleOps = setOf("CREATE", "CANCEL", "COMPLETE", "RESCHEDULE", "UPDATE", "SCHEDULE", "KEEP_STALE", "CANCEL_STALE", "DELETE", "CONFIRM", "ACCEPT", "REJECT", "LINK", "UNLINK")
         return loggedEvents
             .filter { it.undoOf == null && it.opType in uiVisibleOps }
             .takeLast(limit)
+    }
+
+    // P1-D 20 (D-121): Home queries, mirroring AndroidStorage.
+    override suspend fun getHomePriorityList(now: Long, limit: Int): List<Node> {
+        val freshActive = activeNodes.filter {
+            (it.status == "active" || it.status == "in_progress" || it.status == "paused") &&
+            !it.localOnly &&
+            ((it.dueAt != null && it.dueAt > now) || maxOf(it.updatedAt, it.createdAt) == 0L || (now - maxOf(it.updatedAt, it.createdAt) <= 30L * 24 * 3600 * 1000L))
+        }
+        return rankHomeNodes(freshActive, now).take(limit)
+    }
+
+    override suspend fun getRecentlyClosed(now: Long, limit: Int): List<Node> {
+        return activeNodes
+            .filter { (it.status == "done" || it.status == "cancelled") && it.closedAt != null && (now - it.closedAt) < 24L * 3600 * 1000L }
+            .sortedWith(compareByDescending<Node> { it.closedAt }.thenBy { it.id })
+            .take(limit)
+    }
+
+    override suspend fun getLatestEventForTarget(targetType: String, targetId: String): RawEvent? {
+        return loggedEvents
+            .filter { it.targetType == targetType && it.targetId == targetId }
+            .maxByOrNull { it.tsUtc }
     }
 
     override suspend fun createNodeAndCommit(node: Node, event: RawEvent, reminder: Reminder?, edge: Edge?, edgeEvent: RawEvent?, consumeProposalId: String?) {

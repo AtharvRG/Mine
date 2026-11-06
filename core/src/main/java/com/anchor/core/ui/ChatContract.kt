@@ -41,11 +41,17 @@ data class UiState(
     val selectedDayKey: String? = null,
     val selectedDayMessages: List<ChatMessage> = emptyList(),
     val selectedDayReminders: List<Reminder> = emptyList(),
-    val homeQuote: com.anchor.core.models.Quote? = null
+    val homeQuote: com.anchor.core.models.Quote? = null,
+    // P1-D 20 (D-121)
+    val atRisk: Boolean = false,
+    val activeThread: ActiveThread? = null,
+    val homePriorityList: List<com.anchor.core.models.Node> = emptyList(),
+    val recentlyClosed: List<RecentlyClosed> = emptyList(),
+    val chatItems: List<ChatItem> = emptyList()
 ) {
     override fun toString(): String {
         val redactedKey = if (providerKey.isBlank()) "" else "***"
-        return "UiState(chatMessages=$chatMessages, receipts=$receipts, openProposals=$openProposals, proposedSoulFacts=$proposedSoulFacts, staleItems=$staleItems, inboxCount=$inboxCount, urgentItems=$urgentItems, isChatLoading=$isChatLoading, activeReminders=$activeReminders, selfTestStatus=$selfTestStatus, providerEndpoint=$providerEndpoint, providerKey=$redactedKey, providerModel=$providerModel, debugStats=$debugStats, composerDraft=$composerDraft, connectionError=$connectionError, globalError=$globalError, schedulingError=$schedulingError, schedulingFailedCount=$schedulingFailedCount, showResetConfirm=$showResetConfirm, alarmDisclosureText=$alarmDisclosureText, selectedDayKey=$selectedDayKey, selectedDayMessages=$selectedDayMessages, selectedDayReminders=$selectedDayReminders, homeQuote=$homeQuote)"
+        return "UiState(chatMessages=$chatMessages, receipts=$receipts, openProposals=$openProposals, proposedSoulFacts=$proposedSoulFacts, staleItems=$staleItems, inboxCount=$inboxCount, urgentItems=$urgentItems, isChatLoading=$isChatLoading, activeReminders=$activeReminders, selfTestStatus=$selfTestStatus, providerEndpoint=$providerEndpoint, providerKey=$redactedKey, providerModel=$providerModel, debugStats=$debugStats, composerDraft=$composerDraft, connectionError=$connectionError, globalError=$globalError, schedulingError=$schedulingError, schedulingFailedCount=$schedulingFailedCount, showResetConfirm=$showResetConfirm, alarmDisclosureText=$alarmDisclosureText, selectedDayKey=$selectedDayKey, selectedDayMessages=$selectedDayMessages, selectedDayReminders=$selectedDayReminders, homeQuote=$homeQuote, atRisk=$atRisk, activeThread=$activeThread, homePriorityList=$homePriorityList, recentlyClosed=$recentlyClosed, chatItems=$chatItems)"
     }
 }
 

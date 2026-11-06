@@ -397,6 +397,40 @@ class AndroidStorage(private val dbHelper: SupportSQLiteOpenHelper) : Storage {
         queryNodes("SELECT id, type, title, status, due_at, created_at, updated_at, closed_at, priority, severity, attrs, local_only FROM node WHERE status IN ('active', 'in_progress') AND (local_only IS NULL OR local_only = 0) ORDER BY due_at IS NULL, due_at ASC LIMIT 3", emptyArray())
     }
 
+    // P1-D 20 (D-121): Home queries. Ranking itself is code-side via rankHomeNodes (D-121).
+    override suspend fun getHomePriorityList(now: Long, limit: Int): List<Node> = withContext(ioDispatcher) {
+        val cutoff = now - 30L * 24 * 3600 * 1000L
+        val sql = "SELECT id, type, title, status, due_at, created_at, updated_at, closed_at, priority, severity, attrs, local_only FROM node WHERE (status = 'active' OR status = 'in_progress' OR status = 'paused') AND (local_only IS NULL OR local_only = 0) AND ((due_at IS NOT NULL AND due_at > CAST(? AS INTEGER)) OR created_at = 0 OR (CASE WHEN updated_at > created_at THEN updated_at ELSE created_at END) >= CAST(? AS INTEGER))"
+        val fresh = queryNodes(sql, arrayOf(now.toString(), cutoff.toString()))
+        // Cap the candidate pool before code-side ranking (parity with SharedFakeStorage).
+        com.anchor.core.storage.rankHomeNodes(fresh, now).take(limit)
+    }
+
+    override suspend fun getRecentlyClosed(now: Long, limit: Int): List<Node> = withContext(ioDispatcher) {
+        val cutoff = now - 24L * 3600 * 1000L
+        val sql = "SELECT id, type, title, status, due_at, created_at, updated_at, closed_at, priority, severity, attrs, local_only FROM node WHERE (status = 'done' OR status = 'cancelled') AND closed_at IS NOT NULL AND closed_at >= CAST(? AS INTEGER) AND closed_at <= CAST(? AS INTEGER) ORDER BY closed_at DESC, id ASC LIMIT CAST(? AS INTEGER)"
+        queryNodes(sql, arrayOf(cutoff.toString(), now.toString(), limit.toString()))
+    }
+
+    override suspend fun getLatestEventForTarget(targetType: String, targetId: String): RawEvent? = withContext(ioDispatcher) {
+        dbHelper.readableDatabase.query(
+            "SELECT op_id, op_type, target_type, target_id, undo_of, before_json, after_json, ts_utc, cause_msg_id FROM raw_event WHERE target_type = ? AND target_id = ? ORDER BY ts_utc DESC, rowid DESC LIMIT 1",
+            arrayOf(targetType, targetId)
+        ).use {
+            if (it.moveToFirst()) RawEvent(
+                opId = it.getString(0),
+                opType = it.getString(1),
+                targetType = it.getString(2),
+                targetId = it.getString(3),
+                undoOf = if (it.isNull(4)) null else it.getString(4),
+                beforeJson = if (it.isNull(5)) null else it.getString(5),
+                afterJson = if (it.isNull(6)) null else it.getString(6),
+                tsUtc = it.getLong(7),
+                causeMsgId = if (it.isNull(8)) null else it.getString(8)
+            ) else null
+        }
+    }
+
     override suspend fun getActiveSoulFacts(): List<SoulFact> = withContext(ioDispatcher) {
         val list = mutableListOf<SoulFact>()
         dbHelper.readableDatabase.query("SELECT id, category, statement, confidence, source, origin, status, created_at, local_only, sensitive FROM soul_fact WHERE (status = 'active' OR status = 'pinned') AND (local_only IS NULL OR local_only = 0)").use {
@@ -485,7 +519,7 @@ class AndroidStorage(private val dbHelper: SupportSQLiteOpenHelper) : Storage {
 
     override suspend fun getRecentEvents(limit: Int): List<RawEvent> = withContext(ioDispatcher) {
         val list = mutableListOf<RawEvent>()
-        val sql = "SELECT op_id, op_type, target_type, target_id, undo_of, before_json, after_json, ts_utc, cause_msg_id FROM raw_event WHERE undo_of IS NULL AND op_type IN ('CREATE', 'CANCEL', 'COMPLETE', 'RESCHEDULE', 'SCHEDULE', 'KEEP_STALE', 'CANCEL_STALE', 'DELETE', 'CONFIRM', 'ACCEPT', 'REJECT', 'LINK', 'UNLINK') ORDER BY ts_utc DESC, rowid DESC LIMIT ?"
+        val sql = "SELECT op_id, op_type, target_type, target_id, undo_of, before_json, after_json, ts_utc, cause_msg_id FROM raw_event WHERE undo_of IS NULL AND op_type IN ('CREATE', 'CANCEL', 'COMPLETE', 'RESCHEDULE', 'UPDATE', 'SCHEDULE', 'KEEP_STALE', 'CANCEL_STALE', 'DELETE', 'CONFIRM', 'ACCEPT', 'REJECT', 'LINK', 'UNLINK') ORDER BY ts_utc DESC, rowid DESC LIMIT ?"
         dbHelper.readableDatabase.query(sql, arrayOf(limit)).use { cursor ->
             while (cursor.moveToNext()) {
                 list.add(

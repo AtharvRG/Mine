@@ -70,7 +70,7 @@ Specs for R1-R10: docs/agent/work/session1-remediation-spec.md. Read the task's 
 [x] P1-B 15 Reminder policy per blueprint 30 (lead times, reminder only when asked or per default) (D-120) [unit-verified, approved]
 [x] P1-B 17 Dedupe near-match (same title near same due time -> needs_confirm) (D-119) [unit + connected verified on moto g73 5G, approved]
 [x] DateResolver: Weekday names ("on friday", "next friday", "friday at 5pm") [covered by R10f, unit-verified, approved]
-[ ] P1-D 20 Remainder: Home priority list (code-ranked), at-risk flag, active threads, recently-closed with undo validity, structured chat items (bubble, receipt, chips, nudge+reason, check-in snapshot, system line)
+[x] P1-D 20 Remainder: Home priority list (code-ranked), at-risk flag, active threads, recently-closed with undo validity, structured chat items (bubble, receipt, chips, nudge+reason, check-in snapshot, system line) (D-121) [unit-verified: 242 core, 9 app]
 [ ] P1-E 21 day_rule/day_key monotonic, rollover (11, 50 s3.13)
 [ ] P1-E 22 Layers: raw/derived/operational, rebuild jobs skeleton (11)
 [ ] P1-E 23 FTS5 keyword search: multi-token AND queries, status filter, rank order, limit cap; Embedder interface stub (21)
