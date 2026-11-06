@@ -1,64 +1,59 @@
-# HANDOFF (P1-D 20 Complete — Unit-Verified; Next: P1-E 21)
+# HANDOFF (Part B TDD — B1..B5 ALL COMMITTED; Next: B6 Crash-Window Test)
 
 ## Current Work & Status
-- **Task #108 / P1-D 20 [COMPLETED]**: Home priority list (code-ranked), at-risk flag, active threads, recently-closed with undo validity, structured chat items (bubble, receipt, chips, nudge+reason, check-in snapshot, system line). Queries and core wiring only — **no UI** (per task scope; UI consumes these in a later roadmap item).
-- Includes an in-scope bug fix: UPDATE op-type was missing from the UI-visible event filters and ReceiptFormatter, making P1-B 16 UPDATE receipts invisible (D-115 regression).
-- Decision **D-121** recorded in docs/agent/DECISIONS.md (next free: D-122).
-- Core suite: 242/242 passed (231 prior + 11 new), 0 compiler warnings. App unit suite: 9/9 passed.
-- Independent verification verdict: **PASS** — clean re-run of both suites (exit 0, 242/0/0 core + 9/0/0 app from XML), `:app:compileDebugSources` exit 0, implementation matches D-121 in every claimed spot, and an 18-assertion adversarial probe harness (compiled against core classes) confirmed: strict-24h boundary on recently-closed, newest-first sort, undo-validity flip true->false after a real Gateway undo (node exits getRecentlyClosed, status restored), second-undo idempotency ("Already undone"), orphan token ("Undo token not found"), and the 24h gateway gate. Non-blocking observations: benign fake/SQL parity drift on future-dated `closedAt` (fake includes, SQL excludes via `closed_at <= now` — only reachable via clock skew; inherited from getRankedCandidates precedent) and a same-tsUtc tie-break difference in `getLatestEventForTarget` (unobservable through the controller path).
+- Batch A (doc truth): **done and committed** — A1 test recount (raw evidence in `docs/agent/evidence/`, committed 2a2e9b1), A2 doc drift (d13153a), A3 D-102 restore + D-117 Rejected correction (5ee5eaa), A4 `test_live_models.py` supplementary (d13153a, deleted `test_live_mistral.py`), A5 D-114..D-117 pack-numbering note (5ee5eaa).
+- Batch B (TDD): **B1..B5 all committed** — B1 `1194119` (ContextBuilder proposal option titles + test), B2 impl `3d42572`/`a3764f2` + test `d161ba0`, B3 `a3764f2`, B4 `bde78fd`, B5 `d359a7b` (BootReceiverIgnoreTest + evidence) with D-122 in `5ee5eaa`.
+- Core test count is now **247** (242 + B1x1 + B2x1 + B3x3); forced-fresh run evidence `core-test-20261106-partb.txt` (UNIT_EXIT=0). Total project tests 309 (247 core / 9 app / 53 connected).
+- B5 evidence resolution: this ROM's `dumpsys package` does not print per-component `exported=` ActivityInfo lines (only resolver tables), so after reinstalling the debug APK the exported flag was taken from `aapt2 dump xmltree` of the installed APK — `BootReceiver exported=true` with 4-action filter (BOOT_COMPLETED, MY_PACKAGE_REPLACED, TIME_SET, TIMEZONE_CHANGED). Device dumpsys confirms registration under all 4 actions + RECEIVE_BOOT_COMPLETED granted. Evidence: `docs/agent/evidence/b5-evidence.md`, `b5-manifest-dump.txt`, `b5-receiver-dump.txt`.
 
-## 1. What Changed (all uncommitted in working tree)
-- `core/src/main/java/com/anchor/core/storage/Storage.kt`:
-  - Three new interface queries: `getHomePriorityList(now, limit=5)`, `getRecentlyClosed(now, limit=10)`, `getLatestEventForTarget(targetType, targetId)`.
-  - New top-level `rankHomeNodes(nodes, now)`: code-side Home ranking. Order: 1) overdue first; 2) in_progress; 3) pinned; 4) severity desc; 5) priority desc; 6) due soonest (undated last via `Long.MAX_VALUE`); 7) most recently updated; 8) id tiebreak.
-- `core/src/main/java/com/anchor/core/ui/ChatItems.kt` (new):
-  - `ChatItem` sealed interface: `DayHeader(dayKey, tsUtc)`, `TimeDivider` (reserved, not yet emitted), `Message(id, role, content, tsUtc)`, `SystemEvent(text, tsUtc)`, `ReceiptItem(receipt)`, `ProposalRow(proposal)`, `CheckinCard(title, summary, tsUtc)` (reserved for P1-E 25), `Nudge(content, tag, reason, tsUtc)` (reserved for P1-E 24), `StatusNotice(text, isError, tsUtc)`.
-  - `RecentlyClosed(node, undoValid, undoToken)`, `ActiveThread(msgId, openedAt)`.
-- `core/src/main/java/com/anchor/core/ui/ChatTimelineBuilder.kt` (new):
-  - `build(messages, receipts, openProposals)`: DayHeader inserted on dayKey change; system role with non-blank content -> SystemEvent; other roles -> Message; receipts anchored directly under their causeMsgId message; orphaned receipts (null cause or cause outside window) appended at end; open proposals -> ProposalRow at end.
-- `core/src/main/java/com/anchor/core/ui/ChatContract.kt`:
-  - UiState += `atRisk: Boolean`, `activeThread: ActiveThread?`, `homePriorityList: List<Node>`, `recentlyClosed: List<RecentlyClosed>`, `chatItems: List<ChatItem>` (toString updated).
-- `core/src/main/java/com/anchor/core/ui/ChatController.kt`:
-  - `init` + `refreshUI`: wire `getHomePriorityList`, `getRecentlyClosed` + per-node undo validity (`getLatestEventForTarget("node", id)` + `hasUndo`, D-115 formula `(now - tsUtc < 24h) && !hasUndo`), `atRisk` from ReliabilityState, `activeThread` from ProactiveState, and rebuild `chatItems` via ChatTimelineBuilder on every state update.
-  - Warning fix: `event!!.opId` -> smart-cast `event.opId` (2 sites).
-- `app/src/main/java/com/anchor/mine/storage/AndroidStorage.kt`:
-  - Implements the three queries (freshness filter mirrors D-104: `dueAt > now` OR recency within 30 days OR zero timestamps; recently-closed = done/cancelled + closedAt within 24h; latest event by max tsUtc). Calls shared `rankHomeNodes`.
-  - UPDATE added to the `getRecentEvents` SQL op-type IN list (UI-visible fix).
-- `core/src/test/java/com/anchor/core/SharedFakeStorage.kt`:
-  - Implements the three queries with SQLite parity; `import com.anchor.core.storage.rankHomeNodes` added (top-level fn lives in another package).
-  - UPDATE added to `uiVisibleOps` (UI-visible fix).
-- `core/src/main/java/com/anchor/core/ui/ReceiptFormatter.kt`:
-  - UPDATE branch added: "Updated: <new title> (<due time>)" from after-snapshot.
-- `core/src/test/java/com/anchor/core/ui/P1D20HomeAndTimelineTest.kt` (new): 11 tests.
-- Docs: `docs/ui-contract.md` (UiState fields; §1b ChatItem taxonomy + composition rules; §1c Home data ranking/undo-validity/activeThread; Home Queries line incl. UPDATE visibility), `docs/agent/DECISIONS.md` (D-121), `docs/agent/TASKS.md` (P1-D 20 -> [x]).
+## 1. What Changed (files and commits)
+**Committed this session:**
+- `1194119` feat(context): include proposal option titles and due times in pending clarifications (B1) — `ContextBuilder.kt` + `ContextBuilderTest.kt`.
+- `d161ba0` test(receipts): cap transientReceipts at 20 and expire after 24h (B2 test; impl already in 3d42572/a3764f2) — `R7ReceiptsTest.kt`.
+- `d359a7b` test(alarms): verify BootReceiver action filter and exported flag on device (B5) — `BootReceiverIgnoreTest.kt` + `b5-evidence.md` + `b5-manifest-dump.txt` + `b5-receiver-dump.txt`.
+- `d13153a` docs(scripts): re-sync live smoke prompt to P1-B 16 and mark it supplementary (A4) — `test_live_models.py`, deleted `test_live_mistral.py`, `ui-contract.md` 10s->5s (A2).
+- `5ee5eaa` docs(decisions): restore D-102 text, correct D-117 Rejected line, add pack-numbering note and D-122 (A3/A5/B5) — `DECISIONS.md`.
+- `2a2e9b1` docs(evidence): raw test evidence for A1 recount and Part B suites — 7 evidence txt files incl. new `core-test-20261106-partb.txt`.
+- (Earlier this batch: `bde78fd` B4, `a3764f2` B3, `2175013` P1-D 20, `3d42572` P1-B 15/16/17, `a5b5838` verification docs.)
 
-## 2. What Is Verified (command + result)
-- `./gradlew :core:test :app:testDebugUnitTest`: BUILD SUCCESSFUL (exit 0) — **242/242 core** (incl. P1D20HomeAndTimelineTest 11/11), **9/9 app** (counts from build/test-results XML), 0 compiler warnings.
-- First run was green but emitted 2 "Unnecessary non-null assertion" warnings (`event!!.opId` in ChatController init/refreshUI); fixed via smart-cast and re-run: exit 0, 0 warnings.
-- New tests cover: ranking order (overdue -> in_progress -> pinned -> severity -> priority -> dueAt; pinned/severity rank above plain due-sooner items), exclusion of closed/stale/localOnly + limit cap, recently-closed 24h window + undo validity + invalidation after undo, `getRecentEvents` includes UPDATE, ReceiptFormatter UPDATE branch, full timeline composition (day headers, receipt anchoring under causeMsgId, orphan receipts at end, proposal row), empty inputs, undated nodes last, priority breaks severity ties.
+**Uncommitted working tree:** docs only (STATE/TASKS/HANDOFF/LEARNINGS/evidence-summary refresh reflecting the commits above).
 
-## 3. NOT Verified
-- Connected/instrumented tests NOT run this session (device not invoked). The three new Storage queries have no real-SQLite instrumented coverage yet (SharedFakeStorage only). Last connected run: 53/53 (P1-B 15 session).
-- No independent code-review (reviewer agent) pass for P1-D 20 yet; the verification agent PASS covered builds, tests, implementation spot-checks, and adversarial probes but is not a style/design review.
-- No live-model smoke; UI does not yet consume `chatItems`/`homePriorityList`/`recentlyClosed`/`activeThread` (UI implementation is a later roadmap item).
+## 2. What Is Verified (command + exit code)
+- `BootReceiverIgnoreTest` on device: gradle exit 1 (ROM teardown artifact) but JUnit XML = 1 test, 0 failures, 2.249s — **PASS** (`app/build/outputs/androidTest-results/connected/debug/TEST-moto g73 5G - 14.xml`).
+- `adb install -r app/build/outputs/apk/debug/app-debug.apk` → Success (installed 12:57:20).
+- `adb shell dumpsys package com.anchor.mine > docs/agent/evidence/b5-receiver-dump.txt` → 8652 bytes; BootReceiver registered under all 4 actions (filter cc5b617), RECEIVE_BOOT_COMPLETED granted=true.
+- `aapt2 dump xmltree --file AndroidManifest.xml app/build/outputs/apk/debug/app-debug.apk > docs/agent/evidence/b5-manifest-dump.txt` → BootReceiver `exported=true`, 4-action filter; AlarmReceiver/QuoteAlarmReceiver `exported=false`.
+- `cmd package query-receivers -a android.intent.action.BOOT_COMPLETED` → `com.anchor.mine/.alarms.BootReceiver` listed (Receiver #231).
+- Post-commit core suite: `./gradlew :core:cleanTest :core:test` → BUILD SUCCESSFUL, `UNIT_EXIT=0`, XML **247 tests / 0 failures** (evidence `core-test-20261106-partb.txt`).
+- B4: `ExportTest` 6/6 on device (committed, verified in the 53/53 clean-install run + B4 commit).
+- B3: `B3ReliabilityIssuesTest` 3/3 in core suite (committed; evidence `docs/agent/evidence/b3-core-suite.txt`).
+- Clean-install connected suite (A1): 53/53, 0 failures in JUnit XML; gradle exit 1 = documented ROM teardown artifact (STATE.md Test counts section).
+
+## 3. What Is NOT Verified
+- No independent reviewer/test-auditor pass on B1-B5 yet (task #119 pending).
+- R10g fresh re-run on current code not done (Nov 5 evidence pre-dates D-118/P1-B/P1-D changes) — task #120.
+- D-105 fresh by-eye/screenshots on current build not done — task #121.
+- Connected suite has not been re-run since the B1 code change (last connected evidence: 53/53 clean-install + BootReceiverIgnoreTest 1/1, both 2026-11-06, pre-B1-commit build; B1 is prompt-text-only, compile-verified, unit-verified).
 
 ## 4. Current Failing Tests
-- None (242 core + 9 app green).
+- None. Core 247/247, app 9/9, connected 53/53 (clean-install) + BootReceiverIgnoreTest 1/1 all green per XML.
 
 ## 5. Open Decisions Needing User
-- None new. D-121 recorded; next free D-122.
+- None new. D-122 recorded (B5); next free D-123. (A3's D-117 Rejected-line correction notes "decision text unchanged pending developer confirmation" — confirm when convenient.)
 
 ## 6. Exact Next Step
-- `git commit -s` the P1-D 20 changes (one commit), then stop and await user approval. Next roadmap task after approval: **P1-E 21** (day_rule/day_key monotonic, rollover; Blueprint 11, 50 s3.13) per docs/agent/TASKS.md line 74.
+- Task **#118 (B6)**: crash-window test + design sketch (option b). See TASKS.md "Current batch" — write the failing test for the crash/kill window (turn interrupted mid-flight), then the design sketch for recovery. Await user approval before starting (one task per run).
 
 ## 7. Traps for the Next Run
-- **Ranking contract (D-121)**: pinned/severity/priority rank ABOVE due-soonness among non-overdue items. `testHomePriorityList_PinnedAndSeverityRankAbovePlainActive` pins this exact order — do not "fix" the comparator back to dueAt-first.
-- `rankHomeNodes` is a top-level function in `com.anchor.core.storage` (Storage.kt). SharedFakeStorage (package `com.anchor.core`) needs `import com.anchor.core.storage.rankHomeNodes` — removing it breaks compilation.
-- The UI-visible op filter lives in TWO places: `uiVisibleOps` in SharedFakeStorage AND the SQL IN list in AndroidStorage.getRecentEvents. Any new ReceiptFormatter op branch must be added to both.
-- Orphan receipts (null causeMsgId or cause outside the loaded message window) render at the END of the timeline, not dropped; `ProposalRow.tsUtc = 0L` (proposals are terminal items, not timestamp-ordered); `TimeDivider` exists but is never emitted yet.
-- `CheckinCard` and `Nudge` are reserved for P1-E 25 / P1-E 24 — the timeline builder does not produce them yet.
-- Test-helper freshness: nodes created with `createdAt = now` always pass the 30-day freshness filter; set `updatedAt`/`createdAt` in the past to test stale exclusion.
-- Undo validity formula is shared with receipts (D-115): `(now - event.tsUtc < 24h) && !storage.hasUndo(event.opId)`; recently-closed uses the LATEST closing event per node via `getLatestEventForTarget`.
+- **AGP uninstalls both APKs after every connected run.** Any post-run adb inspection of `com.anchor.mine` fails with "Unable to find package" until you reinstall the APK. Capture dumps BEFORE the run, or reinstall first. `adb shell dumpsys package` on an uninstalled package prints the error to stdout with exit 0 — piping to a file silently captures 41 bytes of error text (lost the dump twice this way).
+- **Android 14 ROM's `dumpsys package` does NOT print per-component `exported=` ActivityInfo lines** (only resolver tables). For exported-flag evidence use `aapt2 dump xmltree --file AndroidManifest.xml <apk>` on the installed APK — the compiled manifest is authoritative and shows `A: android:exported=true/false` per component.
+- `cmd package query-receivers -a <ACTION>` lists ALL packages' receivers (301 for BOOT_COMPLETED); grep for `anchor` — but it returns nothing for an uninstalled package, which is not proof of absence.
+- The receiver dump for BootReceiver lives under "Receiver Resolver Table" -> "Non-Data Actions" in `dumpsys package` output.
+- B1 is now committed (1194119): `PromptSanitizer.sanitize(opt.title, 80)` — proposal option titles come from `ProposalOption(duplicate.id, "Update existing", dueStr)`; dueStr is already device-formatted, sanitize is for length/newlines only.
+- `R7ReceiptsTest` has LF/CRLF warnings on commit — normal for this repo on Windows; `git add` handles it.
+- Core test count moved 242 -> 247 with the Part-B TDD tests; docs (STATE header, Test counts table, evidence-summary ground-truth table) were refreshed to 247/309 as part of the docs commit.
+- Connected gradle runs exit 1 even when all tests pass (ROM instrumentation teardown artifact, documented in STATE.md Test counts) — judge pass/fail ONLY from the JUnit XML, never from the gradle exit code.
+- `docs/agent/evidence/evidence-summary.md` was rewritten (A1); keep it as the single index for all evidence files.
 
 ## Operating Rules
 - Commit per task using `git commit -s`. Never commit failing tests. One task per run; stop and await user approval before proceeding to the next task.

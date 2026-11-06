@@ -1,13 +1,22 @@
 # STATE (update every session; facts only)
-Updated: 2026-11-06   Commit: Complete (P1-D 20 / Task #108 Home priority list, at-risk flag, active threads, recently-closed with undo validity, structured chat items; unit-verified; D-121 recorded; queries only, no UI)
+Updated: 2026-11-06   Commit: Part B TDD complete and committed (B1 1194119, B2-test d161ba0, B3 a3764f2, B4 bde78fd, B5 d359a7b; A-batch docs d13153a/5ee5eaa/2a2e9b1; P1-D 20 at 2175013/a5b5838)
+## Test counts (recounted 2026-11-06 from JUnit XML result files; raw transcripts in docs/agent/evidence/)
+| Suite | Tests | Skipped | Failures | Errors | Command | Exit code |
+|---|---|---|---|---|---|---|
+| Core unit (`:core:test`) | 247 | 0 | 0 | 0 | `./gradlew :core:cleanTest :core:test` | 0 |
+| App unit (`:app:testDebugUnitTest`) | 9 | 0 | 0 | 0 | `./gradlew :app:cleanTestDebugUnitTest :app:testDebugUnitTest` | 0 |
+| Connected clean-install (moto g73 5G, Android 14) | 53 | 0 | 0 | 0 | `./gradlew :app:uninstallDebug :app:uninstallDebugAndroidTest` then `./gradlew :app:connectedDebugAndroidTest` | 1 (see below) |
+
+- Connected exit-1 annotation: gradle reports BUILD FAILED "There were failing tests", but the JUnit XML (`TEST-moto g73 5G - 14.xml`) and HTML report both show 53 tests, 0 failures, 0 errors, 0 skipped, 100% success. The instrumentation process itself exits nonzero at teardown (`INSTRUMENTATION_CODE: -1` in the Nov 5 direct `am instrument` run that also printed `OK (49 tests)`; identical signature on both 2026-11-06 clean-install runs). No app crash in the logcat crash buffer for the run windows; teardown at "Force stopping com.anchor.mine ... finished inst" is normal AGP cleanup. This is a device-ROM teardown artifact, not a test failure; recorded honestly rather than retried a third time (AGENTS.md forbids identical reruns).
+- Evidence files (2026-11-06): `docs/agent/evidence/unit-tests-20261106-fresh.txt` (core+app, exit 0), `connected-clean-install-20261106.txt` (run 1: uninstall log + 53/53 XML green, gradle exit 1), `connected-clean-install-20261106-run2.txt` (run 2: same signature). Stale Nov 5 files remain for history; `evidence-summary.md` is the current index.
 ## Build/test status (command + exit code)
-- `./gradlew :core:test :app:testDebugUnitTest`: SUCCESS (exit 0, 242/242 core tests passed [231 prior + 11 new P1D20HomeAndTimelineTest], 9/9 app tests passed; first run green but with 2 `event!!` warnings in ChatController, fixed via smart-cast, re-run exit 0 with 0 warnings)
+- `./gradlew :core:test :app:testDebugUnitTest`: SUCCESS (exit 0, 242/242 core tests passed [231 prior + 11 new P1D20HomeAndTimelineTest], 9/9 app tests passed; first run green but with 2 `event!!` warnings in ChatController, fixed via smart-cast, re-run exit 0 with 0 warnings; re-forced fresh 2026-11-06 with cleanTest: exit 0, 242+9)
 - `./gradlew :app:compileDebugSources :app:compileDebugUnitTestSources`: SUCCESS (exit 0)
 - `./gradlew :app:assembleDebug`: SUCCESS (exit 0)
 - `./gradlew :app:assembleRelease`: SUCCESS (exit 0, R8 minification + lintVitalRelease)
 - `:app:compileDebugAndroidTestKotlin`: SUCCESS (exit 0)
 - `./gradlew :app:testDebugUnitTest`: SUCCESS (exit 0, 9/9 tests passed across ChunkedAesStreamTest [4/4] and QuoteAlarmSchedulerTest [5/5] in 1.131s)
-- Connected tests on physical device (Motorola moto g73 5G - Android 14 / API 34): SUCCESS (exit 0; 53/53 tests passed across 10 test suites; verified in `app/build/reports/androidTests/connected/debug/index.html` and `TEST-moto g73 5G - 14.xml`):
+- Connected tests on physical device (Motorola moto g73 5G - Android 14 / API 34): 53/53 tests passed across 11 test classes (verified in `app/build/reports/androidTests/connected/debug/index.html` and `TEST-moto g73 5G - 14.xml`; gradle exit 1 is the ROM teardown artifact described in the Test counts section above, not a test failure):
   - `AlarmReceiverTest`: 3 passed
   - `AlarmSelfTest`: 3 passed
   - `BootReceiverTest`: 1 passed
@@ -19,7 +28,7 @@ Updated: 2026-11-06   Commit: Complete (P1-D 20 / Task #108 Home priority list, 
   - `AndroidStorageTest`: 30 passed
   - `DatabaseMigrationTest`: 1 passed
   - `StorageTest`: 2 passed
-- Ground truth test counts: 242 core + 9 app + 53 connected = 304 total project tests (0 failures, 100% pass rate; connected count from last device run [P1-B 15 session], not re-run this session).
+- Ground truth test counts: 247 core + 9 app + 53 connected = 309 total project tests (0 failures per JUnit XML; connected run re-executed twice this session on a clean install — both 53/53 green). Core count 247 = 242 recounted + 5 Part-B TDD tests (B1 x1, B2 x1, B3 x3), forced-fresh run exit 0 (`core-test-20261106-partb.txt`).
 - Zero-Vibration Protocol: Verified 100% compliant. Notification channels `mine_reminders_v3` and `mine_gentle_reminders_v3` explicitly set `enableVibration(false)` and `vibrationPattern = null`. No `VIBRATE` permission in manifest (`adb shell dumpsys package com.anchor.mine | grep -i vibrate` returns empty).
 - `./gradlew :app:lintDebug`: SUCCESS (exit 0)
 ## Verified working (with evidence)
@@ -79,14 +88,14 @@ Updated: 2026-11-06   Commit: Complete (P1-D 20 / Task #108 Home priority list, 
     - Concurrency: Atomic CAS ensures single-winner semantics; concurrent taps yield exactly one committed action while losing taps receive "Proposal already resolved".
     - Two-Stage Transition: When an item has an ambiguous time ("at 5"), Gateway first issues a `time` clarification proposal (`NeedsTime`). Once the user selects a candidate chip, the resolved timestamp is checked against existing items for near-match deduplication; if a near match exists, it transitions seamlessly into `NeedsConfirm`.
   - Evidence: Verified with 8 unit tests in `P1B17NearMatchDedupeTest.kt`, updated test suites `R11UntitledAlarmsTest`, `R2CandidateSelectionTest`, `R4TimeChipsTest`, `R12ConcurrencyLifecycleTest`, and connected device tests on physical moto g73 5G (`AndroidStorageTest` 30/30 passed).
-- R10g: Minified release APK verified on physical hardware (Motorola moto g73 5G, Android 14):
+- R10g: Minified release APK verified on physical hardware (Motorola moto g73 5G, Android 14) — **Nov 5 historical run; re-verification ordered in current batch (not yet re-run)**:
   - Clean install (`adb install -r app/build/outputs/apk/release/app-release.apk`) verified with R8 minification and resource shrinking.
   - Storage opens cleanly with SQLCipher encryption on fresh install.
   - Send message in chat verified with real Mistral small provider.
   - Reminder fires on schedule, notification drawer delivery verified with zero vibration.
   - Export file verifies (`ExportTest` instrumented test passes 6/6 tests on physical phone).
-  - Raw evidence and screenshots saved under `docs/agent/evidence/r10g-evidence.md`.
-- D-105: Status-bar alarm icon presence and absence verified on physical phone:
+  - Raw evidence and screenshots saved under `docs/agent/evidence/r10g-evidence.md` (dated 2026-11-05; pre-dates the R12d/P1-D 20 code changes).
+- D-105: Status-bar alarm icon presence and absence verified on physical phone — **Nov 5 historical run; user re-check by eye ordered in current batch (not yet re-run)**:
   - Alarm tier (`setAlarmClock`): Status-bar alarm clock icon is visible; adb screenshots and dumpsys evidence in `docs/agent/evidence/d105-evidence.md`.
   - Gentle tier: Status-bar alarm clock icon is strictly absent.
 - Task #102: 15-utterance live smoke through the app with real provider:
@@ -108,7 +117,7 @@ Updated: 2026-11-06   Commit: Complete (P1-D 20 / Task #108 Home priority list, 
     - 3 new unit tests in `:core` (`R12ConcurrencyLifecycleTest.kt`): `testCrashWindow_EffectTransactionThrows_ProposalRemainsOpenAndNoEffectRow`, `testGuardedRollback_CannotReopenProposalConsumedBySomeoneElse`, `testExpiryParity_MissingCreatedAtReturnsNull`.
     - 4 new instrumented tests in `:app` (`AndroidStorageTest.kt`): `testInTransactionCas_RealSqlite_AbortOnAlreadyConsumed`, `testReopenProposal_RealSqlite_GuardedSemantics`, `testConcurrentConfirm_RealSqlite_SingleWinnerSemantics`, `testExpiryParity_MissingCreatedAtReturnsNull_RealSqlite`.
     - Updated `DatabaseMigrationTest.kt` smoke test to exercise `reopenProposal`.
-    - Captured definitive verification evidence in `docs/agent/evidence/` (197 core, 9 app, 49 connected).
+    - Verification evidence captured in `docs/agent/evidence/` at the time (197 core, 9 app, 49 connected — historical counts; superseded 2026-11-06 by 242 core, 9 app, 53 connected, see evidence-summary.md).
 - R12c: Rollback Expiry Preservation, Atomicity Analysis & Numbers Reconciliation:
   - Preserved immutable `created_at` during proposal rollback in `updateProposalStatus(id, "open")`, preventing 24h expiration window extension.
   - Authored comprehensive architectural atomicity options analysis (Option a vs Option b) leading to D-118.
@@ -192,7 +201,7 @@ Updated: 2026-11-06   Commit: Complete (P1-D 20 / Task #108 Home priority list, 
   - UI State & Lifecycle: `UiState.homeQuote` exposed in UI contract. `QuoteManager.onHomeOpened()` serves as the single idempotent entry point, immediately emitting the cached preset/stored quote and seamlessly swapping to a live quote upon background completion without UI blocking.
   - Singletons & Background Scheduling: Lifted `RateLimiter` and `ProviderOrchestrator` to `MineApp` application-level singletons so chat and background quote generation share rate limiting without conflict. Inexact `AlarmManager` scheduling implemented via `QuoteAlarmScheduler` and `QuoteAlarmReceiver` (honoring `prepare_next_quote_early`, default true), avoiding unauthorized external dependencies. `CancellationException` is explicitly rethrown.
   - Math.floorMod Safety (R10e): `PresetQuotes` safely indexes quote pools using `Math.floorMod(hash, pool.size)`, eliminating crashes when `hashCode()` returns `Int.MIN_VALUE`.
-  - Verified by 11 unit tests in `QuoteManagerTest.kt`, 5 unit tests in `QuoteAlarmSchedulerTest.kt`, connected hardware execution on `moto g73 5G` (`QuoteAlarmReceiverTest` passing 2/2 tests, exit code -1), and independent verification agent report (`VERDICT: PASS`).
+  - Verified by 11 unit tests in `QuoteManagerTest.kt`, 5 unit tests in `QuoteAlarmSchedulerTest.kt`, connected hardware execution on `moto g73 5G` (`QuoteAlarmReceiverTest` passing 2/2 tests; instrumentation process exit -1 = ROM teardown artifact, same signature as documented in Test counts), and independent verification agent report (`VERDICT: PASS`).
 - R7: Receipts from Operation Log (T6, D-115):
   - Operation Log as Single Source of Truth: `UiState.receipts` is dynamically reconstructed from `Storage.getRecentEvents(30)`, querying UI-visible events (`CREATE`, `CANCEL`, `COMPLETE`, `RESCHEDULE`, `SCHEDULE`, `KEEP_STALE`, `CANCEL_STALE`, `DELETE`, `CONFIRM`, `ACCEPT`, `REJECT`, `LINK`, `UNLINK`) where `undo_of IS NULL`.
   - Cause Message Linkage: `raw_event.cause_msg_id` links mutations to triggering user messages (`u_<UUID>`), while chip clicks, undos, and background tasks pass `null`.
@@ -207,7 +216,7 @@ Updated: 2026-11-06   Commit: Complete (P1-D 20 / Task #108 Home priority list, 
   - `IntentType.RESCHEDULE` (both direct ClearWinner and Ambiguous candidate resolution confirm paths) preserves the existing reminder's tier.
   - `handleUndo` restores the exact tier from the serialized `NodeStateSnapshot`.
   - System prompt in `ChatController.kt` documents `tier: optional "alarm"|"gentle"` and instructs model to use `gentle` only when user asks for low priority, quiet, or no alarm.
-  - Verified by 6 unit tests in `R6GentleTierTest.kt`, 2 unit tests in `SystemPromptTest.kt`, and 37/37 connected tests on physical `moto g73 5G`.
+  - Verified by 6 unit tests in `R6GentleTierTest.kt`, 2 unit tests in `SystemPromptTest.kt`, and 37/37 connected tests on physical `moto g73 5G` (historical count at R6 time; suite has since grown to 53).
 - Group A, Group B, and Group C complete and verified:
   - Critical logic flaws (Group A): future-dated item staleness exemption, model self-confirming ambiguity guard, non-node undo (soul facts and reminders), notification reliability surfacing, sweeper notification deduplication.
   - Implementation correctness (Group B): audit logging and undo for soul facts and reminders, reconciler tier awareness and registry schema updates, monotonic day_key runaway defense, raw_event clock injection, multi-day time chip labels, past time error feedback, streaming UI message preservation, DbKeyProvider keystore crash safety, BootReceiver manifest export and permission audit, FTS status filtering, UiState.providerKey log redaction, QuoteManager slot boundary alignment.
@@ -218,7 +227,7 @@ Updated: 2026-11-06   Commit: Complete (P1-D 20 / Task #108 Home priority list, 
   - Item 3 (Priority 2): `Gateway.propose_change` fails fast with `ToolResult.Error("To when?")` on `RESCHEDULE` with blank or unusable `due_text` before candidate resolution or mutation, preventing no-op commits or false success receipts. Verified by 2 tests in `R1RescheduleAmbiguityTest`.
   - Item 1 (Priority 3): Switched gentle reminders in `AndroidAlarmScheduler` from `AlarmManager.RTC` to `AlarmManager.RTC_WAKEUP` to wake CPU with screen off. Added `NotificationCompat.CATEGORY_ALARM` for ALARM tier and `NotificationCompat.CATEGORY_REMINDER` for GENTLE tier in `AlarmReceiver` for system DND routing. Updated `alarmDisclosureText` in `ChatContract.kt` to clearly state Doze mode delays for gentle reminders. Added `testGentleReminderFires_SetsFlag` in `AlarmSelfTest.kt`. Verified by `ReminderTierTest`.
   - Item 4 (Priority 4): Raised `Resolver` auto-commit threshold for `CANCEL` and `COMPLETE` to 0.80, returning `Resolution.Ambiguous` (showing confirmation chips) for sub-0.80 matches (e.g. "pay bill" vs "Pay rent") instead of auto-cancelling. Added exact normalized title match preference so items with identical titles win over longer titles containing the hint without ambiguity. Verified by 5 tests in `WhichDinnerTest`.
-- `:app:connectedDebugAndroidTest` on physical device `moto g73 5G` (API 34): 31/31 instrumented tests passed (100% success rate: 3 AlarmReceiverTest, 2 AlarmSelfTest, 1 BootReceiverTest, 1 ManifestPermissionTest, 1 ExportTest, 20 AndroidStorageTest, 1 DatabaseMigrationTest, 2 StorageTest).
+- `:app:connectedDebugAndroidTest` on physical device `moto g73 5G` (API 34): 31/31 instrumented tests passed at R3b time (100% success rate: 3 AlarmReceiverTest, 2 AlarmSelfTest, 1 BootReceiverTest, 1 ManifestPermissionTest, 1 ExportTest, 20 AndroidStorageTest, 1 DatabaseMigrationTest, 2 StorageTest) — historical count; superseded by the 2026-11-06 clean-install 53/53 run.
 - R5: Export/Import Hardening (Security):
   - Chunk framing security validation: `ChunkedAesInputStream` bounds-checks unauthenticated chunk length (`16 <= len <= chunkSize + 16`) before memory allocation, preventing DoS, OOM, and `NegativeArraySizeException`.
   - Argon2id KDF parameter bounds checking: `mem in 1..131072` KB, `iters in 1..10`, `par in 1..4`, `chunkSize in 1024..16777216` bytes validated from unauthenticated 106-byte header before key derivation.
@@ -273,14 +282,17 @@ Updated: 2026-11-06   Commit: Complete (P1-D 20 / Task #108 Home priority list, 
 - B5 (Export UI picker & passphrase dialog) is not implemented; dark-shipped pending v1.1 SAF integration.
 
 ## UNVERIFIED (this session)
+- B5 exported flag evidence NOW CAPTURED (2026-11-06): `aapt2 dump xmltree` of the installed debug APK's compiled manifest confirms BootReceiver `exported=true` with 4-action filter (BOOT_COMPLETED, MY_PACKAGE_REPLACED, TIME_SET, TIMEZONE_CHANGED); device `dumpsys package` (post-reinstall) shows the receiver registered under all 4 actions with RECEIVE_BOOT_COMPLETED granted; `BootReceiverIgnoreTest` 1/1 PASS on device proves non-intended broadcasts are no-ops. Evidence: `docs/agent/evidence/b5-evidence.md` (+ `b5-manifest-dump.txt`, `b5-receiver-dump.txt`); decision D-122. Note: this ROM's dumpsys does not print per-component exported= lines, so the compiled manifest is the source of truth for the flag.
+- B1 (ContextBuilder proposal option titles) implemented, unit-tested, and committed (1194119); no reviewer/test-auditor pass on any Part B change yet (task #119).
 - P1-D 20 connected/instrumented tests were NOT run this session (device not invoked); unit-level only. The three new Storage queries have no real-SQLite instrumented coverage yet (SharedFakeStorage only).
 - No independent code-review (reviewer agent) pass for P1-D 20 yet; verification agent PASS covers builds/tests/probes but not style/design review.
 - No live-model smoke of Home data wiring (UI does not consume chatItems/homePriorityList yet — UI implementation is a later roadmap item).
 - P1-B 16 independent re-verification of the 3 MEDIUM fixes (review APPROVE, verification PASS on pre-fix code) was not re-done by a second agent pass.
 - P1-B 16 connected/instrumented tests were NOT re-run (device not invoked); unit-level only.
 ## UNVERIFIED (from old chat / unproven)
-- R10g (Minified release APK test on physical phone) pending human verification when physical device is unlocked for release install.
+- R10g fresh re-verification on the current code: Nov 5 evidence pre-dates R12d (D-118 transactional CAS), P1-B 16/17, and P1-D 20 changes; the batch re-run of clean-install minified release APK has NOT been executed yet in this session.
+- D-105 fresh screenshots: Nov 5 evidence exists but the user's by-eye check on the current build has NOT been repeated yet in this session.
 ## Environment notes (device, Android version, OEM, toolchain versions)
-- Physical test device is connected: moto g73 5G running Android 14 (API 34). Instrumented test suite verified 49/49 passed across 9 test classes (0 failures, 100% pass rate). Clean install verified. Zero vibration protocol active.
+- Physical test device is connected over WiFi adb (10.175.15.5:5555): moto g73 5G running Android 14 (API 34). Clean-install connected suite verified 53/53 passed (0 failures in JUnit XML/HTML; gradle exit 1 = ROM teardown artifact, see Test counts). Zero vibration protocol active.
 - Windows 11 Pro, Bash environment.
 - Toolchains: AGP 9.4.0, Kotlin 2.4.21, Gradle 9.6.0, daemon JDK toolchain 25 (Eclipse Adoptium 25.0.4.1+1-LTS), JVM target 17.
