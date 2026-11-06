@@ -32,6 +32,7 @@ Updated: 2026-11-06   Commit: Complete (P1-D 20 / Task #108 Home priority list, 
   - `ChatController.kt`: init + refreshUI wire Home queries, undo validity via `getLatestEventForTarget` + `hasUndo` (D-115 formula), `atRisk` from ReliabilityState, `activeThread` from ProactiveState, and rebuild `chatItems` on every state update.
   - UPDATE UI-visibility fix (D-115 regression from P1-B 16): UPDATE added to `uiVisibleOps` in SharedFakeStorage, to the SQL `IN` list in AndroidStorage.getRecentEvents, and to ReceiptFormatter — UPDATE receipts now render ("Updated: <title> (<time>)").
   - Evidence: 11 tests in `P1D20HomeAndTimelineTest.kt` (ranking order incl. pinned/severity above plain, exclusion filter + limit, recently-closed 24h + undo validity/invalidation, getRecentEvents includes UPDATE, ReceiptFormatter UPDATE branch, timeline composition with day headers/receipt anchoring/orphan handling/proposal row, empty inputs, undated-last, priority tiebreak); full suite 242/242 core + 9/9 app, 0 warnings.
+  - Independent verification verdict: **PASS** — clean suite re-run (exit 0; 242/0/0 core + 9/0/0 app from XML), `:app:compileDebugSources` exit 0, D-121 order confirmed in code, and an 18-assertion adversarial probe (compiled against core classes, real Gateway undo) confirmed the strict-24h boundary, undo-validity flip after undo, idempotency, orphan tokens, and the 24h gateway gate. Non-blocking: benign fake/SQL drift on future-dated closedAt and a same-tsUtc tie-break difference in getLatestEventForTarget (unobservable via controller path).
 - P1-B 16: UPDATE intent through gateway and resolver, with undo (RESCHEDULE was already done in R1):
   - `Gateway.kt` routes `propose_change` intent UPDATE to `handleUpdate` (previously "UPDATE is not supported yet" error).
   - `handleUpdate` (Gateway.kt:850): requires `hint`; parses `new_title`, `due_text`/`new_due_text`, `priority`, `severity`, `pinned`, `tier` (alarm|gentle); errors "No changes specified for UPDATE..." when no change requested.
@@ -273,7 +274,7 @@ Updated: 2026-11-06   Commit: Complete (P1-D 20 / Task #108 Home priority list, 
 
 ## UNVERIFIED (this session)
 - P1-D 20 connected/instrumented tests were NOT run this session (device not invoked); unit-level only. The three new Storage queries have no real-SQLite instrumented coverage yet (SharedFakeStorage only).
-- No independent reviewer/verification agent pass for P1-D 20 yet (unit suite is green; review pending).
+- No independent code-review (reviewer agent) pass for P1-D 20 yet; verification agent PASS covers builds/tests/probes but not style/design review.
 - No live-model smoke of Home data wiring (UI does not consume chatItems/homePriorityList yet — UI implementation is a later roadmap item).
 - P1-B 16 independent re-verification of the 3 MEDIUM fixes (review APPROVE, verification PASS on pre-fix code) was not re-done by a second agent pass.
 - P1-B 16 connected/instrumented tests were NOT re-run (device not invoked); unit-level only.

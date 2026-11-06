@@ -5,6 +5,7 @@
 - Includes an in-scope bug fix: UPDATE op-type was missing from the UI-visible event filters and ReceiptFormatter, making P1-B 16 UPDATE receipts invisible (D-115 regression).
 - Decision **D-121** recorded in docs/agent/DECISIONS.md (next free: D-122).
 - Core suite: 242/242 passed (231 prior + 11 new), 0 compiler warnings. App unit suite: 9/9 passed.
+- Independent verification verdict: **PASS** — clean re-run of both suites (exit 0, 242/0/0 core + 9/0/0 app from XML), `:app:compileDebugSources` exit 0, implementation matches D-121 in every claimed spot, and an 18-assertion adversarial probe harness (compiled against core classes) confirmed: strict-24h boundary on recently-closed, newest-first sort, undo-validity flip true->false after a real Gateway undo (node exits getRecentlyClosed, status restored), second-undo idempotency ("Already undone"), orphan token ("Undo token not found"), and the 24h gateway gate. Non-blocking observations: benign fake/SQL parity drift on future-dated `closedAt` (fake includes, SQL excludes via `closed_at <= now` — only reachable via clock skew; inherited from getRankedCandidates precedent) and a same-tsUtc tie-break difference in `getLatestEventForTarget` (unobservable through the controller path).
 
 ## 1. What Changed (all uncommitted in working tree)
 - `core/src/main/java/com/anchor/core/storage/Storage.kt`:
@@ -38,7 +39,7 @@
 
 ## 3. NOT Verified
 - Connected/instrumented tests NOT run this session (device not invoked). The three new Storage queries have no real-SQLite instrumented coverage yet (SharedFakeStorage only). Last connected run: 53/53 (P1-B 15 session).
-- No independent reviewer/verification agent pass for P1-D 20 yet (unit suite green; review pending).
+- No independent code-review (reviewer agent) pass for P1-D 20 yet; the verification agent PASS covered builds, tests, implementation spot-checks, and adversarial probes but is not a style/design review.
 - No live-model smoke; UI does not yet consume `chatItems`/`homePriorityList`/`recentlyClosed`/`activeThread` (UI implementation is a later roadmap item).
 
 ## 4. Current Failing Tests
