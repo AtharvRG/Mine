@@ -68,7 +68,7 @@ The only events the UI can trigger:
 - `ShowDayReminders(dayKey, startOfDayMs, endOfDayMs)`: Loads reminders for a day.
 - `ClearDaySelection`: Returns to recent chat mode.
 - `SaveProvider(endpoint, key, model)`: Persists settings.
-- `RunSelfTest`: Runs 10-second self-test alarm.
+- `RunSelfTest`: Runs 5-second self-test alarm (`ChatController.kt`: `fireAt = clock.now() + 5000L`, status "Armed for 5 seconds...").
 - `RefreshStats`: Refreshes debug statistics.
 - `PromptResetDatabase`: Initiates keystore reset confirmation flow.
 - `ConfirmResetDatabase(confirm: Boolean)`: Confirms or cancels database reset.
