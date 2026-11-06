@@ -440,4 +440,63 @@ class ExportTest {
         checkHelper.close()
         exportFile.delete()
     }
+
+    @Test
+    fun testPostImport_RebuildsMsgChunkForSearch(): Unit = runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        context.deleteDatabase("mine_chunk_src.db")
+        context.deleteDatabase("mine_chunk_dest.db")
+
+        val dbKey = ByteArray(32) { 6 }
+        val srcHelper = DatabaseProvider.getHelper(context, dbKey, "mine_chunk_src.db")
+        val srcStorage = AndroidStorage(srcHelper)
+
+        // User + assistant messages must be chunked; system-role and redacted
+        // messages must NOT (mirrors AndroidStorage.insertRawMessage / redactMessage).
+        srcStorage.insertRawMessage("m_user", "user", "Zebra projector meeting notes")
+        srcStorage.insertRawMessage("m_asst", "assistant", "Zebra projector booked for Friday")
+        srcStorage.insertRawMessage("m_sys", "system", "system prompt mentions zebra")
+        srcStorage.insertRawMessage("m_redact", "user", "secret zebra passphrase")
+        srcStorage.redactMessage("m_redact")
+
+        val exportFile = File(context.cacheDir, "chunk_export.mnex")
+        val srcManager = AndroidExportManager(context, srcHelper, dbKey, liveDbName = "mine_chunk_src.db")
+        srcManager.exportTo(exportFile, "chunk_pass123", includeApiKeys = false, includeEmbeddings = false)
+
+        val destHelper = DatabaseProvider.getHelper(context, dbKey, "mine_chunk_dest.db")
+        val destManager = AndroidExportManager(context, destHelper, dbKey, liveDbName = "mine_chunk_dest.db")
+        val stats = destManager.verifyOrImport(exportFile, "chunk_pass123", isImport = true)
+        assertTrue(stats.verified)
+        assertEquals(4, stats.messages)
+
+        val checkHelper = DatabaseProvider.getHelper(context, dbKey, "mine_chunk_dest.db")
+        val checkStorage = AndroidStorage(checkHelper)
+
+        // 1. Imported chat history must be FTS-searchable
+        val hits = checkStorage.searchMemoryFts("zebra", 20)
+        assertTrue("Imported user message must be searchable, got: $hits", hits.any { it.id == "chunk_m_user" && it.kind == "chat" })
+        assertTrue("Imported assistant message must be searchable", hits.any { it.id == "chunk_m_asst" && it.kind == "chat" })
+
+        // 2. System-role and redacted messages must NOT be chunked or searchable
+        assertFalse("System message must not be searchable", hits.any { it.id.contains("m_sys") })
+        assertFalse("Redacted message must not be searchable", hits.any { it.id.contains("m_redact") })
+        val sysCursor = checkHelper.readableDatabase.query("SELECT COUNT(*) FROM msg_chunk WHERE id IN ('chunk_m_sys', 'chunk_m_redact')")
+        sysCursor.moveToFirst()
+        assertEquals("System and redacted messages must not get chunks", 0, sysCursor.getInt(0))
+        sysCursor.close()
+
+        // 3. Rebuilt chunks must mirror insertRawMessage's rule: msg_ids/ts/day_key/text from the message
+        val mirrorCursor = checkHelper.readableDatabase.query(
+            "SELECT COUNT(*) FROM msg_chunk c JOIN raw_message r ON c.id = 'chunk_' || r.id " +
+                "AND c.day_key = r.day_key AND c.ts_start = r.ts_utc AND c.ts_end = r.ts_utc " +
+                "AND c.msg_ids = '[\"' || r.id || '\"]' AND c.text = r.content AND c.extractor_version = 'v1'"
+        )
+        mirrorCursor.moveToFirst()
+        assertEquals("All rebuilt chunks must mirror their raw_message row", 2, mirrorCursor.getInt(0))
+        mirrorCursor.close()
+
+        srcHelper.close()
+        checkHelper.close()
+        exportFile.delete()
+    }
 }

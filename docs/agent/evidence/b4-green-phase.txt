@@ -1,0 +1,19 @@
+=== B4 TDD GREEN PHASE: testPostImport_RebuildsMsgChunkForSearch ===
+Command: ./gradlew :app:connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=com.anchor.mine.export.ExportTest"
+Device: moto g73 5G - 14
+Gradle: BUILD FAILED ("There were failing tests") — KNOWN teardown artifact on this device (see prior segments); authoritative XML below.
+
+XML: app/build/outputs/androidTest-results/connected/debug/TEST-moto g73 5G - 14.xml
+tests="7" failures="0" errors="0"  (timestamp 2026-11-06T06:43:56Z = run time)
+
+All 7 ExportTest tests green, including:
+- testPostImport_RebuildsMsgChunkForSearch (NEW, B4)
+- testPostImport_TriggersAlarmReconciliation (regression, shares the swap path)
+- testExportAndVerify_RejectsBadPasswordAndTampering
+- testExport_ExcludesApiKeysWhenRequested
+- testImport_RejectsUnknownTable / testImport_RejectsUnknownColumn
+- testHeaderKdfBounds_RejectsExcessiveMemoryOrIterationsOrChunkSize
+
+Fix: AndroidExportManager.rebuildMsgChunks() — after safe swap, DELETE FROM msg_chunk
+then re-INSERT one chunk per raw_message row (skip NULL/blank content, system role),
+mirroring AndroidStorage.insertRawMessage; FTS triggers repopulate msg_chunk_fts.

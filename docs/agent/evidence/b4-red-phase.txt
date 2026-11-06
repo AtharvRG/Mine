@@ -1,0 +1,12 @@
+=== B4 TDD RED PHASE: testPostImport_RebuildsMsgChunkForSearch ===
+Command: ./gradlew :app:connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=com.anchor.mine.export.ExportTest"
+Device: moto g73 5G - 14
+Result: 7 tests, 1 failure, 0 errors (only new B4 test fails; 6 pre-existing pass)
+
+<failure>java.lang.AssertionError: Imported user message must be searchable, got: []
+	at com.anchor.mine.export.ExportTest$testPostImport_RebuildsMsgChunkForSearch$1.invokeSuspend(ExportTest.kt:477)
+
+Root cause (expected red): import path raw-INSERTs raw_message rows into
+mine_import_temp.db but never creates msg_chunk rows (EXPORTED_TABLES excludes
+the derived msg_chunk table), so imported chat history is invisible to
+searchMemoryFts after the safe swap.

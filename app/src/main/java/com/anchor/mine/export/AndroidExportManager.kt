@@ -305,6 +305,17 @@ class AndroidExportManager(
                     context.getDatabasePath("$tempDbName-wal").delete()
                     context.getDatabasePath("$tempDbName-shm").delete()
 
+                    // B4: Rebuild derived msg_chunk rows from the imported
+                    // raw_message rows. msg_chunk is deliberately excluded from
+                    // EXPORTED_TABLES (derived data), so the raw-INSERT import
+                    // path bypasses AndroidStorage.insertRawMessage's chunking.
+                    // Without this rebuild, imported chat history is invisible
+                    // to searchMemoryFts. Mirrors the insertRawMessage rule:
+                    // one chunk per message, skipping blank content, system
+                    // role, and redacted (content IS NULL) rows. The existing
+                    // trg_msg_chunk_fts_insert trigger feeds the FTS index.
+                    rebuildMsgChunks()
+
                     // Post-import alarm reconciliation
                     if (reconciler != null) {
                         reconciler.reconcile(force = true)
@@ -362,6 +373,47 @@ class AndroidExportManager(
             }
         }
         return count
+    }
+
+    /**
+     * B4: Rebuild derived msg_chunk rows on the live DB after the import swap.
+     * The temp/import DB never contains msg_chunk rows (it is excluded from
+     * EXPORTED_TABLES as derived data), so after the swap the live DB's chunks
+     * would otherwise not match its imported raw_message rows. A full clear +
+     * rebuild from raw_message keeps repeated imports idempotent and mirrors
+     * AndroidStorage.insertRawMessage's chunking rule (one chunk per message,
+     * skipping blank, system-role, and redacted rows). The existing
+     * trg_msg_chunk_fts_insert/delete triggers keep the FTS index in sync.
+     */
+    private fun rebuildMsgChunks() {
+        val helper = com.anchor.mine.storage.DatabaseProvider.getHelper(context, dbKey, liveDbName)
+        try {
+            val db = helper.writableDatabase
+            db.beginTransaction()
+            try {
+                db.execSQL("DELETE FROM msg_chunk")
+                db.query(
+                    "SELECT id, day_key, ts_utc, role, content FROM raw_message " +
+                        "WHERE content IS NOT NULL AND TRIM(content) != '' AND role != 'system'"
+                ).use { cursor ->
+                    while (cursor.moveToNext()) {
+                        val id = cursor.getString(0)
+                        val dayKey = cursor.getString(1)
+                        val ts = cursor.getLong(2)
+                        val content = cursor.getString(4)
+                        db.execSQL(
+                            "INSERT INTO msg_chunk (id, day_key, ts_start, ts_end, msg_ids, text, extractor_version) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                            arrayOf<Any>("chunk_$id", dayKey, ts, ts, "[\"$id\"]", content, "v1")
+                        )
+                    }
+                }
+                db.setTransactionSuccessful()
+            } finally {
+                db.endTransaction()
+            }
+        } finally {
+            helper.close()
+        }
     }
 
     private fun unwrapKey(wrapped: ByteArray, kek: ByteArray, nonce: ByteArray): ByteArray {
