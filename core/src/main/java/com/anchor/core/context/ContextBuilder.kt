@@ -69,7 +69,12 @@ class ContextBuilder(
         var currentProposalChars = 0
         val shownProposals = mutableListOf<String>()
         for (prop in openProposals.take(5)) {
-            val line = "Proposal ${prop.id} (${prop.intent}): Needs clarification. Options: ${prop.options.joinToString { opt -> opt.id }}"
+            val optionsText = prop.options.joinToString("; ") { opt ->
+                val sanitizedTitle = PromptSanitizer.sanitize(opt.title, 80)
+                if (opt.dueTime != null) "${opt.id}: $sanitizedTitle (${PromptSanitizer.sanitize(opt.dueTime, 40)})"
+                else "${opt.id}: $sanitizedTitle"
+            }
+            val line = "Proposal ${prop.id} (${prop.intent}): Needs clarification. Options: $optionsText"
             if (shownProposals.isNotEmpty() && currentProposalChars + line.length > maxProposalChars) {
                 break
             }

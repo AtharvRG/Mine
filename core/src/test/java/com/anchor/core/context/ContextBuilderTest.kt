@@ -6,16 +6,55 @@ package com.anchor.core.context
 
 import com.anchor.core.SharedFakeStorage
 import com.anchor.core.models.ChatMessage
+import com.anchor.core.models.IntentType
 import com.anchor.core.models.Node
+import com.anchor.core.models.Proposal
+import com.anchor.core.models.ProposalOption
 import com.anchor.core.models.SoulFact
 import com.anchor.core.time.DateResolver
 import com.anchor.core.time.FakeClock
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ContextBuilderTest {
+
+    @Test
+    fun testPendingClarifications_IncludeOptionTitlesAndDueTimes() = runBlocking {
+        // B1: The model must see each option's title (and due time when present),
+        // not just the option id, so it can match the user's words to a choice.
+        val storage = SharedFakeStorage().apply {
+            runBlocking {
+                saveProposal(
+                    Proposal(
+                        id = "p1",
+                        kind = "node",
+                        intent = IntentType.RESCHEDULE,
+                        options = listOf(
+                            ProposalOption(id = "opt_a", title = "Gym workout", dueTime = "Tomorrow 6:00 PM"),
+                            ProposalOption(id = "opt_b", title = "Gym workout", dueTime = "Friday 7:30 AM")
+                        )
+                    )
+                )
+            }
+        }
+        val clock = FakeClock(1000L)
+        val dateResolver = DateResolver(clock)
+        val checkinBuilder = com.anchor.core.nudge.CheckinBuilder(storage, clock, dateResolver)
+        val builder = ContextBuilder(storage, clock, dateResolver, checkinBuilder)
+
+        val pack = builder.buildPack()
+        val sysMsg = pack.first { it.role == "system" }
+
+        val pendingSection = sysMsg.content!!.substringAfter("Pending Clarifications:\n")
+        assertTrue("Proposal id must be present", pendingSection.contains("p1"))
+        assertTrue("Option A title must be present", pendingSection.contains("Gym workout"))
+        assertTrue("Option A due time must be present", pendingSection.contains("Tomorrow 6:00 PM"))
+        assertTrue("Option B due time must be present", pendingSection.contains("Friday 7:30 AM"))
+        assertFalse("Option ids alone are not enough", pendingSection.contains("Options: opt_a, opt_b"))
+    }
 
     @Test
     fun testContextBuilder_TruncatesChatToRespectBudget() = runBlocking {
