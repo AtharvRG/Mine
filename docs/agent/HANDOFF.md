@@ -63,7 +63,7 @@
 - **`connectedAndroidTest` exits 1 even when green** — always cite the parsed XML counts next to the exit code.
 - **`input keyevent 4` on the Reminders tab exits to the launcher** — return with `am start -n com.anchor.mine/.MainActivity`.
 - **`adb shell input text` mangles multi-`%s` strings** — use exactly ONE `%s` (which becomes a space) and literal spaces elsewhere (`remind%sme%to%stretch%sin%2%minutes`); multiple `%s` merge the text. Verify field text via a dump before tapping Send.
-- **`slot='alarm_clock'` is app-agnostic** — `com.google.android.deskclock` holding a `setAlarmClock` keeps the icon lit with zero Mine alarms. An "absent" capture is only valid when `Next alarm clock information:` is blank AND the holder reads `visible=false`. `cmd alarm` has no `cancel`; advance the clock with `cmd alarm set-time <epoch_ms>` instead.
+- **`slot='alarm_clock'` is app-agnostic** — ANY app holding a `setAlarmClock` (e.g. the user's own `com.google.android.deskclock` alarms) keeps the icon lit with zero Mine alarms. An "absent" capture is only valid when `Next alarm clock information:` is blank AND the holder reads `visible=false`. `cmd alarm` has no `cancel`; advance the clock with `cmd alarm set-time <epoch_ms>` instead.
 - **The 55 px `StatusIconContainer` delta is the invariant, not the absolute bounds** — the left edge drifts with other status-bar icons (observed 295→240 and 252→197). Glyph polarity is LIGHT: scan for `r >= 251`, not dark pixels.
 - **AGP uninstalls both APKs after every connected run** — capture device dumps before the run or reinstall first.
 

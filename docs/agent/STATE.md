@@ -3,14 +3,14 @@ Updated: 2026-11-06   Commit: Part B TDD complete and committed (B1 1194119, B2-
 ## Test counts (recounted 2026-11-06 from JUnit XML result files; raw transcripts in docs/agent/evidence/)
 | Suite | Tests | Skipped | Failures | Errors | Command | Exit code |
 |---|---|---|---|---|---|---|
-| Core unit (`:core:test`) | 247 | 0 | 0 | 0 | `./gradlew :core:cleanTest :core:test` | 0 |
+| Core unit (`:core:test`) | 249 | 0 | 0 | 0 | `./gradlew :core:cleanTest :core:test` | 0 |
 | App unit (`:app:testDebugUnitTest`) | 9 | 0 | 0 | 0 | `./gradlew :app:cleanTestDebugUnitTest :app:testDebugUnitTest` | 0 |
 | Connected clean-install (moto g73 5G, Android 14) | 53 | 0 | 0 | 0 | `./gradlew :app:uninstallDebug :app:uninstallDebugAndroidTest` then `./gradlew :app:connectedDebugAndroidTest` | 1 (see below) |
 
 - Connected exit-1 annotation: gradle reports BUILD FAILED "There were failing tests", but the JUnit XML (`TEST-moto g73 5G - 14.xml`) and HTML report both show 53 tests, 0 failures, 0 errors, 0 skipped, 100% success. The instrumentation process itself exits nonzero at teardown (`INSTRUMENTATION_CODE: -1` in the Nov 5 direct `am instrument` run that also printed `OK (49 tests)`; identical signature on both 2026-11-06 clean-install runs). No app crash in the logcat crash buffer for the run windows; teardown at "Force stopping com.anchor.mine ... finished inst" is normal AGP cleanup. This is a device-ROM teardown artifact, not a test failure; recorded honestly rather than retried a third time (AGENTS.md forbids identical reruns).
 - Evidence files (2026-11-06): `docs/agent/evidence/unit-tests-20261106-fresh.txt` (core+app, exit 0), `connected-clean-install-20261106.txt` (run 1: uninstall log + 53/53 XML green, gradle exit 1), `connected-clean-install-20261106-run2.txt` (run 2: same signature). Stale Nov 5 files remain for history; `evidence-summary.md` is the current index.
 ## Build/test status (command + exit code)
-- `./gradlew :core:test :app:testDebugUnitTest`: SUCCESS (exit 0, 242/242 core tests passed [231 prior + 11 new P1D20HomeAndTimelineTest], 9/9 app tests passed; first run green but with 2 `event!!` warnings in ChatController, fixed via smart-cast, re-run exit 0 with 0 warnings; re-forced fresh 2026-11-06 with cleanTest: exit 0, 242+9)
+- `./gradlew :core:test :app:testDebugUnitTest`: SUCCESS (exit 0, 249/249 core tests passed, 9/9 app tests passed; recounted 2026-11-06 from JUnit XML — the "242" figure recorded at P1-D 20 time was stale)
 - `./gradlew :app:compileDebugSources :app:compileDebugUnitTestSources`: SUCCESS (exit 0)
 - `./gradlew :app:assembleDebug`: SUCCESS (exit 0)
 - `./gradlew :app:assembleRelease`: SUCCESS (exit 0, R8 minification + lintVitalRelease)
@@ -28,7 +28,7 @@ Updated: 2026-11-06   Commit: Part B TDD complete and committed (B1 1194119, B2-
   - `AndroidStorageTest`: 30 passed
   - `DatabaseMigrationTest`: 1 passed
   - `StorageTest`: 2 passed
-- Ground truth test counts: 247 core + 9 app + 53 connected = 309 total project tests (0 failures per JUnit XML; connected run re-executed twice this session on a clean install — both 53/53 green). Core count 247 = 242 recounted + 5 Part-B TDD tests (B1 x1, B2 x1, B3 x3), forced-fresh run exit 0 (`core-test-20261106-partb.txt`).
+- Ground truth test counts: 249 core + 9 app + 53 connected = 311 total project tests (0 failures per JUnit XML; connected run re-executed twice this session on a clean install — both 53/53 green). Core recounted 2026-11-06 from JUnit XML: 249/0/0/0, exit 0 (`core-test-20261106-partb.txt`); the earlier "242" and "247" figures in this file and in TASKS.md line 66 were stale.
 - Zero-Vibration Protocol: Verified 100% compliant. Notification channels `mine_reminders_v3` and `mine_gentle_reminders_v3` explicitly set `enableVibration(false)` and `vibrationPattern = null`. No `VIBRATE` permission in manifest (`adb shell dumpsys package com.anchor.mine | grep -i vibrate` returns empty).
 - `./gradlew :app:lintDebug`: SUCCESS (exit 0)
 ## Verified working (with evidence)

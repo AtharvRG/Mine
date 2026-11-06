@@ -129,25 +129,31 @@ fingerprint (`setAndAllowWhileIdle`). SystemUI for gentle shows `visibleState=HI
 
 ---
 
-## Pair C — contamination-free control pair (2026-11-06 19:41 IST)
+## Pair C — clean control pair (2026-11-06 19:41 IST)
 
 ### Why Pairs A/B needed a replacement
 
 `slot='alarm_clock'` is **app-agnostic**: it reflects the system-wide next alarm clock,
 set by `AlarmManager.setAlarmClock` from *any* app. On this device
-`com.google.android.deskclock` held `setAlarmClock` alarms at 19:50 and 20:00, so the
-icon read `ICON` even with zero Mine reminders armed. A "no alarm" control taken before
-20:00 is therefore invalid.
+`com.google.android.deskclock` held `setAlarmClock` alarms at 19:50 and 20:00 — **these
+were the user's own alarms, deliberately set aside for their own use**, not an unrelated
+app. Because they were pending system-wide, the icon read `ICON` even with zero Mine
+reminders armed. A "no alarm" control taken before 20:00 is therefore invalid.
+
+(Recorded correction 2026-11-06: an earlier revision of this file described those alarms
+as "contamination from an unrelated app". That framing was wrong — they were the user's
+own. The technical conclusion, that the icon is app-agnostic and therefore cannot be used
+as a Mine-only signal, is unaffected.)
 
 **Invalid attempt, retained for the record:** `d105-ctl-alarm-tier.png` (111641 B) and
 `d105-ctl-after-fire.png` (99362 B). Both scan identically (light glyph columns from
-x=690, count 30) because deskclock's alarm clock was still pending in both. The
+x=690, count 30) because the user's own deskclock alarm clock was still pending in both. The
 after-fire capture is **INVALID as a no-alarm control** and must not be cited.
 
 ### How the clean pair was obtained
 
 `cmd alarm` exposes only `set-time`, `set-timezone`, `get-config-version` — there is no
-`cancel`. The clock was advanced past deskclock's alarm clocks instead:
+`cancel`. The clock was advanced past the user's own deskclock alarms instead:
 
 ```
 adb shell cmd alarm set-time 1793974790000   # 19:39:50
@@ -200,8 +206,8 @@ Pixel scan: light columns start at **x=690, count=50**.
 at two different absolute container positions. The delta is the invariant; the absolute
 left edge depends on which other status-bar icons are present.
 
-Pair C is the first pair in which the "absent" half is provably free of another app's
-alarm clock.
+Pair C is the first pair in which the "absent" half is provably free of any other
+`setAlarmClock` (including the user's own deskclock alarms).
 
 ---
 
@@ -247,4 +253,4 @@ or a debug build.
 
 Task D-105 remains **open** pending the user's by-eye check of
 `d105-clean-alarm-tier.png` vs `d105-clean-no-alarm.png` (Pair C — prefer these over the
-Pair A/B PNGs, whose "absent" half could not rule out deskclock's alarm clock).
+Pair A/B PNGs, whose "absent" half could not rule out the user's own deskclock alarms).
