@@ -1,0 +1,23 @@
+=== date ===
+Fri Nov  6 15:09:03 IST 2026
+
+=== dumpsys alarm: com.anchor.mine alarm clocks ===
+      listener=android.app.AlarmManager$ListenerWrapper@db8aad1
+    RTC_WAKEUP #4: Alarm{19b85fe type 0 origWhen 1793958137864 whenElapsed 272485207 com.anchor.mine}
+      tag=*walarm*:com.anchor.mine/.alarms.AlarmReceiver
+      type=RTC_WAKEUP origWhen=2026-11-06 15:12:17.864 window=+2m59s988ms repeatInterval=0 count=0 flags=0x20
+      policyWhenElapsed: requester=+3m14s306ms app_standby=-45s677ms device_idle=-- battery_saver=-45s677ms tare=-45s677ms
+      whenElapsed=+3m14s306ms maxWhenElapsed=+6m14s294ms
+      operation=PendingIntent{27fa15f: PendingIntentRecord{1fcd7ac com.anchor.mine broadcastIntent}}
+      idle-options=Bundle[{android.pendingIntent.backgroundActivityAllowed=false, android:broadcast.temporaryAppAllowlistReasonCode=-1, android:broadcast.temporaryAppAllowlistDuration=10000, android:broadcast.temporaryAppAllowlistReason=, android:broadcast.temporaryAppAllowlistType=1, android:broadcast.flags=8}]
+    ELAPSED #5: Alarm{d666c75 type 3 origWhen 272558895 whenElapsed 272558895 com.google.android.gms}
+--
+      idle-options=Bundle[{android.pendingIntent.backgroundActivityAllowed=false, android:broadcast.temporaryAppAllowlistReasonCode=-1, android:broadcast.temporaryAppAllowlistDuration=10000, android:broadcast.temporaryAppAllowlistReason=, android:broadcast.temporaryAppAllowlistType=1, android:broadcast.flags=8}]
+    RTC_WAKEUP #7: Alarm{abe5af1 type 0 origWhen 1793958225161 whenElapsed 272572504 com.anchor.mine}
+      tag=*walarm*:com.anchor.mine/.alarms.AlarmReceiver
+      type=RTC_WAKEUP origWhen=2026-11-06 15:13:45.161 window=+3m44s994ms repeatInterval=0 count=0 flags=0x20
+      policyWhenElapsed: requester=+4m41s603ms app_standby=-18s390ms device_idle=-- battery_saver=-18s390ms tare=-18s390ms
+      whenElapsed=+4m41s603ms maxWhenElapsed=+8m26s597ms
+      operation=PendingIntent{a2856d6: PendingIntentRecord{d265d57 com.anchor.mine broadcastIntent}}
+      idle-options=Bundle[{android.pendingIntent.backgroundActivityAllowed=false, android:broadcast.temporaryAppAllowlistReasonCode=-1, android:broadcast.temporaryAppAllowlistDuration=10000, android:broadcast.temporaryAppAllowlistReason=, android:broadcast.temporaryAppAllowlistType=1, android:broadcast.flags=8}]
+    ELAPSED_WAKEUP #8: Alarm{2107044 type 2 origWhen 272680466 whenElapsed 272680466 android}

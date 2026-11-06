@@ -1,0 +1,48 @@
+=== dumpsys alarm (com.anchor.mine) ===
+    RTC_WAKEUP #7: Alarm{f4164e4 type 0 origWhen 1793957589890 whenElapsed 271937233 com.anchor.mine}
+      tag=*walarm*:com.anchor.mine/.alarms.AlarmReceiver
+      type=RTC_WAKEUP origWhen=2026-11-06 15:03:09.890 window=0 exactAllowReason=policy_permission repeatInterval=0 count=0 flags=0x3
+      policyWhenElapsed: requester=+1m43s86ms app_standby=-16s889ms device_idle=-- battery_saver=-- tare=-16s889ms
+      whenElapsed=+1m43s86ms maxWhenElapsed=+1m43s86ms
+      Alarm clock:
+        triggerTime=2026-11-06 15:03:09.890
+        showIntent=PendingIntent{7ed9d4d: PendingIntentRecord{ca7a002 com.anchor.mine startActivity}}
+      operation=PendingIntent{9abed13: PendingIntentRecord{21eb50 com.anchor.mine broadcastIntent}}
+      idle-options=Bundle[{android.pendingIntent.backgroundActivityAllowed=false, android:broadcast.temporaryAppAllowlistReasonCode=301, android:broadcast.temporaryAppAllowlistDuration=10000, android:broadcast.temporaryAppAllowlistReason=, android:broadcast.temporaryAppAllowlistType=0, android:broadcast.flags=8}]
+    ELAPSED_WAKEUP #8: Alarm{403c149 type 2 origWhen 271985512 whenElapsed 271985512 android}
+      tag=*walarm*:*job.deadline*
+      type=ELAPSED_WAKEUP origWhen=+2m31s365ms window=+5m59s997ms repeatInterval=0 count=0 flags=0x0
+      policyWhenElapsed: requester=+2m31s365ms app_standby=-5m28s632ms device_idle=-- battery_saver=-- tare=-5m28s632ms
+      whenElapsed=+2m31s365ms maxWhenElapsed=+8m31s362ms
+--
+    RTC #17: Alarm{d39cf14 type 1 origWhen 1793961000000 whenElapsed 275347343 com.anchor.mine}
+      tag=*alarm*:com.anchor.mine.quotes.ACTION_PREPARE_QUOTE
+      type=RTC origWhen=2026-11-06 16:00:00.000 window=+57m24s53ms repeatInterval=0 count=0 flags=0x0
+      policyWhenElapsed: requester=+58m33s196ms app_standby=-17m58s875ms device_idle=-- battery_saver=-16m39s292ms tare=-17m58s875ms
+      whenElapsed=+58m33s196ms maxWhenElapsed=+1h55m57s249ms
+      operation=PendingIntent{c2d73bd: PendingIntentRecord{9cc0db2 com.anchor.mine broadcastIntent}}
+    RTC #18: Alarm{1ba4103 type 1 origWhen 1793961000000 whenElapsed 275347343 com.motorola.batterycare}
+      tag=*alarm*:com.motorola.mya.performance.BatteryPerformanceService.ACTION_HOURLY
+      type=RTC origWhen=2026-11-06 16:00:00.000 window=0 exactAllowReason=policy_permission repeatInterval=0 count=0 flags=0x1
+      policyWhenElapsed: requester=+58m33s196ms app_standby=-1m26s491ms device_idle=-- battery_saver=-1m26s491ms tare=-1m26s491ms
+      whenElapsed=+58m33s196ms maxWhenElapsed=+58m33s196ms
+      operation=PendingIntent{76ec880: PendingIntentRecord{e428eb9 com.motorola.batterycare startService}}
+--
+  Next wake from idle: Alarm{f4164e4 type 0 origWhen 1793957589890 whenElapsed 271937233 com.anchor.mine}
+    tag=*walarm*:com.anchor.mine/.alarms.AlarmReceiver
+    type=RTC_WAKEUP origWhen=2026-11-06 15:03:09.890 window=0 exactAllowReason=policy_permission repeatInterval=0 count=0 flags=0x3
+    policyWhenElapsed: requester=+1m43s86ms app_standby=-16s889ms device_idle=-- battery_saver=-- tare=-16s889ms
+    whenElapsed=+1m43s86ms maxWhenElapsed=+1m43s86ms
+    Alarm clock:
+      triggerTime=2026-11-06 15:03:09.890
+      showIntent=PendingIntent{7ed9d4d: PendingIntentRecord{ca7a002 com.anchor.mine startActivity}}
+    operation=PendingIntent{9abed13: PendingIntentRecord{21eb50 com.anchor.mine broadcastIntent}}
+    idle-options=Bundle[{android.pendingIntent.backgroundActivityAllowed=false, android:broadcast.temporaryAppAllowlistReasonCode=301, android:broadcast.temporaryAppAllowlistDuration=10000, android:broadcast.temporaryAppAllowlistReason=, android:broadcast.temporaryAppAllowlistType=0, android:broadcast.flags=8}]
+  
+  Past-due non-wakeup alarms: (none)
+    Number of delayed alarms: 1013, total delay time: +23h46m30s842ms
+    Max delay time: +17m24s508ms, max non-interactive time: +5h3m17s276ms
+  
+
+=== date ===
+Fri Nov  6 15:01:26 IST 2026

@@ -1,0 +1,12 @@
+=== ExportTest connected run (release-installed app on moto g73 5G, 2026-11-06) ===
+gradle exit: see below; test-result-exit-code.txt:
+1
+--- parsed results ---
+tests 7 failures 0 errors 0
+PASS com.anchor.mine.export.ExportTest testExportAndVerify_RejectsBadPasswordAndTampering
+PASS com.anchor.mine.export.ExportTest testImport_RejectsUnknownColumn
+PASS com.anchor.mine.export.ExportTest testPostImport_RebuildsMsgChunkForSearch
+PASS com.anchor.mine.export.ExportTest testPostImport_TriggersAlarmReconciliation
+PASS com.anchor.mine.export.ExportTest testExport_ExcludesApiKeysWhenRequested
+PASS com.anchor.mine.export.ExportTest testHeaderKdfBounds_RejectsExcessiveMemoryOrIterationsOrChunkSize
+PASS com.anchor.mine.export.ExportTest testImport_RejectsUnknownTable

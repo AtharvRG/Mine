@@ -1,0 +1,21 @@
+=== notifications (com.anchor.mine) ===
+Current Notification Manager state:
+  Notification List:
+    NotificationRecord(0x06840f11: pkg=com.anchor.mine user=UserHandle{0} id=14994079 tag=null importance=4 key=0|com.anchor.mine|14994079|null|10922: Notification(channel=mine_reminders_v3 shortcut=null contentView=null vibrate=null sound=null defaults=0x0 flags=0x10 color=0x00000000 category=alarm vis=PRIVATE))
+      uid=10922 userId=0
+      opPkg=com.anchor.mine
+      icon=Icon(typ=RESOURCE pkg=com.anchor.mine id=0x0108009b)
+      flags=0x10
+      originalFlags=0x10
+      pri=1
+      key=0|com.anchor.mine|14994079|null|10922
+      seen=true
+      groupKey=0|com.anchor.mine|14994079|null|10922
+      notification=
+            fullscreenIntent=null
+            contentIntent=PendingIntent{af7c876: PendingIntentRecord{ca7a002 com.anchor.mine startActivity (allowlist: e65432f:+30s0ms/0/NOTIFICATION_SERVICE/NotificationManagerService)}}
+            deleteIntent=null
+            number=0
+            groupAlertBehavior=0
+            when=1793957589919
+            tickerText=null

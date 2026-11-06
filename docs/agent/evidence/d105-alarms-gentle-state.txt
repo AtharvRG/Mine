@@ -1,0 +1,8 @@
+  Next alarm clock information: 
+    RTC #10: Alarm{ac64cb0 type 1 origWhen 1793961000000 whenElapsed 275347342 com.anchor.mine}
+      tag=*alarm*:com.anchor.mine.quotes.ACTION_PREPARE_QUOTE
+      operation=PendingIntent{1ec7729: PendingIntentRecord{b36aae com.anchor.mine broadcastIntent}}
+    com.anchor.mine, u0: -22m25s369ms, 
+    com.anchor.mine, u0: -22m25s369ms, 
+  u0a924:com.anchor.mine +109ms running, 4 wakeups:
+      *walarm*:com.anchor.mine/.alarms.AlarmReceiver

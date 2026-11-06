@@ -1,59 +1,77 @@
-# HANDOFF (Part B TDD — B1..B5 ALL COMMITTED; Next: B6 Crash-Window Test)
+# HANDOFF (Current batch — R10g + D-105 evidence done; Final commit pending)
 
 ## Current Work & Status
-- Batch A (doc truth): **done and committed** — A1 test recount (raw evidence in `docs/agent/evidence/`, committed 2a2e9b1), A2 doc drift (d13153a), A3 D-102 restore + D-117 Rejected correction (5ee5eaa), A4 `test_live_models.py` supplementary (d13153a, deleted `test_live_mistral.py`), A5 D-114..D-117 pack-numbering note (5ee5eaa).
-- Batch B (TDD): **B1..B5 all committed** — B1 `1194119` (ContextBuilder proposal option titles + test), B2 impl `3d42572`/`a3764f2` + test `d161ba0`, B3 `a3764f2`, B4 `bde78fd`, B5 `d359a7b` (BootReceiverIgnoreTest + evidence) with D-122 in `5ee5eaa`.
-- Core test count is now **247** (242 + B1x1 + B2x1 + B3x3); forced-fresh run evidence `core-test-20261106-partb.txt` (UNIT_EXIT=0). Total project tests 309 (247 core / 9 app / 53 connected).
-- B5 evidence resolution: this ROM's `dumpsys package` does not print per-component `exported=` ActivityInfo lines (only resolver tables), so after reinstalling the debug APK the exported flag was taken from `aapt2 dump xmltree` of the installed APK — `BootReceiver exported=true` with 4-action filter (BOOT_COMPLETED, MY_PACKAGE_REPLACED, TIME_SET, TIMEZONE_CHANGED). Device dumpsys confirms registration under all 4 actions + RECEIVE_BOOT_COMPLETED granted. Evidence: `docs/agent/evidence/b5-evidence.md`, `b5-manifest-dump.txt`, `b5-receiver-dump.txt`.
+- **R10g — DONE.** Clean-install minified release APK run on current code. 4/4 capabilities PASS. Report: `docs/agent/evidence/r10g-fresh-evidence.md` (supersedes Nov 5 `r10g-evidence.md`).
+- **D-105 — evidence captured, NOT final.** Fresh screenshot pair + SystemUI dumps. Report: `docs/agent/evidence/d105-evidence-fresh.md`. **User must check the PNGs by eye**; task stays `[~]` until they do.
+- **Final — in progress.** HANDOFF block + `03_CURRENT_TASK.md` + commits.
 
 ## 1. What Changed (files and commits)
-**Committed this session:**
-- `1194119` feat(context): include proposal option titles and due times in pending clarifications (B1) — `ContextBuilder.kt` + `ContextBuilderTest.kt`.
-- `d161ba0` test(receipts): cap transientReceipts at 20 and expire after 24h (B2 test; impl already in 3d42572/a3764f2) — `R7ReceiptsTest.kt`.
-- `d359a7b` test(alarms): verify BootReceiver action filter and exported flag on device (B5) — `BootReceiverIgnoreTest.kt` + `b5-evidence.md` + `b5-manifest-dump.txt` + `b5-receiver-dump.txt`.
-- `d13153a` docs(scripts): re-sync live smoke prompt to P1-B 16 and mark it supplementary (A4) — `test_live_models.py`, deleted `test_live_mistral.py`, `ui-contract.md` 10s->5s (A2).
-- `5ee5eaa` docs(decisions): restore D-102 text, correct D-117 Rejected line, add pack-numbering note and D-122 (A3/A5/B5) — `DECISIONS.md`.
-- `2a2e9b1` docs(evidence): raw test evidence for A1 recount and Part B suites — 7 evidence txt files incl. new `core-test-20261106-partb.txt`.
-- (Earlier this batch: `bde78fd` B4, `a3764f2` B3, `2175013` P1-D 20, `3d42572` P1-B 15/16/17, `a5b5838` verification docs.)
+**New evidence files (uncommitted, this session):**
+- `docs/agent/evidence/r10g-fresh-evidence.md` — R10g report, 4/4 capabilities with file/byte citations.
+- `docs/agent/evidence/d105-evidence-fresh.md` — D-105 report, alarm-tier vs no-alarm SystemUI pair.
+- `docs/agent/evidence/d105-fresh-alarm-tier.png` (111531 B, 16:00) — alarm pending, icon present.
+- `docs/agent/evidence/d105-fresh-no-alarm.png` (98694 B, 16:01) — alarm consumed, icon absent.
+- `docs/agent/evidence/d105-fresh-systemui-alarm.txt` — SystemUI dump while armed.
+- `docs/agent/evidence/d105-fresh-systemui-gentle.txt` — SystemUI dump after fire.
+- Plus the large untracked `r10g-*` / `d105-*` raw capture set from this and the prior session (XML dumps, PNGs, alarm dumps).
 
-**Uncommitted working tree:** docs only (STATE/TASKS/HANDOFF/LEARNINGS/evidence-summary refresh reflecting the commits above).
+**Docs updated (uncommitted):**
+- `docs/agent/TASKS.md` — R10g `[x]`, D-105 `[~]` with evidence pointers.
+- `docs/agent/STATE.md` — O-1 and O-2 added under "Known broken"; D-105 by-eye line under UNVERIFIED.
+- `docs/agent/LEARNINGS.md` — 5 new entries (SystemUI dump location, `exec-out screencap`, stable icon fields, silent release build, exit-code citation rule).
+- `docs/agent/HANDOFF.md` — this file.
+- `03_CURRENT_TASK.md` — rewritten for this batch.
+
+**No source code changed this session.**
 
 ## 2. What Is Verified (command + exit code)
-- `BootReceiverIgnoreTest` on device: gradle exit 1 (ROM teardown artifact) but JUnit XML = 1 test, 0 failures, 2.249s — **PASS** (`app/build/outputs/androidTest-results/connected/debug/TEST-moto g73 5G - 14.xml`).
-- `adb install -r app/build/outputs/apk/debug/app-debug.apk` → Success (installed 12:57:20).
-- `adb shell dumpsys package com.anchor.mine > docs/agent/evidence/b5-receiver-dump.txt` → 8652 bytes; BootReceiver registered under all 4 actions (filter cc5b617), RECEIVE_BOOT_COMPLETED granted=true.
-- `aapt2 dump xmltree --file AndroidManifest.xml app/build/outputs/apk/debug/app-debug.apk > docs/agent/evidence/b5-manifest-dump.txt` → BootReceiver `exported=true`, 4-action filter; AlarmReceiver/QuoteAlarmReceiver `exported=false`.
-- `cmd package query-receivers -a android.intent.action.BOOT_COMPLETED` → `com.anchor.mine/.alarms.BootReceiver` listed (Receiver #231).
-- Post-commit core suite: `./gradlew :core:cleanTest :core:test` → BUILD SUCCESSFUL, `UNIT_EXIT=0`, XML **247 tests / 0 failures** (evidence `core-test-20261106-partb.txt`).
-- B4: `ExportTest` 6/6 on device (committed, verified in the 53/53 clean-install run + B4 commit).
-- B3: `B3ReliabilityIssuesTest` 3/3 in core suite (committed; evidence `docs/agent/evidence/b3-core-suite.txt`).
-- Clean-install connected suite (A1): 53/53, 0 failures in JUnit XML; gradle exit 1 = documented ROM teardown artifact (STATE.md Test counts section).
+- Build: `BUILD SUCCESSFUL in 5m 34s` (`docs/agent/evidence/r10g-build-release.txt`).
+- Install: `Performing Streamed Install` / `Success` (`r10g-install.txt`).
+- Provenance: `firstInstallTime == lastUpdateTime == 2026-11-06 15:06:40`, `versionName=1.0.0`, `versionCode=10000`, flags `[ HAS_CODE ALLOW_CLEAR_USER_DATA ]` (no DEBUGGABLE), `initiatingPackageName=com.android.shell` (`r10g-fresh-package.txt`).
+- Storage opens: `r10g-fresh-01-storage-opened.png`.
+- Message sent: live LLM reply in `r10g-reply.xml` via saved Mistral config (`r10g-chat-verified.xml`).
+- Reminder fires: armed `setAlarmClock` (`window=0 flags=0x3`, `Alarm clock:` block) in `r10g-alarm-armed.txt`; notification `importance=4 channel=mine_reminders_v3 category=alarm` in `r10g-notification-fired.txt`; shade `r10g-notification-shade.xml`.
+- Export verifies: `tests 7 failures 0 errors 0` (`r10g-export-test.txt`), gradle exit 1 = ROM teardown artifact.
+- D-105 alarm tier: `slot='alarm_clock' visibleState=ICON iconAppearAmount=1.0`, holder `visible=true`, container `640,30-935,90`, `Next alarm clock information: ... time:1793961054005 = +3s226ms`.
+- D-105 no alarm: `visibleState=HIDDEN iconAppearAmount=0.0`, holder `visible=false`, container `695,30-935,90`, `Next alarm clock information:` blank.
 
 ## 3. What Is NOT Verified
-- No independent reviewer/test-auditor pass on B1-B5 yet (task #119 pending).
-- R10g fresh re-run on current code not done (Nov 5 evidence pre-dates D-118/P1-B/P1-D changes) — task #120.
-- D-105 fresh by-eye/screenshots on current build not done — task #121.
-- Connected suite has not been re-run since the B1 code change (last connected evidence: 53/53 clean-install + BootReceiverIgnoreTest 1/1, both 2026-11-06, pre-B1-commit build; B1 is prompt-text-only, compile-verified, unit-verified).
+- **D-105 by-eye verdict** — user has not looked at the two PNGs. Do not mark final.
+- **O-1 root cause** — the release build logs nothing; the CREATE defect is characterised from UI + alarm state only.
+- **O-2 scope** — only one reproduction captured.
+- Core/app/connected test suites were NOT re-run this session (no source changed).
 
 ## 4. Current Failing Tests
-- None. Core 247/247, app 9/9, connected 53/53 (clean-install) + BootReceiverIgnoreTest 1/1 all green per XML.
+- None known. No test suite was executed this session; last recorded green state: 247 core / 9 app / 53 connected (Part B), export 7/7 on device.
 
 ## 5. Open Decisions Needing User
-- None new. D-122 recorded (B5); next free D-123. (A3's D-117 Rejected-line correction notes "decision text unchanged pending developer confirmation" — confirm when convenient.)
+- **D-105:** confirm by eye — `d105-fresh-alarm-tier.png` vs `d105-fresh-no-alarm.png`.
+- **O-1 triage:** should the `set alarm ...` CREATE failure block release? It is user-visible and silent.
+- Confirm D-117 Rejected-line correction (carried over from Part B).
+- Test-count discrepancy to reconcile: TASKS line 66 says "242 core, 9 app, 53 connected", the Part B HANDOFF said 247 core / 309 total, Part B reviewer reported 249/249. Needs one recount run before the next evidence summary.
 
 ## 6. Exact Next Step
-- Task **#118 (B6)**: crash-window test + design sketch (option b). See TASKS.md "Current batch" — write the failing test for the crash/kill window (turn interrupted mid-flight), then the design sketch for recovery. Await user approval before starting (one task per run).
+- Commit the evidence + docs (see §8), then ask the user to check `d105-fresh-alarm-tier.png` and `d105-fresh-no-alarm.png` by eye.
+- After that: triage O-1 — reproduce `set alarm for drink water in 3 minutes` on a **debug** build and capture logcat, since the release build cannot be traced.
 
 ## 7. Traps for the Next Run
-- **AGP uninstalls both APKs after every connected run.** Any post-run adb inspection of `com.anchor.mine` fails with "Unable to find package" until you reinstall the APK. Capture dumps BEFORE the run, or reinstall first. `adb shell dumpsys package` on an uninstalled package prints the error to stdout with exit 0 — piping to a file silently captures 41 bytes of error text (lost the dump twice this way).
-- **Android 14 ROM's `dumpsys package` does NOT print per-component `exported=` ActivityInfo lines** (only resolver tables). For exported-flag evidence use `aapt2 dump xmltree --file AndroidManifest.xml <apk>` on the installed APK — the compiled manifest is authoritative and shows `A: android:exported=true/false` per component.
-- `cmd package query-receivers -a <ACTION>` lists ALL packages' receivers (301 for BOOT_COMPLETED); grep for `anchor` — but it returns nothing for an uninstalled package, which is not proof of absence.
-- The receiver dump for BootReceiver lives under "Receiver Resolver Table" -> "Non-Data Actions" in `dumpsys package` output.
-- B1 is now committed (1194119): `PromptSanitizer.sanitize(opt.title, 80)` — proposal option titles come from `ProposalOption(duplicate.id, "Update existing", dueStr)`; dueStr is already device-formatted, sanitize is for length/newlines only.
-- `R7ReceiptsTest` has LF/CRLF warnings on commit — normal for this repo on Windows; `git add` handles it.
-- Core test count moved 242 -> 247 with the Part-B TDD tests; docs (STATE header, Test counts table, evidence-summary ground-truth table) were refreshed to 247/309 as part of the docs commit.
-- Connected gradle runs exit 1 even when all tests pass (ROM instrumentation teardown artifact, documented in STATE.md Test counts) — judge pass/fail ONLY from the JUnit XML, never from the gradle exit code.
-- `docs/agent/evidence/evidence-summary.md` was rewritten (A1); keep it as the single index for all evidence files.
+- **SystemUI icon state is NOT in `dumpsys window`.** Use `dumpsys activity service com.android.systemui/.SystemUIService` and grep `StatusBarIconControllerImpl` / `StatusBarIconList`.
+- **`adb shell screencap -p /sdcard/x.png` fails under Git-Bash** (path mangling → usage error). Use `adb exec-out screencap -p > local.png`.
+- **The self-test alarm lives ~5 s.** Arm it (`Reminders` tab at `405 177`, then `Run 5-sec Self Test` at `267 337`) and capture the dump + screenshot in the SAME command chain; a separate round trip loses the window.
+- **Icon alpha is animated** — rely on integer `visibleState` and the holder's `visible=`, plus the 55 px container delta.
+- **Minified release build is silent** — `run-as` fails (`package not debuggable`), `logcat -s "Mine:*"` returns 0 lines. Root-causing anything found on it requires a debug build.
+- **`connectedAndroidTest` exits 1 even when green** — always cite the parsed XML counts next to the exit code.
+- **`input keyevent 4` on the Reminders tab exits to the launcher** — return with `am start -n com.anchor.mine/.MainActivity`.
+- **`adb shell input text` mangles multi-`%s` strings** — use single-`%s` separators and verify field text via a dump before tapping Send.
+- **AGP uninstalls both APKs after every connected run** — capture device dumps before the run or reinstall first.
+
+## 8. Commit Plan
+One commit for the batch:
+```
+git add docs/agent/evidence/ docs/agent/TASKS.md docs/agent/STATE.md docs/agent/LEARNINGS.md docs/agent/HANDOFF.md 03_CURRENT_TASK.md
+git commit -s -m "docs(evidence): fresh R10g clean-install run and D-105 status-bar pair; record O-1/O-2 defects"
+```
+`docs/agent/evidence/` includes ~140 untracked capture files — intended, they are the raw provenance for both reports.
 
 ## Operating Rules
 - Commit per task using `git commit -s`. Never commit failing tests. One task per run; stop and await user approval before proceeding to the next task.

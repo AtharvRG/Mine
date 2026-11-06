@@ -1,0 +1,32 @@
+--------- beginning of system
+11-06 15:39:39.627 23841 23841 D ViewRootImpl: update {(0,0)(fillxfill) sim={forwardNavigation} layoutInDisplayCutoutMode=always ty=BASE_APPLICATION wanim=0x10302fe
+11-06 15:39:39.627 23841 23841 D ViewRootImpl:   fl=LAYOUT_IN_SCREEN LAYOUT_INSET_DECOR SPLIT_TOUCH HARDWARE_ACCELERATED DRAWS_SYSTEM_BAR_BACKGROUNDS
+11-06 15:39:39.627 23841 23841 D ViewRootImpl:   pfl=NO_MOVE_ANIMATION FORCE_DRAW_STATUS_BAR_BACKGROUND FIT_INSETS_CONTROLLED
+11-06 15:39:39.627 23841 23841 D ViewRootImpl:   bhv=DEFAULT
+11-06 15:39:39.627 23841 23841 D ViewRootImpl:   fitSides=} by setView
+11-06 15:41:17.590 23841 23841 D VRI[MainActivity]: update {(0,0)(fillxfill) sim={adjust=pan forwardNavigation} layoutInDisplayCutoutMode=always ty=BASE_APPLICATION wanim=0x10302fe
+11-06 15:41:17.590 23841 23841 D VRI[MainActivity]:   fl=LAYOUT_IN_SCREEN LAYOUT_INSET_DECOR SPLIT_TOUCH HARDWARE_ACCELERATED DRAWS_SYSTEM_BAR_BACKGROUNDS
+11-06 15:41:17.590 23841 23841 D VRI[MainActivity]:   pfl=NO_MOVE_ANIMATION FORCE_DRAW_STATUS_BAR_BACKGROUND USE_BLAST APPEARANCE_CONTROLLED FIT_INSETS_CONTROLLED
+11-06 15:41:17.590 23841 23841 D VRI[MainActivity]:   vsysui=LAYOUT_STABLE
+11-06 15:41:17.590 23841 23841 D VRI[MainActivity]:   bhv=DEFAULT
+11-06 15:41:17.590 23841 23841 D VRI[MainActivity]:   fitSides=} by setLayoutParams
+11-06 15:43:42.400 23841 23841 D VRI[MainActivity]: update {(0,0)(fillxfill) sim={adjust=pan forwardNavigation} layoutInDisplayCutoutMode=always ty=BASE_APPLICATION wanim=0x10302fe
+11-06 15:43:42.400 23841 23841 D VRI[MainActivity]:   fl=LAYOUT_IN_SCREEN LAYOUT_INSET_DECOR SPLIT_TOUCH HARDWARE_ACCELERATED DRAWS_SYSTEM_BAR_BACKGROUNDS
+11-06 15:43:42.400 23841 23841 D VRI[MainActivity]:   pfl=NO_MOVE_ANIMATION FORCE_DRAW_STATUS_BAR_BACKGROUND USE_BLAST APPEARANCE_CONTROLLED FIT_INSETS_CONTROLLED
+11-06 15:43:42.400 23841 23841 D VRI[MainActivity]:   vsysui=LAYOUT_STABLE
+11-06 15:43:42.400 23841 23841 D VRI[MainActivity]:   bhv=DEFAULT
+11-06 15:43:42.400 23841 23841 D VRI[MainActivity]:   fitSides=} by setLayoutParams
+--------- beginning of main
+11-06 15:47:29.523 23841 23841 D InsetsController: show(ime(), fromIme=true)
+11-06 15:47:29.523 23841 23841 I ImeTracker: com.anchor.mine:6e65f00: onCancelled at PHASE_CLIENT_APPLY_ANIMATION
+11-06 15:47:43.752 23841 23841 I ImeTracker: com.anchor.mine:89eb0f59: onRequestShow at ORIGIN_CLIENT_SHOW_SOFT_INPUT reason SHOW_SOFT_INPUT_BY_INSETS_API
+11-06 15:47:43.752 23841 23841 D InsetsController: show(ime(), fromIme=false)
+11-06 15:47:43.752 23841 23841 I ImeTracker: com.anchor.mine:89eb0f59: onCancelled at PHASE_CLIENT_APPLY_ANIMATION
+11-06 15:47:43.756 23841 23841 I ImeTracker: com.anchor.mine:2f73dbe8: onRequestShow at ORIGIN_CLIENT_SHOW_SOFT_INPUT reason SHOW_SOFT_INPUT
+11-06 15:47:43.756 23841 23841 D InputMethodManager: showSoftInput() view=v2{6af1501 VFED..... .F...... 0,0-1080,2400 aid=1073741824} flags=0 reason=SHOW_SOFT_INPUT
+11-06 15:47:43.760 23841 23841 D InsetsController: show(ime(), fromIme=true)
+11-06 15:47:43.760 23841 23841 I ImeTracker: com.anchor.mine:2f73dbe8: onCancelled at PHASE_CLIENT_APPLY_ANIMATION
+11-06 15:47:49.696 23841 23847 W System  : A resource failed to call release. 
+11-06 15:47:49.696 23841 23847 W System  : A resource failed to call release. 
+11-06 15:47:49.712 23841 23841 D InsetsController: show(ime(), fromIme=true)
+11-06 15:47:49.712 23841 23841 I ImeTracker: com.anchor.mine:4ad66d7f: onCancelled at PHASE_CLIENT_APPLY_ANIMATION

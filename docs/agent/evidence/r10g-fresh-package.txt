@@ -1,0 +1,224 @@
+Activity Resolver Table:
+  Non-Data Actions:
+      android.intent.action.MAIN:
+        60b859e com.anchor.mine/.MainActivity filter bd2387f
+          Action: "android.intent.action.MAIN"
+          Category: "android.intent.category.LAUNCHER"
+
+Receiver Resolver Table:
+  Non-Data Actions:
+      androidx.profileinstaller.action.SAVE_PROFILE:
+        a265daa com.anchor.mine/androidx.profileinstaller.ProfileInstallReceiver filter cef3911
+          Action: "androidx.profileinstaller.action.SAVE_PROFILE"
+      androidx.profileinstaller.action.INSTALL_PROFILE:
+        a265daa com.anchor.mine/androidx.profileinstaller.ProfileInstallReceiver filter e5bdd9b
+          Action: "androidx.profileinstaller.action.INSTALL_PROFILE"
+      android.intent.action.TIMEZONE_CHANGED:
+        6f2f04c com.anchor.mine/.alarms.BootReceiver filter 16fa895
+          Action: "android.intent.action.TIMEZONE_CHANGED"
+          Action: "android.intent.action.TIME_SET"
+          Action: "android.intent.action.BOOT_COMPLETED"
+          Action: "android.intent.action.MY_PACKAGE_REPLACED"
+      android.intent.action.TIME_SET:
+        6f2f04c com.anchor.mine/.alarms.BootReceiver filter 16fa895
+          Action: "android.intent.action.TIMEZONE_CHANGED"
+          Action: "android.intent.action.TIME_SET"
+          Action: "android.intent.action.BOOT_COMPLETED"
+          Action: "android.intent.action.MY_PACKAGE_REPLACED"
+      androidx.profileinstaller.action.SKIP_FILE:
+        a265daa com.anchor.mine/androidx.profileinstaller.ProfileInstallReceiver filter b84c538
+          Action: "androidx.profileinstaller.action.SKIP_FILE"
+      androidx.profileinstaller.action.BENCHMARK_OPERATION:
+        a265daa com.anchor.mine/androidx.profileinstaller.ProfileInstallReceiver filter 964aa76
+          Action: "androidx.profileinstaller.action.BENCHMARK_OPERATION"
+      android.intent.action.BOOT_COMPLETED:
+        6f2f04c com.anchor.mine/.alarms.BootReceiver filter 16fa895
+          Action: "android.intent.action.TIMEZONE_CHANGED"
+          Action: "android.intent.action.TIME_SET"
+          Action: "android.intent.action.BOOT_COMPLETED"
+          Action: "android.intent.action.MY_PACKAGE_REPLACED"
+      android.intent.action.MY_PACKAGE_REPLACED:
+        6f2f04c com.anchor.mine/.alarms.BootReceiver filter 16fa895
+          Action: "android.intent.action.TIMEZONE_CHANGED"
+          Action: "android.intent.action.TIME_SET"
+          Action: "android.intent.action.BOOT_COMPLETED"
+          Action: "android.intent.action.MY_PACKAGE_REPLACED"
+
+Domain verification status:
+
+Permissions:
+  Permission [com.anchor.mine.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION] (7d86610):
+    sourcePackage=com.anchor.mine
+    uid=10924 gids=[] type=0 prot=signature
+    perm=PermissionInfo{56256ee com.anchor.mine.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION}
+    flags=0x0
+
+Registered ContentProviders:
+  com.anchor.mine/androidx.startup.InitializationProvider:
+    Provider{b6fb78f com.anchor.mine/androidx.startup.InitializationProvider}
+
+ContentProvider Authorities:
+  [com.anchor.mine.androidx-startup]:
+    Provider{b6fb78f com.anchor.mine/androidx.startup.InitializationProvider}
+      applicationInfo=ApplicationInfo{69c8509 com.anchor.mine}
+
+Key Set Manager:
+  [com.anchor.mine]
+      Signing KeySets: 746
+
+Packages:
+  Package [com.anchor.mine] (f986625):
+    appId=10924
+    pkg=Package{8a0f3fa com.anchor.mine}
+    codePath=/data/app/~~HcIHavAV87IL6XoIY0Pwgw==/com.anchor.mine-Ga5HBDmMiU2GD4yEf_oNHw==
+    resourcePath=/data/app/~~HcIHavAV87IL6XoIY0Pwgw==/com.anchor.mine-Ga5HBDmMiU2GD4yEf_oNHw==
+    legacyNativeLibraryDir=/data/app/~~HcIHavAV87IL6XoIY0Pwgw==/com.anchor.mine-Ga5HBDmMiU2GD4yEf_oNHw==/lib
+    extractNativeLibs=false
+    primaryCpuAbi=arm64-v8a
+    secondaryCpuAbi=null
+    cpuAbiOverride=null
+    versionCode=10000 minSdk=34 targetSdk=35
+    minExtensionVersions=[]
+    versionName=1.0.0
+    usesNonSdkApi=false
+    splits=[base]
+    apkSigningVersion=2
+    flags=[ HAS_CODE ALLOW_CLEAR_USER_DATA ]
+    privateFlags=[ PRIVATE_FLAG_ACTIVITIES_RESIZE_MODE_RESIZEABLE_VIA_SDK_VERSION ALLOW_AUDIO_PLAYBACK_CAPTURE PRIVATE_FLAG_ALLOW_NATIVE_HEAP_POINTER_TAGGING ]
+    forceQueryable=false
+    dataDir=/data/user/0/com.anchor.mine
+    supportsScreens=[small, medium, large, xlarge, resizeable, anyDensity]
+    usesOptionalLibraries:
+      androidx.window.extensions
+      androidx.window.sidecar
+    timeStamp=2026-11-06 15:06:40
+    lastUpdateTime=2026-11-06 15:06:40
+    installerPackageName=null
+    installerPackageUid=-1
+    initiatingPackageName=com.android.shell
+    originatingPackageName=null
+    packageSource=1
+    appMetadataFilePath=null
+    signatures=PackageSignatures{43a3dab version:2, signatures:[e68cec13], past signatures:[]}
+    installPermissionsFixed=true
+    pkgFlags=[ HAS_CODE ALLOW_CLEAR_USER_DATA ]
+    privatePkgFlags=[ PRIVATE_FLAG_ACTIVITIES_RESIZE_MODE_RESIZEABLE_VIA_SDK_VERSION ALLOW_AUDIO_PLAYBACK_CAPTURE PRIVATE_FLAG_ALLOW_NATIVE_HEAP_POINTER_TAGGING ]
+    apexModuleName=null
+    declared permissions:
+      com.anchor.mine.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION: prot=signature
+    requested permissions:
+      android.permission.POST_NOTIFICATIONS
+      android.permission.RECEIVE_BOOT_COMPLETED
+      android.permission.INTERNET
+      android.permission.USE_EXACT_ALARM
+      com.anchor.mine.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
+    install permissions:
+      com.anchor.mine.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION: granted=true
+      android.permission.RECEIVE_BOOT_COMPLETED: granted=true
+      android.permission.INTERNET: granted=true
+      android.permission.USE_EXACT_ALARM: granted=true
+    User 0: ceDataInode=856423 installed=true hidden=false suspended=false distractionFlags=0 stopped=false notLaunched=false enabled=0 instant=false virtual=false
+      installReason=0
+      firstInstallTime=2026-11-06 15:06:40
+      uninstallReason=0
+      overlay paths:
+        /product/overlay/NavigationBarModeGestural/NavigationBarModeGesturalOverlay.apk
+        /data/resource-cache/com.android.systemui-neutral-ntk1.frro
+        /product/overlay/FontRookeryRegular/FontRookeryRegularOverlay.apk
+        /data/resource-cache/com.android.systemui-accent-lg8h.frro
+        /data/resource-cache/com.android.systemui-dynamic-pUYn.frro
+      legacy overlay paths:
+        /product/overlay/NavigationBarModeGestural/NavigationBarModeGesturalOverlay.apk
+        /product/overlay/FontRookeryRegular/FontRookeryRegularOverlay.apk
+      gids=[3003]
+      runtime permissions:
+        android.permission.POST_NOTIFICATIONS: granted=true, flags=[ USER_SET|USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED]
+
+Queries:
+  system apps queryable: false
+  queries via forceQueryable:
+  queries via package name:
+  queries via component:
+    com.google.android.as:
+      com.anchor.mine
+    com.motorola.gamemode:
+      com.anchor.mine
+    com.motorola.appforecast:
+      com.anchor.mine
+    com.motorola.actions:
+      com.anchor.mine
+    com.android.settings.intelligence:
+      com.anchor.mine
+    com.motorola.ccc.notification:
+      com.anchor.mine
+    com.motorola.launcher3:
+      com.anchor.mine
+    com.microsoft.office.outlook:
+      com.anchor.mine
+    cris.org.in.prs.ima:
+      com.anchor.mine
+    com.whatsapp:
+      com.anchor.mine
+    com.digilocker.android:
+      com.anchor.mine
+    ru.zdevs.zarchiver:
+      com.anchor.mine
+    com.csam.icici.bank.imobile:
+      com.anchor.mine
+    com.rapido.passenger:
+      com.anchor.mine
+    in.burgerfarm.app:
+      com.anchor.mine
+    in.amazon.mShop.android.shopping:
+      com.anchor.mine
+    com.phonepe.app:
+      com.anchor.mine
+    com.app.spacebasic:
+      com.anchor.mine
+    com.pittvandewitt.wavelet:
+      com.anchor.mine
+    com.truecaller:
+      com.anchor.mine
+    com.cloudflare.onedotonedotonedotone:
+      com.anchor.mine
+    com.google.android.play.games:
+      com.anchor.mine
+    com.olacabs.customer:
+      com.anchor.mine
+    com.dubox.drive:
+      com.anchor.mine
+    com.delhiveryConsigneeApp:
+      com.anchor.mine
+    com.easybrain.arrow.puzzle.game:
+      com.anchor.mine
+  queryable via interaction:
+    User 0:
+      [com.android.server.telecom,com.android.localtransport,com.android.location.fused,android,com.mediatek.location.lppe.main,com.android.dynsystem,com.android.wallpaperbackup,com.android.keychain,com.android.providers.settings,com.motorola.android.providers.settings,com.android.settings,com.trustonic.teeservice,com.android.inputdevices]:
+        com.anchor.mine
+      com.google.android.as:
+        com.anchor.mine
+      [com.google.android.gms,com.google.android.gsf]:
+        com.anchor.mine
+      com.google.android.inputmethod.latin:
+        com.anchor.mine
+      com.motorola.launcher3:
+        com.anchor.mine
+      com.android.systemui:
+        com.anchor.mine
+      com.google.android.permissioncontroller:
+        com.anchor.mine
+      com.google.android.ext.services:
+        com.anchor.mine
+      com.castle.sefirah:
+        com.anchor.mine
+  queryable via uses-library:
+
+Dexopt state:
+  [com.anchor.mine]
+    path: /data/app/~~HcIHavAV87IL6XoIY0Pwgw==/com.anchor.mine-Ga5HBDmMiU2GD4yEf_oNHw==/base.apk
+      arm64: [status=verify] [reason=install] [primary-abi]
+        [location is /data/app/~~HcIHavAV87IL6XoIY0Pwgw==/com.anchor.mine-Ga5HBDmMiU2GD4yEf_oNHw==/oat/arm64/base.odex]
+
+Compiler stats:
+  [com.anchor.mine]
+     base.apk - 1204

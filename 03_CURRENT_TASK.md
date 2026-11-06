@@ -1,53 +1,75 @@
-# Current Task: P1-B 15 (Reminder Policy per Blueprint 30)
+# Current Task: R10g clean-install re-verification + D-105 fresh status-bar evidence
 
-Status: Completed (Verified with Unit Tests & Connected Android Tests)
+Status: R10g **Completed**. D-105 **evidence captured — awaiting user's by-eye verdict** (not final).
+Final (HANDOFF + commits): **in progress**.
 
 ## Objective
-Implement P1-B 15: Reminder policy per blueprint 30 (lead times, reminder only when asked or per default). Document the choice with the section number.
+1. **R10g** — clean-install the minified release APK on the physical phone and verify four capabilities live on current code: storage opens, a message is sent, a reminder fires, an export verifies. Save raw output under `docs/agent/evidence/`. The Nov 5 `r10g-evidence.md` was explicitly not accepted as final.
+2. **D-105** — adb screenshots showing the status-bar alarm icon PRESENT for an Alarm-tier reminder and ABSENT for a Gentle reminder, saved under `docs/agent/evidence/`. Constraint: "Do not mark D-105 final; I check it by eye."
+3. **Final** — HANDOFF block, full updated `03_CURRENT_TASK.md`, commits.
 
-## Blueprint references
-- `docs/blueprints/30-reminders.md`:
-  - s3.1: "A reminder is a scheduled alarm or notification pointing at a node... Explicit user temporal commands create reminders by default (lead time = 0 at `dueAt` for dated tasks); undated items create no alarms."
-  - s3.2: "Relative lead times: offset expressions anchored to node dueAt ('15 minutes before', '1 hour before')."
-  - s3.3: "Duplicate reminder policy: If a reminder for the same node already exists within 30 minutes, schedule_reminder returns needs_confirm asking 'A reminder is already set for <existing>. Update it to <new>, or cancel?' with options to update or cancel. Quiet hours: Explicit user reminders ring even outside the day window (requested-class). AI-suggested or auto-created reminders outside the active day window are moved to day_start + 30 min."
-  - s3.4: "Vague day-parts: morning (07:00..11:00), afternoon (12:00..16:00), evening (17:00..20:00), night (20:00..23:00). Position inside window determined by node severity: Sev 3 = 10%, Sev 2 = 35%, Sev 1 = 60%, Sev 0 = 75%. Soon = now + 30m, Later = now + 2h."
-  - s3.9: "Reminder settings & default lead times."
-- `docs/blueprints/52-settings.md` line 174:
-  - `reminder.ai_suggest`: "ask" (default) | "auto". In "ask" mode, AI-inferred reminders return `needs_confirm` proposal with chips `[Set <time>]`, `[Change]`, `[No]`. In "auto" mode, creates immediately with undo.
-- Decision D-035: Explicit reminders ring even in quiet hours.
+## Device & build under test
+- moto g73 5G, Android 14 (API 34), 1080x2400, IST.
+- Minified release APK, `versionName=1.0.0`, `versionCode=10000`.
+- `firstInstallTime == lastUpdateTime == 2026-11-06 15:06:40` ⇒ clean install.
+- No `DEBUGGABLE` flag; `initiatingPackageName=com.android.shell` (sideloaded via this adb session).
+- `BUILD SUCCESSFUL in 5m 34s`; `Performing Streamed Install` / `Success`.
 
-## Scope & Implementation Completed
-1. Deterministic Temporal Resolution (`DateResolver.kt`):
-   - Added `severity: Int? = null` parameter to `DateResolver.resolve`.
-   - Vague day-part calculation based on standard windows and severity percentage:
-     - Morning (07:00..11:00, 240m): Sev 3 -> 07:24, Sev 2 -> 08:24, Sev 1 -> 09:24, Sev 0 -> 10:00, default midpoint 09:00.
-     - Afternoon (12:00..16:00, 240m): Sev 3 -> 12:24, Sev 2 -> 13:24, Sev 1 -> 14:24, Sev 0 -> 15:00, default midpoint 14:00.
-     - Evening (17:00..20:00, 180m): Sev 3 -> 17:18, Sev 2 -> 18:03, Sev 1 -> 18:48, Sev 0 -> 19:15, default midpoint 18:30.
-     - Night (20:00..23:00, 180m): Sev 3 -> 20:18, Sev 2 -> 21:03, Sev 1 -> 21:48, Sev 0 -> 22:15, default midpoint 21:30.
-     - "soon" -> `now + 30 minutes`.
-     - "later" -> `now + 2 hours`.
-   - Added `DateResolver.parseOffsetDuration(text)` to handle relative lead time offsets ("30 minutes before", "1 hour before", etc.).
-2. Gateway Policy Enforcement (`Gateway.kt`):
-   - In `handleScheduleReminder`:
-     - Resolves relative lead time offsets (`offset_text` or relative phrases) anchored to `node.dueAt` (`fireAt = node.dueAt - offsetMillis`).
-     - Detects near-duplicate reminders on the same node within 30 minutes (`Math.abs(existing.fireAtMillis - fireAt) <= 30 * 60 * 1000L`). Emits `ToolResult.NeedsConfirm` with options `["Update existing", "Cancel"]` and persists proposal.
-     - Respects quiet hours: explicit user reminders remain at requested fire time (requested-class). AI-inferred reminders (`inferred == true`) outside `dayRule.startMinute..dayRule.endMinute` shift to `day_start + 30 min`.
-     - Checks `reminder.ai_suggest` setting for AI-inferred reminders: `ask` (default) returns `ToolResult.NeedsConfirm` with options `[Set <time>, Change, Cancel]`; `auto` creates reminder directly with undo capability.
-   - In `handleConfirmChange`:
-     - Resolves duplicate reminder update proposals: `"update"` updates existing reminder timestamp and tier, `"cancel"` consumes proposal via CAS with 0 mutations.
-3. Verification & Evidence:
-   - Dedicated unit tests in `P1B15ReminderPolicyTest.kt` (7 tests, 100% pass):
-     - `testVagueDayParts_MorningWindowAndSeverity`
-     - `testVagueDayParts_EveningWindowAndSeverity`
-     - `testVagueDayParts_SoonAndLater`
-     - `testScheduleReminder_RelativeLeadTime_AnchoredToNodeDueAt`
-     - `testScheduleReminder_DuplicateWithin30Minutes_ReturnsNeedsConfirm`
-     - `testScheduleReminder_QuietHoursAdjustment_AiInferredOnly`
-     - `testScheduleReminder_AiSuggestSetting_AskVsAuto`
-   - Core unit tests: 214/214 passed (100%).
-   - App unit tests: 9/9 passed (100%).
-   - Connected tests on physical phone (Motorola moto g73 5G - Android 14): 53/53 tests passed (100%) across 10 test suites.
-   - Decision D-120 recorded in `docs/agent/DECISIONS.md`.
+## R10g — results (4/4 PASS)
+
+| Capability | Evidence | Result |
+|---|---|---|
+| Storage opens | `r10g-fresh-01-storage-opened.png` | PASS |
+| A message is sent | `r10g-reply.xml` — live LLM reply via saved Mistral config (`r10g-chat-verified.xml`) | PASS |
+| A reminder fires | `r10g-alarm-armed.txt` (`window=0 flags=0x3`, `Alarm clock:` block) + `r10g-notification-fired.txt` (`importance=4 channel=mine_reminders_v3 category=alarm`) + `r10g-notification-shade.xml` | PASS |
+| Export verifies | `r10g-export-test.txt` — `tests 7 failures 0 errors 0` (gradle exit 1 = ROM teardown artifact) | PASS |
+
+Full report: `docs/agent/evidence/r10g-fresh-evidence.md`.
+
+### Permissions / receivers confirmed on the installed APK
+- `USE_EXACT_ALARM`, `POST_NOTIFICATIONS`, `RECEIVE_BOOT_COMPLETED`, `INTERNET` all `granted=true`.
+- `BootReceiver` registered for `TIMEZONE_CHANGED`, `TIME_SET`, `BOOT_COMPLETED`, `MY_PACKAGE_REPLACED`.
+
+## D-105 — evidence captured, NOT final
+
+Method: `Run 5-sec Self Test` on the Reminders tab arms a deterministic `setAlarmClock` ~5 s out; capture `dumpsys alarm` + SystemUI + screenshot inside that window.
+
+| Signal | Alarm tier pending | No alarm |
+|---|---|---|
+| `Next alarm clock information` | populated (`time:1793961054005 = +3s226ms`) | blank |
+| `slot='alarm_clock' visibleState` | `ICON`, `iconAppearAmount=1.0` | `HIDDEN`, `iconAppearAmount=0.0` |
+| `5:(alarm_clock) holder ... visible=` | `true` | `false` |
+| `StatusIconContainer` bounds | `640,30-935,90` (295 px) | `695,30-935,90` (240 px) |
+
+The 55 px container delta equals exactly one icon slot — an independent signal from the icon glyph itself.
+
+Artifacts for the by-eye check:
+- `docs/agent/evidence/d105-fresh-alarm-tier.png` (111531 B, 16:00)
+- `docs/agent/evidence/d105-fresh-no-alarm.png` (98694 B, 16:01)
+
+Full report: `docs/agent/evidence/d105-evidence-fresh.md`.
+
+**D-105 is NOT marked final. The user checks these two PNGs by eye.**
+
+## Defects found during this run (recorded, not fixed)
+
+### O-1 — CREATE silently fails for `set alarm ...` phrasing
+- Works: `remind me to stretch in 2 minutes` → `✓ Created: Stretch (Fri 6 Nov, 3:03 PM)` + armed `setAlarmClock`.
+- Fails: `set alarm for drink water in 3 minutes`, `set alarm to buy milk in 3 minutes`, `read for 20 minutes`, `set alarm for water at 4pm` — all reply `Setting an alarm to X.` with **no receipt, no Active Reminders row, no armed alarm**.
+- Reproduced live 3× this session (15:56:25, 15:57:53, 15:59:08).
+- `set alarm for water at 4pm` also rewrote the title to "drink water" (prior-context bleed).
+- Root cause **not determined**: minified release build emits zero app-level logcat, `run-as` fails with `package not debuggable`.
+- Evidence: `d105-c36-reply.xml`, `d105-c44-reply.xml`, `d105-c-reply2.xml`, `d105-c41-state.xml`, `d105-after-milk-create.txt`.
+
+### O-2 — Provider fields append instead of replace
+- `r10g-chat-after-save.xml`: `https://api.openai.com/vhttps://api.mistral.ai/v1/chat/completions1/chat/completions`, `gpt-4o-minimistral-small-latest`.
+
+## What is NOT verified
+- D-105 by-eye verdict (user's call).
+- O-1 root cause (requires a debug-build reproduction).
+- Core/app/connected suites were not re-run this session (no source changed).
 
 ## Next Task
-P1-B 16: UPDATE and RESCHEDULE intents implemented through gateway and resolver, with undo.
+1. User checks `d105-fresh-alarm-tier.png` vs `d105-fresh-no-alarm.png` by eye → close D-105.
+2. Triage O-1: reproduce `set alarm for drink water in 3 minutes` on a debug build and capture logcat.
+3. Reconcile the test-count discrepancy (242 vs 247 vs 249 core) with one recount run.

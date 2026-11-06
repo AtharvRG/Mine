@@ -1,0 +1,16 @@
+      tag=*walarm*:com.anchor.mine/.alarms.AlarmReceiver
+      type=RTC_WAKEUP origWhen=2026-11-06 15:25:43.459 window=+2m59s994ms repeatInterval=0 count=0 flags=0x20
+      policyWhenElapsed: requester=+3m53s834ms app_standby=-6s158ms device_idle=-- battery_saver=-6s158ms tare=-6s158ms
+      whenElapsed=+3m53s834ms maxWhenElapsed=+6m53s828ms
+      operation=PendingIntent{4cf84bb: PendingIntentRecord{a6eadd8 com.anchor.mine broadcastIntent}}
+      idle-options=Bundle[{android.pendingIntent.backgroundActivityAllowed=false, android:broadcast.temporaryAppAllowlistReasonCode=-1, android:broadcast.temporaryAppAllowlistDuration=10000, android:broadcast.temporaryAppAllowlistReason=, android:broadcast.temporaryAppAllowlistType=1, android:broadcast.flags=8}]
+    ELAPSED_WAKEUP #7: Alarm{7280531 type 2 origWhen 273298229 whenElapsed 273298229 android}
+      tag=*walarm*:*job.deadline*
+      type=ELAPSED_WAKEUP origWhen=+4m1s261ms window=+5m59s996ms repeatInterval=0 count=0 flags=0x0
+--
+      *walarm*:com.anchor.mine/.alarms.AlarmReceiver
+  
+  Alarm manager stats:
+    REORDER_ALARMS_FOR_STANDBY: count=9441, total=3923.9ms, avg=0.416ms, max calls/s=653 max dur/s=21.8ms max time=21.8ms
+    HAS_SCHEDULE_EXACT_ALARM: count=8009, total=692.4ms, avg=0.086ms, max calls/s=186 max dur/s=32.6ms max time=32.6ms
+    REORDER_ALARMS_FOR_TARE: count=0, total=0.0ms, avg=0.000ms, max calls/s=0 max dur/s=0.0ms max time=0.0ms
