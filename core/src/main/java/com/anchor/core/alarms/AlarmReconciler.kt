@@ -77,14 +77,10 @@ class AlarmReconciler(
                 .sortedByDescending { it.time }
                 .take(5)
 
-            val issuesJsonStr = Json.encodeToString(
-                ListSerializer(ReliabilityIssue.serializer()),
-                boundedIssues
-            )
             storage.saveReliabilityState(
                 currentState.copy(
                     score = "at_risk",
-                    issuesJson = issuesJsonStr,
+                    issuesJson = encodeIssues(boundedIssues),
                     lastCheckAt = now
                 )
             )
@@ -102,18 +98,38 @@ class AlarmReconciler(
         return results
     }
 
-    private fun parseExistingIssues(jsonStr: String?): List<ReliabilityIssue> {
+    private fun parseExistingIssues(jsonStr: String?): List<ReliabilityIssue> =
+        ReliabilityIssueCodec.parse(jsonStr)
+
+    companion object {
+        fun encodeIssues(issues: List<ReliabilityIssue>): String = ReliabilityIssueCodec.encode(issues)
+        fun parseIssues(jsonStr: String?): List<ReliabilityIssue> = ReliabilityIssueCodec.parse(jsonStr)
+    }
+}
+
+/**
+ * B3: Shared codec for the reliability_state.issues_json column so all writers
+ * (AlarmReconciler, ChatController.reconcileAlarms) use one structured format:
+ * a JSON array of {error, time} objects, bounded to 5 entries.
+ */
+object ReliabilityIssueCodec {
+    fun encode(issues: List<ReliabilityIssue>): String = Json.encodeToString(
+        ListSerializer(ReliabilityIssue.serializer()),
+        issues
+    )
+
+    fun parse(jsonStr: String?): List<ReliabilityIssue> {
         if (jsonStr.isNullOrBlank()) return emptyList()
         return try {
             val element = Json.parseToJsonElement(jsonStr)
             when (element) {
-                is JsonArray -> {
-                    element.mapNotNull { item ->
-                        try {
-                            Json.decodeFromJsonElement(ReliabilityIssue.serializer(), item)
-                        } catch (_: Exception) {
-                            null
-                        }
+                is JsonArray -> element.mapNotNull { item ->
+                    try {
+                        Json.decodeFromJsonElement(ReliabilityIssue.serializer(), item)
+                    } catch (_: Exception) {
+                        // Legacy plain-string entry (pre-B3 ChatController format):
+                        // keep it as an issue with time 0 rather than silently dropping it.
+                        (item as? JsonPrimitive)?.let { ReliabilityIssue(it.content, 0L) }
                     }
                 }
                 is JsonObject -> {

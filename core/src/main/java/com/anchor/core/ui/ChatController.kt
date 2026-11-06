@@ -6,6 +6,7 @@ package com.anchor.core.ui
 
 import com.anchor.core.alarms.AlarmReconciler
 import com.anchor.core.alarms.AlarmScheduler
+import com.anchor.core.alarms.ReliabilityIssue
 import com.anchor.core.alarms.ScheduleResult
 import com.anchor.core.context.ContextBuilder
 import com.anchor.core.gateway.EnvelopeParser
@@ -47,6 +48,25 @@ class ChatController(
     private val receiptFormatter = ReceiptFormatter(dateResolver)
     private val transientReceipts = mutableListOf<ReceiptState>()
 
+    private fun addTransientReceipt(receipt: ReceiptState) {
+        val dayMs = 24L * 3600 * 1000L
+        synchronized(transientReceipts) {
+            transientReceipts.removeAll { clock.now() - it.timestamp >= dayMs }
+            transientReceipts.add(receipt)
+            if (transientReceipts.size > 20) {
+                transientReceipts.subList(0, transientReceipts.size - 20).clear()
+            }
+        }
+    }
+
+    private fun currentTransientReceipts(): List<ReceiptState> {
+        val dayMs = 24L * 3600 * 1000L
+        synchronized(transientReceipts) {
+            transientReceipts.removeAll { clock.now() - it.timestamp >= dayMs }
+            return transientReceipts.toList()
+        }
+    }
+
     private suspend fun loadReceipts(): List<ReceiptState> {
         val events = storage.getRecentEvents(30)
         val now = clock.now()
@@ -74,8 +94,12 @@ class ChatController(
             val soulFacts = storage.getProposedSoulFacts()
             val stale = storage.getStaleNodes(clock.now())
             val relState = storage.getReliabilityState()
+            // B3: derive a human-readable banner from the structured issues,
+            // never surface the raw issuesJson string to the user.
             val schedError = if (relState.score == "at_risk") {
-                relState.issuesJson ?: "Alarms or notifications at risk"
+                val issues = AlarmReconciler.parseIssues(relState.issuesJson)
+                if (issues.isEmpty()) "Alarms or notifications at risk"
+                else issues.joinToString("; ") { it.error }
             } else null
             val recentReceipts = loadReceipts()
             val priorityList = storage.getHomePriorityList(clock.now())
@@ -91,7 +115,7 @@ class ChatController(
             val activeThread = proactive.openThreadMsgId?.let { ActiveThread(it, proactive.threadOpenedAt ?: 0L) }
 
             _state.update { it.copy(
-                receipts = recentReceipts + transientReceipts,
+                receipts = recentReceipts + currentTransientReceipts(),
                 activeReminders = storage.getActiveReminders(),
                 chatMessages = if (it.isChatLoading) it.chatMessages else storage.getRecentMessages(30),
                 providerEndpoint = storage.getSetting("ep") ?: "https://api.openai.com/v1/chat/completions",
@@ -234,10 +258,10 @@ class ChatController(
                 val result = gateway.executeTool(call)
                 when (result) {
                     is ToolResult.Committed -> {
-                        transientReceipts.add(ReceiptState(UUID.randomUUID().toString(), result.message, null, isError = false))
+                        addTransientReceipt(ReceiptState(UUID.randomUUID().toString(), result.message, null, isError = false, timestamp = clock.now()))
                     }
                     is ToolResult.Error -> {
-                        transientReceipts.add(ReceiptState(UUID.randomUUID().toString(), result.reason, null, isError = true))
+                        addTransientReceipt(ReceiptState(UUID.randomUUID().toString(), result.reason, null, isError = true, timestamp = clock.now()))
                     }
                     else -> {}
                 }
@@ -259,11 +283,11 @@ class ChatController(
                                 "Invalid time choice" -> "Invalid time selected"
                                 else -> result.reason
                             }
-                            transientReceipts.add(ReceiptState(UUID.randomUUID().toString(), friendlyReason, null, isError = true))
+                            addTransientReceipt(ReceiptState(UUID.randomUUID().toString(), friendlyReason, null, isError = true, timestamp = clock.now()))
                         }
                     }
                     is ToolResult.NotFound -> {
-                        transientReceipts.add(ReceiptState(UUID.randomUUID().toString(), "Item not found: ${result.hint}", null, isError = true))
+                        addTransientReceipt(ReceiptState(UUID.randomUUID().toString(), "Item not found: ${result.hint}", null, isError = true, timestamp = clock.now()))
                     }
                     else -> {}
                 }
@@ -272,10 +296,10 @@ class ChatController(
             is UiAction.AddFollowUp -> coroutineScope.launch(defaultDispatcher) {
                 when (val result = gateway.handleAddFollowUp(action.srcNodeId, action.dstNodeId)) {
                     is ToolResult.Committed -> {
-                        transientReceipts.add(ReceiptState(UUID.randomUUID().toString(), result.message, result.undoToken, isError = false))
+                        addTransientReceipt(ReceiptState(UUID.randomUUID().toString(), result.message, result.undoToken, isError = false, timestamp = clock.now()))
                     }
                     is ToolResult.Error -> {
-                        transientReceipts.add(ReceiptState(UUID.randomUUID().toString(), result.reason, null, isError = true))
+                        addTransientReceipt(ReceiptState(UUID.randomUUID().toString(), result.reason, null, isError = true, timestamp = clock.now()))
                     }
                     else -> {}
                 }
@@ -284,10 +308,10 @@ class ChatController(
             is UiAction.RemoveFollowUp -> coroutineScope.launch(defaultDispatcher) {
                 when (val result = gateway.handleRemoveFollowUp(action.edgeId)) {
                     is ToolResult.Committed -> {
-                        transientReceipts.add(ReceiptState(UUID.randomUUID().toString(), result.message, result.undoToken, isError = false))
+                        addTransientReceipt(ReceiptState(UUID.randomUUID().toString(), result.message, result.undoToken, isError = false, timestamp = clock.now()))
                     }
                     is ToolResult.Error -> {
-                        transientReceipts.add(ReceiptState(UUID.randomUUID().toString(), result.reason, null, isError = true))
+                        addTransientReceipt(ReceiptState(UUID.randomUUID().toString(), result.reason, null, isError = true, timestamp = clock.now()))
                     }
                     else -> {}
                 }
@@ -314,7 +338,7 @@ class ChatController(
                 val result = gateway.handleKeepStale(action.nodeId)
                 when (result) {
                     is ToolResult.Error -> {
-                        transientReceipts.add(ReceiptState(UUID.randomUUID().toString(), result.reason, null, isError = true))
+                        addTransientReceipt(ReceiptState(UUID.randomUUID().toString(), result.reason, null, isError = true, timestamp = clock.now()))
                     }
                     else -> {}
                 }
@@ -324,7 +348,7 @@ class ChatController(
                 val result = gateway.handleCancelStale(action.nodeId)
                 when (result) {
                     is ToolResult.Error -> {
-                        transientReceipts.add(ReceiptState(UUID.randomUUID().toString(), result.reason, null, isError = true))
+                        addTransientReceipt(ReceiptState(UUID.randomUUID().toString(), result.reason, null, isError = true, timestamp = clock.now()))
                     }
                     else -> {}
                 }
@@ -428,7 +452,7 @@ class ChatController(
                             sysContext += "Tool Result:\n<data>\n$safeText\n</data>\n"
                         }
 
-                        transientReceipts.addAll(turnReceipts)
+                        turnReceipts.forEach { addTransientReceipt(it.copy(timestamp = clock.now())) }
                         refreshUI()
 
                         // Stop storing model "Done!" prose when receipts already show the change
@@ -592,14 +616,13 @@ CRITICAL: Do NOT say "Done" or "Saved" unless you issue a tool call.
         val failCount = failures.size + if (health is ScheduleResult.Failed) 1 else 0
         if (health is ScheduleResult.Failed) {
             val currentState = storage.getReliabilityState()
-            val existingIssues = currentState.issuesJson ?: "[]"
-            if (!existingIssues.contains(health.reason)) {
-                val newIssues = if (existingIssues.trim() == "[]" || existingIssues.isBlank()) {
-                    "[\"${health.reason}\"]"
-                } else {
-                    existingIssues.dropLast(1) + ",\"${health.reason}\"]"
-                }
-                storage.saveReliabilityState(currentState.copy(score = "at_risk", issuesJson = newIssues))
+            // B3: write the SAME structured {error, time} format AlarmReconciler uses
+            val existing = AlarmReconciler.parseIssues(currentState.issuesJson)
+            if (existing.none { it.error == health.reason }) {
+                val updated = (existing + ReliabilityIssue(health.reason, clock.now()))
+                    .sortedByDescending { it.time }
+                    .take(5)
+                storage.saveReliabilityState(currentState.copy(score = "at_risk", issuesJson = AlarmReconciler.encodeIssues(updated)))
             }
         }
         _state.update {
@@ -633,7 +656,7 @@ CRITICAL: Do NOT say "Done" or "Saved" unless you issue a tool call.
         val relState = storage.getReliabilityState()
 
         _state.update { it.copy(
-            receipts = recentReceipts + transientReceipts,
+            receipts = recentReceipts + currentTransientReceipts(),
             chatMessages = if (it.isChatLoading) it.chatMessages else storage.getRecentMessages(fetchCount),
             activeReminders = storage.getActiveReminders(),
             openProposals = proposals,
