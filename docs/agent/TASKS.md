@@ -76,7 +76,7 @@ Specs for R1-R10: docs/agent/work/session1-remediation-spec.md. Read the task's 
 [x] B3: Unify ReliabilityIssue JSON + plain schedulingError (TDD) [committed a3764f2]
 [x] B4: Rebuild msg_chunk after import (TDD) [committed bde78fd]
 [x] B5: BootReceiver action filter + exported report — BootReceiverIgnoreTest 1/1 PASS on device; exported=true + 4-action filter confirmed from installed APK compiled manifest (aapt2) + device dumpsys registration; evidence b5-evidence.md + b5-manifest-dump.txt + b5-receiver-dump.txt; D-122 recorded [committed d359a7b; DECISIONS portion in 5ee5eaa]
-[ ] B6: Crash-window test + design sketch (b)
+[x] B6: Crash-window test + design sketch (b) — B6CrashWindowTest 2/2 (hard-kill window characterization + reachable near-match dedupe pair proof), core 249/249; evidence b6-crash-window.md + b6-test-run.txt + b6-core-run.txt; option (a)/(b) NOT picked, no DECISIONS.md change
 [ ] Reviewer + test-auditor reports on Part B changes
 [ ] R10g: Clean-install minified release APK device run (fresh, on current code)
 [ ] D-105: Status-bar alarm icon screenshots (fresh, by-eye user check)

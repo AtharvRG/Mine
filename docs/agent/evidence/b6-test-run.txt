@@ -1,0 +1,27 @@
+Calculating task graph as no cached configuration is available for tasks: :core:test --tests com.anchor.core.gateway.B6CrashWindowTest
+> Task :core:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :core:processTestResources NO-SOURCE
+> Task :core:processResources NO-SOURCE
+> Task :core:compileKotlin UP-TO-DATE
+> Task :core:compileJava NO-SOURCE
+> Task :core:classes UP-TO-DATE
+> Task :core:jar UP-TO-DATE
+
+> Task :core:compileTestKotlin
+w: file:///C:/Users/Banespire/AndroidStudioProjects/Mine/core/src/test/java/com/anchor/core/gateway/B6CrashWindowTest.kt:120:47 The corresponding parameter in the supertype 'Storage' is named 'proposal'. This may cause problems when calling this function with named arguments.
+
+> Task :core:compileTestJava NO-SOURCE
+> Task :core:testClasses UP-TO-DATE
+> Task :core:test
+
+[Incubating] Problems report is available at: file:///C:/Users/Banespire/AndroidStudioProjects/Mine/build/reports/problems/problems-report.html
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/9.6.0/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD SUCCESSFUL in 27s
+4 actionable tasks: 2 executed, 2 up-to-date
+Configuration cache entry stored.
