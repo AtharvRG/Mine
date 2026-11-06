@@ -2,7 +2,7 @@
 
 ## Current Work & Status
 - **R10g — DONE.** Clean-install minified release APK run on current code. 4/4 capabilities PASS. Report: `docs/agent/evidence/r10g-fresh-evidence.md` (supersedes Nov 5 `r10g-evidence.md`).
-- **D-105 — evidence captured, NOT final.** Fresh screenshot pair + SystemUI dumps. Report: `docs/agent/evidence/d105-evidence-fresh.md`. **User must check the PNGs by eye**; task stays `[~]` until they do.
+- **D-105 — ALARM half evidenced, GENTLE half blocked, NOT final.** Contamination-free Pair C captured (`d105-clean-alarm-tier.png` vs `d105-clean-no-alarm.png`; 55 px container delta, blank `Next alarm clock information` in the absent half). The Gentle half cannot be produced on this build (`Run 5-sec Self Test` is ALARM-only, the Gentle instrumentation test uses a 1.5 s window, and the chat path fails silently via O-1). Report: `docs/agent/evidence/d105-evidence-fresh.md`. **User must check the PNGs by eye**; task stays `[~]` until they do.
 - **Final — in progress.** HANDOFF block + `03_CURRENT_TASK.md` + commits.
 
 ## 1. What Changed (files and commits)
@@ -62,7 +62,9 @@
 - **Minified release build is silent** — `run-as` fails (`package not debuggable`), `logcat -s "Mine:*"` returns 0 lines. Root-causing anything found on it requires a debug build.
 - **`connectedAndroidTest` exits 1 even when green** — always cite the parsed XML counts next to the exit code.
 - **`input keyevent 4` on the Reminders tab exits to the launcher** — return with `am start -n com.anchor.mine/.MainActivity`.
-- **`adb shell input text` mangles multi-`%s` strings** — use single-`%s` separators and verify field text via a dump before tapping Send.
+- **`adb shell input text` mangles multi-`%s` strings** — use exactly ONE `%s` (which becomes a space) and literal spaces elsewhere (`remind%sme%to%stretch%sin%2%minutes`); multiple `%s` merge the text. Verify field text via a dump before tapping Send.
+- **`slot='alarm_clock'` is app-agnostic** — `com.google.android.deskclock` holding a `setAlarmClock` keeps the icon lit with zero Mine alarms. An "absent" capture is only valid when `Next alarm clock information:` is blank AND the holder reads `visible=false`. `cmd alarm` has no `cancel`; advance the clock with `cmd alarm set-time <epoch_ms>` instead.
+- **The 55 px `StatusIconContainer` delta is the invariant, not the absolute bounds** — the left edge drifts with other status-bar icons (observed 295→240 and 252→197). Glyph polarity is LIGHT: scan for `r >= 251`, not dark pixels.
 - **AGP uninstalls both APKs after every connected run** — capture device dumps before the run or reinstall first.
 
 ## 8. Commit Plan

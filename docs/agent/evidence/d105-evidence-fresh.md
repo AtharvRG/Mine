@@ -92,7 +92,8 @@ Captured ~60 s later, after the self test fired and the alarm was consumed.
                 com.android.systemui.statusbar.phone.StatusIconContainer{291a8df V.E...... .......D 695,30-935,90 #7f0a086f app:id/statusIcons}
 ```
 
-Width `935-695 = 240` px — **same container bounds as Pair A**.
+Width `935-695 = 240` px — **55 px narrower than Pair A** (295 px), i.e. exactly one
+icon slot. The right edge `935` is shared; the left edge moved `640 → 695`.
 
 ### Screenshot
 
@@ -126,20 +127,124 @@ itself.
 fingerprint (`setAndAllowWhileIdle`). SystemUI for gentle shows `visibleState=HIDDEN`
 (`d105-systemui-gentletier-pending.txt`), i.e. identical to Pair B above.
 
+---
+
+## Pair C — contamination-free control pair (2026-11-06 19:41 IST)
+
+### Why Pairs A/B needed a replacement
+
+`slot='alarm_clock'` is **app-agnostic**: it reflects the system-wide next alarm clock,
+set by `AlarmManager.setAlarmClock` from *any* app. On this device
+`com.google.android.deskclock` held `setAlarmClock` alarms at 19:50 and 20:00, so the
+icon read `ICON` even with zero Mine reminders armed. A "no alarm" control taken before
+20:00 is therefore invalid.
+
+**Invalid attempt, retained for the record:** `d105-ctl-alarm-tier.png` (111641 B) and
+`d105-ctl-after-fire.png` (99362 B). Both scan identically (light glyph columns from
+x=690, count 30) because deskclock's alarm clock was still pending in both. The
+after-fire capture is **INVALID as a no-alarm control** and must not be cited.
+
+### How the clean pair was obtained
+
+`cmd alarm` exposes only `set-time`, `set-timezone`, `get-config-version` — there is no
+`cancel`. The clock was advanced past deskclock's alarm clocks instead:
+
+```
+adb shell cmd alarm set-time 1793974790000   # 19:39:50
+adb shell cmd alarm set-time 1793975390000   # 20:00:02
+```
+
+### Pair C-A — nothing armed (icon ABSENT)
+
+```
+  Next alarm clock information: 
+  
+  113 pending alarms: 
+```
+
+```
+        [2] icon=StatusBarIconView(slot='alarm_clock' ... visibleState=HIDDEN iconColor=#0 visibleState=2 iconAppearAmount=0.0 ...)
+                com.android.systemui.statusbar.phone.StatusIconContainer{291a8df ... 733,30-930,90 #7f0a086f app:id/statusIcons}
+```
+
+Width `930-733 = 197` px. Screenshot `d105-clean-no-alarm.png` (98417 B).
+Pixel scan (x 600–760, y 30–95, `r>=251`): light columns start at **x=742, count=18**.
+
+### Pair C-B — Mine alarm tier armed via `Run 5-sec Self Test` (icon PRESENT)
+
+```
+  Next alarm clock information: 
+    user:0 pendingSend:false time:1793975426370 = 2026-11-06 20:00:26.370 = +3s793ms
+  
+  112 pending alarms: 
+```
+
+```
+        [2] icon=StatusBarIconView(slot='alarm_clock' ... visibleState=ICON iconColor=#0 visibleState=0 iconAppearAmount=1.0 ...)
+                com.android.systemui.statusbar.phone.StatusIconContainer{291a8df V.E...... ......ID 678,30-930,90 #7f0a086f app:id/statusIcons}
+```
+
+Width `930-678 = 252` px. Screenshot `d105-clean-alarm-tier.png` (111140 B).
+Pixel scan: light columns start at **x=690, count=50**.
+
+### Pair C discriminator
+
+| Signal | Mine alarm armed | Nothing armed |
+|---|---|---|
+| `Next alarm clock information` | `time:1793975426370 = +3s793ms` | blank |
+| `slot='alarm_clock' visibleState` | `ICON` (0), `iconAppearAmount=1.0` | `HIDDEN` (2), `iconAppearAmount=0.0` |
+| `StatusIconContainer` | `678,30-930,90` = **252 px** | `733,30-930,90` = **197 px** |
+| Light glyph columns (x 600–760) | start **690**, count **50** | start **742**, count **18** |
+
+**The 55 px delta reproduces exactly** — `295→240` in Pairs A/B and `252→197` in Pair C,
+at two different absolute container positions. The delta is the invariant; the absolute
+left edge depends on which other status-bar icons are present.
+
+Pair C is the first pair in which the "absent" half is provably free of another app's
+alarm clock.
+
+---
+
+## Gentle tier — NOT captured, and not reachable on this build
+
+D-105's spec asks for the icon **absent for a Gentle reminder**. That half is **not
+satisfied** by any capture in this file, and cannot be produced on the current minified
+release build:
+
+| Route to a Gentle reminder | Why it fails |
+|---|---|
+| `Run 5-sec Self Test` (Reminders tab) | ALARM tier only — hardcoded `setAlarmClock` path |
+| `AlarmSelfTest.testGentleReminderFires_SetsFlag` | arms at `now + 1500 ms` — far too short to dump + screenshot |
+| Chat: `gentle reminder to ...` | silently fails — O-1 (no receipt, no row, no alarm) |
+
+The gentle fingerprint is nonetheless documented from `d105-alarms-stretch.txt` (Nov 5,
+same build lineage): `flags=0x20`, `window=+2m59s994ms`, no `Alarm clock:` block. Its
+SystemUI state (`d105-systemui-gentletier-pending.txt`) reads `visibleState=HIDDEN` —
+identical to Pair C-A. That is consistent with the claim but is **not a same-session
+capture** and is not offered as proof.
+
+**Honest status: the Gentle half of D-105 is blocked on O-1 or on a debug build.**
+
 ## What this does NOT prove
 
 - The screenshots are full-screen captures; the icon is a ~25 px glyph in the status bar.
   Whether it is legible to a human eye in the PNG is the user's call — this report only
   proves the SystemUI view state.
-- Pair B is "no alarm pending", not "a gentle alarm pending" captured in the same session.
-  The gentle-tier SystemUI state is cited from the Nov 5 file, which is the same build
-  lineage but not the same capture window.
+- **The Gentle half is not proven at all.** No same-session Gentle capture exists; see the
+  section above. Pairs A/B/C all contrast ALARM-tier against *nothing armed*.
+- Pair C-A is "nothing armed", not "a Gentle alarm armed". They are expected to be
+  identical (both leave `slot='alarm_clock'` unset), but that expectation is untested here.
 
 ## Verdict
 
-Machine-checkable evidence: **consistent with D-105's claim** — alarm-tier reminders
-raise `slot='alarm_clock'` to `visibleState=ICON`, and it returns to `HIDDEN` when the
-alarm is consumed.
+Machine-checkable evidence for the **ALARM half**: **consistent with D-105's claim** —
+an alarm-tier reminder raises `slot='alarm_clock'` to `visibleState=ICON` and widens
+`StatusIconContainer` by 55 px; both revert when the alarm is consumed or absent.
+Reproduced in two independent sessions (Pairs A/B and Pair C).
+
+Machine-checkable evidence for the **GENTLE half**: **none this session.** Blocked on O-1
+or a debug build.
 
 Task D-105 remains **open** pending the user's by-eye check of
-`d105-fresh-alarm-tier.png` vs `d105-fresh-no-alarm.png`.
+`d105-clean-alarm-tier.png` vs `d105-clean-no-alarm.png` (Pair C — prefer these over the
+Pair A/B PNGs, whose "absent" half could not rule out deskclock's alarm clock).
