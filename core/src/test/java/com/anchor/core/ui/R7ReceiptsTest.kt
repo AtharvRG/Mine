@@ -319,4 +319,39 @@ class R7ReceiptsTest {
         val evRejectSoul = RawEvent("op11", "REJECT", "soul_fact", "sf1")
         assertEquals("Dismissed Soul fact", formatter.format(evRejectSoul))
     }
+
+    @Test
+    fun testTransientReceipts_CappedAtTwentyAndExpiredAfter24h() = runBlocking {
+        // B2: transientReceipts (error/undo banners added outside raw_event) must be
+        // capped and expired so they cannot grow unbounded across a long session.
+        val clock = FakeClock(1700000000000L)
+        val storage = SharedFakeStorage(clock)
+        storage.settings["key"] = "test-key"
+        val dateResolver = DateResolver(clock) { true }
+
+        val controller = createController(storage, clock, dateResolver, createSchedulerOnlyTransport())
+        waitUntil { controller.state.value.receipts != null }
+
+        // Fire 30 undo actions that each fail (token not found -> transient error receipt)
+        repeat(30) { i ->
+            controller.onAction(UiAction.Undo("u_missing_$i"))
+            waitUntil { controller.state.value.receipts.size >= minOf(i + 1, 20) }
+        }
+
+        val transientCount = controller.state.value.receipts.count { it.message.contains("Undo token not found") }
+        assertTrue("Transient receipts must be capped at 20, got $transientCount", transientCount <= 20)
+        assertEquals("Cap must be reached (20 transient receipts)", 20, transientCount)
+
+        // Advance clock past 24h and refresh: transients must expire from state
+        clock.currentTime += 25 * 3600 * 1000L
+        controller.onAction(UiAction.RefreshStats)
+        waitUntil { controller.state.value.receipts.none { it.message.contains("Undo token not found") } }
+        assertEquals("Expired transient receipts must be removed", 0, controller.state.value.receipts.count { it.message.contains("Undo token not found") })
+    }
+
+    private fun createSchedulerOnlyTransport(): HttpTransport = object : HttpTransport {
+        override suspend fun postStream(target: Target, body: String): Flow<String> = flow {
+            emit("data: [DONE]")
+        }
+    }
 }
