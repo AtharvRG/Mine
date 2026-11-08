@@ -441,17 +441,26 @@ class ChatController(
      * stored, so the capture that the user wrote is the user turn of this exchange and is never
      * duplicated; when null a fresh `u_` row is written, exactly as the composer does.
      *
-     * A blank message, or one while a turn is already streaming, is dropped. The caller keeps the
-     * stored row either way, so a dropped send is retried on the next start instead of lost.
+     * A blank message is dropped. A message that arrives while a turn is already streaming waits
+     * for that turn to finish instead of being dropped: the startup drain sends every pending
+     * capture, and a dropped one would be marked answered by the previous turn's reply without
+     * ever being sent. The caller keeps the stored row either way, so a send that never runs is
+     * retried on the next start instead of lost.
      *
      * The provider config is read from storage on every call: a capture can be the first thing
      * that runs after a cold start, before any state emission has hydrated the key, and a turn
      * started with a blank key would fail on the wire instead of saying "connect a provider".
      */
     fun sendText(text: String, userMsgId: String? = null) {
-        if (_state.value.isChatLoading || text.isBlank()) return
-        _state.update { it.copy(isChatLoading = true, connectionError = null) }
+        if (text.isBlank()) return
         coroutineScope.launch(defaultDispatcher) {
+            // Queued behind the in-flight turn, if any. The stream job is what clears
+            // isChatLoading, so joining it is the wait; a turn started meanwhile is joined too.
+            while (_state.value.isChatLoading) {
+                val job = currentStreamJob ?: break
+                job.join()
+            }
+            _state.update { it.copy(isChatLoading = true, connectionError = null) }
             val key = storage.getSetting("key") ?: ""
             if (key.isBlank()) {
                 _state.update {

@@ -335,3 +335,48 @@
   `QuickCapture` capture-setting constants were read by nothing (`grep` → 0 hits) while the docs
   said "off by default". Adding the two readers + two unit tests + the one production call site is
   what made the claim true — check that every documented setting has a reader before citing it.
+
+## 2026-11-08 — E-17 drain completeness (D-134)
+
+- **Gate the suspension point the code path actually traverses, not the one you assume.** The drain
+  test first parked the live turn on `storage.getSetting("key")`. With `providerKey` already
+  hydrated, `onAction(SendMessage)` takes the **synchronous** branch (`ChatController.kt:186-208`) and
+  never reads the key — the gate never fired and the test hung on `liveTurnParked.await()`. Read the
+  branch condition before choosing a seam. `HttpTransport.postStream` is the only suspension point
+  both branches reach (`handleSendMessage` → `ProviderOrchestrator.chat` → `normalize(postStream(...))`).
+- **Parking inside the fake transport is deterministic under `UnconfinedTestDispatcher`.** A `flow {}`
+  collected unconfined runs inline, but a `CompletableDeferred.await()` inside it truly suspends — so
+  control returns to the test with the turn in flight (`isChatLoading == true`, `currentStreamJob`
+  alive) and no production API had to be widened. The earlier plan to add a
+  `suspend () -> List<ChatMessage>` seam to `Storage` (17+ call sites) was reverted as unnecessary.
+- **Do not share the test's dispatcher with the controller under test.** A drain send parks on
+  `job.join()`; if the only thread that could resume the parked live turn is the one blocked in that
+  join, it deadlocks. Give the controller its own `CoroutineScope(UnconfinedTestDispatcher())` and
+  pass a separate `UnconfinedTestDispatcher()` as its `defaultDispatcher`.
+- **A turn's assistant reply answers *every* capture stored before it.** `isUnanswered` is a
+  timestamp comparison, so draining only the oldest pending capture marks all the others answered
+  without the model seeing them. Any "retry pending" loop must send **all** of them, and the send path
+  must queue behind an in-flight turn rather than drop. This is the whole of E-17.
+- **`ORDER BY ts_utc DESC` is not a total order.** Two rows written in the same millisecond come back
+  in arbitrary order, and code that reads the result as a timeline gets a scrambled one. Add
+  `rowid DESC` as the tiebreak. It cannot be unit-tested through a fake storage — it needs a real
+  SQLite DB, so it is a device-test-only guarantee.
+- **A device test that rewrites an append-only table must restore the exact shipped trigger.** The
+  `raw_message` table is guarded by `trg_raw_msg_no_update`; dropping it to force a `ts_utc` tie and
+  then recreating a *weaker* trigger leaves the test DB less protected than production and can mask
+  the very defect under test. Copy the DDL verbatim from `MineDatabaseHelper.kt` and say in a comment
+  that the duplication is deliberate.
+- **A green connected run still prints `> Task :app:connectedDebugAndroidTest FAILED` /
+  "There were failing tests" / `BUILD FAILED`.** On AGP 9.4.0 / UTP 32.4.0 the task writes
+  `test-result-exit-code.txt` = `1` for a fully green run (D-123). Read `CONNECTED GATE: …` and
+  `TEST-*.xml`, never the task's exit status. This session it cost a real detour: the 90/90 run
+  looked red.
+- **Never start a RED probe while a background connected run may still be alive.** `run_in_background`
+  reports the shell, not the Gradle daemon's work: a first full run was still driving `am instrument`
+  and `adb logcat` when the probe started. The probe then failed twice for reasons that had nothing
+  to do with the code — Kotlin incremental compilation (`shrunk-classpath-snapshot.bin` missing) and
+  `java.nio.file.FileSystemException` on `logcat-com.anchor.mine.export.ExportTest-*.txt` held by the
+  other run. Check with
+  `powershell -NoProfile -Command "Get-CimInstance Win32_Process | ? { $_.CommandLine -match 'gradle|utp|am instrument|adb logcat' }"`
+  before mutating a file for a probe, and restore from a saved copy (`cp file /tmp/file.bak` **before**
+  editing) rather than from memory.

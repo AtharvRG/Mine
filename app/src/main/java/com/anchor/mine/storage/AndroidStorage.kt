@@ -110,7 +110,10 @@ class AndroidStorage(private val dbHelper: SupportSQLiteOpenHelper) : Storage {
 
     override suspend fun getRecentMessages(limit: Int): List<ChatMessage> = withContext(ioDispatcher) {
         val list = mutableListOf<ChatMessage>()
-        dbHelper.readableDatabase.query("SELECT id, role, content, day_key, ts_utc FROM raw_message ORDER BY ts_utc DESC LIMIT ?", arrayOf(limit)).use {
+        // rowid breaks a ts_utc tie: two captures stored in the same millisecond would otherwise
+        // come back in an arbitrary order, and QuickCapture.pending() reads this order as the
+        // timeline it answers captures against.
+        dbHelper.readableDatabase.query("SELECT id, role, content, day_key, ts_utc FROM raw_message ORDER BY ts_utc DESC, rowid DESC LIMIT ?", arrayOf(limit)).use {
             while (it.moveToNext()) {
                 val content = if (it.isNull(2)) null else it.getString(2)
                 val dayKey = if (it.isNull(3)) null else it.getString(3)

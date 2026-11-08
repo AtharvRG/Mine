@@ -72,6 +72,60 @@ class AndroidStorageTest {
         assertEquals("assistant", recent.last().role)
     }
 
+    /**
+     * E-17: two captures written inside the same millisecond must come back in write order.
+     *
+     * `insertRawMessage` takes its own `System.currentTimeMillis()`, so a loop ties often but not
+     * always. The rows are therefore rewritten with one fixed `ts_utc` to make the tie
+     * deterministic. `raw_message` is append-only and its guard trigger rejects any `ts_utc`
+     * change, so this test drops the trigger, writes the tie, and recreates the trigger from the
+     * shipped DDL. The DDL is duplicated here on purpose: a test that recreated a weaker trigger
+     * would leave the schema different from the one that ships and hide a regression in it.
+     *
+     * Without the `rowid DESC` tiebreak SQLite may return tied rows in any order, and
+     * `QuickCapture.pending()` reads this order as the timeline it answers captures against.
+     */
+    @Test
+    fun getRecentMessages_TiedTimestamps_ReturnInWriteOrder() = runBlocking {
+        val tiedTs = 1_700_000_000_000L
+        val ids = listOf("q_first", "q_second", "q_third")
+        for (id in ids) storage.insertRawMessage(id, "user", "text of $id")
+
+        val db = dbHelper.writableDatabase
+        db.beginTransaction()
+        try {
+            db.execSQL("DROP TRIGGER IF EXISTS trg_raw_msg_no_update")
+            db.execSQL("UPDATE raw_message SET ts_utc = ? WHERE id LIKE 'q_%'", arrayOf<Any>(tiedTs))
+            db.execSQL("""
+                CREATE TRIGGER IF NOT EXISTS trg_raw_msg_no_update BEFORE UPDATE ON raw_message
+                BEGIN
+                    SELECT RAISE(ABORT, 'raw_message is append-only except for redaction')
+                    WHERE OLD.redacted_at IS NOT NULL
+                       OR NEW.redacted_at IS NULL
+                       OR NEW.content IS NOT NULL
+                       OR OLD.id != NEW.id
+                       OR OLD.device_id != NEW.device_id
+                       OR OLD.ts_utc != NEW.ts_utc
+                       OR OLD.tz_offset_min != NEW.tz_offset_min
+                       OR OLD.day_key != NEW.day_key
+                       OR OLD.role != NEW.role
+                       OR IFNULL(OLD.reasoning, '') != IFNULL(NEW.reasoning, '')
+                       OR IFNULL(OLD.tags, '') != IFNULL(NEW.tags, '')
+                       OR IFNULL(OLD.persona_id, '') != IFNULL(NEW.persona_id, '')
+                       OR IFNULL(OLD.model_ref, '') != IFNULL(NEW.model_ref, '')
+                       OR IFNULL(OLD.tokens_in, 0) != IFNULL(NEW.tokens_in, 0)
+                       OR IFNULL(OLD.tokens_out, 0) != IFNULL(NEW.tokens_out, 0)
+                       OR IFNULL(OLD.client_msg_id, '') != IFNULL(NEW.client_msg_id, '')
+                       OR IFNULL(OLD.attrs, '') != IFNULL(NEW.attrs, '');
+                END;
+            """)
+            db.setTransactionSuccessful()
+        } finally { db.endTransaction() }
+
+        val recent = storage.getRecentMessages(10).filter { it.id in ids }
+        assertEquals("all three captured rows are returned", ids, recent.map { it.id })
+    }
+
     @Test
     fun testCommitChange_UpdateNodeAndEvent() = runBlocking {
         // Initial insert

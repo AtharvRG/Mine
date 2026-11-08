@@ -23,6 +23,7 @@ interface Storage {
     suspend fun redactMessage(id: String)
     suspend fun getRawMessage(id: String): String?
     suspend fun hasRawMessage(id: String): Boolean
+    /** The newest [limit] messages, **oldest first** — the order the conversation was written. */
     suspend fun getRecentMessages(limit: Int): List<ChatMessage>
 
     suspend fun getSetting(key: String): String?

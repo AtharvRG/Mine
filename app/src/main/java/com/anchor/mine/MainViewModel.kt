@@ -78,10 +78,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 // E-17: a capture stored while the app was dead (or whose turn failed) is still
                 // unanswered in the raw log. Send each one now, oldest first. The captured row is
                 // the user turn, so nothing is duplicated; an answered capture is not in this list.
-                val pendingCaptures = com.anchor.core.capture.QuickCapture.pending(loadedStorage)
-                pendingCaptures.firstOrNull()?.let { firstId ->
-                    val firstText = loadedStorage.getRawMessage(firstId)
-                    if (!firstText.isNullOrBlank()) controller!!.sendText(firstText, firstId)
+                //
+                // Every capture is sent, not just the first: a turn's reply is an assistant row
+                // that answers *every* capture before it, so sending only the oldest would mark
+                // the rest answered without ever showing them to the model. sendText queues each
+                // behind the previous one (a turn already streaming is not dropped, it is waited
+                // for), so the replies arrive in the order the user wrote them.
+                for (captureId in com.anchor.core.capture.QuickCapture.pending(loadedStorage)) {
+                    val text = loadedStorage.getRawMessage(captureId)
+                    if (!text.isNullOrBlank()) controller!!.sendText(text, captureId)
                 }
 
                 // H-11 (R-15): a denied POST_NOTIFICATIONS is not an error in the controller, so
