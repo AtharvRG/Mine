@@ -211,5 +211,11 @@ Rejected: printing only the first line of the message (the diagnostic fields `Al
 - **Rejected:** the audit's "inject a `File` copy hook" (not implementable — see above); directory-at-the-live-path (proven non-throwing on device, `H04-DIAG SWAP-ENTRY … isDir=true`); duplicate-primary-key injection (aborts inside the temp transaction, strictly before the swap — it passed 8/8 on unfixed code and was deleted); a debug-only `BuildConfig` flag (would test a different code path from the one that ships).
 - **Accepted residual:** the seam is a production constructor parameter whose only non-default value is supplied by tests. It is a plain function default with no branching in the swap, so the shipped path is the default value; the cost is one extra parameter on a class that already takes eight.
 
-(Next free: D-130. Add: date, decision, reason, rejected.)
+## D-130 — Blueprint 23 aliases are in-memory per gateway instance, not an `alias_map` table (2026-11-08)
+- **Decision:** `Gateway` holds `aliasMap: ConcurrentHashMap<String, String>` and emits `n_<id>`/`s_<id>`/`m_<id>`/`p_<id>`/`r_<id>`/`u_<id>` in tool results; `resolveRef` maps an issued alias back and passes an unissued alias-shaped ref through; `unknown_ref` is raised at the storage lookup. No `alias_map` table, no schema version bump.
+- **Reason:** blueprint 23 §4 describes an `alias_map` table, but the aliases it defines are per-turn — a new turn replaces them — and one `Gateway` instance exists per chat controller, so the instance lifetime already equals the alias lifetime. A table would add a v6 migration immediately after the T19 schema repair, for state that is meaningless across turns. Second reason: real row ids share the alias prefixes (proposals `p_<hex6>`, soul facts `s_<hex8>`, raw messages `mN`), so an alias-shaped ref that the map never issued cannot be distinguished from a real id at resolution time; rejecting it there would reject real ids. The lookup is the only place that can tell.
+- **Rejected:** a durable `alias_map` table (schema churn for per-turn state); rejecting unissued alias-shaped refs in `resolveRef` (breaks `p_<hex6>` proposal ids and `s_<hex8>` soul-fact ids); real ids in tool output (blueprint 23 §2.2 forbids it — the model must never see a row id).
+- **Accepted residual:** aliases do not survive a process restart mid-turn; a model that echoes an alias from a previous turn gets `unknown_ref` and must search again. That is the intended failure, not a bug.
+
+(Next free: D-131. Add: date, decision, reason, rejected.)
 

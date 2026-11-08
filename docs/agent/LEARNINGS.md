@@ -215,3 +215,58 @@
   initially claimed the header was "blank" in that file. It was absent, not blank — an absence of
   evidence read as evidence of absence. When a capture is filtered, state which claims it *can* support
   and source the rest elsewhere.
+
+## 2026-11-08 — v1 scope audit + `search_history`
+- **A green unit suite can certify dead code.** `NudgeEngineTest` passes against a class no
+  production path constructs (`grep -rn "NudgeEngine" core/src/main app/src/main` outside its own
+  file → 0 hits). Before citing a test as proof a feature works, grep for a *production* caller of
+  the class under test. Same shape: `learned_pref`/`signal_log` tables nothing reads or writes.
+- **A prompt line is part of the feature.** `search_history` storage code is unreachable until the
+  tool is listed in `ChatController`'s prompt tool list. A tool that exists in the gateway but not
+  in the prompt is dead code that looks finished. Ship the storage, the dispatch, the formatter,
+  **and** the prompt line together.
+- **`msg_chunk` links to `raw_message` by id string, not a column.** Columns are `id, day_key,
+  ts_start, ts_end, msg_ids, text, extractor_version`; the join is `'chunk_' || raw_message.id`.
+  `msg_ids` is NOT NULL, so a hand-inserted test chunk must set it.
+- **Redaction safety belongs in the query, not in the chunk table.** A stale `msg_chunk` row can
+  outlive its message's redaction. Re-checking `content IS NOT NULL AND redacted_at IS NULL` in the
+  join is what keeps redacted text out — the test inserts a stale chunk on purpose to prove it.
+- **"No device" is a recorded state, not a pass.** `adb devices` went from `10.175.15.5:5555
+  offline` to an empty list mid-session; `adb connect` then timed out (10060) and there is no
+  emulator installed. Write the test, compile it, and record it as unverified — never tick it green
+  on a compile alone.
+- **The Bash tool keeps its cwd between calls.** A `cd core/build/test-results/test` left a later
+  `ls app/src/` reporting "No such file or directory". Use absolute paths.
+- **A stale checkbox can be a duplicate row, not a stale fact.** `TASKS.md:25` (trigger upgrades)
+  was a third copy of the schema-repair T19 that `:155` already records as done. Fold duplicates
+  into the completed row and cross-reference, rather than ticking both.
+- **An external-content FTS5 table resolves a NULL rowid to a content row.** `msg_chunk_fts` is
+  `content='msg_chunk'`, so it stores no text of its own. The first `searchHistory` query joined
+  `msg_chunk_fts.rowid = (SELECT rowid FROM msg_chunk WHERE id = 'chunk_' || raw_message.id)`; for a
+  message with no chunk (every `system` message) the subquery is NULL, and SQLite then resolved that
+  NULL to the content row at the same position — returning the system message **twice**. Join
+  `raw_message -> msg_chunk -> msg_chunk_fts` by id instead of a correlated rowid subquery.
+- **A device run of a new test is the only thing that proves it.** `testSearchHistory_…` compiled
+  clean and passed review; it failed on the first real device run with a duplicate-row bug no
+  compile or unit test could see. The `:core` fake storage cannot reproduce an FTS5
+  external-content quirk — only real SQLite can.
+
+## 2026-11-08 (cont.) — per-turn aliases, and splitting one file into two commits
+- **Real ids share the alias prefixes, so `unknown_ref` cannot be raised at resolution.** Proposals
+  are `p_<hex6>`, soul facts `s_<hex8>`, raw messages `mN`. A ref that looks like an alias but was
+  never issued is indistinguishable from a real id until the storage lookup runs. Rejecting it in
+  `resolveRef` would reject real ids; the lookup is the only place that can tell (D-130).
+- **A per-turn map does not need a table.** Blueprint 23 §4 describes an `alias_map` table, but the
+  aliases are per-turn and one `Gateway` instance exists per chat controller, so instance lifetime
+  already equals alias lifetime. A table would have meant a v6 migration immediately after T19 for
+  state that is meaningless across turns.
+- **Entangled hunks need a rebuild, not path-level staging.** `formatSearchResults` is introduced by
+  the `search_history` change and calls `aliasFor` from the alias change, so `git add <file>` cannot
+  separate them. Extract `git show HEAD:<file>`, apply change-set A, commit, then re-apply B.
+- **`git checkout -- <file>` is destructive to uncommitted work with no recovery.** It wiped the
+  alias layer once this session; it was only recovered because the diffs had just been read. Commit
+  or stash before any checkout, and prefer rebuilding from `git show HEAD:<file>` into a temp path.
+- **Changing a return type from nullable to non-null leaves dead elvis operands.** `resolveRef` went
+  `String?` → `String` and three call sites kept `?: targetRef` / `?: return ToolResult.Error(…)`.
+  They compile — the elvis is just unreachable — so the compiler will not find them; grep the call
+  sites after any nullability change.
