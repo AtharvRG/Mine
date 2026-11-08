@@ -22,7 +22,7 @@ Final (HANDOFF + commits): **in progress**.
 | Storage opens | `r10g-fresh-01-storage-opened.png` | PASS |
 | A message is sent | `r10g-reply.xml` — live LLM reply via saved Mistral config (`r10g-chat-verified.xml`) | PASS |
 | A reminder fires | `r10g-alarm-armed.txt` (`window=0 flags=0x3`, `Alarm clock:` block) + `r10g-notification-fired.txt` (`importance=4 channel=mine_reminders_v3 category=alarm`) + `r10g-notification-shade.xml` | PASS |
-| Export verifies | `r10g-export-test.txt` — `tests 7 failures 0 errors 0` (gradle exit 1 = ROM teardown artifact) | PASS |
+| Export verifies | `r10g-export-test.txt` — `tests 7 failures 0 errors 0` (gradle exit 1 = AGP 9.4.0 / UTP 32.4.0 exit-code defect, D-123 — not a teardown artifact) | PASS |
 
 Full report: `docs/agent/evidence/r10g-fresh-evidence.md`.
 

@@ -11,7 +11,9 @@ import com.anchor.core.models.Reminder
 import com.anchor.mine.MineApp
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -36,7 +38,8 @@ class AlarmReceiverTest {
         val storage = (context.applicationContext as MineApp).sharedStorage.await()
         
         val rId = "r_valid_test"
-        storage.saveReminder(Reminder(rId, "Test", System.currentTimeMillis() - 1000))
+        val scheduledFor = System.currentTimeMillis() - 1000
+        storage.saveReminder(Reminder(rId, "Test", scheduledFor))
         
         val receiver = AlarmReceiver()
         val intent = Intent().apply { putExtra("EXTRA_ID", rId) }
@@ -50,6 +53,13 @@ class AlarmReceiverTest {
         
         assertEquals(rId, AlarmReceiver.lastFiredId)
         assertNull("Row must be deleted after firing", storage.getPendingReminders().find { it.id == rId })
+
+        // D-124: a delivered reminder leaves a latency record, mirroring the missed path.
+        val fire = storage.getReminderFire(rId, "delivered")
+        assertNotNull("Delivered reminder must record a reminder_fire row", fire)
+        assertEquals("scheduledFor must be the reminder's own fire time", scheduledFor, fire!!.scheduledFor)
+        assertTrue("latency must be at least the 1 s the reminder was already overdue", fire.latencyMs >= 1000)
+        assertEquals("firedAt - scheduledFor must equal latencyMs", fire.latencyMs, (fire.firedAt - fire.scheduledFor).toInt())
     }
 
     @Test
@@ -111,5 +121,78 @@ class AlarmReceiverTest {
         assertEquals("Missed: Doctor Appointment", text)
 
         notificationManager.cancel(rId.hashCode())
+    }
+
+    /**
+     * R-54: when storage fails, the catch-all fallback still posts a notification. Before the fix
+     * it recorded nothing, so the next sweeper saw an unreported instance and posted a SECOND
+     * notification for one fire. The fallback must record `outcome = "errored"` against the
+     * reminder's own fire instant (carried on the intent as EXTRA_SCHEDULED_FOR), and the
+     * reconciler must then treat that instance as already reported.
+     */
+    @Test
+    fun testAlarmReceiver_StorageFails_RecordsErroredFireAndSweeperDedupes() = runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val app = context.applicationContext as MineApp
+        val originalDeferred = app.sharedStorage
+        val realStorage = originalDeferred.await()
+
+        // The reminder's own fire instant, far enough in the past to be "overdue" (> 60 s grace)
+        // so the reconciler would report it if it did not see the errored fire.
+        val rId = "r_errored_${System.currentTimeMillis()}"
+        val scheduledFor = System.currentTimeMillis() - 120_000L
+        realStorage.saveReminder(Reminder(rId, "Errored Path", scheduledFor))
+
+        // Inject the failure the fallback is meant to survive: every await() now throws.
+        val failed = kotlinx.coroutines.CompletableDeferred<com.anchor.core.storage.Storage>()
+        failed.completeExceptionally(IllegalStateException("R-54 injected storage failure"))
+        app.sharedStorage = failed
+        try {
+            val receiver = AlarmReceiver()
+            val intent = Intent().apply {
+                putExtra("EXTRA_ID", rId)
+                putExtra("EXTRA_TEXT", "Errored Path")
+                putExtra("EXTRA_SCHEDULED_FOR", scheduledFor)
+            }
+            receiver.onReceive(context, intent)
+
+            // The fallback runs on Dispatchers.IO; poll for its durable write.
+            var fire: com.anchor.core.models.ReminderFire? = null
+            var elapsed = 0
+            while (fire == null && elapsed < 5000) {
+                kotlinx.coroutines.delay(250)
+                elapsed += 250
+                fire = realStorage.getReminderFire(rId, "errored")
+            }
+            assertNotNull("R-54: fallback must record an 'errored' fire", fire)
+            assertEquals(
+                "R-54: scheduledFor must be the reminder's own fire instant, not 'now'",
+                scheduledFor,
+                fire!!.scheduledFor
+            )
+
+            // The row must survive: a flaky storage must not lose the reminder.
+            assertNotNull(
+                "The reminder row must stay pending after a fallback",
+                realStorage.getPendingReminders().find { it.id == rId }
+            )
+
+            // And the reconciler must not report this instance overdue a second time.
+            val reconciler = com.anchor.core.alarms.AlarmReconciler(
+                realStorage,
+                AndroidAlarmScheduler(context),
+                com.anchor.core.time.SystemClock()
+            )
+            val results = reconciler.reconcile(force = false)
+            val overdueForThis = results.filterIsInstance<com.anchor.core.alarms.ScheduleResult.Overdue>()
+                .filter { it.reminderId == rId }
+            assertTrue(
+                "R-54: an errored fire must dedupe the overdue report, got $overdueForThis",
+                overdueForThis.isEmpty()
+            )
+        } finally {
+            app.sharedStorage = originalDeferred
+            realStorage.deleteReminder(rId)
+        }
     }
 }

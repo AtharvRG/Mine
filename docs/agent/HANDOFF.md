@@ -1,79 +1,128 @@
-# HANDOFF (Current batch — R10g + D-105 evidence done; Final commit pending)
+# HANDOFF (H-04 + T19 closed with device RED+GREEN; D-105 both halves captured, by-eye verdict outstanding)
 
 ## Current Work & Status
-- **R10g — DONE.** Clean-install minified release APK run on current code. 4/4 capabilities PASS. Report: `docs/agent/evidence/r10g-fresh-evidence.md` (supersedes Nov 5 `r10g-evidence.md`).
-- **D-105 — ALARM half evidenced, GENTLE half blocked, NOT final.** Contamination-free Pair C captured (`d105-clean-alarm-tier.png` vs `d105-clean-no-alarm.png`; 55 px container delta, blank `Next alarm clock information` in the absent half). The Gentle half cannot be produced on this build (`Run 5-sec Self Test` is ALARM-only, the Gentle instrumentation test uses a 1.5 s window, and the chat path fails silently via O-1). Report: `docs/agent/evidence/d105-evidence-fresh.md`. **User must check the PNGs by eye**; task stays `[~]` until they do.
-- **Final — in progress.** HANDOFF block + `03_CURRENT_TASK.md` + commits.
+- **The device is reachable** — `moto g73 5G - 14` at `10.175.15.5:5555`.
+- **#152 H-04** — DONE. RED and GREEN captured on device. See §2.
+- **#153 T19** — DONE. RED and GREEN captured on device. See §2.
+- **#121 D-105** — **ALARM half** proven by screenshots (Pair C). **GENTLE half CAPTURED 2026-11-08**
+  (same-session `dumpsys alarm` + SystemUI + screenshot). The **by-eye verdict is yours** — see §5.1.
+- **No commits this session.** The tree is dirty with many pre-existing changes.
 
-## 1. What Changed (files and commits)
-**New evidence files (uncommitted, this session):**
-- `docs/agent/evidence/r10g-fresh-evidence.md` — R10g report, 4/4 capabilities with file/byte citations.
-- `docs/agent/evidence/d105-evidence-fresh.md` — D-105 report, alarm-tier vs no-alarm SystemUI pair.
-- `docs/agent/evidence/d105-fresh-alarm-tier.png` (111531 B, 16:00) — alarm pending, icon present.
-- `docs/agent/evidence/d105-fresh-no-alarm.png` (98694 B, 16:01) — alarm consumed, icon absent.
-- `docs/agent/evidence/d105-fresh-systemui-alarm.txt` — SystemUI dump while armed.
-- `docs/agent/evidence/d105-fresh-systemui-gentle.txt` — SystemUI dump after fire.
-- Plus the large untracked `r10g-*` / `d105-*` raw capture set from this and the prior session (XML dumps, PNGs, alarm dumps).
+## 1. What Changed
+### This segment (docs + evidence only; no code)
+- `docs/agent/evidence/d105-gentle-pending.png` (521897 B, 1080×2400, dark theme, corner `[10,16,20]`)
+  — captured at device clock `07:51:41`, 51 s before the GENTLE alarm's `origWhen`.
+- `docs/agent/evidence/d105-gentle-alarms-dump.txt` — the armed GENTLE alarm:
+  `tag=*walarm*:com.anchor.mine/.alarms.AlarmReceiver`,
+  `type=RTC_WAKEUP origWhen=2026-11-08 07:52:33.449 window=+1m29s998ms repeatInterval=0 count=0 flags=0x20`,
+  **no `Alarm clock:` block**. (This dump is a filtered extract — it does not contain the
+  `Next alarm clock information` header; the blank-`nextAlarmClock` claim is in
+  `d105-evidence-fresh.md`, and the comparable Nov 5 file `d105-alarms-gentletier-pending.txt:188-189`
+  shows the blank header for the same tier.)
+- `docs/agent/evidence/d105-gentle-systemui.txt` and `d105-gentle-systemui-2.txt` — two samples,
+  each with three `StatusBarIconView(slot='alarm_clock' …)` instances (lines 3/30/41 and 3/32/59),
+  all reading `visibleState=2` (`HIDDEN`) and `iconAppearAmount=0.0`. Zero `visibleState=ICON`
+  anywhere in either file.
+- `docs/agent/evidence/d105-gentle-statusbar-crop.png` (x700–1080, y20–100, 3× NEAREST) and
+  `d105-gentle-statusbar-left-crop.png` (x0–400, y20–100, 2×) — upscaled crops for your by-eye check.
+- `docs/agent/evidence/d105-evidence-fresh.md` — old "blocked on O-1" line softened to
+  "(as of 2026-11-06)"; new section `### 2026-11-08 — Gentle half CAPTURED …` with the verbatim dump,
+  a three-column table (Gentle armed / nothing armed / ALARM armed), the dark-theme caveat, and a
+  machine-checkable verdict line.
+- `docs/agent/TASKS.md:30` (T-C) and `:82` (D-105) — Gentle-half clauses updated to "captured".
+- `docs/agent/LEARNINGS.md` — new `## 2026-11-08 — D-105 Gentle capture` block (4 bullets).
+- `docs/agent/STATE.md:2` and the `UNVERIFIED (from old chat / unproven)` D-105 bullet — updated.
 
-**Docs updated (uncommitted):**
-- `docs/agent/TASKS.md` — R10g `[x]`, D-105 `[~]` with evidence pointers.
-- `docs/agent/STATE.md` — O-1 and O-2 added under "Known broken"; D-105 by-eye line under UNVERIFIED.
-- `docs/agent/LEARNINGS.md` — 5 new entries (SystemUI dump location, `exec-out screencap`, stable icon fields, silent release build, exit-code citation rule).
-- `docs/agent/HANDOFF.md` — this file.
-- `03_CURRENT_TASK.md` — rewritten for this batch.
+### Earlier this session
+- H-04: `app/.../export/AndroidExportManager.kt` — swap block final (md5 `1e69ac9ce4a8cc5f8c835539e58e7031`,
+  backup `build/tmp/h04-seam-fixed.kt`): close live → copy live to `$liveDbName.bak` → copy temp over
+  live → delete stale `-wal`/`-shm` → re-open and `PRAGMA quick_check` → on any exception restore
+  `.bak` and rethrow. Both copies and the rollback go through the constructor seam
+  `copyFile: (File, File) -> Unit` (default `src.copyTo(dst, overwrite = true)`). D-129 records why.
+- H-04 test: `ExportTest.testImport_SwapFailureRestoresLiveDbFromBak` injects through the seam
+  (copy #2 throws), asserts `copies == 3`, the exception surfaced, the live DB is byte-identical, and
+  `raw_message` still has 2 rows after reopening.
+- T19: `app/.../storage/MineDatabaseHelper.kt` — md5 `afb8d83e46b610302d8bb8aa3fceda95` (backup
+  `build/tmp/t19-fixed-backup.kt`): `INDEXES`/`createIndexes(db)` from **both** `onCreate` and
+  `onUpgrade`; `FTS_TABLES`; all 13 triggers in `TRIGGER_NAMES` dropped before recreate in
+  `createTriggers`.
+- T19 test: `DatabaseMigrationTest.testOnUpgrade_RestoresTriggersAndIndexes`.
+- Docs: `TASKS.md:149`/`:154` → `[x]` with RED/GREEN lines; `LEARNINGS.md` new section; `DECISIONS.md` D-129.
 
-**No source code changed this session.**
-
-## 2. What Is Verified (command + exit code)
-- Build: `BUILD SUCCESSFUL in 5m 34s` (`docs/agent/evidence/r10g-build-release.txt`).
-- Install: `Performing Streamed Install` / `Success` (`r10g-install.txt`).
-- Provenance: `firstInstallTime == lastUpdateTime == 2026-11-06 15:06:40`, `versionName=1.0.0`, `versionCode=10000`, flags `[ HAS_CODE ALLOW_CLEAR_USER_DATA ]` (no DEBUGGABLE), `initiatingPackageName=com.android.shell` (`r10g-fresh-package.txt`).
-- Storage opens: `r10g-fresh-01-storage-opened.png`.
-- Message sent: live LLM reply in `r10g-reply.xml` via saved Mistral config (`r10g-chat-verified.xml`).
-- Reminder fires: armed `setAlarmClock` (`window=0 flags=0x3`, `Alarm clock:` block) in `r10g-alarm-armed.txt`; notification `importance=4 channel=mine_reminders_v3 category=alarm` in `r10g-notification-fired.txt`; shade `r10g-notification-shade.xml`.
-- Export verifies: `tests 7 failures 0 errors 0` (`r10g-export-test.txt`), gradle exit 1 = ROM teardown artifact.
-- D-105 alarm tier: `slot='alarm_clock' visibleState=ICON iconAppearAmount=1.0`, holder `visible=true`, container `640,30-935,90`, `Next alarm clock information: ... time:1793961054005 = +3s226ms`.
-- D-105 no alarm: `visibleState=HIDDEN iconAppearAmount=0.0`, holder `visible=false`, container `695,30-935,90`, `Next alarm clock information:` blank.
+## 2. What Is Verified
+| Claim | Command | Result |
+|---|---|---|
+| H-04 GREEN | `./gradlew :app:connectedDebugAndroidTest :app:connectedDebugAndroidTestVerify --continue -P…class=com.anchor.mine.export.ExportTest` | `CONNECTED GATE: PASS - 1 test(s), 0 failed, 0 skipped (source: xml)` — `build/tmp/h04-green3.log`, re-confirmed in `build/tmp/h04-t19-green.log` |
+| H-04 RED is real | same command with the swap reverted to a single `copyTo` (`H04-RED-PROBE`) | `AssertionError: The failed copy must be followed by exactly one rollback copy expected:<3> but was:<1>` |
+| T19 GREEN | `… --continue -P…class=com.anchor.mine.storage.DatabaseMigrationTest` | `CONNECTED GATE: PASS - 2 test(s), 0 failed, 0 skipped (source: xml)` — `build/tmp/t19-green.log`; XML `tests="2" failures="0" errors="0"` |
+| T19 RED is real | same command with the `DROP TRIGGER IF EXISTS` loop removed (`T19-RED-PROBE`) | `CONNECTED GATE: FAIL - 2 test(s), 1 failed` — `AssertionError: T19: onUpgrade must replace the stale trigger body (got: … 'stale body that…` — `build/tmp/t19-red.log` |
+| Both fixes restored after their RED probes | `md5sum` on both files; `grep -c "RED-PROBE"` | `1e69ac9c…` / `afb8d83e…`; `0` occurrences in each |
+| No diagnostic logging left | `grep -rn "H04-DIAG\|T19-RED-PROBE\|H04-RED-PROBE" app/src/` | no matches |
+| Full connected suite | `./gradlew :app:connectedDebugAndroidTest :app:connectedDebugAndroidTestVerify --continue` | `CONNECTED GATE: PASS - 85 test(s), 0 failed, 0 skipped (source: xml)` — `build/tmp/full-suite-h04-t19.log`; XML `tests="85" failures="0" errors="0"` |
+| D-105 ALARM half — icon appears | Pair C screenshots | `visibleState=ICON` 252 px vs `visibleState=HIDDEN` 197 px, 55 px delta |
+| D-105 GENTLE half — alarm armed and icon absent | `d105-gentle-alarms-dump.txt` + `d105-gentle-systemui.txt`/`-2.txt` | `*walarm*` + `window=+1m29s998ms` + `flags=0x20` (dump lines 3-4), `grep -c "Alarm clock:"` = **0**; 6 `slot='alarm_clock'` views across the 2 samples, all `visibleState=2` / `iconAppearAmount=0.0`, `grep -c "visibleState=ICON"` = 0 in both |
+| D-105 GENTLE capture run was clean | `./gradlew :app:connectedDebugAndroidTest :app:connectedDebugAndroidTestVerify --continue -P…class=com.anchor.mine.alarms.AlarmSelfTest -P…d105GentleHoldMs=90000` | `CONNECTED GATE: PASS - 3 test(s), 0 failed, 0 skipped (source: xml)` — `build/tmp/d105-gentle-run3.log` |
+| Pair C pixel discriminator still reproduces on its own controls | PIL scan `x 600–760, y 30–95, r>=251` on `d105-clean-no-alarm.png` / `d105-clean-alarm-tier.png` | start 742 / count 18 vs start 690 / count 50 — matches the numbers in `d105-evidence-fresh.md` |
 
 ## 3. What Is NOT Verified
-- **D-105 by-eye verdict** — user has not looked at the two PNGs. Do not mark final.
-- **O-1 root cause** — the release build logs nothing; the CREATE defect is characterised from UI + alarm state only.
-- **O-2 scope** — only one reproduction captured.
-- Core/app/connected test suites were NOT re-run this session (no source changed).
+- **D-105 by-eye verdict — both halves.** I cannot close a `[HUMAN-GATED]` item.
+- **The Gentle PNG is not a differential.** It is dark-theme; the Pair C light-glyph scan is
+  inapplicable, and there is no same-session dark "nothing armed" control. The Gentle proof is the
+  `dumpsys alarm` + SystemUI pair, not the image. A dark-theme threshold (mean ≥ 120) finds glyphs at
+  `747-779, 794-831, 890-920, 935-1027` — all ~30 px, the right-hand status-bar icons — with no
+  extra 25 px gap-plus-glyph of the kind the alarm icon adds. Consistent, not conclusive.
+- **T19 behavioural risk on real opens:** `createTriggers` drops and recreates all 13 triggers on
+  **every** `onOpen`. The migration test exercises `onUpgrade` directly, not the drop-then-fail path.
+  If a statement between drops and recreates fails, append-only enforcement is absent until next open.
+- **H-04 seam residual:** `copyFile` is a production constructor parameter whose only non-default
+  value is supplied by tests (D-129). The shipped path is the default value.
 
 ## 4. Current Failing Tests
-- None known. No test suite was executed this session; last recorded green state: 247 core / 9 app / 53 connected (Part B), export 7/7 on device.
+None known. `BUILD FAILED` appears in `t19-green.log` alongside `CONNECTED GATE: PASS` — that is the
+AGP 9.4.0 exit-code defect (D-123), not a failure.
 
-## 5. Open Decisions Needing User
-- **D-105:** confirm by eye — `d105-fresh-alarm-tier.png` vs `d105-fresh-no-alarm.png`.
-- **O-1 triage:** should the `set alarm ...` CREATE failure block release? It is user-visible and silent.
-- Confirm D-117 Rejected-line correction (carried over from Part B).
-- Test-count discrepancy to reconcile: TASKS line 66 says "242 core, 9 app, 53 connected", the Part B HANDOFF said 247 core / 309 total, Part B reviewer reported 249/249. Needs one recount run before the next evidence summary.
+## 5. Open Decisions Needing You
+1. **D-105 final by-eye verdict is yours.** Preferred pair: `docs/agent/evidence/d105-clean-alarm-tier.png`
+   vs `d105-clean-no-alarm.png` (Pair C — the only pair whose "absent" half is provably free of any
+   other `setAlarmClock`, including your own deskclock alarms). Then look at
+   `d105-gentle-statusbar-crop.png` for the Gentle half.
+2. **Commit H-04 + T19 now?** They are device-verified and the full suite is 85/85. Nothing has been
+   committed this session.
+3. **T19's trigger-drop-on-every-open cost.** Deliberate trade for correctness. If you'd rather pay
+   it only on upgrade, say so and I'll gate the drop behind a version comparison.
 
-## 6. Exact Next Step
-- Commit the evidence + docs (see §8), then ask the user to check `d105-fresh-alarm-tier.png` and `d105-fresh-no-alarm.png` by eye.
-- After that: triage O-1 — reproduce `set alarm for drink water in 3 minutes` on a **debug** build and capture logcat, since the release build cannot be traced.
+## 6. Exact Next Step (one command)
+```
+git status && git diff --stat
+```
+Then decide §5.2 (commit H-04 + T19). There is no remaining automated work on D-105 — it is waiting
+on your eyes (§5.1).
 
 ## 7. Traps for the Next Run
-- **SystemUI icon state is NOT in `dumpsys window`.** Use `dumpsys activity service com.android.systemui/.SystemUIService` and grep `StatusBarIconControllerImpl` / `StatusBarIconList`.
-- **`adb shell screencap -p /sdcard/x.png` fails under Git-Bash** (path mangling → usage error). Use `adb exec-out screencap -p > local.png`.
-- **The self-test alarm lives ~5 s.** Arm it (`Reminders` tab at `405 177`, then `Run 5-sec Self Test` at `267 337`) and capture the dump + screenshot in the SAME command chain; a separate round trip loses the window.
-- **Icon alpha is animated** — rely on integer `visibleState` and the holder's `visible=`, plus the 55 px container delta.
-- **Minified release build is silent** — `run-as` fails (`package not debuggable`), `logcat -s "Mine:*"` returns 0 lines. Root-causing anything found on it requires a debug build.
-- **`connectedAndroidTest` exits 1 even when green** — always cite the parsed XML counts next to the exit code.
-- **`input keyevent 4` on the Reminders tab exits to the launcher** — return with `am start -n com.anchor.mine/.MainActivity`.
-- **`adb shell input text` mangles multi-`%s` strings** — use exactly ONE `%s` (which becomes a space) and literal spaces elsewhere (`remind%sme%to%stretch%sin%2%minutes`); multiple `%s` merge the text. Verify field text via a dump before tapping Send.
-- **`slot='alarm_clock'` is app-agnostic** — ANY app holding a `setAlarmClock` (e.g. the user's own `com.google.android.deskclock` alarms) keeps the icon lit with zero Mine alarms. An "absent" capture is only valid when `Next alarm clock information:` is blank AND the holder reads `visible=false`. `cmd alarm` has no `cancel`; advance the clock with `cmd alarm set-time <epoch_ms>` instead.
-- **The 55 px `StatusIconContainer` delta is the invariant, not the absolute bounds** — the left edge drifts with other status-bar icons (observed 295→240 and 252→197). Glyph polarity is LIGHT: scan for `r >= 251`, not dark pixels.
-- **AGP uninstalls both APKs after every connected run** — capture device dumps before the run or reinstall first.
-
-## 8. Commit Plan
-One commit for the batch:
-```
-git add docs/agent/evidence/ docs/agent/TASKS.md docs/agent/STATE.md docs/agent/LEARNINGS.md docs/agent/HANDOFF.md 03_CURRENT_TASK.md
-git commit -s -m "docs(evidence): fresh R10g clean-install run and D-105 status-bar pair; record O-1/O-2 defects"
-```
-`docs/agent/evidence/` includes ~140 untracked capture files — intended, they are the raw provenance for both reports.
-
-## Operating Rules
-- Commit per task using `git commit -s`. Never commit failing tests. One task per run; stop and await user approval before proceeding to the next task.
+- **Never run two connected invocations at once.** The second one dies with
+  `java.nio.file.FileSystemException: …logcat-…AlarmSelfTest-testAlarmClock_NextAlarmClockVerification.txt:
+  The process cannot access the file because it is being used by another process`, which the gate then
+  reports as the phantom `CONNECTED GATE: FAIL - no readable result artifact`. Wait for the first
+  invocation to finish; re-run cleanly rather than retrying the overlapping one.
+- **A stale XML is not the failing run's result.** When a run dies before UTP writes, the XML on disk
+  is the *previous* run's. The failure detail only exists in the gate line / `gate.json`
+  (`"tests": 0`, `"source": null`).
+- **A filtered extract is not a dump.** `d105-gentle-alarms-dump.txt` was produced by a `grep` and never
+  contained the `Next alarm clock information` header; three docs briefly claimed it was "blank" there.
+  It was absent. Say which claims a filtered capture can support.
+- **A pixel-scan discriminator does not transfer across themes.** The Pair C scan (`r>=251`) is
+  meaningless on a dark screenshot. Re-validate any scan on its own controls first.
+- **`File.copyTo(overwrite = true)` deletes a directory target recursively; `File.delete()` removes
+  an empty directory.** Every file-system injection for H-04 silently succeeded. Use the seam.
+- **`copyTo` is a `kotlin.io` extension**, so `override fun copyTo` is `NOTHING_TO_OVERRIDE`.
+- **A rollback adds a copy.** backup + failed swap + rollback = 3; `expected:<2>` was the test's bug.
+- **Run `connectedDebugAndroidTest` and `…Verify` in the same `--continue` invocation.** Verify alone
+  reads the previous run's XML and reports a phantom `FAIL - 1 test(s)`.
+- **Comma-separated `class=A#m,B#n` silently selects only the first.** One class per invocation;
+  check `tests=` in `app/build/outputs/androidTest-results/connected/debug/*.xml`.
+- **`connectedDebugAndroidTest` exits 1 even on a green run (D-123).** Only the gate line counts.
+- **The T19 identifier is overloaded.** `TASKS.md:24` is the completed "T19 Release (R8)" smoke test;
+  this T19 is the schema-repair one from `robustness-audit.md:43`.
+- **A `[x]` can be wrong.** Cross-check a checkbox against the decision line it cites.
+- Never leave `-Pandroid.testInstrumentationRunnerArguments.class=…` on a full-suite run.
+- `connected/` holds a stale `release/` variant; scope recounts to `connected/debug`.

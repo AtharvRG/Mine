@@ -1,0 +1,159 @@
+11-07 03:10:36.902  6432  6449 I TestRunner: started: testGentleReminderFires_SetsFlag(com.anchor.mine.alarms.AlarmSelfTest)
+11-07 03:10:36.902   886   886 D TlcKM   : TEE_Finish
+11-07 03:10:36.902   886   886 D TlcKM   : split_update_chunks
+11-07 03:10:36.903   886   886 D TlcKM   : release_operation_slot: release op slot #0 (handle 0x75f0552a9fc76ac0; 0 ops live)
+11-07 03:10:36.903   886   886 D TlcKM   : TEE_Finish exiting with 0
+11-07 03:10:36.903   886   886 D TlcKM   : TEE_Abort
+11-07 03:10:36.903   886   886 E TlcKM   : lookup_operation: op 0x75f0552a9fc76ac0 not found
+11-07 03:10:36.903   886   886 E TlcKM   : lookup_operation(session, operation_handle, &op) == -28
+11-07 03:10:36.903   886   886 D TlcKM   : TEE_Abort exiting with -28
+11-07 03:10:36.907  6432  6449 I UiAutomation: Initialized for user 0 on display 0
+11-07 03:10:36.912  6432  6450 D nativeloader: Load /data/app/~~Hxc0-hqnqhzkT7kL8fXq_A==/com.anchor.mine-1-m3DfCs7OwfIKPf_QCyvQ==/base.apk!/lib/arm64-v8a/libsqlcipher.so using class loader ns clns-4 (caller=/data/app/~~Hxc0-hqnqhzkT7kL8fXq_A==/com.anchor.mine-1-m3DfCs7OwfIKPf_QCyvQ==/base.apk!classes12.dex): ok
+11-07 03:10:36.912  1198  1295 E BufferQueueDebug: [WindowToken{310ac type=2032 android.os.Binder@2471e5f}#36769](this:0xb400007c08d17f18,id:-1,api:0,p:-1,c:-1) id info cannot be read from 'WindowToken{310ac type=2032 android.os.Binder@2471e5f}#36769'
+11-07 03:10:36.913  1198  1295 I BufferQueueDebug: [WindowToken{310ac type=2032 android.os.Binder@2471e5f}#36769](this:0xb400007c08d17f18,id:-1,api:0,p:-1,c:-1) BufferQueue core=(1198:/system/bin/surfaceflinger)
+11-07 03:10:36.922  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:10:36.922  1134  1491 I hwcomposer: [DRMDEV] (0) failed to waitNextVsync: -1  
+11-07 03:10:36.924  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:10:36.927  8312 27537 D AccessibilitySourceService: enabled a11y services count 1
+11-07 03:10:36.935  6432  6450 I SQLiteConnection: Database keying operation returned:0
+11-07 03:10:36.937  6432  6450 I SQLiteConnection: Database keying operation returned:0
+11-07 03:10:36.938  8312 27537 D AccessibilitySourceService: a11y source sending 1 issue to sc
+11-07 03:10:36.939  1830  2890 D SafetySourceDataValidat: No cert check requested for package com.google.android.permissioncontroller
+11-07 03:10:36.947  1198  1661 I Scheduler: applyPolicy: UpdateRefreshRate 30 to 120 of group 0: [touch=0:0 touchBoost=0 scroll=0:0 idle=0:0]
+11-07 03:10:36.948  1134  1134 I hwcomposer: [HWCDisplay] [Display_0 (type:1)] fps:3.283975,dur:1827.05,max:1007.54,min:33.36  
+11-07 03:10:36.979  1198  1198 I SurfaceFlinger: setActiveModeInHwcIfNeeded changing active mode to 1(120.00 Hz) for display 0
+11-07 03:10:36.979  1134  1134 I hwcomposer: [HWC] (0) displaySetActiveConfig config:1  
+11-07 03:10:37.012  1198  1198 D SurfaceFlinger: MtkOverrideDuration: update vsync 120
+11-07 03:10:37.012  1198  1198 E SurfaceFlinger: MtkDuration override mode is disabled
+11-07 03:10:37.012  1198  1198 D SurfaceFlinger: MtkOverrideDuration: reset override duration
+11-07 03:10:37.012  1198  1198 I BufferQueueDebug: [WindowToken{6981d0d type=2032 android.os.Binder@d8b0ba4}#36765](this:0xb400007c09db8718,id:-1,api:0,p:-1,c:1198) onDestructor()
+11-07 03:10:37.015  1492  1492 W binder:1492_2: type=1400 audit(0.0:854473): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:10:37.021  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:10:37.023  2298  2298 D ControlsListingControllerImpl: ServiceConfig reloaded, count: 0
+11-07 03:10:37.028  1830  2855 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 03:10:37.029  2298  2298 D FreeformGesture: onStateChanged: State{mIsPackageAvailable=true, mPillGestureEnabled=false, mVibrationEnabled=true, mShortcutPanelShowing=false, mSwipeInEnabled=false, mHunFreeformEnabled=true, mIsInGameMode=false, mIsRecentsShowing=false, mPillXPosition=1, mPillYPosition=600, mIsInTutorialMode=false, mIsDoubleTapPowerEnabled=false}
+11-07 03:10:37.030  1830  2890 W PackageManager: Missing required system package: app.revanced.android.gms, but found with extended search.
+11-07 03:10:37.042  3384  6348 I FraudProtectUtils: Not in testing population, skipping local test bank apps. [CONTEXT service_id=469 ]
+11-07 03:10:37.042  3384  6348 I FraudProtectUtils: (REDACTED) Latest bank app list size: %d, %s isBankApp: false
+11-07 03:10:37.042  3384  6348 W ComponentChangedIO: No package name in intent data or package is not a bank app [CONTEXT service_id=469 ]
+11-07 03:10:37.059  1167  1208 I libPerfCtl: xgfGetFPS pid:31477 fps:-1
+11-07 03:10:37.174  1134  1485 I hwcomposer: [HWC] (0)fire a callback of refresh to SF[4]  
+11-07 03:10:37.181  1167  1193 I mtkpower@impl: [setMode] type:6, enabled:1
+11-07 03:10:37.181  1167  1193 E mtkpower@impl: [setMode] unknown type
+11-07 03:10:37.185  1198  1198 I BufferQueueProducer: [FramebufferSurface](this:0xb400007c2c1716d0,id:-1,api:1,p:1198,c:1198) queueBuffer: fps=1.09 dur=1834.84 max=1244.12 min=590.72
+11-07 03:10:37.256  1167  1193 I mtkpower@impl: [setMode] type:6, enabled:0
+11-07 03:10:37.256  1167  1193 E mtkpower@impl: [setMode] unknown type
+11-07 03:10:37.480  1198  1661 I Scheduler: applyPolicy: UpdateRefreshRate 120 to 30 of group 0: [touch=0:0 touchBoost=0 scroll=0:0 idle=1:1]
+11-07 03:10:37.482  1198  1661 D SurfaceFlinger: MtkOverrideDuration: update vsync 30
+11-07 03:10:37.483  1198  1661 E SurfaceFlinger: MtkDuration override mode is disabled
+11-07 03:10:37.483  1134  1491 I hwcomposer: [DRMDEV] (0) failed to waitNextVsync: -1  
+11-07 03:10:37.483  1198  1661 D SurfaceFlinger: MtkOverrideDuration: reset override duration
+11-07 03:10:37.488  1198  1198 I SurfaceFlinger: setActiveModeInHwcIfNeeded changing active mode to 3(30.00 Hz) for display 0
+11-07 03:10:37.488  1134  1134 I hwcomposer: [HWC] (0) displaySetActiveConfig config:3  
+11-07 03:10:37.489  1134  1491 I hwcomposer: [DRMDEV] (0) failed to waitNextVsync: -1  
+11-07 03:10:37.750  6432  6449 D CompatibilityChangeReporter: Compat change id reported: 160794467; UID 11094; state: ENABLED
+11-07 03:10:37.828  1134  1485 I hwcomposer: [HWC] (0)fire a callback of refresh to SF[4]  
+11-07 03:10:37.835  1492  1492 W HidlServiceManagement: Waited for hwservicemanager.ready for a second, waiting another...
+11-07 03:10:37.835  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:10:37.831  1492  1492 W binder:1492_2: type=1400 audit(0.0:854474): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:10:37.836  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:10:37.831  1492  1492 W binder:1492_2: type=1400 audit(0.0:854475): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:10:37.839  1167  1193 I mtkpower@impl: [setMode] type:6, enabled:1
+11-07 03:10:37.839  1167  1193 E mtkpower@impl: [setMode] unknown type
+11-07 03:10:37.902  1198  1198 I BufferQueueProducer: [StatusBar#90](this:0xb400007c09d63718,id:-1,api:0,p:-1,c:1198) queueBuffer: fps=0.05 dur=19781.77 max=19781.77 min=19781.77
+11-07 03:10:37.907  1167  1193 I mtkpower@impl: [setMode] type:6, enabled:0
+11-07 03:10:37.908  1167  1193 E mtkpower@impl: [setMode] unknown type
+11-07 03:10:38.060  1167  1208 I libPerfCtl: xgfGetFPS pid:2298 fps:-1
+11-07 03:10:38.060  1167  1208 I libPerfCtl: xgfGetFPS pid:31477 fps:-1
+11-07 03:10:38.067  1134  1485 I hwcomposer: [HWC] (0)fire a callback of refresh to SF[4]  
+11-07 03:10:38.107  1134  1134 I hwcomposer: [HWCDisplay] [Display_0 (type:1)] fps:6.906251,dur:1158.37,max:321.40,min:32.40  
+11-07 03:10:38.760  1527  1731 D ULogGuard: Monitoring: 10 threads, 0 requests, 0 time-bombs; 1 guards. ResetFlags = 0x7
+11-07 03:10:38.835  1492  1492 W HidlServiceManagement: Waited for hwservicemanager.ready for a second, waiting another...
+11-07 03:10:38.836  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:10:38.836  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:10:38.831  1492  1492 W binder:1492_2: type=1400 audit(0.0:854476): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:10:38.831  1492  1492 W binder:1492_2: type=1400 audit(0.0:854477): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:10:38.901  6009  6011 I AidlLazyServiceRegistrar: Process has 0 (of 1 available) client(s) in use after notification artd has clients: 0
+11-07 03:10:38.901  6009  6011 I AidlLazyServiceRegistrar: Trying to shut down the service. No clients in use for any service in process.
+11-07 03:10:38.902  6009  6011 I AidlLazyServiceRegistrar: Unregistered all clients and exiting
+11-07 03:10:38.920  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:10:38.915  1492  1492 W binder:1492_2: type=1400 audit(0.0:854478): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:10:38.921  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:10:38.915  1492  1492 W binder:1492_2: type=1400 audit(0.0:854479): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:10:39.060  1167  1208 I libPerfCtl: xgfGetFPS pid:2298 fps:-1
+11-07 03:10:39.060  1167  1208 I libPerfCtl: xgfGetFPS pid:31477 fps:-1
+11-07 03:10:39.239  1830  2109 E WifiDataStall: Ignore this poll. newStats: null txLinkSpeedMbps: 14 rxLinkSpeedMbps: 6 rssi: -49 connectionCapabilities: com.android.server.wifi.WifiNative$ConnectionCapabilities@97eba
+11-07 03:10:39.243  1830  1830 D EnhancedConnectivityController: Wifi onCapabilitiesChanged
+11-07 03:10:39.243  1830  1830 D EnhancedConnectivityController: Default net onCapabilitiesChanged
+11-07 03:10:39.243  1830  1830 D EnhancedConnectivityController: updateDefaultNet:553
+11-07 03:10:39.243  1830  1830 D EnhancedConnectivityController: mayUpdateNotification: shouldShow=true,UidsBlocked=false, net info=net:553,ifName=wlan0,securityType=0,isDefault=true,ssid="iBUS@MUJ",notificationId=0
+11-07 03:10:39.243  1830  1830 D EnhancedConnectivityController: educative notification has been ignored
+11-07 03:10:39.247  3595  4114 I ModemStats: [DataStallDetectService] onCapabilitiesChanged networkCapabilities=[ Transports: WIFI Capabilities: NOT_METERED&INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VPN&VALIDATED&NOT_ROAMING&FOREGROUND&NOT_CONGESTED&NOT_SUSPENDED&NOT_VCN_MANAGED LinkUpBandwidth>=12000Kbps LinkDnBandwidth>=60000Kbps TransportInfo: <SSID: <unknown ssid>, BSSID: 02:00:00:00:00:00, MAC: 02:00:00:00:00:00, IP: /10.175.15.5, Security type: 0, Supplicant state: COMPLETED, Wi-Fi standard: 11ac, RSSI: -49, Link speed: 14Mbps, Tx Link speed: 14Mbps, Max Supported Tx Link speed: 433Mbps, Calculated Tx : 0Mbps, Rx Link speed: 6Mbps, Max Supported Rx Link speed: 433Mbps, Calculated Rx : 0Mbps, Frequency: 5745MHz, Net ID: -1, Metered hint: false, score: 100, isUsable: true, CarrierMerged: false, SubscriptionId: -1, IsPrimary: -1, Trusted: true, Restricted: false, Ephemeral: false, OEM paid: false, OEM private: false, OSU AP: false, FQDN: <none>, Provider friendly name: <none>, Requesting package name: <none><none>MLO Information: , Is TID-To-Link negotiation supported by the AP: false, AP MLD Address: <none>, AP MLO Link Id: <none>, AP MLO Affiliated links: <none>, Vendor Data: <none>> SignalStrength: -49 UnderlyingNetworks: Null]
+11-07 03:10:39.248  3595  4114 I ModemStats: [DataStallDetectService] onCapabilitiesChanged NET_CAPABILITY_VALIDATED=true
+11-07 03:10:39.248  3595  4114 I ModemStats: [DataStallDetectService] onCapabilitiesChanged mDataStallManager.mDataStallInstance=null
+11-07 03:10:39.249  3595  4114 I ModemStats: [DataStallDetectService] onCapabilitiesChanged mDataStallSmart5gManager.mDataStallInstance=null
+11-07 03:10:39.250  3785  4430 D OtaApp  : PollingManagerService:NetworkCallback:networkCapabilities=[ Transports: WIFI Capabilities: NOT_METERED&INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VPN&VALIDATED&NOT_ROAMING&FOREGROUND&NOT_CONGESTED&NOT_SUSPENDED&NOT_VCN_MANAGED LinkUpBandwidth>=12000Kbps LinkDnBandwidth>=60000Kbps TransportInfo: <SSID: <unknown ssid>, BSSID: 02:00:00:00:00:00, MAC: 02:00:00:00:00:00, IP: /10.175.15.5, Security type: 0, Supplicant state: COMPLETED, Wi-Fi standard: 11ac, RSSI: -49, Link speed: 14Mbps, Tx Link speed: 14Mbps, Max Supported Tx Link speed: 433Mbps, Calculated Tx : 0Mbps, Rx Link speed: 6Mbps, Max Supported Rx Link speed: 433Mbps, Calculated Rx : 0Mbps, Frequency: 5745MHz, Net ID: -1, Metered hint: false, score: 100, isUsable: true, CarrierMerged: false, SubscriptionId: -1, IsPrimary: -1, Trusted: true, Restricted: false, Ephemeral: false, OEM paid: false, OEM private: false, OSU AP: false, FQDN: <none>, Provider friendly name: <none>, Requesting package name: <none><none>MLO Information: , Is TID-To-Link negotiation supported by the AP: false, AP MLD Address: <none>, AP MLO Link Id: <none>, AP MLO Affiliated links: <none>, Vendor Data: <none>> SignalStrength: -49 UnderlyingNetworks: Null]
+11-07 03:10:39.251  2298  2298 D StatusBarIconController: ignoring old pipeline callback because the new wifi icon is enabled
+11-07 03:10:39.252  1830  2229 D AgpsApn : mDefaultNetworkcallback onCapabilitiesChanged: network=553, nc=[ Transports: WIFI Capabilities: NOT_METERED&INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VPN&VALIDATED&NOT_ROAMING&FOREGROUND&NOT_CONGESTED&NOT_SUSPENDED&NOT_VCN_MANAGED LinkUpBandwidth>=12000Kbps LinkDnBandwidth>=60000Kbps TransportInfo: <SSID: <unknown ssid>, BSSID: 02:00:00:00:00:00, MAC: 02:00:00:00:00:00, IP: /10.175.15.5, Security type: 0, Supplicant state: COMPLETED, Wi-Fi standard: 11ac, RSSI: -49, Link speed: 14Mbps, Tx Link speed: 14Mbps, Max Supported Tx Link speed: 433Mbps, Calculated Tx : 0Mbps, Rx Link speed: 6Mbps, Max Supported Rx Link speed: 433Mbps, Calculated Rx : 0Mbps, Frequency: 5745MHz, Net ID: -1, Metered hint: false, score: 100, isUsable: true, CarrierMerged: false, SubscriptionId: -1, IsPrimary: 1, Trusted: true, Restricted: false, Ephemeral: false, OEM paid: false, OEM private: false, OSU AP: false, FQDN: <none>, Provider friendly name: <none>, Requesting package name: <none><none>MLO Information: , Is TID-To-Link negotiation supported by the AP: false, AP MLD Address: <none>, AP MLO Link Id: <none>, AP MLO Affiliated links: <none>, Vendor Data: <none>> SignalStrength: -49 AdminUids: [1000] SSID: "iBUS@MUJ" UnderlyingNetworks: Null]
+11-07 03:10:39.252  1830  2229 D AgpsApn : onCapabilitiesChanged: mDefaultNetHasInt=true
+11-07 03:10:39.261 28144 28167 I dutj    : Connection state change: onCapabilitiesChanged, data connection: WIFI, manual connection eligibility: false, ntn roaming: false
+11-07 03:10:39.261   510   632 I emyt    : handleMessage processing message:[NOTIFY_UPTIME_IGNORE_STATE_CHANGED] with [non-null]:RcsEngineImpl reference [CONTEXT log_prefix="RcsEngineImpl:[4dd3b970-723f]>Handler" thread_id=261 ]
+11-07 03:10:39.262   510   584 I emyt    : Connected state: [1], networkType: [WIFI] [CONTEXT thread_id=255 ]
+11-07 03:10:39.262 28144 28167 I dutj    : New default data network: wifi
+11-07 03:10:39.263  1830  2116 D ConnectivityService: NetReassign [no changes] [c 0] [a 1] [i 2]
+11-07 03:10:39.263  3384  5335 I NearbyMediums: Wifi changed new SSID: <unknown ssid>
+11-07 03:10:39.263  3384  5335 I NearbyMediums: WifiLanConnectivityInfo is not changed, skip notify.
+11-07 03:10:39.763  3384  5335 I NearbySharing: Network state changed: NetworkState(isRestricted=false, isOnline=true, isCongested=false, isMetered=false, isWifiConnected=true)
+11-07 03:10:39.763  3384 27844 I NearbySharing: Network state changed: NetworkState(isRestricted=false, isOnline=true, isCongested=false, isMetered=false, isWifiConnected=true)
+11-07 03:10:39.837  1492  1492 W HidlServiceManagement: Waited for hwservicemanager.ready for a second, waiting another...
+11-07 03:10:39.837  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:10:39.831  1492  1492 W binder:1492_2: type=1400 audit(0.0:854480): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:10:39.838  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:10:39.831  1492  1492 W binder:1492_2: type=1400 audit(0.0:854481): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:10:40.060  1167  1208 I libPerfCtl: xgfGetFPS pid:2298 fps:-1
+11-07 03:10:40.061  1167  1208 I libPerfCtl: xgfGetFPS pid:31477 fps:-1
+11-07 03:10:40.212  1830  2119 I MdnsReplySender: Sending {MdnsReplyInfo: /10.175.10.120:5353 to /224.0.0.251:5353, answers: 2, additionalAnswers: 1, knownAnswers: 0, sendDelayMs 61}
+11-07 03:10:40.838  1492  1492 W HidlServiceManagement: Waited for hwservicemanager.ready for a second, waiting another...
+11-07 03:10:40.839  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:10:40.835  1492  1492 W binder:1492_2: type=1400 audit(0.0:854482): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:10:40.839  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:10:40.835  1492  1492 W binder:1492_2: type=1400 audit(0.0:854483): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:10:41.062  1167  1208 I libPerfCtl: xgfGetFPS pid:2298 fps:-1
+11-07 03:10:41.062  1167  1208 I libPerfCtl: xgfGetFPS pid:31477 fps:-1
+11-07 03:10:41.762  1527  1731 D ULogGuard: Monitoring: 10 threads, 0 requests, 0 time-bombs; 1 guards. ResetFlags = 0x7
+11-07 03:10:41.840  1492  1492 W HidlServiceManagement: Waited for hwservicemanager.ready for a second, waiting another...
+11-07 03:10:41.840  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:10:41.841  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:10:41.839  1492  1492 W binder:1492_2: type=1400 audit(0.0:854484): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:10:41.839  1492  1492 W binder:1492_2: type=1400 audit(0.0:854485): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:10:42.062  1167  1208 I libPerfCtl: xgfGetFPS pid:2298 fps:-1
+11-07 03:10:42.063  1167  1208 I libPerfCtl: xgfGetFPS pid:31477 fps:-1
+11-07 03:10:42.218  3384  5335 I NearbyMediums: No BLE Fast/GATT advertisements found in the latest cycle.
+11-07 03:10:42.219  3384  5335 I NearbyMediums: Current Tracked Scanning Clients are : {NearbyConnections.EnvironmentMonitor, NearbySharing}
+11-07 03:10:42.259  1830  2109 E WifiDataStall: Ignore this poll. newStats: null txLinkSpeedMbps: 6 rxLinkSpeedMbps: 325 rssi: -49 connectionCapabilities: com.android.server.wifi.WifiNative$ConnectionCapabilities@97eba
+11-07 03:10:42.262  1830  1830 D EnhancedConnectivityController: Wifi onCapabilitiesChanged
+11-07 03:10:42.262  1830  1830 D EnhancedConnectivityController: Default net onCapabilitiesChanged
+11-07 03:10:42.262  1830  1830 D EnhancedConnectivityController: updateDefaultNet:553
+11-07 03:10:42.262  1830  1830 D EnhancedConnectivityController: mayUpdateNotification: shouldShow=true,UidsBlocked=false, net info=net:553,ifName=wlan0,securityType=0,isDefault=true,ssid="iBUS@MUJ",notificationId=0
+11-07 03:10:42.262  1830  1830 D EnhancedConnectivityController: educative notification has been ignored
+11-07 03:10:42.264  3595  4114 I ModemStats: [DataStallDetectService] onCapabilitiesChanged networkCapabilities=[ Transports: WIFI Capabilities: NOT_METERED&INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VPN&VALIDATED&NOT_ROAMING&FOREGROUND&NOT_CONGESTED&NOT_SUSPENDED&NOT_VCN_MANAGED LinkUpBandwidth>=12000Kbps LinkDnBandwidth>=60000Kbps TransportInfo: <SSID: <unknown ssid>, BSSID: 02:00:00:00:00:00, MAC: 02:00:00:00:00:00, IP: /10.175.15.5, Security type: 0, Supplicant state: COMPLETED, Wi-Fi standard: 11ac, RSSI: -49, Link speed: 6Mbps, Tx Link speed: 6Mbps, Max Supported Tx Link speed: 433Mbps, Calculated Tx : 0Mbps, Rx Link speed: 325Mbps, Max Supported Rx Link speed: 433Mbps, Calculated Rx : 0Mbps, Frequency: 5745MHz, Net ID: -1, Metered hint: false, score: 100, isUsable: true, CarrierMerged: false, SubscriptionId: -1, IsPrimary: -1, Trusted: true, Restricted: false, Ephemeral: false, OEM paid: false, OEM private: false, OSU AP: false, FQDN: <none>, Provider friendly name: <none>, Requesting package name: <none><none>MLO Information: , Is TID-To-Link negotiation supported by the AP: false, AP MLD Address: <none>, AP MLO Link Id: <none>, AP MLO Affiliated links: <none>, Vendor Data: <none>> SignalStrength: -49 UnderlyingNetworks: Null]
+11-07 03:10:42.264  3595  4114 I ModemStats: [DataStallDetectService] onCapabilitiesChanged NET_CAPABILITY_VALIDATED=true
+11-07 03:10:42.264  3595  4114 I ModemStats: [DataStallDetectService] onCapabilitiesChanged mDataStallManager.mDataStallInstance=null
+11-07 03:10:42.264  3595  4114 I ModemStats: [DataStallDetectService] onCapabilitiesChanged mDataStallSmart5gManager.mDataStallInstance=null
+11-07 03:10:42.265  3785  4430 D OtaApp  : PollingManagerService:NetworkCallback:networkCapabilities=[ Transports: WIFI Capabilities: NOT_METERED&INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VPN&VALIDATED&NOT_ROAMING&FOREGROUND&NOT_CONGESTED&NOT_SUSPENDED&NOT_VCN_MANAGED LinkUpBandwidth>=12000Kbps LinkDnBandwidth>=60000Kbps TransportInfo: <SSID: <unknown ssid>, BSSID: 02:00:00:00:00:00, MAC: 02:00:00:00:00:00, IP: /10.175.15.5, Security type: 0, Supplicant state: COMPLETED, Wi-Fi standard: 11ac, RSSI: -49, Link speed: 6Mbps, Tx Link speed: 6Mbps, Max Supported Tx Link speed: 433Mbps, Calculated Tx : 0Mbps, Rx Link speed: 325Mbps, Max Supported Rx Link speed: 433Mbps, Calculated Rx : 0Mbps, Frequency: 5745MHz, Net ID: -1, Metered hint: false, score: 100, isUsable: true, CarrierMerged: false, SubscriptionId: -1, IsPrimary: -1, Trusted: true, Restricted: false, Ephemeral: false, OEM paid: false, OEM private: false, OSU AP: false, FQDN: <none>, Provider friendly name: <none>, Requesting package name: <none><none>MLO Information: , Is TID-To-Link negotiation supported by the AP: false, AP MLD Address: <none>, AP MLO Link Id: <none>, AP MLO Affiliated links: <none>, Vendor Data: <none>> SignalStrength: -49 UnderlyingNetworks: Null]
+11-07 03:10:42.271   510   584 I emyt    : Connected state: [1], networkType: [WIFI] [CONTEXT thread_id=255 ]
+11-07 03:10:42.271  1830  2229 D AgpsApn : mDefaultNetworkcallback onCapabilitiesChanged: network=553, nc=[ Transports: WIFI Capabilities: NOT_METERED&INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VPN&VALIDATED&NOT_ROAMING&FOREGROUND&NOT_CONGESTED&NOT_SUSPENDED&NOT_VCN_MANAGED LinkUpBandwidth>=12000Kbps LinkDnBandwidth>=60000Kbps TransportInfo: <SSID: <unknown ssid>, BSSID: 02:00:00:00:00:00, MAC: 02:00:00:00:00:00, IP: /10.175.15.5, Security type: 0, Supplicant state: COMPLETED, Wi-Fi standard: 11ac, RSSI: -49, Link speed: 6Mbps, Tx Link speed: 6Mbps, Max Supported Tx Link speed: 433Mbps, Calculated Tx : 0Mbps, Rx Link speed: 325Mbps, Max Supported Rx Link speed: 433Mbps, Calculated Rx : 0Mbps, Frequency: 5745MHz, Net ID: -1, Metered hint: false, score: 100, isUsable: true, CarrierMerged: false, SubscriptionId: -1, IsPrimary: 1, Trusted: true, Restricted: false, Ephemeral: false, OEM paid: false, OEM private: false, OSU AP: false, FQDN: <none>, Provider friendly name: <none>, Requesting package name: <none><none>MLO Information: , Is TID-To-Link negotiation supported by the AP: false, AP MLD Address: <none>, AP MLO Link Id: <none>, AP MLO Affiliated links: <none>, Vendor Data: <none>> SignalStrength: -49 AdminUids: [1000] SSID: "iBUS@MUJ" UnderlyingNetworks: Null]
+11-07 03:10:42.271  1830  2229 D AgpsApn : onCapabilitiesChanged: mDefaultNetHasInt=true
+11-07 03:10:42.271 28144 28167 I dutj    : Connection state change: onCapabilitiesChanged, data connection: WIFI, manual connection eligibility: false, ntn roaming: false
+11-07 03:10:42.271   510   632 I emyt    : handleMessage processing message:[NOTIFY_UPTIME_IGNORE_STATE_CHANGED] with [non-null]:RcsEngineImpl reference [CONTEXT log_prefix="RcsEngineImpl:[4dd3b970-723f]>Handler" thread_id=261 ]
+11-07 03:10:42.272 28144 28167 I dutj    : New default data network: wifi
+11-07 03:10:42.273  1830  2116 D ConnectivityService: NetReassign [no changes] [c 1] [a 1] [i 1]
+11-07 03:10:42.274  3384  5335 I NearbyMediums: Wifi changed new SSID: <unknown ssid>
+11-07 03:10:42.274  3384  5335 I NearbyMediums: WifiLanConnectivityInfo is not changed, skip notify.
+11-07 03:10:42.736  6432  6457 D ProfileInstaller: Installing profile for com.anchor.mine
+11-07 03:10:42.756  1830  2074 W PackageManager: Missing required system package: com.anchor.mine, but found with extended search.
+11-07 03:10:42.774  3384  5335 I NearbySharing: Network state changed: NetworkState(isRestricted=false, isOnline=true, isCongested=false, isMetered=false, isWifiConnected=true)
+11-07 03:10:42.775  3384 27844 I NearbySharing: Network state changed: NetworkState(isRestricted=false, isOnline=true, isCongested=false, isMetered=false, isWifiConnected=true)
+11-07 03:10:42.783  3384  3580 E NetworkScheduler.ATC: Trying to release unacquired lock: com.google.android.gms/.games.chimera.GamesSyncServiceMainProxy [CONTEXT service_id=218 ]
+11-07 03:10:42.808  3384  3580 I NetworkScheduler.Stats: (REDACTED) Task %s/%s finished executing. cause:%s result: %s elapsed_millis: %s uptime_millis: %s exec_start_elapsed_seconds: %s
+11-07 03:10:42.810  6432  6449 I TestRunner: finished: testGentleReminderFires_SetsFlag(com.anchor.mine.alarms.AlarmSelfTest)

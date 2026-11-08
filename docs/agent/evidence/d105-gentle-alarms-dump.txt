@@ -1,0 +1,28 @@
+      listener=com.android.server.alarm.AlarmManagerService$3@5e0f2c
+    RTC_WAKEUP #4: Alarm{f97f9c1 type 0 origWhen 1794104553449 whenElapsed 418900314 com.anchor.mine}
+      tag=*walarm*:com.anchor.mine/.alarms.AlarmReceiver
+      type=RTC_WAKEUP origWhen=2026-11-08 07:52:33.449 window=+1m29s998ms repeatInterval=0 count=0 flags=0x20
+      policyWhenElapsed: requester=+50s676ms app_standby=-1m9s322ms device_idle=-- battery_saver=-1m9s322ms tare=-1m9s322ms
+      whenElapsed=+50s676ms maxWhenElapsed=+2m20s674ms
+      operation=PendingIntent{e145566: PendingIntentRecord{391a0a7 com.anchor.mine broadcastIntent}}
+      idle-options=Bundle[{android.pendingIntent.backgroundActivityAllowed=false, android:broadcast.temporaryAppAllowlistReasonCode=-1, android:broadcast.temporaryAppAllowlistDuration=10000, android:broadcast.temporaryAppAllowlistReason=, android:broadcast.temporaryAppAllowlistType=1, android:broadcast.flags=8}]
+    ELAPSED #5: Alarm{c1e7954 type 3 origWhen 418941140 whenElapsed 418941140 com.whatsapp}
+--
+      #1: Reason=alarm_cancelled elapsed=-1m9s325ms rtc=2026-11-08 07:50:33.448
+        Snapshot:
+          type=RTC_WAKEUP tag=*walarm*:com.anchor.mine/.alarms.AlarmReceiver 
+          policyWhenElapsed: requester=-54s335ms app_standby=-1m9s332ms device_idle=-- battery_saver=-- tare=-1m9s332ms
+  
+  Top Alarms:
+    +1m0s350ms running, 60 wakeups, 60 alarms: u0a380:com.jio.myjio
+      *walarm*:com.jio.myjio/com.jio.clickstream.tbn.AlarmReceiver
+    +43s595ms running, 0 wakeups, 2887 alarms: 1000:android
+--
+  u0a1322:com.anchor.mine +83ms running, 2 wakeups:
+    +83ms 2 wakes 2 alarms, last -1m9s643ms:
+      *walarm*:com.anchor.mine/.alarms.AlarmReceiver
+  
+  Alarm manager stats:
+    REORDER_ALARMS_FOR_STANDBY: count=14788, total=6384.5ms, avg=0.432ms, max calls/s=653 max dur/s=81.4ms max time=80.5ms
+    HAS_SCHEDULE_EXACT_ALARM: count=10806, total=997.6ms, avg=0.092ms, max calls/s=186 max dur/s=32.6ms max time=32.6ms
+    REORDER_ALARMS_FOR_TARE: count=0, total=0.0ms, avg=0.000ms, max calls/s=0 max dur/s=0.0ms max time=0.0ms

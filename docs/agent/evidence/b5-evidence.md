@@ -61,7 +61,7 @@ Note: this ROM's `dumpsys package` output does not print per-component `exported
 Source: JUnit XML `app/build/outputs/androidTest-results/connected/debug/TEST-moto g73 5G - 14.xml`
 (test file: `app/src/androidTest/java/com/anchor/mine/alarms/BootReceiverIgnoreTest.kt`)
 
-`testBootReceiver_IgnoresNonIntendedActions_NoSideEffects` — **PASS** (1 test, 0 failures, 0 errors, 2.249s). Gradle exited 1 with "There were failing tests" — the documented ROM instrumentation teardown artifact (STATE.md Test counts section); verdict is taken from the JUnit XML only.
+`testBootReceiver_IgnoresNonIntendedActions_NoSideEffects` — **PASS** (1 test, 0 failures, 0 errors, 2.249s). Gradle exited 1 with "There were failing tests" — the known AGP 9.4.0 / UTP 32.4.0 exit-code defect (D-123, `docs/agent/work/connected-red-build-rootcause.md`); verdict is taken from the JUnit XML only.
 
 The test proves, against the live app storage on device:
 

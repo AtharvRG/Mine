@@ -36,7 +36,10 @@ class CheckinBuilder(private val storage: Storage, private val clock: Clock, pri
             builder.append("\nAgenda:\n")
             dueToday.take(5).forEach {
                 val sanitizedTitle = PromptSanitizer.sanitize(it.title, 80)
-                builder.append("  * $sanitizedTitle (Due: ${dateResolver.format(it.dueAt!!)})\n")
+                // H-10 (R-14): was `it.dueAt!!`. The query filters nulls today, but a null here
+                // would NPE every context build; an undated row is listed by title instead.
+                val due = it.dueAt?.let { at -> " (Due: ${dateResolver.format(at)})" }.orEmpty()
+                builder.append("  * $sanitizedTitle$due\n")
             }
         }
 

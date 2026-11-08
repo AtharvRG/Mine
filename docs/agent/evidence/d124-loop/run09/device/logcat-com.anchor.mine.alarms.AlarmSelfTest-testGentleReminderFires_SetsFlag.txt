@@ -1,0 +1,419 @@
+11-07 02:51:22.055 19121 19145 I TestRunner: started: testGentleReminderFires_SetsFlag(com.anchor.mine.alarms.AlarmSelfTest)
+11-07 02:51:22.056  8312 19004 W SignedPackage: Package doesn't have required signing certificate: com.google.android.apps.work.clouddpc
+11-07 02:51:22.058  1830  3732 W PackageManager: Missing required system package: org.zwanoo.android.speedtest, but found with extended search.
+11-07 02:51:22.061 19121 19145 I UiAutomation: Initialized for user 0 on display 0
+11-07 02:51:22.065 19121 19146 D nativeloader: Load /data/app/~~3iIn9h-D-VG70kj11LAwcw==/com.anchor.mine-zpsuZC3FVAwdANb1GuDWFA==/base.apk!/lib/arm64-v8a/libsqlcipher.so using class loader ns clns-4 (caller=/data/app/~~3iIn9h-D-VG70kj11LAwcw==/com.anchor.mine-zpsuZC3FVAwdANb1GuDWFA==/base.apk!classes12.dex): ok
+11-07 02:51:22.066  1198  2080 E BufferQueueDebug: [WindowToken{7ef671f type=2032 android.os.Binder@8fbcabe}#36714](this:0xb400007c08d0ff18,id:-1,api:0,p:-1,c:-1) id info cannot be read from 'WindowToken{7ef671f type=2032 android.os.Binder@8fbcabe}#36714'
+11-07 02:51:22.067  1198  2080 I BufferQueueDebug: [WindowToken{7ef671f type=2032 android.os.Binder@8fbcabe}#36714](this:0xb400007c08d0ff18,id:-1,api:0,p:-1,c:-1) BufferQueue core=(1198:/system/bin/surfaceflinger)
+11-07 02:51:22.071  1198  1661 I Scheduler: applyPolicy: UpdateRefreshRate 30 to 120 of group 0: [touch=0:0 touchBoost=0 scroll=0:0 idle=0:0]
+11-07 02:51:22.080  8312 26846 D AccessibilitySourceService: enabled a11y services count 1
+11-07 02:51:22.084  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 02:51:22.091  8312 26846 D AccessibilitySourceService: a11y source sending 1 issue to sc
+11-07 02:51:22.092  1830  3983 D SafetySourceDataValidat: No cert check requested for package com.google.android.permissioncontroller
+11-07 02:51:22.101  1830  2109 E WifiDataStall: Ignore this poll. newStats: null txLinkSpeedMbps: 6 rxLinkSpeedMbps: 263 rssi: -50 connectionCapabilities: com.android.server.wifi.WifiNative$ConnectionCapabilities@97eba
+11-07 02:51:22.104  1198  1198 I SurfaceFlinger: setActiveModeInHwcIfNeeded changing active mode to 1(120.00 Hz) for display 0
+11-07 02:51:22.104  1134  1134 I hwcomposer: [HWC] (0) displaySetActiveConfig config:1  
+11-07 02:51:22.106 19121 19146 I SQLiteConnection: Database keying operation returned:0
+11-07 02:51:22.106  1830  2890 W PackageManager: Missing required system package: ai.mistral.chat, but found with extended search.
+11-07 02:51:22.108 19121 19146 I SQLiteConnection: Database keying operation returned:0
+11-07 02:51:22.111  1830  2890 W PackageManager: Missing required system package: ru.zdevs.zarchiver, but found with extended search.
+11-07 02:51:22.111  1830  2855 W PackageManager: Missing required system package: app.mihon, but found with extended search.
+11-07 02:51:22.116  1830  2890 W PackageManager: Missing required system package: app.revanced.android.apps.youtube.music, but found with extended search.
+11-07 02:51:22.121  1830  2855 W PackageManager: Missing required system package: app.revanced.android.gms, but found with extended search.
+11-07 02:51:22.122  1830  2855 W PackageManager: Missing required system package: ru.zdevs.zarchiver, but found with extended search.
+11-07 02:51:22.126  1830  2890 W PackageManager: Missing required system package: app.revanced.manager.flutter, but found with extended search.
+11-07 02:51:22.131  1830  3983 W PackageManager: Missing required system package: cc.remote9.app, but found with extended search.
+11-07 02:51:22.136  1830  3983 W PackageManager: Missing required system package: com.anchor.mine, but found with extended search.
+11-07 02:51:22.137  1198  1198 D SurfaceFlinger: MtkOverrideDuration: update vsync 120
+11-07 02:51:22.137  1198  1198 E SurfaceFlinger: MtkDuration override mode is disabled
+11-07 02:51:22.137  1198  1198 D SurfaceFlinger: MtkOverrideDuration: reset override duration
+11-07 02:51:22.142  1830  2890 W PackageManager: Missing required system package: com.app.campusadda, but found with extended search.
+11-07 02:51:22.147  1830  3983 W PackageManager: Missing required system package: com.app.spacebasic, but found with extended search.
+11-07 02:51:22.152  1830  3983 W PackageManager: Missing required system package: com.azure.authenticator, but found with extended search.
+11-07 02:51:22.157  1830  3983 W PackageManager: Missing required system package: com.castle.sefirah, but found with extended search.
+11-07 02:51:22.162  1830  3547 W PackageManager: Missing required system package: com.cloudflare.onedotonedotonedotone, but found with extended search.
+11-07 02:51:22.167  1830  3983 W PackageManager: Missing required system package: com.csam.icici.bank.imobile, but found with extended search.
+11-07 02:51:22.173  1830  3547 W PackageManager: Missing required system package: com.delhiveryConsigneeApp, but found with extended search.
+11-07 02:51:22.178  1830  3983 W PackageManager: Missing required system package: com.digilocker.android, but found with extended search.
+11-07 02:51:22.178  1198  1198 I BufferQueueDebug: [WindowToken{28888b3 type=2032 android.os.Binder@52ce622}#36713](this:0xb400007c09db8718,id:-1,api:0,p:-1,c:1198) onDestructor()
+11-07 02:51:22.184  1830  3547 W PackageManager: Missing required system package: com.discord, but found with extended search.
+11-07 02:51:22.189  1830  2890 W PackageManager: Missing required system package: com.dubox.drive, but found with extended search.
+11-07 02:51:22.197  1830  2890 W PackageManager: Missing required system package: com.github.android, but found with extended search.
+11-07 02:51:22.201  1830  2890 W PackageManager: Missing required system package: com.google.ai.edge.gallery, but found with extended search.
+11-07 02:51:22.206  1830  3547 W PackageManager: Missing required system package: com.google.android.apps.adm, but found with extended search.
+11-07 02:51:22.212  1830  3547 W PackageManager: Missing required system package: com.google.android.apps.bard, but found with extended search.
+11-07 02:51:22.217  1830  3547 W PackageManager: Missing required system package: com.google.android.apps.nbu.paisa.user, but found with extended search.
+11-07 02:51:22.222  1830  3983 W PackageManager: Missing required system package: com.google.android.keep, but found with extended search.
+11-07 02:51:22.226  1830  3983 W PackageManager: Missing required system package: com.google.ar.lens, but found with extended search.
+11-07 02:51:22.231  1830  3983 W PackageManager: Missing required system package: com.heytap.headset, but found with extended search.
+11-07 02:51:22.236  1830  3547 W PackageManager: Missing required system package: com.jacksoftw.webcam, but found with extended search.
+11-07 02:51:22.241  1830  2890 W PackageManager: Missing required system package: com.linkedin.android, but found with extended search.
+11-07 02:51:22.246  1830  3983 W PackageManager: Missing required system package: com.microsoft.office.excel, but found with extended search.
+11-07 02:51:22.251  1830  3983 W PackageManager: Missing required system package: com.microsoft.office.powerpoint, but found with extended search.
+11-07 02:51:22.256  1830  3547 W PackageManager: Missing required system package: com.microsoft.office.word, but found with extended search.
+11-07 02:51:22.261  1830  3547 W PackageManager: Missing required system package: com.microsoft.teams, but found with extended search.
+11-07 02:51:22.265  1830  3547 W PackageManager: Missing required system package: com.music.bitchord, but found with extended search.
+11-07 02:51:22.270  1830  3547 W PackageManager: Missing required system package: com.olacabs.customer, but found with extended search.
+11-07 02:51:22.275  1830  2890 W PackageManager: Missing required system package: com.paypal.android.p2pmobile, but found with extended search.
+11-07 02:51:22.280  1830  2890 W PackageManager: Missing required system package: com.phonepe.app, but found with extended search.
+11-07 02:51:22.285  1830  2890 W PackageManager: Missing required system package: com.pittvandewitt.wavelet, but found with extended search.
+11-07 02:51:22.290  1830  3983 W PackageManager: Missing required system package: com.rapido.passenger, but found with extended search.
+11-07 02:51:22.294  1134  1485 I hwcomposer: [HWC] (0)fire a callback of refresh to SF[4]  
+11-07 02:51:22.294  1830  2890 W PackageManager: Missing required system package: com.reddit.frontpage, but found with extended search.
+11-07 02:51:22.299  1830  2890 W PackageManager: Missing required system package: com.twitter.android, but found with extended search.
+11-07 02:51:22.304  1167  1193 I mtkpower@impl: [setMode] type:6, enabled:1
+11-07 02:51:22.304  1167  1193 E mtkpower@impl: [setMode] unknown type
+11-07 02:51:22.306  1830  2890 W PackageManager: Missing required system package: com.whatsapp, but found with extended search.
+11-07 02:51:22.307  1198  1198 I BufferQueueProducer: [FramebufferSurface](this:0xb400007c2c1716d0,id:-1,api:1,p:1198,c:1198) queueBuffer: fps=1.73 dur=1734.44 max=811.71 min=232.80
+11-07 02:51:22.312  1830  2855 W PackageManager: Missing required system package: com.whereismytrain.android, but found with extended search.
+11-07 02:51:22.317  1830  3547 W PackageManager: Missing required system package: cris.org.in.prs.ima, but found with extended search.
+11-07 02:51:22.321  1830  2890 W PackageManager: Missing required system package: edu.manipal.jaipur.slcm_mobile, but found with extended search.
+11-07 02:51:22.326  1830  3547 W PackageManager: Missing required system package: in.amazon.mShop.android.shopping, but found with extended search.
+11-07 02:51:22.326  1830  3547 W PackageManager: Missing required system package: in.amazon.mShop.android.shopping, but found with extended search.
+11-07 02:51:22.331  1830  3547 W PackageManager: Missing required system package: in.amazon.mShop.android.shopping, but found with extended search.
+11-07 02:51:22.332  1830  3547 W PackageManager: Missing required system package: in.amazon.mShop.android.shopping, but found with extended search.
+11-07 02:51:22.338  1830  3547 W PackageManager: Missing required system package: in.burgerfarm.app, but found with extended search.
+11-07 02:51:22.343  1830  3547 W PackageManager: Missing required system package: io.github.forkmaintainers.iceraven, but found with extended search.
+11-07 02:51:22.347  1830  3547 W PackageManager: Missing required system package: org.telegram.messenger, but found with extended search.
+11-07 02:51:22.352  1830  2855 W PackageManager: Missing required system package: org.videolan.vlc, but found with extended search.
+11-07 02:51:22.356  1830  2855 W PackageManager: Missing required system package: ru.odauhsbx.xqdkkkmwh, but found with extended search.
+11-07 02:51:22.361  1830  2855 W PackageManager: Missing required system package: ru.zdevs.zarchiver, but found with extended search.
+11-07 02:51:22.366  2298  2298 D ControlsListingControllerImpl: ServiceConfig reloaded, count: 0
+11-07 02:51:22.369  1830  3732 W PackageManager: Missing required system package: app.revanced.android.gms, but found with extended search.
+11-07 02:51:22.371  1830  2562 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:51:22.373  2298  2298 D FreeformGesture: onStateChanged: State{mIsPackageAvailable=true, mPillGestureEnabled=false, mVibrationEnabled=true, mShortcutPanelShowing=false, mSwipeInEnabled=false, mHunFreeformEnabled=true, mIsInGameMode=false, mIsRecentsShowing=false, mPillXPosition=1, mPillYPosition=600, mIsInTutorialMode=false, mIsDoubleTapPowerEnabled=false}
+11-07 02:51:22.374  2298  2298 D FreeformGesture: onStateChanged: State{mIsPackageAvailable=true, mPillGestureEnabled=false, mVibrationEnabled=true, mShortcutPanelShowing=false, mSwipeInEnabled=false, mHunFreeformEnabled=true, mIsInGameMode=false, mIsRecentsShowing=false, mPillXPosition=1, mPillYPosition=600, mIsInTutorialMode=false, mIsDoubleTapPowerEnabled=false}
+11-07 02:51:22.374  2298  2298 D FreeformGesture: onStateChanged: State{mIsPackageAvailable=true, mPillGestureEnabled=false, mVibrationEnabled=true, mShortcutPanelShowing=false, mSwipeInEnabled=false, mHunFreeformEnabled=true, mIsInGameMode=false, mIsRecentsShowing=false, mPillXPosition=1, mPillYPosition=600, mIsInTutorialMode=false, mIsDoubleTapPowerEnabled=false}
+11-07 02:51:22.375  1167  1193 I mtkpower@impl: [setMode] type:6, enabled:0
+11-07 02:51:22.375  1167  1193 E mtkpower@impl: [setMode] unknown type
+11-07 02:51:22.387  3384 19019 I FraudProtectUtils: Not in testing population, skipping local test bank apps. [CONTEXT service_id=469 ]
+11-07 02:51:22.388  3384 19019 I FraudProtectUtils: (REDACTED) Latest bank app list size: %d, %s isBankApp: false
+11-07 02:51:22.388  3384 19019 W ComponentChangedIO: No package name in intent data or package is not a bank app [CONTEXT service_id=469 ]
+11-07 02:51:22.407  1830  3547 W PackageManager: Missing required system package: com.whatsapp, but found with extended search.
+11-07 02:51:22.407  1830  3547 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 02:51:22.407  1830  3547 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 02:51:22.409  1830  3732 W PackageManager: Missing required system package: com.whatsapp, but found with extended search.
+11-07 02:51:22.410  1830  3732 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 02:51:22.410  1830  3732 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 02:51:22.412  1830  3547 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 02:51:22.413  1830  3547 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 02:51:22.414  1830  3732 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 02:51:22.415  1830  3732 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 02:51:22.492  1830  2562 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 02:51:22.494  1830  3732 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 02:51:22.502  1830  2562 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:51:22.505  1830  2562 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:51:22.507  1830  3732 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:51:22.621  1830  2562 W PackageManager: Missing required system package: io.github.forkmaintainers.iceraven, but found with extended search.
+11-07 02:51:22.638  1198  1661 I Scheduler: applyPolicy: UpdateRefreshRate 120 to 30 of group 0: [touch=0:0 touchBoost=0 scroll=0:0 idle=1:1]
+11-07 02:51:22.640  1198  1661 D SurfaceFlinger: MtkOverrideDuration: update vsync 30
+11-07 02:51:22.640  1198  1661 E SurfaceFlinger: MtkDuration override mode is disabled
+11-07 02:51:22.640  1198  1661 D SurfaceFlinger: MtkOverrideDuration: reset override duration
+11-07 02:51:22.640  1134  1491 I hwcomposer: [DRMDEV] (0) failed to waitNextVsync: -1  
+11-07 02:51:22.646  1198  1198 I SurfaceFlinger: setActiveModeInHwcIfNeeded changing active mode to 3(30.00 Hz) for display 0
+11-07 02:51:22.646  1134  1134 I hwcomposer: [HWC] (0) displaySetActiveConfig config:3  
+11-07 02:51:22.647  1134  1134 I hwcomposer: [HWCDisplay] [Display_0 (type:1)] fps:5.213056,dur:1150.96,max:576.19,min:32.60  
+11-07 02:51:22.702  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 02:51:22.695  1492  1492 W binder:1492_2: type=1400 audit(0.0:849749): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 02:51:22.903  1167  1208 I libPerfCtl: xgfGetFPS pid:2298 fps:-1
+11-07 02:51:22.903  1167  1208 I libPerfCtl: xgfGetFPS pid:31477 fps:-1
+11-07 02:51:22.965 19121 19145 D CompatibilityChangeReporter: Compat change id reported: 160794467; UID 11065; state: ENABLED
+11-07 02:51:22.982  1134  1485 I hwcomposer: [HWC] (0)fire a callback of refresh to SF[4]  
+11-07 02:51:22.996  1167  1193 I mtkpower@impl: [setMode] type:6, enabled:1
+11-07 02:51:22.996  1167  1193 E mtkpower@impl: [setMode] unknown type
+11-07 02:51:23.015  1492  1492 W HidlServiceManagement: Waited for hwservicemanager.ready for a second, waiting another...
+11-07 02:51:23.016  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 02:51:23.016  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 02:51:23.011  1492  1492 W binder:1492_2: type=1400 audit(0.0:849750): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 02:51:23.011  1492  1492 W binder:1492_2: type=1400 audit(0.0:849751): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 02:51:23.060  1198  1198 I BufferQueueProducer: [StatusBar#90](this:0xb400007c09d63718,id:-1,api:0,p:-1,c:1198) queueBuffer: fps=0.35 dur=2867.72 max=2867.72 min=2867.72
+11-07 02:51:23.066  1167  1193 I mtkpower@impl: [setMode] type:6, enabled:0
+11-07 02:51:23.066  1167  1193 E mtkpower@impl: [setMode] unknown type
+11-07 02:51:23.226  1134  1485 I hwcomposer: [HWC] (0)fire a callback of refresh to SF[4]  
+11-07 02:51:23.804  1527  1731 D ULogGuard: Monitoring: 10 threads, 0 requests, 0 time-bombs; 1 guards. ResetFlags = 0x7
+11-07 02:51:23.900 18709 18712 I AidlLazyServiceRegistrar: Process has 0 (of 1 available) client(s) in use after notification artd has clients: 0
+11-07 02:51:23.901 18709 18712 I AidlLazyServiceRegistrar: Trying to shut down the service. No clients in use for any service in process.
+11-07 02:51:23.902 18709 18712 I AidlLazyServiceRegistrar: Unregistered all clients and exiting
+11-07 02:51:23.903  1167  1208 I libPerfCtl: xgfGetFPS pid:2298 fps:-1
+11-07 02:51:23.904  1167  1208 I libPerfCtl: xgfGetFPS pid:31477 fps:-1
+11-07 02:51:23.918  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 02:51:23.911  1492  1492 W binder:1492_2: type=1400 audit(0.0:849752): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 02:51:23.918  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 02:51:23.915  1492  1492 W binder:1492_2: type=1400 audit(0.0:849753): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 02:51:24.017  1492  1492 W HidlServiceManagement: Waited for hwservicemanager.ready for a second, waiting another...
+11-07 02:51:24.018  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 02:51:24.018  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 02:51:24.015  1492  1492 W binder:1492_2: type=1400 audit(0.0:849754): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 02:51:24.015  1492  1492 W binder:1492_2: type=1400 audit(0.0:849755): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 02:51:24.904  1167  1208 I libPerfCtl: xgfGetFPS pid:2298 fps:-1
+11-07 02:51:24.904  1167  1208 I libPerfCtl: xgfGetFPS pid:31477 fps:-1
+11-07 02:51:25.019  1492  1492 W HidlServiceManagement: Waited for hwservicemanager.ready for a second, waiting another...
+11-07 02:51:25.020  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 02:51:25.021  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 02:51:25.019  1492  1492 W binder:1492_2: type=1400 audit(0.0:849756): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 02:51:25.019  1492  1492 W binder:1492_2: type=1400 audit(0.0:849757): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 02:51:25.119  1830  2109 E WifiDataStall: Ignore this poll. newStats: null txLinkSpeedMbps: 14 rxLinkSpeedMbps: 6 rssi: -50 connectionCapabilities: com.android.server.wifi.WifiNative$ConnectionCapabilities@97eba
+11-07 02:51:25.123  1830  1830 D EnhancedConnectivityController: Wifi onCapabilitiesChanged
+11-07 02:51:25.124  1830  1830 D EnhancedConnectivityController: Default net onCapabilitiesChanged
+11-07 02:51:25.124  1830  1830 D EnhancedConnectivityController: updateDefaultNet:553
+11-07 02:51:25.124  1830  1830 D EnhancedConnectivityController: mayUpdateNotification: shouldShow=true,UidsBlocked=false, net info=net:553,ifName=wlan0,securityType=0,isDefault=true,ssid="iBUS@MUJ",notificationId=0
+11-07 02:51:25.124  1830  1830 D EnhancedConnectivityController: educative notification has been ignored
+11-07 02:51:25.129  3595  4114 I ModemStats: [DataStallDetectService] onCapabilitiesChanged networkCapabilities=[ Transports: WIFI Capabilities: NOT_METERED&INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VPN&VALIDATED&NOT_ROAMING&FOREGROUND&NOT_CONGESTED&NOT_SUSPENDED&NOT_VCN_MANAGED LinkUpBandwidth>=12000Kbps LinkDnBandwidth>=60000Kbps TransportInfo: <SSID: <unknown ssid>, BSSID: 02:00:00:00:00:00, MAC: 02:00:00:00:00:00, IP: /10.175.15.5, Security type: 0, Supplicant state: COMPLETED, Wi-Fi standard: 11ac, RSSI: -50, Link speed: 14Mbps, Tx Link speed: 14Mbps, Max Supported Tx Link speed: 433Mbps, Calculated Tx : 0Mbps, Rx Link speed: 6Mbps, Max Supported Rx Link speed: 433Mbps, Calculated Rx : 0Mbps, Frequency: 5745MHz, Net ID: -1, Metered hint: false, score: 100, isUsable: true, CarrierMerged: false, SubscriptionId: -1, IsPrimary: -1, Trusted: true, Restricted: false, Ephemeral: false, OEM paid: false, OEM private: false, OSU AP: false, FQDN: <none>, Provider friendly name: <none>, Requesting package name: <none><none>MLO Information: , Is TID-To-Link negotiation supported by the AP: false, AP MLD Address: <none>, AP MLO Link Id: <none>, AP MLO Affiliated links: <none>, Vendor Data: <none>> SignalStrength: -50 UnderlyingNetworks: Null]
+11-07 02:51:25.129  3595  4114 I ModemStats: [DataStallDetectService] onCapabilitiesChanged NET_CAPABILITY_VALIDATED=true
+11-07 02:51:25.129  3595  4114 I ModemStats: [DataStallDetectService] onCapabilitiesChanged mDataStallManager.mDataStallInstance=null
+11-07 02:51:25.129  3595  4114 I ModemStats: [DataStallDetectService] onCapabilitiesChanged mDataStallSmart5gManager.mDataStallInstance=null
+11-07 02:51:25.130  3785  4430 D OtaApp  : PollingManagerService:NetworkCallback:networkCapabilities=[ Transports: WIFI Capabilities: NOT_METERED&INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VPN&VALIDATED&NOT_ROAMING&FOREGROUND&NOT_CONGESTED&NOT_SUSPENDED&NOT_VCN_MANAGED LinkUpBandwidth>=12000Kbps LinkDnBandwidth>=60000Kbps TransportInfo: <SSID: <unknown ssid>, BSSID: 02:00:00:00:00:00, MAC: 02:00:00:00:00:00, IP: /10.175.15.5, Security type: 0, Supplicant state: COMPLETED, Wi-Fi standard: 11ac, RSSI: -50, Link speed: 14Mbps, Tx Link speed: 14Mbps, Max Supported Tx Link speed: 433Mbps, Calculated Tx : 0Mbps, Rx Link speed: 6Mbps, Max Supported Rx Link speed: 433Mbps, Calculated Rx : 0Mbps, Frequency: 5745MHz, Net ID: -1, Metered hint: false, score: 100, isUsable: true, CarrierMerged: false, SubscriptionId: -1, IsPrimary: -1, Trusted: true, Restricted: false, Ephemeral: false, OEM paid: false, OEM private: false, OSU AP: false, FQDN: <none>, Provider friendly name: <none>, Requesting package name: <none><none>MLO Information: , Is TID-To-Link negotiation supported by the AP: false, AP MLD Address: <none>, AP MLO Link Id: <none>, AP MLO Affiliated links: <none>, Vendor Data: <none>> SignalStrength: -50 UnderlyingNetworks: Null]
+11-07 02:51:25.132  1830  2229 D AgpsApn : mDefaultNetworkcallback onCapabilitiesChanged: network=553, nc=[ Transports: WIFI Capabilities: NOT_METERED&INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VPN&VALIDATED&NOT_ROAMING&FOREGROUND&NOT_CONGESTED&NOT_SUSPENDED&NOT_VCN_MANAGED LinkUpBandwidth>=12000Kbps LinkDnBandwidth>=60000Kbps TransportInfo: <SSID: <unknown ssid>, BSSID: 02:00:00:00:00:00, MAC: 02:00:00:00:00:00, IP: /10.175.15.5, Security type: 0, Supplicant state: COMPLETED, Wi-Fi standard: 11ac, RSSI: -50, Link speed: 14Mbps, Tx Link speed: 14Mbps, Max Supported Tx Link speed: 433Mbps, Calculated Tx : 0Mbps, Rx Link speed: 6Mbps, Max Supported Rx Link speed: 433Mbps, Calculated Rx : 0Mbps, Frequency: 5745MHz, Net ID: -1, Metered hint: false, score: 100, isUsable: true, CarrierMerged: false, SubscriptionId: -1, IsPrimary: 1, Trusted: true, Restricted: false, Ephemeral: false, OEM paid: false, OEM private: false, OSU AP: false, FQDN: <none>, Provider friendly name: <none>, Requesting package name: <none><none>MLO Information: , Is TID-To-Link negotiation supported by the AP: false, AP MLD Address: <none>, AP MLO Link Id: <none>, AP MLO Affiliated links: <none>, Vendor Data: <none>> SignalStrength: -50 AdminUids: [1000] SSID: "iBUS@MUJ" UnderlyingNetworks: Null]
+11-07 02:51:25.133  1830  2229 D AgpsApn : onCapabilitiesChanged: mDefaultNetHasInt=true
+11-07 02:51:25.140   618   662 I dutj    : Connection state change: onCapabilitiesChanged, data connection: WIFI, manual connection eligibility: false, ntn roaming: false
+11-07 02:51:25.141   618   662 I dutj    : New default data network: wifi
+11-07 02:51:25.141   510   584 I emyt    : Connected state: [1], networkType: [WIFI] [CONTEXT thread_id=255 ]
+11-07 02:51:25.141   510   632 I emyt    : handleMessage processing message:[NOTIFY_UPTIME_IGNORE_STATE_CHANGED] with [non-null]:RcsEngineImpl reference [CONTEXT log_prefix="RcsEngineImpl:[4dd3b970-723f]>Handler" thread_id=261 ]
+11-07 02:51:25.142  1830  2116 D ConnectivityService: NetReassign [no changes] [c 1] [a 1] [i 1]
+11-07 02:51:25.143  3384  3384 D BoundBrokerSvc: onRebind: Intent { act=com.google.android.gms.common.telemetry.service.START dat=chimera-action:/... cmp=com.google.android.gms/.chimera.PersistentApiService }
+11-07 02:51:25.143  3384 15910 I NearbyMediums: Wifi changed new SSID: <unknown ssid>
+11-07 02:51:25.144  3384 15910 I NearbyMediums: WifiLanConnectivityInfo is not changed, skip notify.
+11-07 02:51:25.266  2298  2298 D CBR_SystemUI: CarrierLabel - : updateLabel cellMsg:  cellEnabled: true
+11-07 02:51:25.266  2298  2298 D CBR_SystemUI: CarrierLabel - : updateLabel mCellBroadcastMessage Visibility: 8
+11-07 02:51:25.266  1134  1491 I hwcomposer: [DRMDEV] (0) failed to waitNextVsync: -1  
+11-07 02:51:25.266  2298  2298 D CBR_SystemUI: CarrierLabel - : updateLabel cellMsg:  cellEnabled: true
+11-07 02:51:25.267  2298  2298 D CBR_SystemUI: CarrierLabel - : updateLabel mCellBroadcastMessage Visibility: 8
+11-07 02:51:25.268  2298  2298 D StatusBarIconController: ignoring old pipeline callbacks, because the new mobile icons are enabled
+11-07 02:51:25.281  1134  1491 I hwcomposer: [DRMDEV] (0) failed to waitNextVsync: -1  
+11-07 02:51:25.294  1198  1661 I Scheduler: applyPolicy: UpdateRefreshRate 30 to 120 of group 0: [touch=0:0 touchBoost=0 scroll=0:0 idle=0:0]
+11-07 02:51:25.314  1134  1491 I hwcomposer: [DRMDEV] (0) failed to waitNextVsync: -1  
+11-07 02:51:25.326  1198  1198 I BufferQueueProducer: [StatusBar#90](this:0xb400007c09d63718,id:-1,api:0,p:-1,c:1198) queueBuffer: fps=0.44 dur=2266.14 max=2266.14 min=2266.14
+11-07 02:51:25.327  1198  1198 I SurfaceFlinger: setActiveModeInHwcIfNeeded changing active mode to 1(120.00 Hz) for display 0
+11-07 02:51:25.327  1134  1134 I hwcomposer: [HWC] (0) displaySetActiveConfig config:1  
+11-07 02:51:25.329  1134  1134 I hwcomposer: [HWCDisplay] [Display_0 (type:1)] fps:1.863836,dur:2682.64,max:2065.36,min:33.52  
+11-07 02:51:25.359  1198  1198 D SurfaceFlinger: MtkOverrideDuration: update vsync 120
+11-07 02:51:25.360  1198  1198 E SurfaceFlinger: MtkDuration override mode is disabled
+11-07 02:51:25.360  1198  1198 D SurfaceFlinger: MtkOverrideDuration: reset override duration
+11-07 02:51:25.455 27871 27871 I adbd    : adbd service requested 'shell,v2,raw:getprop ro.build.version.release'
+11-07 02:51:25.554  1134  1485 I hwcomposer: [HWC] (0)fire a callback of refresh to SF[4]  
+11-07 02:51:25.568  1198  1198 I BufferQueueProducer: [FramebufferSurface](this:0xb400007c2c1716d0,id:-1,api:1,p:1198,c:1198) queueBuffer: fps=0.92 dur=3260.40 max=2303.83 min=264.65
+11-07 02:51:25.642  3384 27056 I NearbySharing: Network state changed: NetworkState(isRestricted=false, isOnline=true, isCongested=false, isMetered=false, isWifiConnected=true)
+11-07 02:51:25.642  3384 15910 I NearbySharing: Network state changed: NetworkState(isRestricted=false, isOnline=true, isCongested=false, isMetered=false, isWifiConnected=true)
+11-07 02:51:25.797  1198  1661 I Scheduler: applyPolicy: UpdateRefreshRate 120 to 30 of group 0: [touch=0:0 touchBoost=0 scroll=0:0 idle=1:1]
+11-07 02:51:25.799  1198  1661 D SurfaceFlinger: MtkOverrideDuration: update vsync 30
+11-07 02:51:25.800  1198  1661 E SurfaceFlinger: MtkDuration override mode is disabled
+11-07 02:51:25.800  1198  1661 D SurfaceFlinger: MtkOverrideDuration: reset override duration
+11-07 02:51:25.800  1134  1491 I hwcomposer: [DRMDEV] (0) failed to waitNextVsync: -1  
+11-07 02:51:25.806  1134  1491 I hwcomposer: [DRMDEV] (0) failed to waitNextVsync: -1  
+11-07 02:51:25.807  1198  1198 I SurfaceFlinger: setActiveModeInHwcIfNeeded changing active mode to 3(30.00 Hz) for display 0
+11-07 02:51:25.807  1134  1134 I hwcomposer: [HWC] (0) displaySetActiveConfig config:3  
+11-07 02:51:25.895 27871 27871 I adbd    : adbd service requested 'shell,v2,raw:getprop'
+11-07 02:51:25.904  1167  1208 I libPerfCtl: xgfGetFPS pid:2298 fps:-1
+11-07 02:51:25.904  1167  1208 I libPerfCtl: xgfGetFPS pid:31477 fps:-1
+11-07 02:51:26.020  1492  1492 W HidlServiceManagement: Waited for hwservicemanager.ready for a second, waiting another...
+11-07 02:51:26.021  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 02:51:26.021  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 02:51:26.015  1492  1492 W binder:1492_2: type=1400 audit(0.0:849758): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 02:51:26.015  1492  1492 W binder:1492_2: type=1400 audit(0.0:849759): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 02:51:26.146  1134  1485 I hwcomposer: [HWC] (0)fire a callback of refresh to SF[4]  
+11-07 02:51:26.379 27871 27871 I adbd    : adbd service requested 'shell,v2,raw:cat /proc/meminfo'
+11-07 02:51:26.562 27871 27871 I adbd    : adbd service requested 'shell,v2,raw:cat /proc/cpuinfo'
+11-07 02:51:26.806  1527  1731 D ULogGuard: Monitoring: 10 threads, 0 requests, 0 time-bombs; 1 guards. ResetFlags = 0x7
+11-07 02:51:26.853 27871 27871 I adbd    : adbd service requested 'shell,v2,raw:date +%m-%d\ %H:%M:%S'
+11-07 02:51:26.904  1167  1208 I libPerfCtl: xgfGetFPS pid:2298 fps:-1
+11-07 02:51:26.905  1167  1208 I libPerfCtl: xgfGetFPS pid:31477 fps:-1
+11-07 02:51:26.988 27871 27871 I adbd    : adbd service requested 'shell,v2:export ANDROID_LOG_TAGS=''; exec logcat '-v' 'threadtime' '-b' 'main' '-b' 'crash' '-T' '11-07 02:51:26.000''
+11-07 02:51:26.998 27871 27871 I adbd    : adbd service requested 'shell,v2,raw:getprop ro.build.version.sdk'
+11-07 02:51:27.021  1492  1492 W HidlServiceManagement: Waited for hwservicemanager.ready for a second, waiting another...
+11-07 02:51:27.021  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 02:51:27.021  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 02:51:27.015  1492  1492 W binder:1492_2: type=1400 audit(0.0:849761): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 02:51:27.052 19121 19167 D ProfileInstaller: Installing profile for com.anchor.mine
+11-07 02:51:27.101 27871 27871 I adbd    : adbd service requested 'shell,v2,raw:settings put global verifier_verify_adb_installs 0'
+11-07 02:51:27.106  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 02:51:27.099  1492  1492 W binder:1492_2: type=1400 audit(0.0:849762): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 02:51:27.123 14781 14781 I GoogleInputMethodService: GoogleInputMethodService.onFinishInput():2404 
+11-07 02:51:27.127 14781 19172 I Module  : DeviceLockedStatusModuleProvider$Module.updateDeviceLockedStatusInternal():119 repeatCheckTimes = 0, locked = false
+11-07 02:51:27.128 31477 31477 W RemoteInputConnectionImpl: requestCursorAnchorInfo on inactive InputConnection
+11-07 02:51:27.158  1198  1295 E BufferQueueDebug: [ColorFade#36715](this:0xb400007c09db8718,id:-1,api:0,p:-1,c:-1) id info cannot be read from 'ColorFade#36715'
+11-07 02:51:27.158  1134  1491 I hwcomposer: [DRMDEV] (0) failed to waitNextVsync: -1  
+11-07 02:51:27.159  1198  1295 I BufferQueueDebug: [ColorFade#36715](this:0xb400007c09db8718,id:-1,api:0,p:-1,c:-1) BufferQueue core=(1198:/system/bin/surfaceflinger)
+11-07 02:51:27.161  1198  1661 I Scheduler: applyPolicy: UpdateRefreshRate 30 to 120 of group 0: [touch=0:0 touchBoost=0 scroll=0:0 idle=0:0]
+11-07 02:51:27.162  1198  1295 E BufferQueueDebug: [ColorFade BLAST#36716](this:0xb400007c08dc4718,id:-1,api:0,p:-1,c:-1) id info cannot be read from 'ColorFade BLAST#36716'
+11-07 02:51:27.162  1198  1295 I BufferQueueDebug: [ColorFade BLAST#36716](this:0xb400007c08dc4718,id:-1,api:0,p:-1,c:-1) BufferQueue core=(1198:/system/bin/surfaceflinger)
+11-07 02:51:27.163  1830  1903 D BufferQueueConsumer: [](id:7260000013a,api:0,p:-1,c:1830) connect: controlledByApp=false
+11-07 02:51:27.172  1830  1903 D BufferQueueConsumer: [](id:7260000013b,api:0,p:-1,c:1830) connect: controlledByApp=true
+11-07 02:51:27.176  1830  1903 D Surface : Surface::disconnect
+11-07 02:51:27.178  1830  1903 D BufferQueueConsumer: [SurfaceTexture-95-1830-94](id:7260000013b,api:0,p:-1,c:1830) disconnect
+11-07 02:51:27.181  1134  1491 I hwcomposer: [DRMDEV] (0) failed to waitNextVsync: -1  
+11-07 02:51:27.186 27871 27871 I adbd    : adbd service requested 'shell,v2,raw:am get-current-user'
+11-07 02:51:27.188  1198  1198 I SurfaceFlinger: setActiveModeInHwcIfNeeded changing active mode to 1(120.00 Hz) for display 0
+11-07 02:51:27.189  1134  1134 I hwcomposer: [HWC] (0) displaySetActiveConfig config:1  
+11-07 02:51:27.190  1134  1134 I hwcomposer: [HWCDisplay] [Display_0 (type:1)] fps:3.224262,dur:1860.89,max:1031.08,min:32.74  
+11-07 02:51:27.198  1830  1903 D BLASTBufferQueue: [ColorFade#95](f:0,a:1) acquireNextBufferLocked size=1080x2400 mFrameNumber=1 applyTransaction=true mTimestamp=276569823281021(auto) mPendingTransactions.size=0 graphicBufferId=7859790153645 transform=0
+11-07 02:51:27.204  1310  1310 I FPSGO   : fpsgo_boost_sched_idle_prefer:1
+11-07 02:51:27.204  1310  1310 I mtkpower_client: perf_lock_acq, hdl:0, dur:0, num:2, tid:1310
+11-07 02:51:27.206  1167  1252 I libPowerHal: [perfLockAcq] idx:0 hdl:159145 hint:-1 pid:1310 duration:0 lock_user:fpsgo => ret_hdl:159145
+11-07 02:51:27.206  1310  1310 I mtkpower_client: ret_hdl:159145
+11-07 02:51:27.206  1310  1310 I FPSGO   : perfLockAcq hdl:159145
+11-07 02:51:27.206  1310  1310 I FPSGO   : fpsgo_boost_sched_rate_ns:0
+11-07 02:51:27.206  1310  1310 I mtkpower_client: perf_lock_acq, hdl:0, dur:0, num:12, tid:1310
+11-07 02:51:27.207  1167  1252 I libPowerHal: [PE] fpsgo update cmd:1404500 param:1
+11-07 02:51:27.208  1310  1310 I mtkpower_client: ret_hdl:159146
+11-07 02:51:27.208  1310  1310 I FPSGO   : perfLockAcq hdl:159146
+11-07 02:51:27.209  1167  1252 I libPowerHal: cmdSetting - unknown cmd:1438500, scmd:(null) ,param_1:0
+11-07 02:51:27.209  1167  1252 I libPowerHal: cmdSetting - unknown cmd:1438800, scmd:(null) ,param_1:0
+11-07 02:51:27.209  1167  1252 I libPowerHal: [perfLockAcq] idx:1 hdl:159146 hint:-1 pid:1310 duration:0 lock_user:fpsgo => ret_hdl:159146
+11-07 02:51:27.210  1167  1252 I libPowerHal: [PE] fpsgo update cmd:1438300, param:0
+11-07 02:51:27.210  1167  1252 I libPowerHal: [PE] fpsgo update cmd:1438400, param:0
+11-07 02:51:27.210  1167  1252 I libPowerHal: [PE] fpsgo update cmd:1438600, param:0
+11-07 02:51:27.210  1167  1252 I libPowerHal: [PE] fpsgo update cmd:1438700, param:0
+11-07 02:51:27.217  2298  2298 I vol.VolumeDialogImpl: mDialog.dismiss() reason: volume_controller from: com.android.systemui.volume.VolumeDialogImpl$7.onDismissRequested:3 displayId: 0 mShowing: false mIsAnimatingDismiss: false
+11-07 02:51:27.221  1198  1198 D SurfaceFlinger: MtkOverrideDuration: update vsync 120
+11-07 02:51:27.221  1198  1198 E SurfaceFlinger: MtkDuration override mode is disabled
+11-07 02:51:27.221  1198  1198 D SurfaceFlinger: MtkOverrideDuration: reset override duration
+11-07 02:51:27.221  1198  1198 I BufferQueueProducer: [StatusBar#90](this:0xb400007c09d63718,id:-1,api:0,p:-1,c:1198) queueBuffer: fps=0.53 dur=1895.27 max=1895.27 min=1895.27
+11-07 02:51:27.222  1198  1198 I BufferQueueProducer: [NavigationBar0#86](this:0xb400007c09d56718,id:-1,api:0,p:-1,c:1198) queueBuffer: fps=0.00 dur=1803484.31 max=1803435.80 min=10.85
+11-07 02:51:27.266  1310  1310 I mtkpower_client: perf_lock_acq, hdl:0, dur:30000, num:2, tid:1310
+11-07 02:51:27.267  1310  1310 I mtkpower_client: ret_hdl:159147
+11-07 02:51:27.268  1167  1252 I libPowerHal: [perfLockAcq] idx:2 hdl:159147 hint:-1 pid:1310 duration:30000 lock_user:fpsgo => ret_hdl:159147
+11-07 02:51:27.270  1167  1252 I libPowerHal: [PE] fpsgo update cmd:1408300, param:100
+11-07 02:51:27.281 27871 27871 I adbd    : adbd service requested 'abb_exec:settings
+11-07 02:51:27.282 28097 28097 I abb     : StartCommandInProcess(73657474696e67730067657400676c6f settings.get.glo [truncated])
+11-07 02:51:27.286  1310  1310 I mtkpower_client: perf_lock_rel, hdl:159147, tid:1310
+11-07 02:51:27.288  1167  1252 I libPowerHal: [perfLockRel] hdl:159147, idx:2
+11-07 02:51:27.288  1167  1252 I libPowerHal: [PD] fpsgo update cmd:1408300 param:0
+11-07 02:51:27.305 27871 27871 I adbd    : adbd service requested 'abb_exec:package
+11-07 02:51:27.306 28097 28097 I abb     : StartCommandInProcess(7061636b61676500696e7374616c6c00 package.install. [truncated])
+11-07 02:51:27.399  1310  1310 I mtkpower_client: perf_lock_acq, hdl:0, dur:30000, num:2, tid:1310
+11-07 02:51:27.400  1310  1310 I mtkpower_client: ret_hdl:159148
+11-07 02:51:27.401  1167  1252 I libPowerHal: [perfLockAcq] idx:2 hdl:159148 hint:-1 pid:1310 duration:30000 lock_user:fpsgo => ret_hdl:159148
+11-07 02:51:27.402  1167  1252 I libPowerHal: [PE] fpsgo update cmd:1408300, param:100
+11-07 02:51:27.512  2298  2298 I vol.VolumeDialogImpl: dismissH reason = volume_controller mDialog.isShowing(): false
+11-07 02:51:27.572 27547 27580 I Finsky  : [246] AIM: AppInfoManager-Perf > Destroying AppInfoManager ...
+11-07 02:51:27.691  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 02:51:27.687  1492  1492 W binder:1492_2: type=1400 audit(0.0:849763): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 02:51:27.693  1535  1625 D PQ      : ccorr table index=3
+11-07 02:51:27.695  1198  1198 E BufferQueueDebug: [Screenshot Parent#36717](this:0xb400007c09030718,id:-1,api:0,p:-1,c:-1) id info cannot be read from 'Screenshot Parent#36717'
+11-07 02:51:27.696  1198  1198 I BufferQueueDebug: [Screenshot Parent#36717](this:0xb400007c09030718,id:-1,api:0,p:-1,c:-1) BufferQueue core=(1198:/system/bin/surfaceflinger)
+11-07 02:51:27.696  1428  1480 I thermal_core: thermal_options_checker
+11-07 02:51:27.698  1535  1625 D PQ      : [PQ_SERVICE] setPQParamWithFilter configFlag: 1
+11-07 02:51:27.698  1535  1625 D PQ      : ccorr table index=3
+11-07 02:51:27.698  1535  1625 D PQ      : [PQ_SERVICE] setPQParamWithFilter configFlag: 1
+11-07 02:51:27.700  1535  1625 D PQ      : ccorr table index=3
+11-07 02:51:27.700  1535  1625 D PQ      : [PQ_SERVICE] setPQParamWithFilter configFlag: 1
+11-07 02:51:27.701  1434  1474 E flp     : mnld_screen_monitor_thread: Screen off
+11-07 02:51:27.703  1434  1472 D mtk_lbs_utility: start_timer_check_ret: start_timer_check_ret ret=0
+11-07 02:51:27.703  1434  1472 D MNLD    : main_event_hdlr: SCREEN2MAIN_EVENT_SCREEN = 0
+11-07 02:51:27.703  1434  1472 D MNLD    : mnld_main_thread: mnld_main_thread stop_timer return: 0
+11-07 02:51:27.708  1535  1625 D PQ      : ccorr table index=3
+11-07 02:51:27.708  1198  1198 I BufferQueueDebug: [Screenshot Parent#36717](this:0xb400007c09030718,id:-1,api:0,p:-1,c:1198) onDestructor()
+11-07 02:51:27.708  1535  1625 D PQ      : [PQ_SERVICE] setPQParamWithFilter configFlag: 1
+11-07 02:51:27.712  1198  1198 E BufferQueueDebug: [Screenshot Parent#36718](this:0xb400007c09030718,id:-1,api:0,p:-1,c:-1) id info cannot be read from 'Screenshot Parent#36718'
+11-07 02:51:27.712  1198  1198 I BufferQueueDebug: [Screenshot Parent#36718](this:0xb400007c09030718,id:-1,api:0,p:-1,c:-1) BufferQueue core=(1198:/system/bin/surfaceflinger)
+11-07 02:51:27.727  1198  1198 I BufferQueueDebug: [Screenshot Parent#36718](this:0xb400007c09030718,id:-1,api:0,p:-1,c:1198) onDestructor()
+11-07 02:51:27.744  1138  1138 I OriginChannel: activate: [27,0]
+11-07 02:51:27.745  1830  1903 D Surface : Surface::disconnect
+11-07 02:51:27.745  1830  1903 E Surface : freeAllBuffers: 1 buffers were freed while being dequeued!
+11-07 02:51:27.749  1830  1903 E Surface : getSlotFromBufferLocked: unknown buffer: 0xb4000077c2608600
+11-07 02:51:27.749  1830  1903 E IMGSRV  : :939: QueueCancelBufferWrapper: Failed to cancel buffer 0xb4000077c2608510 (-22)
+11-07 02:51:27.747  1492  1492 W binder:1492_2: type=1400 audit(0.0:849764): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 02:51:27.750  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 02:51:27.754  1198  1198 I BpBinder: onLastStrongRef automatically unlinking death recipients: 
+11-07 02:51:27.768  1830  3983 I PowerHalWrapper: amsBoostNotify pid:31477,activity:bitpit.launcher.ui.HomeActivity, package:bitpit.launcher, mProcessCreatePacknull 
+11-07 02:51:27.768  1830  3983 I PowerHalWrapper: state: 0 
+11-07 02:51:27.769  1830  3983 I mtkpower_client: [Legacy][PowerHal_Wrap_notifyAppState] bitpit.launcher/bitpit.launcher.ui.HomeActivity pid=31477 state:0
+11-07 02:51:27.769  1167  1252 I libPowerHal: [perfNotifyAppState] pack:bitpit.launcher, act:bitpit.launcher.ui.HomeActivity, state:0, pid:31477, uid:10681, fps:-1
+11-07 02:51:27.769  2298  2298 D CentralSurfaces: updateQsExpansionEnabled - QS Expand enabled: true
+11-07 02:51:27.769  1198  1198 D SurfaceFlinger: Setting power mode 0 on display 0
+11-07 02:51:27.770  1134  1134 I hwcomposer: [HWCDisplay] Display(0) SetPowerMode(0)  
+11-07 02:51:27.770  1830  3983 I PowerHalWrapper: amsBoostNotify AMS_BOOST_PROCESS_CREATE_BOOST:true 
+11-07 02:51:27.771  1830  1877 I PowerHalWrapper: amsBoostNotify pid:31477,activity:bitpit.launcher.ui.HomeActivity, package:bitpit.launcher, mProcessCreatePacknull 
+11-07 02:51:27.771  1830  1877 I PowerHalWrapper: state: 0 
+11-07 02:51:27.771  1830  1877 I mtkpower_client: [Legacy][PowerHal_Wrap_notifyAppState] bitpit.launcher/bitpit.launcher.ui.HomeActivity pid=31477 state:0
+11-07 02:51:27.771  1134  1134 W hwcomposer: [DRMDEV] Failed to open fb0 device: No such file or directory  
+11-07 02:51:27.771  1167  1252 I libPowerHal: [perfNotifyAppState] pack:bitpit.launcher, act:bitpit.launcher.ui.HomeActivity, state:0, pid:31477, uid:10681, fps:-1
+11-07 02:51:27.772  1830  1877 I PowerHalWrapper: amsBoostNotify AMS_BOOST_PROCESS_CREATE_BOOST:true 
+11-07 02:51:27.773  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 02:51:27.767  1492  1492 W binder:1492_2: type=1400 audit(0.0:849765): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 02:51:27.767  1492  1492 W binder:1492_2: type=1400 audit(0.0:849766): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 02:51:27.773  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 02:51:27.774  1830  2018 W PackageManager: Missing required system package: com.dubox.drive, but found with extended search.
+11-07 02:51:27.777  1830  2018 W PackageManager: Missing required system package: com.dubox.drive, but found with extended search.
+11-07 02:51:27.779  1830  1878 D SurfaceComposerClient: Transaction::apply InputWindowCommands.focusRequests timestamp=276570399865021, windowName=<null>
+11-07 02:51:27.780  1830  2018 W PackageManager: Missing required system package: com.dubox.drive, but found with extended search.
+11-07 02:51:27.788  1830  1877 I InputManager-JNI: Viewport [0] to add: local:0, isActive: false
+11-07 02:51:27.789  1830  2018 W PackageManager: Missing required system package: app.revanced.android.youtube, but found with extended search.
+11-07 02:51:27.795  1108  1108 D Zygote  : Forked child process 19204
+11-07 02:51:27.803  1830  2084 I InputReader: Reconfiguring input devices, changes=DISPLAY_INFO
+11-07 02:51:27.803  1830  2084 I InputReader: Disabling NVTCapacitiveTouchScreen (device 5) because the associated viewport is not active
+11-07 02:51:27.803  1830  2084 I InputReader: Device reconfigured: id=5, name='NVTCapacitiveTouchScreen', size 1081x2401, orientation 0, mode 0, display id 0
+11-07 02:51:27.809 31477 31560 D Surface : Surface::disconnect
+11-07 02:51:27.811 19204 19204 I ola.personalize: Using generational CollectorTypeCMC GC.
+11-07 02:51:27.812  1830  1878 W SurfaceControl: Invalid layer stack -1
+11-07 02:51:27.816 19204 19204 D nativeloader: Load libframework-connectivity-tiramisu-jni.so using APEX ns com_android_tethering for caller /apex/com.android.tethering/javalib/framework-connectivity-t.jar: ok
+11-07 02:51:27.822  1830  2018 W PackageManager: Missing required system package: com.reddit.frontpage, but found with extended search.
+11-07 02:51:27.831 14781 14781 I PkModeUpdater: PkModeUpdater.refreshDevices():212 refreshing devices
+11-07 02:51:27.835  1108  1108 D Zygote  : Forked child process 19216
+11-07 02:51:27.842 19204 19204 D CompatibilityChangeReporter: Compat change id reported: 171979766; UID 10279; state: ENABLED
+11-07 02:51:27.842 19204 19204 D CompatibilityChangeReporter: Compat change id reported: 242716250; UID 10279; state: DISABLED
+11-07 02:51:27.845 19216 19216 I eddit.frontpage: Using generational CollectorTypeCMC GC.
+11-07 02:51:27.849 19216 19216 D nativeloader: Load libframework-connectivity-tiramisu-jni.so using APEX ns com_android_tethering for caller /apex/com.android.tethering/javalib/framework-connectivity-t.jar: ok
+11-07 02:51:27.850  3384 27056 I NearbySharing: Screen is locked
+11-07 02:51:27.850  3384 27056 I NearbySharing: Stopping scanning because the screen is locked and no background sync is active.
+11-07 02:51:27.853  3384 27056 I NearbySharing: SendProvider: Stopping discovery.
+11-07 02:51:27.856 31477 31477 D BLASTBufferQueue: [VRI[HomeActivity]#201](f:0,a:1) destructor()
+11-07 02:51:27.856 31477 31477 D BufferQueueConsumer: [VRI[HomeActivity]#201(BLAST Consumer)201](id:7af5000000c9,api:0,p:-1,c:31477) disconnect
+11-07 02:51:27.856  1830  2018 W PackageManager: Missing required system package: com.microsoft.office.outlook, but found with extended search.
+11-07 02:51:27.864 19216 19216 D CompatibilityChangeReporter: Compat change id reported: 171979766; UID 10558; state: ENABLED
+11-07 02:51:27.865 19216 19216 D CompatibilityChangeReporter: Compat change id reported: 242716250; UID 10558; state: ENABLED
+11-07 02:51:27.867  3384 30863 I NearbySharing: [NS_DEBUG] DiscoveryController stopped.
+11-07 02:51:27.868  1108  1108 D Zygote  : Forked child process 19232
+11-07 02:51:27.872  3384  3384 D BoundBrokerSvc: onBind: Intent { act=com.google.android.gms.measurement.START pkg=com.google.android.gms }
+11-07 02:51:27.873  3384  3384 D BoundBrokerSvc: Loading bound service for intent: Intent { act=com.google.android.gms.measurement.START pkg=com.google.android.gms }
+11-07 02:51:27.878 19232 19232 I .office.outlook: Using generational CollectorTypeCMC GC.
+11-07 02:51:27.879  1830  2295 W PackageManager: Missing required system package: com.google.android.apps.docs.editors.slides, but found with extended search.
+11-07 02:51:27.880 19204 19204 D nativeloader: Configuring clns-shared-4 for other apk /system/framework/moto-checkin.jar. target_sdk_version=33, uses_libraries=ALL, library_path=/system_ext/priv-app/Personalize/lib/arm64:/system/lib64:/system_ext/lib64, permitted_path=/data:/mnt/expand:/data/user/0/com.motorola.personalize:/system_ext/priv-app/Personalize:/system/lib64:/system_ext/lib64
+11-07 02:51:27.881 19204 19204 D nativeloader: Extending system_exposed_libraries: libapuwareapusys.mtk.so:libapuwareapusys_v2.mtk.so:libapuwarexrp.mtk.so:libapuwarexrp_v2.mtk.so:libapuwareutils.mtk.so:libapuwareutils_v2.mtk.so:libapuwarehmp.mtk.so:libmcv_runtime_usdk.mtk.so:libneuron_graph_delegate.mtk.so:libneuronusdk_adapter.mtk.so:libtflite_mtk.mtk.so:libarmnn_ndk.mtk.so:libcmdl_ndk.mtk.so:libnir_neon_driver_ndk.mtk.so:libmvpu_runtime.mtk.so:libmvpu_runtime_pub.mtk.so:libmvpu_engine_pub.mtk.so:libmvpu_pattern_pub.mtk.so:libmvpuop_mtk_cv.mtk.so:libmvpuop_mtk_nn.mtk.so:libmvpu_runtime_25.mtk.so:libmvpu_runtime_25_pub.mtk.so:libmvpu_engine_25_pub.mtk.so:libmvpu_pattern_25_pub.mtk.so:libmvpuop25_mtk_cv.mtk.so:libmvpuop25_mtk_nn.mtk.so:libmvpu_config.mtk.so:libteeservice_client.trustonic.so:libjni_helper.motocameradesktop.so:libimgTuner_jni.motoimagetuner.so
+11-07 02:51:27.883 19232 19232 D nativeloader: Load libframework-connectivity-tiramisu-jni.so using APEX ns com_android_tethering for caller /apex/com.android.tethering/javalib/framework-connectivity-t.jar: ok
+11-07 02:51:27.888  3384 27056 I NearbySharing: NearbySharing Internal event SendManagerEnd
+11-07 02:51:27.890  1108  1108 D Zygote  : Forked child process 19240
+11-07 02:51:27.893 19204 19204 D nativeloader: Configuring clns-shared-5 for other apk /system/framework/moto-core_services.jar. target_sdk_version=33, uses_libraries=ALL, library_path=/system_ext/priv-app/Personalize/lib/arm64:/system/lib64:/system_ext/lib64, permitted_path=/data:/mnt/expand:/data/user/0/com.motorola.personalize:/system_ext/priv-app/Personalize:/system/lib64:/system_ext/lib64
+11-07 02:51:27.893 19204 19204 D nativeloader: Extending system_exposed_libraries: libapuwareapusys.mtk.so:libapuwareapusys_v2.mtk.so:libapuwarexrp.mtk.so:libapuwarexrp_v2.mtk.so:libapuwareutils.mtk.so:libapuwareutils_v2.mtk.so:libapuwarehmp.mtk.so:libmcv_runtime_usdk.mtk.so:libneuron_graph_delegate.mtk.so:libneuronusdk_adapter.mtk.so:libtflite_mtk.mtk.so:libarmnn_ndk.mtk.so:libcmdl_ndk.mtk.so:libnir_neon_driver_ndk.mtk.so:libmvpu_runtime.mtk.so:libmvpu_runtime_pub.mtk.so:libmvpu_engine_pub.mtk.so:libmvpu_pattern_pub.mtk.so:libmvpuop_mtk_cv.mtk.so:libmvpuop_mtk_nn.mtk.so:libmvpu_runtime_25.mtk.so:libmvpu_runtime_25_pub.mtk.so:libmvpu_engine_25_pub.mtk.so:libmvpu_pattern_25_pub.mtk.so:libmvpuop25_mtk_cv.mtk.so:libmvpuop25_mtk_nn.mtk.so:libmvpu_config.mtk.so:libteeservice_client.trustonic.so:libjni_helper.motocameradesktop.so:libimgTuner_jni.motoimagetuner.so
+11-07 02:51:27.899 19204 19204 D nativeloader: Configuring clns-shared-6 for other apk /system/framework/moto-settings.jar. target_sdk_version=33, uses_libraries=ALL, library_path=/system_ext/priv-app/Personalize/lib/arm64:/system/lib64:/system_ext/lib64, permitted_path=/data:/mnt/expand:/data/user/0/com.motorola.personalize:/system_ext/priv-app/Personalize:/system/lib64:/system_ext/lib64
+11-07 02:51:27.900 19204 19204 D nativeloader: Extending system_exposed_libraries: libapuwareapusys.mtk.so:libapuwareapusys_v2.mtk.so:libapuwarexrp.mtk.so:libapuwarexrp_v2.mtk.so:libapuwareutils.mtk.so:libapuwareutils_v2.mtk.so:libapuwarehmp.mtk.so:libmcv_runtime_usdk.mtk.so:libneuron_graph_delegate.mtk.so:libneuronusdk_adapter.mtk.so:libtflite_mtk.mtk.so:libarmnn_ndk.mtk.so:libcmdl_ndk.mtk.so:libnir_neon_driver_ndk.mtk.so:libmvpu_runtime.mtk.so:libmvpu_runtime_pub.mtk.so:libmvpu_engine_pub.mtk.so:libmvpu_pattern_pub.mtk.so:libmvpuop_mtk_cv.mtk.so:libmvpuop_mtk_nn.mtk.so:libmvpu_runtime_25.mtk.so:libmvpu_runtime_25_pub.mtk.so:libmvpu_engine_25_pub.mtk.so:libmvpu_pattern_25_pub.mtk.so:libmvpuop25_mtk_cv.mtk.so:libmvpuop25_mtk_nn.mtk.so:libmvpu_config.mtk.so:libteeservice_client.trustonic.so:libjni_helper.motocameradesktop.so:libimgTuner_jni.motoimagetuner.so
+11-07 02:51:27.902 19240 19240 I oid.apps.photos: Using generational CollectorTypeCMC GC.
+11-07 02:51:27.904  3384 27056 I NearbySharing: Scanning has stopped.
+11-07 02:51:27.904  1167  1208 I libPerfCtl: xgfGetFPS pid:1830 fps:104
+11-07 02:51:27.904  1167  1208 I libPerfCtl: xgfGetFPS pid:2298 fps:42
+11-07 02:51:27.904  1167  1208 I libPerfCtl: xgfGetFPS pid:31477 fps:-1
+11-07 02:51:27.905  1108  1108 D Zygote  : Forked child process 19245
+11-07 02:51:27.909  3384 27056 I NearbySharing: Stopping Fast Init advertisement because we're not scanning in the foreground.
+11-07 02:51:27.913 19232 19232 D CompatibilityChangeReporter: Compat change id reported: 171979766; UID 10318; state: ENABLED
+11-07 02:51:27.913 19232 19232 D CompatibilityChangeReporter: Compat change id reported: 242716250; UID 10318; state: ENABLED
+11-07 02:51:27.913 19240 19240 D nativeloader: Load libframework-connectivity-tiramisu-jni.so using APEX ns com_android_tethering for caller /apex/com.android.tethering/javalib/framework-connectivity-t.jar: ok
+11-07 02:51:27.916 19245 19245 I .editors.slides: Using generational CollectorTypeCMC GC.
+11-07 02:51:27.922 19245 19245 D nativeloader: Load libframework-connectivity-tiramisu-jni.so using APEX ns com_android_tethering for caller /apex/com.android.tethering/javalib/framework-connectivity-t.jar: ok
+11-07 02:51:27.923  3384  3413 I NearbyConnections: Client 172894349 requested discovery to stop.
+11-07 02:51:27.930 19240 19240 D CompatibilityChangeReporter: Compat change id reported: 171979766; UID 10232; state: ENABLED
+11-07 02:51:27.930 19240 19240 D CompatibilityChangeReporter: Compat change id reported: 242716250; UID 10232; state: ENABLED
+11-07 02:51:27.949 31477 31477 W WindowOnBackDispatcher: sendCancelIfRunning: isInProgress=falsecallback=b.Tkq9FIp4LM2yoYYngYhUKbXMW7E@67cf21c
+11-07 02:51:27.951 19245 19245 D CompatibilityChangeReporter: Compat change id reported: 171979766; UID 10333; state: ENABLED
+11-07 02:51:27.951 19245 19245 D CompatibilityChangeReporter: Compat change id reported: 242716250; UID 10333; state: ENABLED
+11-07 02:51:27.954  3384 27056 I NearbySharing: Stopping advertising because no high power receive surface is registered and device is visible to HIDDEN.
+11-07 02:51:27.958  3384 30863 I NearbyMediums: In ScanningCancellationFlag, service-id=NearbySharing is the last scanner to stop scanning. The flag has been cancelled.
+11-07 02:51:27.958  3384 27056 I NearbySharing: Stopping FastInitiation scanning because the screen is locked.
+11-07 02:51:27.959  3384 27056 I NearbySharing: Fast Initiation Scanning has stopped
+11-07 02:51:27.960  3384 27056 I NearbySharing: Dismissing HUN as there's no device nearby.
+11-07 02:51:27.961  1830  3547 D ConnectivityService: requestNetwork for uid/pid:10740/11467 activeRequest: null callbackRequest: 45762 [NetworkRequest [ REQUEST id=45763, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED Uid: 10740 RequestorUid: 10740 RequestorPkg: app.revanced.android.youtube UnderlyingNetworks: Null] ]] callback flags: 0 order: 2147483647 isUidTracked: false declaredMethods: AVAIL|LOST|NC
+11-07 02:51:27.964  1830  2109 D WifiNetworkFactory: got request NetworkRequest [ REQUEST id=45763, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED Uid: 10740 RequestorUid: 10740 RequestorPkg: app.revanced.android.youtube UnderlyingNetworks: Null] ]
+11-07 02:51:27.964  1830  2116 D ConnectivityService: NetReassign [45763 : null → 553] [c 0] [a 1] [i 0]
+11-07 02:51:27.964  1830  2109 D UntrustedWifiNetworkFactory: got request NetworkRequest [ REQUEST id=45763, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED Uid: 10740 RequestorUid: 10740 RequestorPkg: app.revanced.android.youtube UnderlyingNetworks: Null] ]
+11-07 02:51:27.964  1830  2109 D OemPaidWifiNetworkFactory: got request NetworkRequest [ REQUEST id=45763, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED Uid: 10740 RequestorUid: 10740 RequestorPkg: app.revanced.android.youtube UnderlyingNetworks: Null] ]
+11-07 02:51:27.964  1830  2109 D MultiInternetWifiNetworkFactory: got request NetworkRequest [ REQUEST id=45763, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED Uid: 10740 RequestorUid: 10740 RequestorPkg: app.revanced.android.youtube UnderlyingNetworks: Null] ]
+11-07 02:51:27.966 19232 19232 D nativeloader: Configuring clns-4 for other apk /system/framework/org.apache.http.legacy.jar. target_sdk_version=36, uses_libraries=ALL, library_path=/data/app/~~n2oRS4mKQwWWfQ94jPMXNw==/com.microsoft.office.outlook-zq7KfiuygbqvEAG4ZffXHg==/lib/arm64:/data/app/~~n2oRS4mKQwWWfQ94jPMXNw==/com.microsoft.office.outlook-zq7KfiuygbqvEAG4ZffXHg==/base.apk!/lib/arm64-v8a:/data/app/~~n2oRS4mKQwWWfQ94jPMXNw==/com.microsoft.office.outlook-zq7KfiuygbqvEAG4ZffXHg==/split_config.arm64_v8a.apk!/lib/arm64-v8a:/data/app/~~n2oRS4mKQwWWfQ94jPMXNw==/com.microsoft.office.outlook-zq7KfiuygbqvEAG4ZffXHg==/split_config.en.apk!/lib/arm64-v8a:/data/app/~~n2oRS4mKQwWWfQ94jPMXNw==/com.microsoft.office.outlook-zq7KfiuygbqvEAG4ZffXHg==/split_config.xxhdpi.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand:/data/user/0/com.microsoft.office.outlook
+11-07 02:51:27.966 19232 19232 D nativeloader: Extending system_exposed_libraries: libapuwareapusys.mtk.so:libapuwareapusys_v2.mtk.so:libapuwarexrp.mtk.so:libapuwarexrp_v2.mtk.so:libapuwareutils.mtk.so:libapuwareutils_v2.mtk.so:libapuwarehmp.mtk.so:libmcv_runtime_usdk.mtk.so:libneuron_graph_delegate.mtk.so:libneuronusdk_adapter.mtk.so:libtflite_mtk.mtk.so:libarmnn_ndk.mtk.so:libcmdl_ndk.mtk.so:libnir_neon_driver_ndk.mtk.so:libmvpu_runtime.mtk.so:libmvpu_runtime_pub.mtk.so:libmvpu_engine_pub.mtk.so:libmvpu_pattern_pub.mtk.so:libmvpuop_mtk_cv.mtk.so:libmvpuop_mtk_nn.mtk.so:libmvpu_runtime_25.mtk.so:libmvpu_runtime_25_pub.mtk.so:libmvpu_engine_25_pub.mtk.so:libmvpu_pattern_25_pub.mtk.so:libmvpuop25_mtk_cv.mtk.so:libmvpuop25_mtk_nn.mtk.so:libmvpu_config.mtk.so:libteeservice_client.trustonic.so:libjni_helper.motocameradesktop.so:libimgTuner_jni.motoimagetuner.so
+11-07 02:51:27.968  1830  2074 W PackageManager: Missing required system package: com.anchor.mine, but found with extended search.
+11-07 02:51:27.972 19240 19240 D nativeloader: Configuring clns-4 for other apk /system/framework/org.apache.http.legacy.jar. target_sdk_version=37, uses_libraries=ALL, library_path=/data/app/~~SAVmEWNpMQu-DUR5WtKScA==/com.google.android.apps.photos-6tOi0TNdEWYBABiZ30Xncg==/lib/arm64:/data/app/~~SAVmEWNpMQu-DUR5WtKScA==/com.google.android.apps.photos-6tOi0TNdEWYBABiZ30Xncg==/base.apk!/lib/arm64-v8a:/data/app/~~SAVmEWNpMQu-DUR5WtKScA==/com.google.android.apps.photos-6tOi0TNdEWYBABiZ30Xncg==/split_config.arm64_v8a.apk!/lib/arm64-v8a:/data/app/~~SAVmEWNpMQu-DUR5WtKScA==/com.google.android.apps.photos-6tOi0TNdEWYBABiZ30Xncg==/split_config.en.apk!/lib/arm64-v8a:/data/app/~~SAVmEWNpMQu-DUR5WtKScA==/com.google.android.apps.photos-6tOi0TNdEWYBABiZ30Xncg==/split_config.xxhdpi.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand:/data/user/0/com.google.android.apps.photos
+11-07 02:51:27.972 19240 19240 D nativeloader: Extending system_exposed_libraries: libapuwareapusys.mtk.so:libapuwareapusys_v2.mtk.so:libapuwarexrp.mtk.so:libapuwarexrp_v2.mtk.so:libapuwareutils.mtk.so:libapuwareutils_v2.mtk.so:libapuwarehmp.mtk.so:libmcv_runtime_usdk.mtk.so:libneuron_graph_delegate.mtk.so:libneuronusdk_adapter.mtk.so:libtflite_mtk.mtk.so:libarmnn_ndk.mtk.so:libcmdl_ndk.mtk.so:libnir_neon_driver_ndk.mtk.so:libmvpu_runtime.mtk.so:libmvpu_runtime_pub.mtk.so:libmvpu_engine_pub.mtk.so:libmvpu_pattern_pub.mtk.so:libmvpuop_mtk_cv.mtk.so:libmvpuop_mtk_nn.mtk.so:libmvpu_runtime_25.mtk.so:libmvpu_runtime_25_pub.mtk.so:libmvpu_engine_25_pub.mtk.so:libmvpu_pattern_25_pub.mtk.so:libmvpuop25_mtk_cv.mtk.so:libmvpuop25_mtk_nn.mtk.so:libmvpu_config.mtk.so:libteeservice_client.trustonic.so:libjni_helper.motocameradesktop.so:libimgTuner_jni.motoimagetuner.so
+11-07 02:51:27.973 27547 27578 I Finsky  : [244] AIM: AppInfoManager-Perf > Destroying AppInfoManager ...
+11-07 02:51:27.987 19245 19245 D nativeloader: Configuring clns-4 for other apk /system/framework/org.apache.http.legacy.jar. target_sdk_version=37, uses_libraries=ALL, library_path=/data/app/~~ZFQMARKRT68lQmBOnEo_aA==/com.google.android.apps.docs.editors.slides-cL3jTlONLXSt-Qh104LDgw==/lib/arm64:/data/app/~~ZFQMARKRT68lQmBOnEo_aA==/com.google.android.apps.docs.editors.slides-cL3jTlONLXSt-Qh104LDgw==/base.apk!/lib/arm64-v8a:/data/app/~~ZFQMARKRT68lQmBOnEo_aA==/com.google.android.apps.docs.editors.slides-cL3jTlONLXSt-Qh104LDgw==/split_config.arm64_v8a.apk!/lib/arm64-v8a:/data/app/~~ZFQMARKRT68lQmBOnEo_aA==/com.google.android.apps.docs.editors.slides-cL3jTlONLXSt-Qh104LDgw==/split_config.en.apk!/lib/arm64-v8a:/data/app/~~ZFQMARKRT68lQmBOnEo_aA==/com.google.android.apps.docs.editors.slides-cL3jTlONLXSt-Qh104LDgw==/split_config.xxhdpi.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand:/data/user/0/com.google.android.apps.docs.editors.slides
+11-07 02:51:27.987 19245 19245 D nativeloader: Extending system_exposed_libraries: libapuwareapusys.mtk.so:libapuwareapusys_v2.mtk.so:libapuwarexrp.mtk.so:libapuwarexrp_v2.mtk.so:libapuwareutils.mtk.so:libapuwareutils_v2.mtk.so:libapuwarehmp.mtk.so:libmcv_runtime_usdk.mtk.so:libneuron_graph_delegate.mtk.so:libneuronusdk_adapter.mtk.so:libtflite_mtk.mtk.so:libarmnn_ndk.mtk.so:libcmdl_ndk.mtk.so:libnir_neon_driver_ndk.mtk.so:libmvpu_runtime.mtk.so:libmvpu_runtime_pub.mtk.so:libmvpu_engine_pub.mtk.so:libmvpu_pattern_pub.mtk.so:libmvpuop_mtk_cv.mtk.so:libmvpuop_mtk_nn.mtk.so:libmvpu_runtime_25.mtk.so:libmvpu_runtime_25_pub.mtk.so:libmvpu_engine_25_pub.mtk.so:libmvpu_pattern_25_pub.mtk.so:libmvpuop25_mtk_cv.mtk.so:libmvpuop25_mtk_nn.mtk.so:libmvpu_config.mtk.so:libteeservice_client.trustonic.so:libjni_helper.motocameradesktop.so:libimgTuner_jni.motoimagetuner.so
+11-07 02:51:27.991 20200 20290 D ChimeraServiceProvider: serviceIntentCall: com.google.android.gms.potokens.service.START -> Intent { act=com.google.android.gms.potokens.service.START pkg=app.revanced.android.gms cmp=app.revanced.android.gms/org.microg.gms.potokens.PoTokensService }
+11-07 02:51:28.012  3384 27056 D BluetoothAdapter: isLeEnabled(): ON
+11-07 02:51:28.017 19121 19145 I TestRunner: finished: testGentleReminderFires_SetsFlag(com.anchor.mine.alarms.AlarmSelfTest)

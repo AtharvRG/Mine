@@ -48,16 +48,29 @@ object QuoteAlarmScheduler {
 
     fun scheduleNext(context: Context) {
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
-        val intent = Intent(context, QuoteAlarmReceiver::class.java).apply {
-            action = ACTION_PREPARE_QUOTE
-        }
-        val pendingIntent = PendingIntent.getBroadcast(
-            context,
-            REQUEST_CODE_QUOTE_PREPARE,
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
         val triggerAtMs = getNextPrepareTimeMillis()
-        alarmManager.set(AlarmManager.RTC, triggerAtMs, pendingIntent)
+        // H-15 (R-20): `set(RTC, …)` is inexact and does not wake the device, so under Doze the
+        // prepare slot could fire hours late — after the boundary it was meant to precede — or be
+        // skipped for the day. A wakeup alarm that is allowed to fire while idle keeps the slot
+        // ahead of its boundary. The app holds USE_EXACT_ALARM, same as the reminder scheduler.
+        // The AlarmManager call is isolated so a throw (e.g. a missing alarm permission on some
+        // OEM build) surfaces as a logged failure instead of escaping MineApp's startup coroutine
+        // or BootReceiver's finally-less path.
+        try {
+            val intent = Intent(context, QuoteAlarmReceiver::class.java).apply {
+                action = ACTION_PREPARE_QUOTE
+            }
+            val pendingIntent = PendingIntent.getBroadcast(
+                context,
+                REQUEST_CODE_QUOTE_PREPARE,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMs, pendingIntent)
+        } catch (e: SecurityException) {
+            android.util.Log.w("QuoteAlarmScheduler", "Quote prepare alarm not armed: ${e.message}")
+        } catch (e: IllegalStateException) {
+            android.util.Log.w("QuoteAlarmScheduler", "Quote prepare alarm not armed: ${e.message}")
+        }
     }
 }

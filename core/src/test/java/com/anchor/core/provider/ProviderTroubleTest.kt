@@ -8,6 +8,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -47,10 +49,16 @@ class ProviderTroubleTest {
         }
         val lazyResults = ProviderOrchestrator(limiter2, lazyTransport).chat(chain, "hi").toList()
         
-        // E2: Assert that Clear was emitted mid-stream, followed by the successful fallback
-        assertTrue("Should clear partial stream", lazyResults.any { it is StreamEvent.Clear })
-        val text = lazyResults.filterIsInstance<StreamEvent.TextDelta>().last().text
-        assertTrue("Should end with success", text.contains("lazy_success"))
+        // E2: The fallback must follow the partial text. H-12 (R-16) narrowed the old
+        // "Clear was emitted mid-stream" assertion: Clear wipes the consumer's buffer, so it is
+        // only correct when the failed attempt streamed no text. Here it streamed "partial...",
+        // so the events must be exactly that text followed by the fallback's text — no Clear.
+        assertFalse(
+            "A failover after streamed text must not clear it: $lazyResults",
+            lazyResults.any { it is StreamEvent.Clear }
+        )
+        val text = lazyResults.filterIsInstance<StreamEvent.TextDelta>().joinToString("") { it.text }
+        assertEquals("partial...lazy_success", text)
         
         val expiry = limiter2.getCooldownExpiry("key_A")
         assertNotNull(expiry)

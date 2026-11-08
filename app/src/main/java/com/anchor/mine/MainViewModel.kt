@@ -68,21 +68,49 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         putExtra("EXTRA_TEXT", missedRem.text)
                         putExtra("EXTRA_TIER", missedRem.tier.name)
                         putExtra("EXTRA_MISSED", true)
+                        putExtra("EXTRA_SCHEDULED_FOR", missedRem.fireAtMillis)
                     }
                     getApplication<Application>().sendBroadcast(intent)
                 }
 
-                controller!!.state.collect { _state.value = it }
-            } catch (e: Exception) {
-                val msg = if (e.message == "KEYSTORE_LOST") {
-                    "KEYSTORE_LOST"
-                } else {
-                    "Storage failed: ${e.message}"
-                }
-                _state.value = _state.value.copy(globalError = msg)
+                // H-11 (R-15): a denied POST_NOTIFICATIONS is not an error in the controller, so
+                // the banner is derived here rather than left to the controller's state. It is
+                // re-read on every controller emission and on every app resume (refreshNotification
+                // Blocked), because the user can change the grant in system settings while this
+                // ViewModel is alive.
+                _state.update { it.copy(notificationsBlocked = notificationsBlocked()) }
+                controller!!.state.collect { s -> _state.value = s.copy(notificationsBlocked = notificationsBlocked()) }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Throwable) {
+                // H-06 (R-11): an Error here used to escape as an uncaught coroutine exception and
+                // leave the user on a blank screen with no banner and no reset path.
+                // H-11: keep the notifications flag too — the startup-failure screen is exactly
+                // where a user may go to settings to fix things, and must come back to a correct
+                // banner.
+                _state.value = _state.value.copy(
+                    globalError = startupFailureMessage(e),
+                    notificationsBlocked = notificationsBlocked()
+                )
             }
         }
     }
+
+    /**
+     * H-11 (R-15): re-read the notification grant. Call from the Activity's `onResume` — the user
+     * may have returned from system settings after allowing (or revoking) notifications, and no
+     * controller emission happens for that.
+     */
+    fun refreshNotificationsBlocked() {
+        val blocked = notificationsBlocked()
+        if (_state.value.notificationsBlocked != blocked) {
+            _state.update { it.copy(notificationsBlocked = blocked) }
+        }
+    }
+
+    /** H-11 (R-15): true when reminders are armed but cannot alert the user. */
+    private fun notificationsBlocked(): Boolean =
+        !androidx.core.app.NotificationManagerCompat.from(getApplication()).areNotificationsEnabled()
 
     fun onAction(action: UiAction) {
         if (action is UiAction.PromptResetDatabase) {

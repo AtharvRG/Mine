@@ -26,6 +26,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.File
 import java.io.FileOutputStream
+import java.io.IOException
 import java.io.OutputStreamWriter
 import java.io.RandomAccessFile
 import java.nio.ByteBuffer
@@ -439,6 +440,103 @@ class ExportTest {
         srcHelper.close()
         checkHelper.close()
         exportFile.delete()
+    }
+
+    /**
+     * H-04 / R-10: the import swap must be able to restore the live DB.
+     *
+     * The import path verifies the file into a temp DB, then swaps it over the live file. The swap
+     * is the unprotected window: the live file used to be overwritten by a single copy with no
+     * backup, so a process death or I/O error mid-copy left it truncated with the SQLCipher key
+     * still in place - unopenable, history gone.
+     *
+     * The failure is injected through the manager's `copyFile` seam: the first copy (live -> .bak)
+     * succeeds, the second (temp -> live) throws. That is the real crash window - the live file is
+     * already overwritten and only the .bak can bring the history back.
+     *
+     * File-system injections were tried first and none of them works on this device: a directory at
+     * the live path is removed by `copyTo`'s `deleteRecursively()`, a directory at the `.bak` path
+     * is removed by `bakFile.delete()`, and a locked-down directory at the live path does not stop
+     * the copy at all (the import completed end-to-end).
+     *
+     * The test asserts the live DB is restored byte-for-byte and that the pre-import history is
+     * readable afterwards.
+     */
+    @Test
+    fun testImport_SwapFailureRestoresLiveDbFromBak(): Unit = runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val liveName = "mine_bak_test.db"
+        context.deleteDatabase(liveName)
+        File(context.getDatabasePath(liveName).absolutePath + "-wal").delete()
+        File(context.getDatabasePath(liveName).absolutePath + "-shm").delete()
+        File(context.getDatabasePath("mine_import_temp.db").absolutePath + "-wal").delete()
+        File(context.getDatabasePath("mine_import_temp.db").absolutePath + "-shm").delete()
+
+        val dbKey = ByteArray(32) { 7 }
+        val dbHelper = DatabaseProvider.getHelper(context, dbKey, liveName)
+        val storage = AndroidStorage(dbHelper)
+        storage.insertRawMessage("live_msg_1", "user", "live history that must survive")
+        storage.insertRawMessage("live_msg_2", "assistant", "second live message")
+        dbHelper.close()
+
+        val liveFile = context.getDatabasePath(liveName)
+        assertTrue("live DB must exist before the import", liveFile.exists())
+        val liveBefore = liveFile.readBytes()
+
+        val testFile = File(context.cacheDir, "swap_failure_import.mnex")
+        if (testFile.exists()) testFile.delete()
+        writeEncryptedExport(
+            testFile, "password123",
+            listOf("""{"t":"raw_message","v":1,"d":{"id":"imported_msg","role":"user","content":"imported"}}""")
+        )
+
+        // Fail the second copy only: live -> .bak is the real copy, temp -> live throws after
+        // truncating the live file, exactly like a process death mid-swap. The third call is the
+        // rollback (bak -> live) and must be the real copy, or the restore would fail too.
+        var copies = 0
+        var threw = false
+        val manager = AndroidExportManager(
+            context, dbHelper, dbKey, liveDbName = liveName,
+            copyFile = { src, dst ->
+                copies++
+                if (copies == 2) throw IOException("injected mid-swap failure")
+                src.copyTo(dst, overwrite = true)
+            }
+        )
+        try {
+            manager.verifyOrImport(testFile, "password123", isImport = true)
+        } catch (e: Exception) {
+            threw = true
+        }
+        assertEquals("The failed copy must be followed by exactly one rollback copy", 3, copies)
+        assertTrue("The injected swap failure must surface as an exception", threw)
+
+        // H-04: the real live DB must be byte-identical to what it was before the import. The
+        // import never reached it, so anything other than the original bytes means the swap
+        // touched the wrong file or the rollback wrote over good data.
+        assertTrue("the live DB must exist after the failed import", liveFile.exists())
+        val recovered = liveFile.readBytes()
+        assertTrue(
+            "H-04: a failed swap must leave the live DB byte-identical " +
+                "(before=${liveBefore.size} bytes, recovered=${recovered.size} bytes)",
+            liveBefore.contentEquals(recovered)
+        )
+
+        File(context.getDatabasePath(liveName).absolutePath + "-wal").delete()
+        File(context.getDatabasePath(liveName).absolutePath + "-shm").delete()
+
+        val reopenHelper = DatabaseProvider.getHelper(context, dbKey, liveName)
+        try {
+            val cursor = reopenHelper.readableDatabase.query("SELECT COUNT(*) FROM raw_message")
+            cursor.moveToFirst()
+            assertEquals("Live history must be readable after a failed swap", 2, cursor.getInt(0))
+            cursor.close()
+        } finally {
+            reopenHelper.close()
+        }
+
+        context.getDatabasePath("$liveName.bak").delete()
+        testFile.delete()
     }
 
     @Test

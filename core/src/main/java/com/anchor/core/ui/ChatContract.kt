@@ -34,8 +34,14 @@ data class UiState(
     val composerDraft: String = "",
     val connectionError: String? = null,
     val globalError: String? = null,
+    // H-11 (R-15): POST_NOTIFICATIONS denied (or notifications switched off for the app). Set by
+    // the app layer, which is the only place that can query the permission; the UI shows a banner.
+    val notificationsBlocked: Boolean = false,
     val schedulingError: String? = null,
     val schedulingFailedCount: Int = 0,
+    // H-01 (R-01): reminders whose fire instant passed while the device was off. Not a failure —
+    // the user is told what they missed instead of the reminder vanishing from reconcile.
+    val missedReminders: List<com.anchor.core.alarms.ScheduleResult.Overdue> = emptyList(),
     val showResetConfirm: Boolean = false,
     val alarmDisclosureText: String = "Urgent/alarm reminders use Android Alarm Clock (setAlarmClock) to guarantee delivery in Doze mode. This causes an alarm icon to appear in the system status bar while pending. Gentle reminders use notification-only scheduling (RTC_WAKEUP) without showing the status bar alarm icon, but may be delayed by Doze mode.",
     val selectedDayKey: String? = null,
@@ -51,7 +57,7 @@ data class UiState(
 ) {
     override fun toString(): String {
         val redactedKey = if (providerKey.isBlank()) "" else "***"
-        return "UiState(chatMessages=$chatMessages, receipts=$receipts, openProposals=$openProposals, proposedSoulFacts=$proposedSoulFacts, staleItems=$staleItems, inboxCount=$inboxCount, urgentItems=$urgentItems, isChatLoading=$isChatLoading, activeReminders=$activeReminders, selfTestStatus=$selfTestStatus, providerEndpoint=$providerEndpoint, providerKey=$redactedKey, providerModel=$providerModel, debugStats=$debugStats, composerDraft=$composerDraft, connectionError=$connectionError, globalError=$globalError, schedulingError=$schedulingError, schedulingFailedCount=$schedulingFailedCount, showResetConfirm=$showResetConfirm, alarmDisclosureText=$alarmDisclosureText, selectedDayKey=$selectedDayKey, selectedDayMessages=$selectedDayMessages, selectedDayReminders=$selectedDayReminders, homeQuote=$homeQuote, atRisk=$atRisk, activeThread=$activeThread, homePriorityList=$homePriorityList, recentlyClosed=$recentlyClosed, chatItems=$chatItems)"
+        return "UiState(chatMessages=$chatMessages, receipts=$receipts, openProposals=$openProposals, proposedSoulFacts=$proposedSoulFacts, staleItems=$staleItems, inboxCount=$inboxCount, urgentItems=$urgentItems, isChatLoading=$isChatLoading, activeReminders=$activeReminders, selfTestStatus=$selfTestStatus, providerEndpoint=$providerEndpoint, providerKey=$redactedKey, providerModel=$providerModel, debugStats=$debugStats, composerDraft=$composerDraft, connectionError=$connectionError, globalError=$globalError, schedulingError=$schedulingError, schedulingFailedCount=$schedulingFailedCount, missedReminders=$missedReminders, showResetConfirm=$showResetConfirm, alarmDisclosureText=$alarmDisclosureText, selectedDayKey=$selectedDayKey, selectedDayMessages=$selectedDayMessages, selectedDayReminders=$selectedDayReminders, homeQuote=$homeQuote, atRisk=$atRisk, activeThread=$activeThread, homePriorityList=$homePriorityList, recentlyClosed=$recentlyClosed, chatItems=$chatItems)"
     }
 }
 

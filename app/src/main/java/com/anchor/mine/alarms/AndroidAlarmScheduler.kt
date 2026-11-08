@@ -37,6 +37,9 @@ class AndroidAlarmScheduler(private val context: Context) : AlarmScheduler {
             putExtra("EXTRA_ID", reminder.id)
             putExtra("EXTRA_TEXT", reminder.text)
             putExtra("EXTRA_TIER", reminder.tier.name)
+            // R-54: the receiver's fallback path needs the fire instant to record a fire the
+            // sweeper can dedupe against when storage is unreadable.
+            putExtra("EXTRA_SCHEDULED_FOR", reminder.fireAtMillis)
         }
         val pendingIntent = PendingIntent.getBroadcast(context, reminder.id.hashCode(), intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
 
@@ -73,15 +76,20 @@ class AndroidAlarmScheduler(private val context: Context) : AlarmScheduler {
     override fun checkHealth(): ScheduleResult {
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? android.app.NotificationManager
             ?: return ScheduleResult.Armed
+        // Channels are created at app start; a missing one means notifications would be dropped
+        // silently, so this is a real failure and not a healthy state.
+        NotificationChannels.ensureCreated(context)
         if (!notificationManager.areNotificationsEnabled()) {
             return ScheduleResult.Failed("Notifications are disabled for Mine in system settings")
         }
-        val alarmChannel = notificationManager.getNotificationChannel("mine_reminders_v3")
-        if (alarmChannel != null && alarmChannel.importance == android.app.NotificationManager.IMPORTANCE_NONE) {
+        val alarmChannel = notificationManager.getNotificationChannel(NotificationChannels.ALARM)
+            ?: return ScheduleResult.Failed("Notification channel 'Reminders' is missing")
+        if (alarmChannel.importance == android.app.NotificationManager.IMPORTANCE_NONE) {
             return ScheduleResult.Failed("Notification channel 'Reminders' is blocked")
         }
-        val gentleChannel = notificationManager.getNotificationChannel("mine_gentle_reminders_v3")
-        if (gentleChannel != null && gentleChannel.importance == android.app.NotificationManager.IMPORTANCE_NONE) {
+        val gentleChannel = notificationManager.getNotificationChannel(NotificationChannels.GENTLE)
+            ?: return ScheduleResult.Failed("Notification channel 'Gentle Reminders' is missing")
+        if (gentleChannel.importance == android.app.NotificationManager.IMPORTANCE_NONE) {
             return ScheduleResult.Failed("Notification channel 'Gentle Reminders' is blocked")
         }
         return ScheduleResult.Armed

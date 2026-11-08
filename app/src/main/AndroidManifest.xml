@@ -34,6 +34,10 @@
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
                 <action android:name="android.intent.action.TIME_SET" />
                 <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <!-- H-03 (R-03): self-sent retry after storage failed at boot. -->
+                <action android:name="com.anchor.mine.alarms.ACTION_STORAGE_RETRY" />
+                <!-- H-02 (R-02): periodic sweep so a miss is reported without the app opening. -->
+                <action android:name="com.anchor.mine.alarms.ACTION_SWEEP" />
             </intent-filter>
         </receiver>
     </application>

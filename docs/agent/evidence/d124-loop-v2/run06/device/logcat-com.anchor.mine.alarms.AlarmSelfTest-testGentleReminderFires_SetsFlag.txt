@@ -1,0 +1,805 @@
+11-07 03:16:06.520  8033  8045 I TestRunner: started: testGentleReminderFires_SetsFlag(com.anchor.mine.alarms.AlarmSelfTest)
+11-07 03:16:06.524  1830  3608 W PackageManager: Missing required system package: com.whatsapp, but found with extended search.
+11-07 03:16:06.524  1830  3608 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:16:06.524  1830  2002 W PackageManager: Missing required system package: com.app.campusadda, but found with extended search.
+11-07 03:16:06.524  1830  3608 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 03:16:06.526  1830  3608 W PackageManager: Missing required system package: com.whatsapp, but found with extended search.
+11-07 03:16:06.527  1830  3608 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:16:06.527  1830  3608 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 03:16:06.529  1830  3608 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:16:06.529  1830  3608 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 03:16:06.529  1830  2002 W PackageManager: Missing required system package: com.app.spacebasic, but found with extended search.
+11-07 03:16:06.531  1830  1871 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:16:06.531  1830  1871 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 03:16:06.534  1830  2002 W PackageManager: Missing required system package: com.azure.authenticator, but found with extended search.
+11-07 03:16:06.536  8033  8046 I SQLiteConnection: Database keying operation returned:0
+11-07 03:16:06.537  8033  8045 I UiAutomation: Initialized for user 0 on display 0
+11-07 03:16:06.539  1167  1193 I mtkpower@impl: [setMode] type:6, enabled:0
+11-07 03:16:06.539  1167  1193 E mtkpower@impl: [setMode] unknown type
+11-07 03:16:06.539  1830  1871 W PackageManager: Missing required system package: com.castle.sefirah, but found with extended search.
+11-07 03:16:06.542  1198  2754 E BufferQueueDebug: [WindowToken{fb7c705 type=2032 android.os.Binder@c47c27c}#36794](this:0xb400007c09db8718,id:-1,api:0,p:-1,c:-1) id info cannot be read from 'WindowToken{fb7c705 type=2032 android.os.Binder@c47c27c}#36794'
+11-07 03:16:06.542  1198  2754 I BufferQueueDebug: [WindowToken{fb7c705 type=2032 android.os.Binder@c47c27c}#36794](this:0xb400007c09db8718,id:-1,api:0,p:-1,c:-1) BufferQueue core=(1198:/system/bin/surfaceflinger)
+11-07 03:16:06.543  8033  8046 I SQLiteConnection: Database keying operation returned:0
+11-07 03:16:06.544  1830  1871 W PackageManager: Missing required system package: com.cloudflare.onedotonedotonedotone, but found with extended search.
+11-07 03:16:06.550  1830  3608 W PackageManager: Missing required system package: com.csam.icici.bank.imobile, but found with extended search.
+11-07 03:16:06.554  8312 27537 D AccessibilitySourceService: enabled a11y services count 1
+11-07 03:16:06.555  1830  2002 W PackageManager: Missing required system package: com.delhiveryConsigneeApp, but found with extended search.
+11-07 03:16:06.560  1830  2002 W PackageManager: Missing required system package: com.digilocker.android, but found with extended search.
+11-07 03:16:06.560  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:16:06.564  8312 27537 D AccessibilitySourceService: a11y source sending 1 issue to sc
+11-07 03:16:06.565  1830  2890 W PackageManager: Missing required system package: com.discord, but found with extended search.
+11-07 03:16:06.566  1830  3608 D SafetySourceDataValidat: No cert check requested for package com.google.android.permissioncontroller
+11-07 03:16:06.570  1198  1661 I Scheduler: applyPolicy: UpdateRefreshRate 30 to 120 of group 0: [touch=0:0 touchBoost=0 scroll=0:0 idle=0:0]
+11-07 03:16:06.571  1134  1134 I hwcomposer: [HWCDisplay] [Display_0 (type:1)] fps:5.922308,dur:1013.12,max:338.81,min:33.18  
+11-07 03:16:06.571  1830  2002 W PackageManager: Missing required system package: com.dubox.drive, but found with extended search.
+11-07 03:16:06.580  1830  2002 W PackageManager: Missing required system package: com.github.android, but found with extended search.
+11-07 03:16:06.585  1830  2890 W PackageManager: Missing required system package: com.google.ai.edge.gallery, but found with extended search.
+11-07 03:16:06.590  1830  2890 W PackageManager: Missing required system package: com.google.android.apps.adm, but found with extended search.
+11-07 03:16:06.596  1830  2890 W PackageManager: Missing required system package: com.google.android.apps.bard, but found with extended search.
+11-07 03:16:06.601  1830  2002 W PackageManager: Missing required system package: com.google.android.apps.nbu.paisa.user, but found with extended search.
+11-07 03:16:06.604  1198  1198 I SurfaceFlinger: setActiveModeInHwcIfNeeded changing active mode to 1(120.00 Hz) for display 0
+11-07 03:16:06.604  1134  1134 I hwcomposer: [HWC] (0) displaySetActiveConfig config:1  
+11-07 03:16:06.607  1830  3608 W PackageManager: Missing required system package: com.google.android.keep, but found with extended search.
+11-07 03:16:06.611  1830  1871 W PackageManager: Missing required system package: com.google.ar.lens, but found with extended search.
+11-07 03:16:06.616  1830  1871 W PackageManager: Missing required system package: com.heytap.headset, but found with extended search.
+11-07 03:16:06.621  1830  1871 W PackageManager: Missing required system package: com.jacksoftw.webcam, but found with extended search.
+11-07 03:16:06.626  1830  1871 W PackageManager: Missing required system package: com.linkedin.android, but found with extended search.
+11-07 03:16:06.631  1830  2002 W PackageManager: Missing required system package: com.microsoft.office.excel, but found with extended search.
+11-07 03:16:06.636  1830  2002 W PackageManager: Missing required system package: com.microsoft.office.powerpoint, but found with extended search.
+11-07 03:16:06.637  1198  1198 D SurfaceFlinger: MtkOverrideDuration: update vsync 120
+11-07 03:16:06.637  1198  1198 E SurfaceFlinger: MtkDuration override mode is disabled
+11-07 03:16:06.637  1198  1198 D SurfaceFlinger: MtkOverrideDuration: reset override duration
+11-07 03:16:06.637  1830  1871 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:16:06.637  1198  1198 I BufferQueueDebug: [WindowToken{a9a53ca type=2032 android.os.Binder@f3f2335}#36791](this:0xb400007c08d17f18,id:-1,api:0,p:-1,c:1198) onDestructor()
+11-07 03:16:06.640  1830  2002 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:16:06.641  1830  3608 W PackageManager: Missing required system package: com.microsoft.office.word, but found with extended search.
+11-07 03:16:06.647  1830  3608 W PackageManager: Missing required system package: com.microsoft.teams, but found with extended search.
+11-07 03:16:06.648  1830  3608 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 03:16:06.650  1830  3608 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 03:16:06.652  1830  2002 W PackageManager: Missing required system package: com.music.bitchord, but found with extended search.
+11-07 03:16:06.652  1830  3608 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 03:16:06.657  1830  3608 W PackageManager: Missing required system package: com.olacabs.customer, but found with extended search.
+11-07 03:16:06.662  1830  3608 W PackageManager: Missing required system package: com.paypal.android.p2pmobile, but found with extended search.
+11-07 03:16:06.668  1830  3608 W PackageManager: Missing required system package: com.phonepe.app, but found with extended search.
+11-07 03:16:06.673  1830  1871 W PackageManager: Missing required system package: com.pittvandewitt.wavelet, but found with extended search.
+11-07 03:16:06.678  1830  3608 W PackageManager: Missing required system package: com.rapido.passenger, but found with extended search.
+11-07 03:16:06.684  1830  2002 W PackageManager: Missing required system package: com.reddit.frontpage, but found with extended search.
+11-07 03:16:06.690  1830  2002 W PackageManager: Missing required system package: com.twitter.android, but found with extended search.
+11-07 03:16:06.695  1830  2002 W PackageManager: Missing required system package: com.whatsapp, but found with extended search.
+11-07 03:16:06.703  1830  1871 W PackageManager: Missing required system package: com.whereismytrain.android, but found with extended search.
+11-07 03:16:06.705  1830  1883 W PackageManager: Missing required system package: org.telegram.messenger, but found with extended search.
+11-07 03:16:06.706  1830  1883 W PackageManager: Missing required system package: com.whatsapp, but found with extended search.
+11-07 03:16:06.706  1830  1883 W PackageManager: Missing required system package: com.twitter.android, but found with extended search.
+11-07 03:16:06.707  1830  1883 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:16:06.707  1830  1883 W PackageManager: Missing required system package: com.reddit.frontpage, but found with extended search.
+11-07 03:16:06.707  1830  1883 W PackageManager: Missing required system package: com.pinterest, but found with extended search.
+11-07 03:16:06.707  1830  1883 W PackageManager: Missing required system package: com.microsoft.teams, but found with extended search.
+11-07 03:16:06.708  1830  1883 W PackageManager: Missing required system package: com.microsoft.office.word, but found with extended search.
+11-07 03:16:06.710  1830  1883 W PackageManager: Missing required system package: com.microsoft.office.powerpoint, but found with extended search.
+11-07 03:16:06.710  2516  2516 D CarrierSvcBindHelper: onPackageModified: com.motorola.securityhub
+11-07 03:16:06.711  1830  2071 I RoleService: Granting default roles...
+11-07 03:16:06.711  1830  1883 W PackageManager: Missing required system package: com.microsoft.office.outlook, but found with extended search.
+11-07 03:16:06.711  1830  1883 W PackageManager: Missing required system package: com.microsoft.office.excel, but found with extended search.
+11-07 03:16:06.711  1830  1883 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 03:16:06.712  1830  2084 I InputReader: Reconfiguring input devices, changes=KEYBOARD_LAYOUTS
+11-07 03:16:06.712  1830  1883 W PackageManager: Missing required system package: com.github.android, but found with extended search.
+11-07 03:16:06.712  1830  1883 W PackageManager: Missing required system package: com.dubox.drive, but found with extended search.
+11-07 03:16:06.713  1830  1883 W PackageManager: Missing required system package: com.azure.authenticator, but found with extended search.
+11-07 03:16:06.713  1830  1883 W PackageManager: Missing required system package: com.azure.authenticator, but found with extended search.
+11-07 03:16:06.713  1830  1883 W PackageManager: Missing required system package: com.azure.authenticator, but found with extended search.
+11-07 03:16:06.713  1830  1883 W PackageManager: Missing required system package: com.azure.authenticator, but found with extended search.
+11-07 03:16:06.713  2516  2516 D CarrierSvcBindHelper: No carrier app for: 0
+11-07 03:16:06.713  1830  1883 W PackageManager: Missing required system package: com.azure.authenticator, but found with extended search.
+11-07 03:16:06.713  1830  1883 W PackageManager: Missing required system package: app.revanced.android.gms, but found with extended search.
+11-07 03:16:06.714  8312 14654 I PermissionControllerServiceImpl: Updating user sensitive for uid 10274
+11-07 03:16:06.715  2516  2516 D CarrierSvcBindHelper: No carrier app for: 1
+11-07 03:16:06.715 14781 14781 I PkModeUpdater: PkModeUpdater.refreshDevices():212 refreshing devices
+11-07 03:16:06.717 14781 14781 I PkModeUpdater: PkModeUpdater.refreshDevices():212 refreshing devices
+11-07 03:16:06.719 14781 14781 I PkModeUpdater: PkModeUpdater.refreshDevices():212 refreshing devices
+11-07 03:16:06.719  1830  2002 W PackageManager: Missing required system package: in.burgerfarm.app, but found with extended search.
+11-07 03:16:06.719  1830  2002 W PackageManager: Missing required system package: cris.org.in.prs.ima, but found with extended search.
+11-07 03:16:06.719  1830  2002 W PackageManager: Missing required system package: com.olacabs.customer, but found with extended search.
+11-07 03:16:06.720 14781 14781 I PkModeUpdater: PkModeUpdater.refreshDevices():212 refreshing devices
+11-07 03:16:06.720  1830  1871 W PackageManager: Missing required system package: cris.org.in.prs.ima, but found with extended search.
+11-07 03:16:06.720  3120  3120 V MediaPlayerList: mPackageChangedBroadcastReceiver: action: android.intent.action.PACKAGE_CHANGED
+11-07 03:16:06.720  3486  3486 W RegisteredComponentCache: Unable to load component info ResolveInfo{92faa4a com.olacabs.customer/in.juspay.hypernfc.NfcActivity m=0x108000 userHandle=UserHandle{0}}
+11-07 03:16:06.720  3486  3486 W RegisteredComponentCache: org.xmlpull.v1.XmlPullParserException: No android.nfc.action.TECH_DISCOVERED meta-data
+11-07 03:16:06.720  3486  3486 W RegisteredComponentCache: 	at com.android.nfc.RegisteredComponentCache.parseComponentInfo(RegisteredComponentCache.java:190)
+11-07 03:16:06.720  3486  3486 W RegisteredComponentCache: 	at com.android.nfc.RegisteredComponentCache.generateComponentsList(RegisteredComponentCache.java:165)
+11-07 03:16:06.720  3486  3486 W RegisteredComponentCache: 	at com.android.nfc.RegisteredComponentCache$1.onReceive(RegisteredComponentCache.java:69)
+11-07 03:16:06.720  3486  3486 W RegisteredComponentCache: 	at android.app.LoadedApk$ReceiverDispatcher$Args.lambda$getRunnable$0(LoadedApk.java:1821)
+11-07 03:16:06.720  3486  3486 W RegisteredComponentCache: 	at android.app.LoadedApk$ReceiverDispatcher$Args.$r8$lambda$gDuJqgxY6Zb-ifyeubKeivTLAwk(LoadedApk.java:0)
+11-07 03:16:06.720  3486  3486 W RegisteredComponentCache: 	at android.app.LoadedApk$ReceiverDispatcher$Args$$ExternalSyntheticLambda0.run(D8$$SyntheticClass:2)
+11-07 03:16:06.720  3486  3486 W RegisteredComponentCache: 	at android.os.Handler.handleCallback(Handler.java:1000)
+11-07 03:16:06.720  3486  3486 W RegisteredComponentCache: 	at android.os.Handler.dispatchMessage(Handler.java:104)
+11-07 03:16:06.720  3486  3486 W RegisteredComponentCache: 	at android.os.Looper.loopOnce(Looper.java:242)
+11-07 03:16:06.720  3486  3486 W RegisteredComponentCache: 	at android.os.Looper.loop(Looper.java:362)
+11-07 03:16:06.720  3486  3486 W RegisteredComponentCache: 	at android.app.ActivityThread.main(ActivityThread.java:8393)
+11-07 03:16:06.720  3486  3486 W RegisteredComponentCache: 	at java.lang.reflect.Method.invoke(Native Method)
+11-07 03:16:06.720  3486  3486 W RegisteredComponentCache: 	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:552)
+11-07 03:16:06.720  3486  3486 W RegisteredComponentCache: 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:992)
+11-07 03:16:06.722  3486  3486 W RegisteredComponentCache: Unable to load component info ResolveInfo{bad72d8 cris.org.in.prs.ima/in.juspay.hypernfc.NfcActivity m=0x108000 userHandle=UserHandle{0}}
+11-07 03:16:06.722  3486  3486 W RegisteredComponentCache: org.xmlpull.v1.XmlPullParserException: No android.nfc.action.TECH_DISCOVERED meta-data
+11-07 03:16:06.722  3486  3486 W RegisteredComponentCache: 	at com.android.nfc.RegisteredComponentCache.parseComponentInfo(RegisteredComponentCache.java:190)
+11-07 03:16:06.722  3486  3486 W RegisteredComponentCache: 	at com.android.nfc.RegisteredComponentCache.generateComponentsList(RegisteredComponentCache.java:165)
+11-07 03:16:06.722  3486  3486 W RegisteredComponentCache: 	at com.android.nfc.RegisteredComponentCache$1.onReceive(RegisteredComponentCache.java:69)
+11-07 03:16:06.722  3486  3486 W RegisteredComponentCache: 	at android.app.LoadedApk$ReceiverDispatcher$Args.lambda$getRunnable$0(LoadedApk.java:1821)
+11-07 03:16:06.722  3486  3486 W RegisteredComponentCache: 	at android.app.LoadedApk$ReceiverDispatcher$Args.$r8$lambda$gDuJqgxY6Zb-ifyeubKeivTLAwk(LoadedApk.java:0)
+11-07 03:16:06.722  3486  3486 W RegisteredComponentCache: 	at android.app.LoadedApk$ReceiverDispatcher$Args$$ExternalSyntheticLambda0.run(D8$$SyntheticClass:2)
+11-07 03:16:06.722  3486  3486 W RegisteredComponentCache: 	at android.os.Handler.handleCallback(Handler.java:1000)
+11-07 03:16:06.722  3486  3486 W RegisteredComponentCache: 	at android.os.Handler.dispatchMessage(Handler.java:104)
+11-07 03:16:06.722  3486  3486 W RegisteredComponentCache: 	at android.os.Looper.loopOnce(Looper.java:242)
+11-07 03:16:06.722  3486  3486 W RegisteredComponentCache: 	at android.os.Looper.loop(Looper.java:362)
+11-07 03:16:06.722  3486  3486 W RegisteredComponentCache: 	at android.app.ActivityThread.main(ActivityThread.java:8393)
+11-07 03:16:06.722  3486  3486 W RegisteredComponentCache: 	at java.lang.reflect.Method.invoke(Native Method)
+11-07 03:16:06.722  3486  3486 W RegisteredComponentCache: 	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:552)
+11-07 03:16:06.722  3486  3486 W RegisteredComponentCache: 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:992)
+11-07 03:16:06.722  3486  3486 W RegisteredComponentCache: Unable to load component info ResolveInfo{1c62116 in.burgerfarm.app/com.cashfree.pg.ui.hidden.checkout.CashfreeNativeCheckoutActivity m=0x108000 userHandle=UserHandle{0}}
+11-07 03:16:06.722  3486  3486 W RegisteredComponentCache: org.xmlpull.v1.XmlPullParserException: No android.nfc.action.TECH_DISCOVERED meta-data
+11-07 03:16:06.722  3486  3486 W RegisteredComponentCache: 	at com.android.nfc.RegisteredComponentCache.parseComponentInfo(RegisteredComponentCache.java:190)
+11-07 03:16:06.722  3486  3486 W RegisteredComponentCache: 	at com.android.nfc.RegisteredComponentCache.generateComponentsList(RegisteredComponentCache.java:165)
+11-07 03:16:06.722  3486  3486 W RegisteredComponentCache: 	at com.android.nfc.RegisteredComponentCache$1.onReceive(RegisteredComponentCache.java:69)
+11-07 03:16:06.722  3486  3486 W RegisteredComponentCache: 	at android.app.LoadedApk$ReceiverDispatcher$Args.lambda$getRunnable$0(LoadedApk.java:1821)
+11-07 03:16:06.722  3486  3486 W RegisteredComponentCache: 	at android.app.LoadedApk$ReceiverDispatcher$Args.$r8$lambda$gDuJqgxY6Zb-ifyeubKeivTLAwk(LoadedApk.java:0)
+11-07 03:16:06.722  3486  3486 W RegisteredComponentCache: 	at android.app.LoadedApk$ReceiverDispatcher$Args$$ExternalSyntheticLambda0.run(D8$$SyntheticClass:2)
+11-07 03:16:06.722  3486  3486 W RegisteredComponentCache: 	at android.os.Handler.handleCallback(Handler.java:1000)
+11-07 03:16:06.722  3486  3486 W RegisteredComponentCache: 	at android.os.Handler.dispatchMessage(Handler.java:104)
+11-07 03:16:06.722  3486  3486 W RegisteredComponentCache: 	at android.os.Looper.loopOnce(Looper.java:242)
+11-07 03:16:06.722  3486  3486 W RegisteredComponentCache: 	at android.os.Looper.loop(Looper.java:362)
+11-07 03:16:06.722  3486  3486 W RegisteredComponentCache: 	at android.app.ActivityThread.main(ActivityThread.java:8393)
+11-07 03:16:06.722  3486  3486 W RegisteredComponentCache: 	at java.lang.reflect.Method.invoke(Native Method)
+11-07 03:16:06.722  3486  3486 W RegisteredComponentCache: 	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:552)
+11-07 03:16:06.722  3486  3486 W RegisteredComponentCache: 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:992)
+11-07 03:16:06.722 14781 14781 I PkModeUpdater: PkModeUpdater.refreshDevices():212 refreshing devices
+11-07 03:16:06.723  1830  2331 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:16:06.723  1830  2331 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 03:16:06.725  1830  2002 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:16:06.725  1830  2002 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 03:16:06.725  1830  2890 W PackageManager: Missing required system package: com.phonepe.app, but found with extended search.
+11-07 03:16:06.726  1830  2002 W PackageManager: Missing required system package: edu.manipal.jaipur.slcm_mobile, but found with extended search.
+11-07 03:16:06.726  1830  2890 W PackageManager: Missing required system package: com.csam.icici.bank.imobile, but found with extended search.
+11-07 03:16:06.726  1830  2890 W PackageManager: Missing required system package: com.google.android.apps.nbu.paisa.user, but found with extended search.
+11-07 03:16:06.727  1830  1871 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:16:06.728  1830  1871 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 03:16:06.729  1830  1871 W PackageManager: Missing required system package: com.whatsapp, but found with extended search.
+11-07 03:16:06.729  1830  1871 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:16:06.730  1830  1871 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 03:16:06.732  1830  2890 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:16:06.732  1830  2331 W PackageManager: Missing required system package: in.amazon.mShop.android.shopping, but found with extended search.
+11-07 03:16:06.732  1830  2331 W PackageManager: Missing required system package: in.amazon.mShop.android.shopping, but found with extended search.
+11-07 03:16:06.737  1830  2331 W PackageManager: Missing required system package: in.amazon.mShop.android.shopping, but found with extended search.
+11-07 03:16:06.737  1830  2331 W PackageManager: Missing required system package: in.amazon.mShop.android.shopping, but found with extended search.
+11-07 03:16:06.744  1830  3608 W PackageManager: Missing required system package: in.burgerfarm.app, but found with extended search.
+11-07 03:16:06.750  1830  2002 W PackageManager: Missing required system package: io.github.forkmaintainers.iceraven, but found with extended search.
+11-07 03:16:06.757  3486  3486 D RegisteredNfcFServicesCache: Service unchanged, not updating
+11-07 03:16:06.758  1830  1871 W PackageManager: Missing required system package: org.telegram.messenger, but found with extended search.
+11-07 03:16:06.760  1830  3608 W PackageManager: Missing required system package: com.whatsapp, but found with extended search.
+11-07 03:16:06.760  1830  3608 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:16:06.760  1830  3608 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 03:16:06.762  2493  2575 D SecureElementService: getReaders() for com.android.nfc
+11-07 03:16:06.762  1830  1871 W PackageManager: Missing required system package: com.whatsapp, but found with extended search.
+11-07 03:16:06.762  1830  1871 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:16:06.762  1830  1871 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 03:16:06.764  1830  1871 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:16:06.765  1830  1871 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 03:16:06.766  1830  2331 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:16:06.767  1830  2331 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 03:16:06.768  1830  2890 W PackageManager: Missing required system package: org.videolan.vlc, but found with extended search.
+11-07 03:16:06.769  2516  2759 D ImsResolver: maybeAddedImsService, packageName: com.motorola.securityhub
+11-07 03:16:06.778  1830  3608 W PackageManager: Missing required system package: ru.odauhsbx.xqdkkkmwh, but found with extended search.
+11-07 03:16:06.785  1830  1871 W PackageManager: Missing required system package: ru.zdevs.zarchiver, but found with extended search.
+11-07 03:16:06.790  2298  2298 D FreeformGesture: onStateChanged: State{mIsPackageAvailable=true, mPillGestureEnabled=false, mVibrationEnabled=true, mShortcutPanelShowing=false, mSwipeInEnabled=false, mHunFreeformEnabled=true, mIsInGameMode=false, mIsRecentsShowing=false, mPillXPosition=1, mPillYPosition=600, mIsInTutorialMode=false, mIsDoubleTapPowerEnabled=false}
+11-07 03:16:06.791  3546  8069 E MotoFreeForm: [FreeFormProvider] query: uri: content://com.motorola.freeform.settings/supported_packages
+11-07 03:16:06.797  1830  2890 W PackageManager: Missing required system package: ru.zdevs.zarchiver, but found with extended search.
+11-07 03:16:06.797  1830  2890 W PackageManager: Missing required system package: ru.odauhsbx.xqdkkkmwh, but found with extended search.
+11-07 03:16:06.798  1830  2890 W PackageManager: Missing required system package: org.videolan.vlc, but found with extended search.
+11-07 03:16:06.798  1830  2890 W PackageManager: Missing required system package: org.telegram.messenger, but found with extended search.
+11-07 03:16:06.798  1830  2890 W PackageManager: Missing required system package: io.github.forkmaintainers.iceraven, but found with extended search.
+11-07 03:16:06.798  1830  2890 W PackageManager: Missing required system package: in.burgerfarm.app, but found with extended search.
+11-07 03:16:06.798  1830  2890 W PackageManager: Missing required system package: in.amazon.mShop.android.shopping, but found with extended search.
+11-07 03:16:06.798  1830  2890 W PackageManager: Missing required system package: in.amazon.mShop.android.shopping, but found with extended search.
+11-07 03:16:06.798  1830  2890 W PackageManager: Missing required system package: edu.manipal.jaipur.slcm_mobile, but found with extended search.
+11-07 03:16:06.798  1830  2890 W PackageManager: Missing required system package: cris.org.in.prs.ima, but found with extended search.
+11-07 03:16:06.798  1830  2890 W PackageManager: Missing required system package: com.whereismytrain.android, but found with extended search.
+11-07 03:16:06.798  1830  2890 W PackageManager: Missing required system package: com.whatsapp, but found with extended search.
+11-07 03:16:06.799  1830  2890 W PackageManager: Missing required system package: com.twitter.android, but found with extended search.
+11-07 03:16:06.799  1830  2890 W PackageManager: Missing required system package: com.reddit.frontpage, but found with extended search.
+11-07 03:16:06.799  1830  2890 W PackageManager: Missing required system package: com.rapido.passenger, but found with extended search.
+11-07 03:16:06.799  1830  2890 W PackageManager: Missing required system package: com.pittvandewitt.wavelet, but found with extended search.
+11-07 03:16:06.799  1830  2890 W PackageManager: Missing required system package: com.phonepe.app, but found with extended search.
+11-07 03:16:06.799  1830  2890 W PackageManager: Missing required system package: com.paypal.android.p2pmobile, but found with extended search.
+11-07 03:16:06.799  1830  2890 W PackageManager: Missing required system package: com.olacabs.customer, but found with extended search.
+11-07 03:16:06.799  1830  2890 W PackageManager: Missing required system package: com.music.bitchord, but found with extended search.
+11-07 03:16:06.799  1830  2890 W PackageManager: Missing required system package: com.microsoft.teams, but found with extended search.
+11-07 03:16:06.799  1830  2890 W PackageManager: Missing required system package: com.microsoft.office.word, but found with extended search.
+11-07 03:16:06.799  1830  2890 W PackageManager: Missing required system package: com.microsoft.office.powerpoint, but found with extended search.
+11-07 03:16:06.800  1830  2890 W PackageManager: Missing required system package: com.microsoft.office.excel, but found with extended search.
+11-07 03:16:06.800  1830  2890 W PackageManager: Missing required system package: com.linkedin.android, but found with extended search.
+11-07 03:16:06.800  1830  2890 W PackageManager: Missing required system package: com.jacksoftw.webcam, but found with extended search.
+11-07 03:16:06.800  1830  2890 W PackageManager: Missing required system package: com.heytap.headset, but found with extended search.
+11-07 03:16:06.800  1830  2890 W PackageManager: Missing required system package: com.google.ar.lens, but found with extended search.
+11-07 03:16:06.800  1830  2890 W PackageManager: Missing required system package: com.google.android.keep, but found with extended search.
+11-07 03:16:06.800  1830  2890 W PackageManager: Missing required system package: com.google.android.apps.nbu.paisa.user, but found with extended search.
+11-07 03:16:06.800  1830  2890 W PackageManager: Missing required system package: com.google.android.apps.bard, but found with extended search.
+11-07 03:16:06.800  1830  2890 W PackageManager: Missing required system package: com.google.android.apps.adm, but found with extended search.
+11-07 03:16:06.800  1830  2890 W PackageManager: Missing required system package: com.google.ai.edge.gallery, but found with extended search.
+11-07 03:16:06.800  1830  2890 W PackageManager: Missing required system package: com.github.android, but found with extended search.
+11-07 03:16:06.801  1830  2890 W PackageManager: Missing required system package: com.easybrain.arrow.puzzle.game, but found with extended search.
+11-07 03:16:06.801  1830  2890 W PackageManager: Missing required system package: com.dubox.drive, but found with extended search.
+11-07 03:16:06.801  1830  2890 W PackageManager: Missing required system package: com.discord, but found with extended search.
+11-07 03:16:06.801  1830  2890 W PackageManager: Missing required system package: com.digilocker.android, but found with extended search.
+11-07 03:16:06.801  1830  2890 W PackageManager: Missing required system package: com.delhiveryConsigneeApp, but found with extended search.
+11-07 03:16:06.801  1830  2890 W PackageManager: Missing required system package: com.csam.icici.bank.imobile, but found with extended search.
+11-07 03:16:06.801  1830  2890 W PackageManager: Missing required system package: com.cloudflare.onedotonedotonedotone, but found with extended search.
+11-07 03:16:06.801  1830  2890 W PackageManager: Missing required system package: com.castle.sefirah, but found with extended search.
+11-07 03:16:06.801  1830  2890 W PackageManager: Missing required system package: com.azure.authenticator, but found with extended search.
+11-07 03:16:06.801  1830  2890 W PackageManager: Missing required system package: com.app.spacebasic, but found with extended search.
+11-07 03:16:06.801  1830  2890 W PackageManager: Missing required system package: com.app.campusadda, but found with extended search.
+11-07 03:16:06.801  1830  2890 W PackageManager: Missing required system package: com.anchor.mine, but found with extended search.
+11-07 03:16:06.801  1830  2890 W PackageManager: Missing required system package: cc.remote9.app, but found with extended search.
+11-07 03:16:06.801  1830  2890 W PackageManager: Missing required system package: app.revanced.manager.flutter, but found with extended search.
+11-07 03:16:06.802  1830  2890 W PackageManager: Missing required system package: app.revanced.android.gms, but found with extended search.
+11-07 03:16:06.802  1830  2890 W PackageManager: Missing required system package: app.revanced.android.apps.youtube.music, but found with extended search.
+11-07 03:16:06.802  1830  2890 W PackageManager: Missing required system package: app.mihon, but found with extended search.
+11-07 03:16:06.802  1830  2890 W PackageManager: Missing required system package: ai.mistral.chat, but found with extended search.
+11-07 03:16:06.802  1830  2890 W PackageManager: Missing required system package: org.zwanoo.android.speedtest, but found with extended search.
+11-07 03:16:06.802  1830  2890 W PackageManager: Missing required system package: net.sourceforge.opencamera, but found with extended search.
+11-07 03:16:06.802  1830  2890 W PackageManager: Missing required system package: idm.internet.download.manager.plus, but found with extended search.
+11-07 03:16:06.802  1830  2890 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:16:06.803  1830  2890 W PackageManager: Missing required system package: com.pinterest, but found with extended search.
+11-07 03:16:06.803  1830  2890 W PackageManager: Missing required system package: com.microsoft.office.outlook, but found with extended search.
+11-07 03:16:06.803  1830  2890 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 03:16:06.803  1830  2890 W PackageManager: Missing required system package: com.google.android.play.games, but found with extended search.
+11-07 03:16:06.803  1830  2890 W PackageManager: Missing required system package: com.google.android.apps.docs.editors.slides, but found with extended search.
+11-07 03:16:06.803  1830  2890 W PackageManager: Missing required system package: com.google.android.apps.docs.editors.sheets, but found with extended search.
+11-07 03:16:06.803  1830  2890 W PackageManager: Missing required system package: com.google.android.apps.docs.editors.docs, but found with extended search.
+11-07 03:16:06.803  1830  2890 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 03:16:06.803  1830  2890 W PackageManager: Missing required system package: app.revanced.android.youtube, but found with extended search.
+11-07 03:16:06.814  1134  1485 I hwcomposer: [HWC] (0)fire a callback of refresh to SF[4]  
+11-07 03:16:06.818  1167  1193 I mtkpower@impl: [setMode] type:6, enabled:1
+11-07 03:16:06.818  1167  1193 E mtkpower@impl: [setMode] unknown type
+11-07 03:16:06.821  1198  1198 I BufferQueueProducer: [FramebufferSurface](this:0xb400007c2c1716d0,id:-1,api:1,p:1198,c:1198) queueBuffer: fps=1.93 dur=1037.06 max=689.56 min=347.50
+11-07 03:16:06.842  1167  1194 D power@timer: [mtkPowerTimer] visRead:0
+11-07 03:16:06.853  1830  1883 W PackageManager: Missing required system package: org.videolan.vlc, but found with extended search.
+11-07 03:16:06.854  1830  1883 W PackageManager: Missing required system package: com.reddit.frontpage, but found with extended search.
+11-07 03:16:06.854  1830  1883 W PackageManager: Missing required system package: com.linkedin.android, but found with extended search.
+11-07 03:16:06.854  1830  1883 W PackageManager: Missing required system package: com.google.android.apps.docs.editors.slides, but found with extended search.
+11-07 03:16:06.854  1830  1883 W PackageManager: Missing required system package: com.google.android.apps.docs.editors.sheets, but found with extended search.
+11-07 03:16:06.854  1830  1883 W PackageManager: Missing required system package: com.google.android.apps.docs.editors.docs, but found with extended search.
+11-07 03:16:06.854  1830  1883 W PackageManager: Missing required system package: app.revanced.android.youtube, but found with extended search.
+11-07 03:16:06.854  1830  1883 W PackageManager: Missing required system package: app.revanced.android.gms, but found with extended search.
+11-07 03:16:06.854  1830  1883 W PackageManager: Missing required system package: io.github.forkmaintainers.iceraven, but found with extended search.
+11-07 03:16:06.854  1830  1883 W PackageManager: Missing required system package: com.google.android.keep, but found with extended search.
+11-07 03:16:06.855  1830  1883 W PackageManager: Missing required system package: com.google.android.apps.docs.editors.slides, but found with extended search.
+11-07 03:16:06.855  1830  1883 W PackageManager: Missing required system package: com.google.android.apps.docs.editors.sheets, but found with extended search.
+11-07 03:16:06.855  1830  1883 W PackageManager: Missing required system package: com.google.android.apps.docs.editors.docs, but found with extended search.
+11-07 03:16:06.855  1830  1883 W PackageManager: Missing required system package: app.revanced.android.youtube, but found with extended search.
+11-07 03:16:06.855  1830  1883 W PackageManager: Missing required system package: app.revanced.android.apps.youtube.music, but found with extended search.
+11-07 03:16:06.855  1830  1883 W PackageManager: Missing required system package: app.mihon, but found with extended search.
+11-07 03:16:06.856  1830  1883 W PackageManager: Missing required system package: io.github.forkmaintainers.iceraven, but found with extended search.
+11-07 03:16:06.856  1830  1883 W PackageManager: Missing required system package: idm.internet.download.manager.plus, but found with extended search.
+11-07 03:16:06.868  1830  2002 W PackageManager: Missing required system package: io.github.forkmaintainers.iceraven, but found with extended search.
+11-07 03:16:06.892  1830  2890 W PackageManager: Missing required system package: app.revanced.android.youtube, but found with extended search.
+11-07 03:16:06.895  1167  1193 I mtkpower@impl: [setMode] type:6, enabled:0
+11-07 03:16:06.895  1167  1193 E mtkpower@impl: [setMode] unknown type
+11-07 03:16:06.897  1830  2890 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 03:16:06.902  8312  7940 E RoleControllerServiceImpl: Default/fallback role holder package doesn't qualify for the role, package: com.google.android.gms.supervision, role: android.app.role.SYSTEM_SUPERVISION, user: 0
+11-07 03:16:06.902  1830  2002 W PackageManager: Missing required system package: com.google.android.apps.docs.editors.docs, but found with extended search.
+11-07 03:16:06.907  8312  7940 I Role    : com.google.android.gms not qualified for android.app.role.SYSTEM_CALL_STREAMING due to missing RequiredComponent{mFlags='0', mIntentFilterData=IntentFilterData{mAction='android.telecom.CallStreamingService', mCategories='[]', mDataScheme='null', mDataType='null'}, mMetaData=[], mPermission='android.permission.BIND_CALL_STREAMING_SERVICE', mQueryFlags=0} Requirement{mFeatureFlag=null, mMinTargetSdkVersion=1}
+11-07 03:16:06.907  8312  7940 E RoleControllerServiceImpl: Default/fallback role holder package doesn't qualify for the role, package: com.google.android.gms, role: android.app.role.SYSTEM_CALL_STREAMING, user: 0
+11-07 03:16:06.908  1830  2890 W PackageManager: Missing required system package: com.google.android.apps.docs.editors.sheets, but found with extended search.
+11-07 03:16:06.910  8312  7940 W SignedPackage: Package doesn't have required signing certificate: com.google.android.apps.work.clouddpc
+11-07 03:16:06.913  1830  2002 W PackageManager: Missing required system package: com.google.android.apps.docs.editors.slides, but found with extended search.
+11-07 03:16:06.919  1830  1871 W PackageManager: Missing required system package: com.google.android.play.games, but found with extended search.
+11-07 03:16:06.924  1830  2002 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 03:16:06.929  1830  2002 W PackageManager: Missing required system package: com.microsoft.office.outlook, but found with extended search.
+11-07 03:16:06.934  1830  1871 W PackageManager: Missing required system package: com.pinterest, but found with extended search.
+11-07 03:16:06.939  1830  1871 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:16:06.945  1830  2002 W PackageManager: Missing required system package: idm.internet.download.manager.plus, but found with extended search.
+11-07 03:16:06.951  1830  2002 W PackageManager: Missing required system package: net.sourceforge.opencamera, but found with extended search.
+11-07 03:16:06.956  1830  2002 W PackageManager: Missing required system package: org.zwanoo.android.speedtest, but found with extended search.
+11-07 03:16:06.967  1830  2002 W PackageManager: Missing required system package: ru.zdevs.zarchiver, but found with extended search.
+11-07 03:16:06.974  1830  1883 W PackageManager: Missing required system package: org.telegram.messenger, but found with extended search.
+11-07 03:16:06.974  1830  1883 W PackageManager: Missing required system package: com.whatsapp, but found with extended search.
+11-07 03:16:06.974  1830  1883 W PackageManager: Missing required system package: com.microsoft.teams, but found with extended search.
+11-07 03:16:06.975  1830  1883 W PackageManager: Missing required system package: com.microsoft.office.outlook, but found with extended search.
+11-07 03:16:06.975  1830  1883 W PackageManager: Missing required system package: com.microsoft.office.outlook, but found with extended search.
+11-07 03:16:06.975  1830  1883 W PackageManager: Missing required system package: com.google.android.keep, but found with extended search.
+11-07 03:16:06.975  1830  1883 W PackageManager: Missing required system package: com.google.android.apps.docs.editors.slides, but found with extended search.
+11-07 03:16:06.976  1830  1883 W PackageManager: Missing required system package: com.google.android.apps.docs.editors.sheets, but found with extended search.
+11-07 03:16:06.976  1830  1883 W PackageManager: Missing required system package: com.google.android.apps.docs.editors.docs, but found with extended search.
+11-07 03:16:06.976  1830  1883 W PackageManager: Missing required system package: com.dubox.drive, but found with extended search.
+11-07 03:16:06.977  1830  1883 W PackageManager: Missing required system package: app.revanced.android.gms, but found with extended search.
+11-07 03:16:06.979  1830  1871 W PackageManager: Missing required system package: ru.zdevs.zarchiver, but found with extended search.
+11-07 03:16:06.997  1830  1871 W PackageManager: Missing required system package: ai.mistral.chat, but found with extended search.
+11-07 03:16:07.001  1830  2890 W PackageManager: Missing required system package: app.mihon, but found with extended search.
+11-07 03:16:07.007  1830  1871 W PackageManager: Missing required system package: app.revanced.android.apps.youtube.music, but found with extended search.
+11-07 03:16:07.013  1830  1871 W PackageManager: Missing required system package: app.revanced.android.gms, but found with extended search.
+11-07 03:16:07.018  1830  1871 W PackageManager: Missing required system package: app.revanced.manager.flutter, but found with extended search.
+11-07 03:16:07.023 16119 16173 D BaseModelUpdateTask: Ignoring model task since loader is pending=com.android.launcher3.model.PackageUpdatedTask@ad7598e
+11-07 03:16:07.024  3546  3546 W MotoFreeForm: [PackageMonitor] onPackageChangedcom.motorola.securityhub
+11-07 03:16:07.024  1830  1871 W PackageManager: Missing required system package: cc.remote9.app, but found with extended search.
+11-07 03:16:07.029  1830  2002 W PackageManager: Missing required system package: com.anchor.mine, but found with extended search.
+11-07 03:16:07.034  1830  2002 W PackageManager: Missing required system package: com.app.campusadda, but found with extended search.
+11-07 03:16:07.039  1830  2890 W PackageManager: Missing required system package: com.app.spacebasic, but found with extended search.
+11-07 03:16:07.044  1830  2890 W PackageManager: Missing required system package: com.azure.authenticator, but found with extended search.
+11-07 03:16:07.048  1830  3608 W PackageManager: Missing required system package: com.castle.sefirah, but found with extended search.
+11-07 03:16:07.053  1830  2890 W PackageManager: Missing required system package: com.cloudflare.onedotonedotonedotone, but found with extended search.
+11-07 03:16:07.059  1830  3608 W PackageManager: Missing required system package: com.csam.icici.bank.imobile, but found with extended search.
+11-07 03:16:07.059  1167  1208 I libPerfCtl: xgfGetFPS pid:2298 fps:-1
+11-07 03:16:07.059  1167  1208 I libPerfCtl: xgfGetFPS pid:31477 fps:-1
+11-07 03:16:07.064  1830  3608 W PackageManager: Missing required system package: com.delhiveryConsigneeApp, but found with extended search.
+11-07 03:16:07.069  1830  3608 W PackageManager: Missing required system package: com.digilocker.android, but found with extended search.
+11-07 03:16:07.075  1830  2890 W PackageManager: Missing required system package: com.discord, but found with extended search.
+11-07 03:16:07.081  1830  2890 W PackageManager: Missing required system package: com.dubox.drive, but found with extended search.
+11-07 03:16:07.092  1830  2890 W PackageManager: Missing required system package: com.github.android, but found with extended search.
+11-07 03:16:07.097  1830  2890 W PackageManager: Missing required system package: com.google.ai.edge.gallery, but found with extended search.
+11-07 03:16:07.104  1830  2002 W PackageManager: Missing required system package: com.google.android.apps.adm, but found with extended search.
+11-07 03:16:07.104  1198  1661 I Scheduler: applyPolicy: UpdateRefreshRate 120 to 30 of group 0: [touch=0:0 touchBoost=0 scroll=0:0 idle=1:1]
+11-07 03:16:07.105  1198  1661 D SurfaceFlinger: MtkOverrideDuration: update vsync 30
+11-07 03:16:07.105  1198  1661 E SurfaceFlinger: MtkDuration override mode is disabled
+11-07 03:16:07.105  1198  1661 D SurfaceFlinger: MtkOverrideDuration: reset override duration
+11-07 03:16:07.105  1134  1491 I hwcomposer: [DRMDEV] (0) failed to waitNextVsync: -1  
+11-07 03:16:07.109  1134  1491 I hwcomposer: [DRMDEV] (0) failed to waitNextVsync: -1  
+11-07 03:16:07.109  1830  2890 W PackageManager: Missing required system package: com.google.android.apps.bard, but found with extended search.
+11-07 03:16:07.115  1830  3608 W PackageManager: Missing required system package: com.google.android.apps.nbu.paisa.user, but found with extended search.
+11-07 03:16:07.117  1134  1491 I hwcomposer: [DRMDEV] (0) failed to waitNextVsync: -1  
+11-07 03:16:07.121  1830  3608 W PackageManager: Missing required system package: com.google.android.keep, but found with extended search.
+11-07 03:16:07.125  1134  1491 I hwcomposer: [DRMDEV] (0) failed to waitNextVsync: -1  
+11-07 03:16:07.126  1830  2002 W PackageManager: Missing required system package: com.google.ar.lens, but found with extended search.
+11-07 03:16:07.126  1198  1198 I SurfaceFlinger: setActiveModeInHwcIfNeeded changing active mode to 3(30.00 Hz) for display 0
+11-07 03:16:07.126  1134  1134 I hwcomposer: [HWC] (0) displaySetActiveConfig config:3  
+11-07 03:16:07.132  1830  2002 W PackageManager: Missing required system package: com.heytap.headset, but found with extended search.
+11-07 03:16:07.137  1830  2890 W PackageManager: Missing required system package: com.jacksoftw.webcam, but found with extended search.
+11-07 03:16:07.143  1830  3608 W PackageManager: Missing required system package: com.linkedin.android, but found with extended search.
+11-07 03:16:07.149  1830  3608 W PackageManager: Missing required system package: com.microsoft.office.excel, but found with extended search.
+11-07 03:16:07.154  1830  1871 W PackageManager: Missing required system package: com.microsoft.office.powerpoint, but found with extended search.
+11-07 03:16:07.159  1830  2002 W PackageManager: Missing required system package: com.microsoft.office.word, but found with extended search.
+11-07 03:16:07.164  1830  3608 W PackageManager: Missing required system package: com.microsoft.teams, but found with extended search.
+11-07 03:16:07.169  1830  2002 W PackageManager: Missing required system package: com.music.bitchord, but found with extended search.
+11-07 03:16:07.174  1830  3608 W PackageManager: Missing required system package: com.olacabs.customer, but found with extended search.
+11-07 03:16:07.180  1830  3608 W PackageManager: Missing required system package: com.paypal.android.p2pmobile, but found with extended search.
+11-07 03:16:07.185  1830  3608 W PackageManager: Missing required system package: com.phonepe.app, but found with extended search.
+11-07 03:16:07.190  1830  3608 W PackageManager: Missing required system package: com.pittvandewitt.wavelet, but found with extended search.
+11-07 03:16:07.196  1830  2890 W PackageManager: Missing required system package: com.rapido.passenger, but found with extended search.
+11-07 03:16:07.201  1830  1871 W PackageManager: Missing required system package: com.reddit.frontpage, but found with extended search.
+11-07 03:16:07.208  2298  2298 D ControlsListingControllerImpl: ServiceConfig reloaded, count: 0
+11-07 03:16:07.209  1830  2003 W PackageManager: Missing required system package: app.revanced.android.gms, but found with extended search.
+11-07 03:16:07.211  1830  3679 W PackageManager: Missing required system package: com.twitter.android, but found with extended search.
+11-07 03:16:07.215  1830  3608 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 03:16:07.219  1830  3679 W PackageManager: Missing required system package: com.whatsapp, but found with extended search.
+11-07 03:16:07.227  1830  2003 W PackageManager: Missing required system package: com.whereismytrain.android, but found with extended search.
+11-07 03:16:07.229  3384  7993 I FraudProtectUtils: Not in testing population, skipping local test bank apps. [CONTEXT service_id=469 ]
+11-07 03:16:07.230  3384  7993 I FraudProtectUtils: (REDACTED) Latest bank app list size: %d, %s isBankApp: false
+11-07 03:16:07.230  3384  7993 W ComponentChangedIO: No package name in intent data or package is not a bank app [CONTEXT service_id=469 ]
+11-07 03:16:07.233  1830  3679 W PackageManager: Missing required system package: cris.org.in.prs.ima, but found with extended search.
+11-07 03:16:07.240  1830  3679 W PackageManager: Missing required system package: edu.manipal.jaipur.slcm_mobile, but found with extended search.
+11-07 03:16:07.245  1830  3679 W PackageManager: Missing required system package: in.amazon.mShop.android.shopping, but found with extended search.
+11-07 03:16:07.245  1830  3679 W PackageManager: Missing required system package: in.amazon.mShop.android.shopping, but found with extended search.
+11-07 03:16:07.251  1830  2003 W PackageManager: Missing required system package: in.amazon.mShop.android.shopping, but found with extended search.
+11-07 03:16:07.251  1830  2003 W PackageManager: Missing required system package: in.amazon.mShop.android.shopping, but found with extended search.
+11-07 03:16:07.256  1830  3679 W PackageManager: Missing required system package: in.burgerfarm.app, but found with extended search.
+11-07 03:16:07.260  1830  3679 W PackageManager: Missing required system package: io.github.forkmaintainers.iceraven, but found with extended search.
+11-07 03:16:07.266  1830  2003 W PackageManager: Missing required system package: org.telegram.messenger, but found with extended search.
+11-07 03:16:07.271  1830  3608 W PackageManager: Missing required system package: org.videolan.vlc, but found with extended search.
+11-07 03:16:07.275  1830  3679 W PackageManager: Missing required system package: ru.odauhsbx.xqdkkkmwh, but found with extended search.
+11-07 03:16:07.279  1830  2002 W PackageManager: Missing required system package: com.whatsapp, but found with extended search.
+11-07 03:16:07.279  1830  3608 W PackageManager: Missing required system package: ru.zdevs.zarchiver, but found with extended search.
+11-07 03:16:07.279  1830  2002 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:16:07.280  1830  2002 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 03:16:07.283  1830  2002 W PackageManager: Missing required system package: com.whatsapp, but found with extended search.
+11-07 03:16:07.283  1830  2002 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:16:07.283  1830  2002 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 03:16:07.285  1830  2002 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:16:07.285  1830  2002 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 03:16:07.287  1830  2002 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:16:07.287  1830  2002 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 03:16:07.298  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~dJccOhPfpa7XA-GjVDxzpQ==/com.android.chrome-GFt1ALQjmtGdzoUaYUE2iQ==/base.apk' with 1 weak references
+11-07 03:16:07.298  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~dJccOhPfpa7XA-GjVDxzpQ==/com.android.chrome-GFt1ALQjmtGdzoUaYUE2iQ==/split_chrome.apk' with 1 weak references
+11-07 03:16:07.298  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~dJccOhPfpa7XA-GjVDxzpQ==/com.android.chrome-GFt1ALQjmtGdzoUaYUE2iQ==/split_config.en.apk' with 1 weak references
+11-07 03:16:07.298  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~dJccOhPfpa7XA-GjVDxzpQ==/com.android.chrome-GFt1ALQjmtGdzoUaYUE2iQ==/split_dev_ui.apk' with 1 weak references
+11-07 03:16:07.298  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~dJccOhPfpa7XA-GjVDxzpQ==/com.android.chrome-GFt1ALQjmtGdzoUaYUE2iQ==/split_on_demand.apk' with 1 weak references
+11-07 03:16:07.298  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~dJccOhPfpa7XA-GjVDxzpQ==/com.android.chrome-GFt1ALQjmtGdzoUaYUE2iQ==/split_stack_unwinder.apk' with 1 weak references
+11-07 03:16:07.298  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~kzA2KU3uDQrl-b-Oyb6vPQ==/com.android.vending-gxhfdGZty1gtQ9bSIY5_BA==/base.apk' with 1 weak references
+11-07 03:16:07.298  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~kzA2KU3uDQrl-b-Oyb6vPQ==/com.android.vending-gxhfdGZty1gtQ9bSIY5_BA==/split_config.arm64_v8a.apk' with 1 weak references
+11-07 03:16:07.298  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~kzA2KU3uDQrl-b-Oyb6vPQ==/com.android.vending-gxhfdGZty1gtQ9bSIY5_BA==/split_config.en.apk' with 1 weak references
+11-07 03:16:07.299  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~kzA2KU3uDQrl-b-Oyb6vPQ==/com.android.vending-gxhfdGZty1gtQ9bSIY5_BA==/split_phonesky_data_loader.apk' with 1 weak references
+11-07 03:16:07.299  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~kzA2KU3uDQrl-b-Oyb6vPQ==/com.android.vending-gxhfdGZty1gtQ9bSIY5_BA==/split_phonesky_data_loader.config.arm64_v8a.apk' with 1 weak references
+11-07 03:16:07.299  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~kzA2KU3uDQrl-b-Oyb6vPQ==/com.android.vending-gxhfdGZty1gtQ9bSIY5_BA==/split_phonesky_webrtc_native_lib.apk' with 1 weak references
+11-07 03:16:07.299  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~kzA2KU3uDQrl-b-Oyb6vPQ==/com.android.vending-gxhfdGZty1gtQ9bSIY5_BA==/split_phonesky_webrtc_native_lib.config.arm64_v8a.apk' with 1 weak references
+11-07 03:16:07.299  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~NIrw6rhhGPP28Um0PCKcFw==/com.google.android.apps.docs-mODDtjbRSMIfg60on0y0oQ==/base.apk' with 1 weak references
+11-07 03:16:07.299  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~NIrw6rhhGPP28Um0PCKcFw==/com.google.android.apps.docs-mODDtjbRSMIfg60on0y0oQ==/split_config.arm64_v8a.apk' with 1 weak references
+11-07 03:16:07.299  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~NIrw6rhhGPP28Um0PCKcFw==/com.google.android.apps.docs-mODDtjbRSMIfg60on0y0oQ==/split_config.en.apk' with 1 weak references
+11-07 03:16:07.299  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~NIrw6rhhGPP28Um0PCKcFw==/com.google.android.apps.docs-mODDtjbRSMIfg60on0y0oQ==/split_config.xxhdpi.apk' with 1 weak references
+11-07 03:16:07.299  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~XPS6-5zCAcp7MBKFhaRefw==/com.google.android.apps.maps-X1r9LKAkHCsHOSniH4Hlfg==/base.apk' with 1 weak references
+11-07 03:16:07.299  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~XPS6-5zCAcp7MBKFhaRefw==/com.google.android.apps.maps-X1r9LKAkHCsHOSniH4Hlfg==/split_config.arm64_v8a.apk' with 1 weak references
+11-07 03:16:07.299  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~XPS6-5zCAcp7MBKFhaRefw==/com.google.android.apps.maps-X1r9LKAkHCsHOSniH4Hlfg==/split_config.bn.apk' with 1 weak references
+11-07 03:16:07.299  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~XPS6-5zCAcp7MBKFhaRefw==/com.google.android.apps.maps-X1r9LKAkHCsHOSniH4Hlfg==/split_config.en.apk' with 1 weak references
+11-07 03:16:07.299  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~XPS6-5zCAcp7MBKFhaRefw==/com.google.android.apps.maps-X1r9LKAkHCsHOSniH4Hlfg==/split_config.gu.apk' with 1 weak references
+11-07 03:16:07.299  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~XPS6-5zCAcp7MBKFhaRefw==/com.google.android.apps.maps-X1r9LKAkHCsHOSniH4Hlfg==/split_config.hi.apk' with 1 weak references
+11-07 03:16:07.299  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~XPS6-5zCAcp7MBKFhaRefw==/com.google.android.apps.maps-X1r9LKAkHCsHOSniH4Hlfg==/split_config.kn.apk' with 1 weak references
+11-07 03:16:07.299  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~XPS6-5zCAcp7MBKFhaRefw==/com.google.android.apps.maps-X1r9LKAkHCsHOSniH4Hlfg==/split_config.ml.apk' with 1 weak references
+11-07 03:16:07.299  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~XPS6-5zCAcp7MBKFhaRefw==/com.google.android.apps.maps-X1r9LKAkHCsHOSniH4Hlfg==/split_config.mr.apk' with 1 weak references
+11-07 03:16:07.299  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~XPS6-5zCAcp7MBKFhaRefw==/com.google.android.apps.maps-X1r9LKAkHCsHOSniH4Hlfg==/split_config.pa.apk' with 1 weak references
+11-07 03:16:07.299  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~XPS6-5zCAcp7MBKFhaRefw==/com.google.android.apps.maps-X1r9LKAkHCsHOSniH4Hlfg==/split_config.ta.apk' with 1 weak references
+11-07 03:16:07.300  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~XPS6-5zCAcp7MBKFhaRefw==/com.google.android.apps.maps-X1r9LKAkHCsHOSniH4Hlfg==/split_config.te.apk' with 1 weak references
+11-07 03:16:07.300  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~XPS6-5zCAcp7MBKFhaRefw==/com.google.android.apps.maps-X1r9LKAkHCsHOSniH4Hlfg==/split_config.xxhdpi.apk' with 1 weak references
+11-07 03:16:07.300  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~Ncuamxe6PYKu6q3zzsSkhA==/com.google.android.apps.messaging-r0GAmmHFWZA33szbFLH0-g==/base.apk' with 1 weak references
+11-07 03:16:07.300  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~Ncuamxe6PYKu6q3zzsSkhA==/com.google.android.apps.messaging-r0GAmmHFWZA33szbFLH0-g==/split_config.arm64_v8a.apk' with 1 weak references
+11-07 03:16:07.300  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~Ncuamxe6PYKu6q3zzsSkhA==/com.google.android.apps.messaging-r0GAmmHFWZA33szbFLH0-g==/split_config.en.apk' with 1 weak references
+11-07 03:16:07.300  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~Ncuamxe6PYKu6q3zzsSkhA==/com.google.android.apps.messaging-r0GAmmHFWZA33szbFLH0-g==/split_config.xxhdpi.apk' with 1 weak references
+11-07 03:16:07.300  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~SAVmEWNpMQu-DUR5WtKScA==/com.google.android.apps.photos-6tOi0TNdEWYBABiZ30Xncg==/base.apk' with 1 weak references
+11-07 03:16:07.300  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~SAVmEWNpMQu-DUR5WtKScA==/com.google.android.apps.photos-6tOi0TNdEWYBABiZ30Xncg==/split_config.arm64_v8a.apk' with 1 weak references
+11-07 03:16:07.300  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~SAVmEWNpMQu-DUR5WtKScA==/com.google.android.apps.photos-6tOi0TNdEWYBABiZ30Xncg==/split_config.en.apk' with 1 weak references
+11-07 03:16:07.300  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~SAVmEWNpMQu-DUR5WtKScA==/com.google.android.apps.photos-6tOi0TNdEWYBABiZ30Xncg==/split_config.xxhdpi.apk' with 1 weak references
+11-07 03:16:07.300  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~dCFs4o4sULuxjVMBRtLThw==/com.google.android.apps.tachyon-ltGBTI9vxzmpG1T44--nOw==/base.apk' with 1 weak references
+11-07 03:16:07.300  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~dCFs4o4sULuxjVMBRtLThw==/com.google.android.apps.tachyon-ltGBTI9vxzmpG1T44--nOw==/split_config.arm64_v8a.apk' with 1 weak references
+11-07 03:16:07.300  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~dCFs4o4sULuxjVMBRtLThw==/com.google.android.apps.tachyon-ltGBTI9vxzmpG1T44--nOw==/split_config.en.apk' with 1 weak references
+11-07 03:16:07.300  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~dCFs4o4sULuxjVMBRtLThw==/com.google.android.apps.tachyon-ltGBTI9vxzmpG1T44--nOw==/split_config.xxhdpi.apk' with 1 weak references
+11-07 03:16:07.300  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~NG5mpQy4WOkT0AH-yvhzzg==/com.google.android.calculator-vY5Ajk5izyJeBQmIoIFwzw==/base.apk' with 1 weak references
+11-07 03:16:07.300  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~NG5mpQy4WOkT0AH-yvhzzg==/com.google.android.calculator-vY5Ajk5izyJeBQmIoIFwzw==/split_config.xxhdpi.apk' with 1 weak references
+11-07 03:16:07.300  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~5iHcjiU0k84q63BX5P2c-A==/com.google.android.calendar-kqWLQMAreWQVQOtuSVjCZg==/base.apk' with 1 weak references
+11-07 03:16:07.301  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~5iHcjiU0k84q63BX5P2c-A==/com.google.android.calendar-kqWLQMAreWQVQOtuSVjCZg==/split_config.arm64_v8a.apk' with 1 weak references
+11-07 03:16:07.301  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~5iHcjiU0k84q63BX5P2c-A==/com.google.android.calendar-kqWLQMAreWQVQOtuSVjCZg==/split_config.en.apk' with 1 weak references
+11-07 03:16:07.301  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~5iHcjiU0k84q63BX5P2c-A==/com.google.android.calendar-kqWLQMAreWQVQOtuSVjCZg==/split_config.xxhdpi.apk' with 1 weak references
+11-07 03:16:07.301  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~YRBdUKTmHHe04YqT0zOqzw==/com.google.android.deskclock-Z1Z1zp3dEf8jTjWPhQZnGQ==/base.apk' with 1 weak references
+11-07 03:16:07.301  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~YRBdUKTmHHe04YqT0zOqzw==/com.google.android.deskclock-Z1Z1zp3dEf8jTjWPhQZnGQ==/split_config.xxhdpi.apk' with 1 weak references
+11-07 03:16:07.301  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~44Sk0vRBfOsZrqnjMTHwUA==/com.google.android.dialer-dFU27FcOiRrdSjmmUd3bUA==/base.apk' with 1 weak references
+11-07 03:16:07.301  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~sy5x0SgukT2UM7KSg3U9nw==/com.google.android.gm-Qafh6ZvC0pY9C71LqH5Z_Q==/base.apk' with 1 weak references
+11-07 03:16:07.301  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~sy5x0SgukT2UM7KSg3U9nw==/com.google.android.gm-Qafh6ZvC0pY9C71LqH5Z_Q==/split_config.arm64_v8a.apk' with 1 weak references
+11-07 03:16:07.301  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~sy5x0SgukT2UM7KSg3U9nw==/com.google.android.gm-Qafh6ZvC0pY9C71LqH5Z_Q==/split_config.en.apk' with 1 weak references
+11-07 03:16:07.301  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~sy5x0SgukT2UM7KSg3U9nw==/com.google.android.gm-Qafh6ZvC0pY9C71LqH5Z_Q==/split_config.xxhdpi.apk' with 1 weak references
+11-07 03:16:07.301  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~qoFf4bDZ9uEA87kLhkgaBw==/app.revanced.android.youtube-WljdWDLjKjJG-C7hrsTeLQ==/base.apk' with 1 weak references
+11-07 03:16:07.301  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~BhWttjx5vXwGRRcfI7SJIQ==/bitpit.launcher-5ICiVZLoWI1VEhRDQCITrw==/base.apk' with 1 weak references
+11-07 03:16:07.302  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~NXs5MmbY12AWSw8dmPmPDg==/com.google.android.apps.docs.editors.docs-JT5yP0VW-VVsuHIrUxbZsg==/base.apk' with 1 weak references
+11-07 03:16:07.302  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~NXs5MmbY12AWSw8dmPmPDg==/com.google.android.apps.docs.editors.docs-JT5yP0VW-VVsuHIrUxbZsg==/split_config.arm64_v8a.apk' with 1 weak references
+11-07 03:16:07.302  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~NXs5MmbY12AWSw8dmPmPDg==/com.google.android.apps.docs.editors.docs-JT5yP0VW-VVsuHIrUxbZsg==/split_config.en.apk' with 1 weak references
+11-07 03:16:07.302  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~NXs5MmbY12AWSw8dmPmPDg==/com.google.android.apps.docs.editors.docs-JT5yP0VW-VVsuHIrUxbZsg==/split_config.xxhdpi.apk' with 1 weak references
+11-07 03:16:07.303  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~svw-BFrWNtoN5Oef7Or1SQ==/com.google.android.apps.docs.editors.sheets-2IYGU7IMDs-QXXpPO4xD_A==/base.apk' with 1 weak references
+11-07 03:16:07.303  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~svw-BFrWNtoN5Oef7Or1SQ==/com.google.android.apps.docs.editors.sheets-2IYGU7IMDs-QXXpPO4xD_A==/split_config.arm64_v8a.apk' with 1 weak references
+11-07 03:16:07.303  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~svw-BFrWNtoN5Oef7Or1SQ==/com.google.android.apps.docs.editors.sheets-2IYGU7IMDs-QXXpPO4xD_A==/split_config.en.apk' with 1 weak references
+11-07 03:16:07.303  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~svw-BFrWNtoN5Oef7Or1SQ==/com.google.android.apps.docs.editors.sheets-2IYGU7IMDs-QXXpPO4xD_A==/split_config.xxhdpi.apk' with 1 weak references
+11-07 03:16:07.304  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~ZFQMARKRT68lQmBOnEo_aA==/com.google.android.apps.docs.editors.slides-cL3jTlONLXSt-Qh104LDgw==/base.apk' with 1 weak references
+11-07 03:16:07.304  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~ZFQMARKRT68lQmBOnEo_aA==/com.google.android.apps.docs.editors.slides-cL3jTlONLXSt-Qh104LDgw==/split_config.arm64_v8a.apk' with 1 weak references
+11-07 03:16:07.304  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~ZFQMARKRT68lQmBOnEo_aA==/com.google.android.apps.docs.editors.slides-cL3jTlONLXSt-Qh104LDgw==/split_config.en.apk' with 1 weak references
+11-07 03:16:07.304  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~ZFQMARKRT68lQmBOnEo_aA==/com.google.android.apps.docs.editors.slides-cL3jTlONLXSt-Qh104LDgw==/split_config.xxhdpi.apk' with 1 weak references
+11-07 03:16:07.304  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~_VaA2eWXixg7-DaR82gEuA==/com.google.android.play.games-O7kCEsg9-6wojFFOj8LILg==/base.apk' with 1 weak references
+11-07 03:16:07.305  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~_VaA2eWXixg7-DaR82gEuA==/com.google.android.play.games-O7kCEsg9-6wojFFOj8LILg==/split_config.arm64_v8a.apk' with 1 weak references
+11-07 03:16:07.305  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~_VaA2eWXixg7-DaR82gEuA==/com.google.android.play.games-O7kCEsg9-6wojFFOj8LILg==/split_config.en.apk' with 1 weak references
+11-07 03:16:07.305  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~_VaA2eWXixg7-DaR82gEuA==/com.google.android.play.games-O7kCEsg9-6wojFFOj8LILg==/split_config.xxhdpi.apk' with 1 weak references
+11-07 03:16:07.305  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~_VaA2eWXixg7-DaR82gEuA==/com.google.android.play.games-O7kCEsg9-6wojFFOj8LILg==/split_gpdeku.apk' with 1 weak references
+11-07 03:16:07.305  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~_VaA2eWXixg7-DaR82gEuA==/com.google.android.play.games-O7kCEsg9-6wojFFOj8LILg==/split_gpdeku.config.arm64_v8a.apk' with 1 weak references
+11-07 03:16:07.305  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~vXuRWZFlA5AVxMruAYDORw==/com.jio.myjio-uC3mPXz4DvDAVzorJ9f2Bw==/base.apk' with 1 weak references
+11-07 03:16:07.306  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~vXuRWZFlA5AVxMruAYDORw==/com.jio.myjio-uC3mPXz4DvDAVzorJ9f2Bw==/split_config.arm64_v8a.apk' with 1 weak references
+11-07 03:16:07.306  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~vXuRWZFlA5AVxMruAYDORw==/com.jio.myjio-uC3mPXz4DvDAVzorJ9f2Bw==/split_config.xxhdpi.apk' with 1 weak references
+11-07 03:16:07.306  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~n2oRS4mKQwWWfQ94jPMXNw==/com.microsoft.office.outlook-zq7KfiuygbqvEAG4ZffXHg==/base.apk' with 1 weak references
+11-07 03:16:07.306  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~n2oRS4mKQwWWfQ94jPMXNw==/com.microsoft.office.outlook-zq7KfiuygbqvEAG4ZffXHg==/split_config.arm64_v8a.apk' with 1 weak references
+11-07 03:16:07.306  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~n2oRS4mKQwWWfQ94jPMXNw==/com.microsoft.office.outlook-zq7KfiuygbqvEAG4ZffXHg==/split_config.en.apk' with 1 weak references
+11-07 03:16:07.306  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~n2oRS4mKQwWWfQ94jPMXNw==/com.microsoft.office.outlook-zq7KfiuygbqvEAG4ZffXHg==/split_config.xxhdpi.apk' with 1 weak references
+11-07 03:16:07.307  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~0Wvu-fQOc5C5W8OvrR6mdQ==/com.pinterest-2y8brS3-pQLNOsCj5kzpPg==/base.apk' with 1 weak references
+11-07 03:16:07.307  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~0Wvu-fQOc5C5W8OvrR6mdQ==/com.pinterest-2y8brS3-pQLNOsCj5kzpPg==/split_config.arm64_v8a.apk' with 1 weak references
+11-07 03:16:07.307  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~0Wvu-fQOc5C5W8OvrR6mdQ==/com.pinterest-2y8brS3-pQLNOsCj5kzpPg==/split_config.en.apk' with 1 weak references
+11-07 03:16:07.307  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~0Wvu-fQOc5C5W8OvrR6mdQ==/com.pinterest-2y8brS3-pQLNOsCj5kzpPg==/split_config.xxhdpi.apk' with 1 weak references
+11-07 03:16:07.307  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~GKeBVAgLcfBqpj2o2t6Uaw==/com.truecaller-zutnv5dYP3Aop0v7HVJUdQ==/base.apk' with 1 weak references
+11-07 03:16:07.308  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~-vs6tQN6cEvRYIEoa4KWfQ==/idm.internet.download.manager.plus-BCXNALlECGluXNoyTaOK3g==/base.apk' with 1 weak references
+11-07 03:16:07.308  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~vX1bOoF_X5rlDtRHdPCoeg==/net.sourceforge.opencamera-neq5l7rk7AxY7o4YUEdDSg==/base.apk' with 1 weak references
+11-07 03:16:07.309  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~d8_3YaEL7Nkgu6tT_Cy-VQ==/org.zwanoo.android.speedtest-gBpWPa47NPs8XcttsBOigQ==/base.apk' with 1 weak references
+11-07 03:16:07.309  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~EQLgL1WTfyWlsmV4d4cKuw==/com.google.android.apps.nbu.files-H1a96dXw5hKf-6BoMNmUcg==/base.apk' with 1 weak references
+11-07 03:16:07.310  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~EQLgL1WTfyWlsmV4d4cKuw==/com.google.android.apps.nbu.files-H1a96dXw5hKf-6BoMNmUcg==/split_config.arm64_v8a.apk' with 1 weak references
+11-07 03:16:07.310  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~EQLgL1WTfyWlsmV4d4cKuw==/com.google.android.apps.nbu.files-H1a96dXw5hKf-6BoMNmUcg==/split_config.en.apk' with 1 weak references
+11-07 03:16:07.310  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~EQLgL1WTfyWlsmV4d4cKuw==/com.google.android.apps.nbu.files-H1a96dXw5hKf-6BoMNmUcg==/split_config.xxhdpi.apk' with 1 weak references
+11-07 03:16:07.310  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~Ay4UcZdD4jpaKBnh_mCeEg==/com.google.android.apps.subscriptions.red-4xE-_fJuC47X1vMlBXgDPQ==/base.apk' with 1 weak references
+11-07 03:16:07.310  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~Ay4UcZdD4jpaKBnh_mCeEg==/com.google.android.apps.subscriptions.red-4xE-_fJuC47X1vMlBXgDPQ==/split_config.arm64_v8a.apk' with 1 weak references
+11-07 03:16:07.311  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~Ay4UcZdD4jpaKBnh_mCeEg==/com.google.android.apps.subscriptions.red-4xE-_fJuC47X1vMlBXgDPQ==/split_config.en.apk' with 1 weak references
+11-07 03:16:07.311  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~Ay4UcZdD4jpaKBnh_mCeEg==/com.google.android.apps.subscriptions.red-4xE-_fJuC47X1vMlBXgDPQ==/split_config.xxhdpi.apk' with 1 weak references
+11-07 03:16:07.311  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~fDNT8qch0ixF01ij5f0xaQ==/com.motorola.audiorecorder-bBxUC5jy6o-oweS1U03ahQ==/base.apk' with 1 weak references
+11-07 03:16:07.311  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~fDNT8qch0ixF01ij5f0xaQ==/com.motorola.audiorecorder-bBxUC5jy6o-oweS1U03ahQ==/split_config.arm64_v8a.apk' with 1 weak references
+11-07 03:16:07.311  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~fDNT8qch0ixF01ij5f0xaQ==/com.motorola.audiorecorder-bBxUC5jy6o-oweS1U03ahQ==/split_config.en.apk' with 1 weak references
+11-07 03:16:07.312  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~fDNT8qch0ixF01ij5f0xaQ==/com.motorola.audiorecorder-bBxUC5jy6o-oweS1U03ahQ==/split_config.xxhdpi.apk' with 1 weak references
+11-07 03:16:07.312  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~317-H2XtQJotZtzYbUFGIw==/com.motorola.ccc.notification-SkuAsCgSMdgGp_7gxXozOw==/base.apk' with 1 weak references
+11-07 03:16:07.312  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /system/app/MotoDolbyDax3/MotoDolbyDax3.apk' with 1 weak references
+11-07 03:16:07.312  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~d5XaWWnT1P-ySjVSGwe6vg==/com.motorola.fmplayer-NUa2fYKa15dhZxqptVp9lg==/base.apk' with 1 weak references
+11-07 03:16:07.313  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~rf16m_kcVcNk2reA0iECwQ==/com.motorola.timeweatherwidget-LfDMlMH-xsdDqpBdZPK5kw==/base.apk' with 1 weak references
+11-07 03:16:07.313  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~Cf6waZie05Hevwwp1elAYg==/ai.mistral.chat-uATpBaieAxcDCyBlBMEYjg==/base.apk' with 1 weak references
+11-07 03:16:07.313  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~Cf6waZie05Hevwwp1elAYg==/ai.mistral.chat-uATpBaieAxcDCyBlBMEYjg==/split_config.arm64_v8a.apk' with 1 weak references
+11-07 03:16:07.313  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~Cf6waZie05Hevwwp1elAYg==/ai.mistral.chat-uATpBaieAxcDCyBlBMEYjg==/split_config.xxhdpi.apk' with 1 weak references
+11-07 03:16:07.314  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~E1uH2HBuOJuiCxMMpuWwwQ==/app.mihon-YzWR_DgKHso0Jd1jATQ-0w==/base.apk' with 1 weak references
+11-07 03:16:07.314  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~vUBIkQZhJaAKdQ4atLOtFw==/app.revanced.android.apps.youtube.music-wUmYyZk_VTQaUUNRPC9hyg==/base.apk' with 1 weak references
+11-07 03:16:07.315  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~sZLLg7zHnXGlrZHUS1a66w==/app.revanced.android.gms-_wHQ3Y61jxavEFeOXbkITQ==/base.apk' with 1 weak references
+11-07 03:16:07.315  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~RRABG3v6k4zyQYOnHyFjEA==/app.revanced.manager.flutter-Iqi_k-QMSz72lDxhcKJxEA==/base.apk' with 1 weak references
+11-07 03:16:07.315  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~9ysH9og4VKUicyCXw1P0pw==/cc.remote9.app-dmze1s9_9vREi_NlvgObzw==/base.apk' with 1 weak references
+11-07 03:16:07.316  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~9ysH9og4VKUicyCXw1P0pw==/cc.remote9.app-dmze1s9_9vREi_NlvgObzw==/split_config.arm64_v8a.apk' with 1 weak references
+11-07 03:16:07.316  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~9ysH9og4VKUicyCXw1P0pw==/cc.remote9.app-dmze1s9_9vREi_NlvgObzw==/split_config.en.apk' with 1 weak references
+11-07 03:16:07.316  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~9ysH9og4VKUicyCXw1P0pw==/cc.remote9.app-dmze1s9_9vREi_NlvgObzw==/split_config.xxhdpi.apk' with 1 weak references
+11-07 03:16:07.316  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~JEcly4FEPV8cqWeQYrxctg==/com.app.spacebasic-kaG_qSEz8dXIvaN-J42Ybw==/base.apk' with 1 weak references
+11-07 03:16:07.316  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~JEcly4FEPV8cqWeQYrxctg==/com.app.spacebasic-kaG_qSEz8dXIvaN-J42Ybw==/split_config.arm64_v8a.apk' with 1 weak references
+11-07 03:16:07.316  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~JEcly4FEPV8cqWeQYrxctg==/com.app.spacebasic-kaG_qSEz8dXIvaN-J42Ybw==/split_config.bn.apk' with 1 weak references
+11-07 03:16:07.316  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~JEcly4FEPV8cqWeQYrxctg==/com.app.spacebasic-kaG_qSEz8dXIvaN-J42Ybw==/split_config.en.apk' with 1 weak references
+11-07 03:16:07.317  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~JEcly4FEPV8cqWeQYrxctg==/com.app.spacebasic-kaG_qSEz8dXIvaN-J42Ybw==/split_config.gu.apk' with 1 weak references
+11-07 03:16:07.317  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~JEcly4FEPV8cqWeQYrxctg==/com.app.spacebasic-kaG_qSEz8dXIvaN-J42Ybw==/split_config.hi.apk' with 1 weak references
+11-07 03:16:07.317  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~JEcly4FEPV8cqWeQYrxctg==/com.app.spacebasic-kaG_qSEz8dXIvaN-J42Ybw==/split_config.kn.apk' with 1 weak references
+11-07 03:16:07.317  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~JEcly4FEPV8cqWeQYrxctg==/com.app.spacebasic-kaG_qSEz8dXIvaN-J42Ybw==/split_config.mr.apk' with 1 weak references
+11-07 03:16:07.317  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~JEcly4FEPV8cqWeQYrxctg==/com.app.spacebasic-kaG_qSEz8dXIvaN-J42Ybw==/split_config.ta.apk' with 1 weak references
+11-07 03:16:07.317  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~JEcly4FEPV8cqWeQYrxctg==/com.app.spacebasic-kaG_qSEz8dXIvaN-J42Ybw==/split_config.te.apk' with 1 weak references
+11-07 03:16:07.317  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~JEcly4FEPV8cqWeQYrxctg==/com.app.spacebasic-kaG_qSEz8dXIvaN-J42Ybw==/split_config.xxhdpi.apk' with 1 weak references
+11-07 03:16:07.318  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~q1VAUuIoueNH1nRKJ0yO7Q==/com.azure.authenticator-SOdgpkuKidxvpOxopS1tIg==/base.apk' with 1 weak references
+11-07 03:16:07.318  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~rnF2Cn_rLcStgwr3h0XUrg==/com.castle.sefirah-NvUR3reYelk7Lo-SaJdEWQ==/base.apk' with 1 weak references
+11-07 03:16:07.319  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~rnF2Cn_rLcStgwr3h0XUrg==/com.castle.sefirah-NvUR3reYelk7Lo-SaJdEWQ==/split_config.arm64_v8a.apk' with 1 weak references
+11-07 03:16:07.319  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~rnF2Cn_rLcStgwr3h0XUrg==/com.castle.sefirah-NvUR3reYelk7Lo-SaJdEWQ==/split_config.bn.apk' with 1 weak references
+11-07 03:16:07.319  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~rnF2Cn_rLcStgwr3h0XUrg==/com.castle.sefirah-NvUR3reYelk7Lo-SaJdEWQ==/split_config.en.apk' with 1 weak references
+11-07 03:16:07.319  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~rnF2Cn_rLcStgwr3h0XUrg==/com.castle.sefirah-NvUR3reYelk7Lo-SaJdEWQ==/split_config.gu.apk' with 1 weak references
+11-07 03:16:07.319  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~rnF2Cn_rLcStgwr3h0XUrg==/com.castle.sefirah-NvUR3reYelk7Lo-SaJdEWQ==/split_config.hi.apk' with 1 weak references
+11-07 03:16:07.319  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~rnF2Cn_rLcStgwr3h0XUrg==/com.castle.sefirah-NvUR3reYelk7Lo-SaJdEWQ==/split_config.kn.apk' with 1 weak references
+11-07 03:16:07.319  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~rnF2Cn_rLcStgwr3h0XUrg==/com.castle.sefirah-NvUR3reYelk7Lo-SaJdEWQ==/split_config.mr.apk' with 1 weak references
+11-07 03:16:07.319  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~rnF2Cn_rLcStgwr3h0XUrg==/com.castle.sefirah-NvUR3reYelk7Lo-SaJdEWQ==/split_config.ta.apk' with 1 weak references
+11-07 03:16:07.319  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~rnF2Cn_rLcStgwr3h0XUrg==/com.castle.sefirah-NvUR3reYelk7Lo-SaJdEWQ==/split_config.te.apk' with 1 weak references
+11-07 03:16:07.319  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~rnF2Cn_rLcStgwr3h0XUrg==/com.castle.sefirah-NvUR3reYelk7Lo-SaJdEWQ==/split_config.xxhdpi.apk' with 1 weak references
+11-07 03:16:07.320  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~sDXFOQ4LBiCNV0_3KdjBrw==/com.cloudflare.onedotonedotonedotone-ZYzLK-8Ci5bQehjs_En-jA==/base.apk' with 1 weak references
+11-07 03:16:07.320  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~4hfGxkGESVviL3cnCypgZQ==/com.csam.icici.bank.imobile-S5ferYGNUw6Co4n1rWz2DA==/base.apk' with 1 weak references
+11-07 03:16:07.320  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~4hfGxkGESVviL3cnCypgZQ==/com.csam.icici.bank.imobile-S5ferYGNUw6Co4n1rWz2DA==/split_config.arm64_v8a.apk' with 1 weak references
+11-07 03:16:07.320  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~4hfGxkGESVviL3cnCypgZQ==/com.csam.icici.bank.imobile-S5ferYGNUw6Co4n1rWz2DA==/split_config.en.apk' with 1 weak references
+11-07 03:16:07.320  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~4hfGxkGESVviL3cnCypgZQ==/com.csam.icici.bank.imobile-S5ferYGNUw6Co4n1rWz2DA==/split_config.xxhdpi.apk' with 1 weak references
+11-07 03:16:07.321  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~ftumadx1rvYsHXS8c2HRnQ==/com.delhiveryConsigneeApp-ogkW4Yn5JceOt4oyLv-iGw==/base.apk' with 1 weak references
+11-07 03:16:07.321  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~ftumadx1rvYsHXS8c2HRnQ==/com.delhiveryConsigneeApp-ogkW4Yn5JceOt4oyLv-iGw==/split_config.arm64_v8a.apk' with 1 weak references
+11-07 03:16:07.321  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~ftumadx1rvYsHXS8c2HRnQ==/com.delhiveryConsigneeApp-ogkW4Yn5JceOt4oyLv-iGw==/split_config.en.apk' with 1 weak references
+11-07 03:16:07.321  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~ftumadx1rvYsHXS8c2HRnQ==/com.delhiveryConsigneeApp-ogkW4Yn5JceOt4oyLv-iGw==/split_config.xxhdpi.apk' with 1 weak references
+11-07 03:16:07.321  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~0dwtdH6WcFIoUp_xoVklGg==/com.digilocker.android-7FOxvaVTxFoCwsitz1O4BA==/base.apk' with 1 weak references
+11-07 03:16:07.321  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~0dwtdH6WcFIoUp_xoVklGg==/com.digilocker.android-7FOxvaVTxFoCwsitz1O4BA==/split_config.arm64_v8a.apk' with 1 weak references
+11-07 03:16:07.322  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~0dwtdH6WcFIoUp_xoVklGg==/com.digilocker.android-7FOxvaVTxFoCwsitz1O4BA==/split_config.xxhdpi.apk' with 1 weak references
+11-07 03:16:07.322  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~HeLgW31u60FFbdszURxzaA==/com.discord-wQn1YN2GED_gOKPzstWuQw==/base.apk' with 1 weak references
+11-07 03:16:07.322  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~HeLgW31u60FFbdszURxzaA==/com.discord-wQn1YN2GED_gOKPzstWuQw==/split_config.arm64_v8a.apk' with 1 weak references
+11-07 03:16:07.322  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~HeLgW31u60FFbdszURxzaA==/com.discord-wQn1YN2GED_gOKPzstWuQw==/split_config.en.apk' with 1 weak references
+11-07 03:16:07.322  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~HeLgW31u60FFbdszURxzaA==/com.discord-wQn1YN2GED_gOKPzstWuQw==/split_config.xxhdpi.apk' with 1 weak references
+11-07 03:16:07.322  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~ppBFo9WqYcoV8qD5YcIdPg==/com.dubox.drive-MVvjyl1JTeDeK7lYyNcvSQ==/base.apk' with 1 weak references
+11-07 03:16:07.323  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~lxzQfPfchDJNo1-QXcBEkw==/com.github.android-biRyngDXXHkUw5jA85b3qQ==/base.apk' with 1 weak references
+11-07 03:16:07.323  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~lxzQfPfchDJNo1-QXcBEkw==/com.github.android-biRyngDXXHkUw5jA85b3qQ==/split_config.arm64_v8a.apk' with 1 weak references
+11-07 03:16:07.323  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~lxzQfPfchDJNo1-QXcBEkw==/com.github.android-biRyngDXXHkUw5jA85b3qQ==/split_config.xxhdpi.apk' with 1 weak references
+11-07 03:16:07.323  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~sEfqZjC9MK0jIWVbwvsuww==/com.google.android.apps.adm-Md9SsdpF--yel4W8MU9luw==/base.apk' with 1 weak references
+11-07 03:16:07.324  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~sEfqZjC9MK0jIWVbwvsuww==/com.google.android.apps.adm-Md9SsdpF--yel4W8MU9luw==/split_config.arm64_v8a.apk' with 1 weak references
+11-07 03:16:07.324  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~sEfqZjC9MK0jIWVbwvsuww==/com.google.android.apps.adm-Md9SsdpF--yel4W8MU9luw==/split_config.en.apk' with 1 weak references
+11-07 03:16:07.324  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~sEfqZjC9MK0jIWVbwvsuww==/com.google.android.apps.adm-Md9SsdpF--yel4W8MU9luw==/split_config.xxhdpi.apk' with 1 weak references
+11-07 03:16:07.324  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~KgxNN5u1NMHnTXezR-jYxw==/com.google.android.apps.bard-ivwlCVCbCAJhJLaJOtmJGw==/base.apk' with 1 weak references
+11-07 03:16:07.324  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~KgxNN5u1NMHnTXezR-jYxw==/com.google.android.apps.bard-ivwlCVCbCAJhJLaJOtmJGw==/split_config.arm64_v8a.apk' with 1 weak references
+11-07 03:16:07.324  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~KgxNN5u1NMHnTXezR-jYxw==/com.google.android.apps.bard-ivwlCVCbCAJhJLaJOtmJGw==/split_config.bn.apk' with 1 weak references
+11-07 03:16:07.324  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~KgxNN5u1NMHnTXezR-jYxw==/com.google.android.apps.bard-ivwlCVCbCAJhJLaJOtmJGw==/split_config.en.apk' with 1 weak references
+11-07 03:16:07.324  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~KgxNN5u1NMHnTXezR-jYxw==/com.google.android.apps.bard-ivwlCVCbCAJhJLaJOtmJGw==/split_config.gu.apk' with 1 weak references
+11-07 03:16:07.324  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~KgxNN5u1NMHnTXezR-jYxw==/com.google.android.apps.bard-ivwlCVCbCAJhJLaJOtmJGw==/split_config.hi.apk' with 1 weak references
+11-07 03:16:07.325  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~KgxNN5u1NMHnTXezR-jYxw==/com.google.android.apps.bard-ivwlCVCbCAJhJLaJOtmJGw==/split_config.kn.apk' with 1 weak references
+11-07 03:16:07.325  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~KgxNN5u1NMHnTXezR-jYxw==/com.google.android.apps.bard-ivwlCVCbCAJhJLaJOtmJGw==/split_config.mr.apk' with 1 weak references
+11-07 03:16:07.325  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~KgxNN5u1NMHnTXezR-jYxw==/com.google.android.apps.bard-ivwlCVCbCAJhJLaJOtmJGw==/split_config.ta.apk' with 1 weak references
+11-07 03:16:07.325  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~KgxNN5u1NMHnTXezR-jYxw==/com.google.android.apps.bard-ivwlCVCbCAJhJLaJOtmJGw==/split_config.te.apk' with 1 weak references
+11-07 03:16:07.325  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~KgxNN5u1NMHnTXezR-jYxw==/com.google.android.apps.bard-ivwlCVCbCAJhJLaJOtmJGw==/split_config.xxhdpi.apk' with 1 weak references
+11-07 03:16:07.325  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~FrtNso6BzjFbTAlXi7JX-Q==/com.google.android.apps.nbu.paisa.user-cmWKViTDukNuiDHLjyw7RQ==/base.apk' with 1 weak references
+11-07 03:16:07.325  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~FrtNso6BzjFbTAlXi7JX-Q==/com.google.android.apps.nbu.paisa.user-cmWKViTDukNuiDHLjyw7RQ==/split_config.arm64_v8a.apk' with 1 weak references
+11-07 03:16:07.325  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~FrtNso6BzjFbTAlXi7JX-Q==/com.google.android.apps.nbu.paisa.user-cmWKViTDukNuiDHLjyw7RQ==/split_config.xxhdpi.apk' with 1 weak references
+11-07 03:16:07.326  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~MQh1zu4FQ4T7SD3aUuxYow==/com.google.android.keep-NVuTcDTJCLLbtTaaxZrCfw==/base.apk' with 1 weak references
+11-07 03:16:07.326  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~MQh1zu4FQ4T7SD3aUuxYow==/com.google.android.keep-NVuTcDTJCLLbtTaaxZrCfw==/split_config.arm64_v8a.apk' with 1 weak references
+11-07 03:16:07.326  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~MQh1zu4FQ4T7SD3aUuxYow==/com.google.android.keep-NVuTcDTJCLLbtTaaxZrCfw==/split_config.en.apk' with 1 weak references
+11-07 03:16:07.326  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~MQh1zu4FQ4T7SD3aUuxYow==/com.google.android.keep-NVuTcDTJCLLbtTaaxZrCfw==/split_config.xxhdpi.apk' with 1 weak references
+11-07 03:16:07.326  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~WGSgtSBVU7-BFgRcudi-sQ==/com.google.ar.lens-AiFxl1UsnLMHEiOpFWdPJw==/base.apk' with 1 weak references
+11-07 03:16:07.326  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~2t2xGVRc006PQuYVZDhnrQ==/com.heytap.headset-w0TqqG9UAGPtOouIa-R0ng==/base.apk' with 1 weak references
+11-07 03:16:07.327  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~2t2xGVRc006PQuYVZDhnrQ==/com.heytap.headset-w0TqqG9UAGPtOouIa-R0ng==/split_config.arm64_v8a.apk' with 1 weak references
+11-07 03:16:07.327  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~2t2xGVRc006PQuYVZDhnrQ==/com.heytap.headset-w0TqqG9UAGPtOouIa-R0ng==/split_config.en.apk' with 1 weak references
+11-07 03:16:07.327  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~2t2xGVRc006PQuYVZDhnrQ==/com.heytap.headset-w0TqqG9UAGPtOouIa-R0ng==/split_config.xxhdpi.apk' with 1 weak references
+11-07 03:16:07.327  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~Su-c4cmbhqT_AnA4JaTOcQ==/com.jacksoftw.webcam-ko6q2eo0zg5CgIyaowSP3g==/base.apk' with 1 weak references
+11-07 03:16:07.327  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~0dLf3dQvB0bw91t9ZTixCQ==/com.linkedin.android-yPrPmilIe1qBBSQ05Ldx8g==/base.apk' with 1 weak references
+11-07 03:16:07.328  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~0dLf3dQvB0bw91t9ZTixCQ==/com.linkedin.android-yPrPmilIe1qBBSQ05Ldx8g==/split_config.arm64_v8a.apk' with 1 weak references
+11-07 03:16:07.328  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~0dLf3dQvB0bw91t9ZTixCQ==/com.linkedin.android-yPrPmilIe1qBBSQ05Ldx8g==/split_config.en.apk' with 1 weak references
+11-07 03:16:07.328  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~0dLf3dQvB0bw91t9ZTixCQ==/com.linkedin.android-yPrPmilIe1qBBSQ05Ldx8g==/split_config.xxhdpi.apk' with 1 weak references
+11-07 03:16:07.328  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~0dLf3dQvB0bw91t9ZTixCQ==/com.linkedin.android-yPrPmilIe1qBBSQ05Ldx8g==/split_verificationlivenesscheck.apk' with 1 weak references
+11-07 03:16:07.328  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~0dLf3dQvB0bw91t9ZTixCQ==/com.linkedin.android-yPrPmilIe1qBBSQ05Ldx8g==/split_verificationlivenesscheck.config.arm64_v8a.apk' with 1 weak references
+11-07 03:16:07.328  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~0dLf3dQvB0bw91t9ZTixCQ==/com.linkedin.android-yPrPmilIe1qBBSQ05Ldx8g==/split_verificationlivenesscheck.config.en.apk' with 1 weak references
+11-07 03:16:07.328  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~0dLf3dQvB0bw91t9ZTixCQ==/com.linkedin.android-yPrPmilIe1qBBSQ05Ldx8g==/split_videoconferencing.apk' with 1 weak references
+11-07 03:16:07.328  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~0dLf3dQvB0bw91t9ZTixCQ==/com.linkedin.android-yPrPmilIe1qBBSQ05Ldx8g==/split_videoconferencing.config.arm64_v8a.apk' with 1 weak references
+11-07 03:16:07.328  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~7cpL_Ess-w8CovfiucI29w==/com.microsoft.office.excel-WXugNKx7CweBUk7MR0_BWQ==/base.apk' with 1 weak references
+11-07 03:16:07.328  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~7cpL_Ess-w8CovfiucI29w==/com.microsoft.office.excel-WXugNKx7CweBUk7MR0_BWQ==/split_config.en.apk' with 1 weak references
+11-07 03:16:07.328  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~7cpL_Ess-w8CovfiucI29w==/com.microsoft.office.excel-WXugNKx7CweBUk7MR0_BWQ==/split_config.xxhdpi.apk' with 1 weak references
+11-07 03:16:07.329  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~2jcn_tMmc9F9X3KoA90AHw==/com.microsoft.office.powerpoint-WvxKPdkm8WbeMEYDBemSEw==/base.apk' with 1 weak references
+11-07 03:16:07.329  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~2jcn_tMmc9F9X3KoA90AHw==/com.microsoft.office.powerpoint-WvxKPdkm8WbeMEYDBemSEw==/split_config.en.apk' with 1 weak references
+11-07 03:16:07.329  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~2jcn_tMmc9F9X3KoA90AHw==/com.microsoft.office.powerpoint-WvxKPdkm8WbeMEYDBemSEw==/split_config.xxhdpi.apk' with 1 weak references
+11-07 03:16:07.329  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~ElTymx4zulMcWVxXCd1Kwg==/com.microsoft.office.word-wNiPVjK2K3c59HLxr1Hj1Q==/base.apk' with 1 weak references
+11-07 03:16:07.330  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~ElTymx4zulMcWVxXCd1Kwg==/com.microsoft.office.word-wNiPVjK2K3c59HLxr1Hj1Q==/split_config.en.apk' with 1 weak references
+11-07 03:16:07.330  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~ElTymx4zulMcWVxXCd1Kwg==/com.microsoft.office.word-wNiPVjK2K3c59HLxr1Hj1Q==/split_config.xxhdpi.apk' with 1 weak references
+11-07 03:16:07.330  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~iB_sLZzAIxUmBtBEJN34sQ==/com.microsoft.teams-XWxK5YShmIhjm3_Wjx9iPw==/base.apk' with 1 weak references
+11-07 03:16:07.330  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~iB_sLZzAIxUmBtBEJN34sQ==/com.microsoft.teams-XWxK5YShmIhjm3_Wjx9iPw==/split_config.arm64_v8a.apk' with 1 weak references
+11-07 03:16:07.330  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~iB_sLZzAIxUmBtBEJN34sQ==/com.microsoft.teams-XWxK5YShmIhjm3_Wjx9iPw==/split_config.en.apk' with 1 weak references
+11-07 03:16:07.330  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~iB_sLZzAIxUmBtBEJN34sQ==/com.microsoft.teams-XWxK5YShmIhjm3_Wjx9iPw==/split_config.xxhdpi.apk' with 1 weak references
+11-07 03:16:07.331  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~WqFI_FdlB4pXjoMU2tWkfw==/com.music.bitchord-EA5pVBz0xP568KrzdldBLA==/base.apk' with 1 weak references
+11-07 03:16:07.331  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~gXnEe-Zkbd3YNHHZBm0DRQ==/com.olacabs.customer-f-_kQEAavEJBtI-_Hn_31w==/base.apk' with 1 weak references
+11-07 03:16:07.331  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~gXnEe-Zkbd3YNHHZBm0DRQ==/com.olacabs.customer-f-_kQEAavEJBtI-_Hn_31w==/split_config.arm64_v8a.apk' with 1 weak references
+11-07 03:16:07.331  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~gXnEe-Zkbd3YNHHZBm0DRQ==/com.olacabs.customer-f-_kQEAavEJBtI-_Hn_31w==/split_config.en.apk' with 1 weak references
+11-07 03:16:07.331  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~gXnEe-Zkbd3YNHHZBm0DRQ==/com.olacabs.customer-f-_kQEAavEJBtI-_Hn_31w==/split_config.xxhdpi.apk' with 1 weak references
+11-07 03:16:07.332  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~itHEojHp6Y9jfHQ9oxJE-A==/com.paypal.android.p2pmobile-lkW--5kD4xLgHtcfcyLiqA==/base.apk' with 1 weak references
+11-07 03:16:07.332  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~itHEojHp6Y9jfHQ9oxJE-A==/com.paypal.android.p2pmobile-lkW--5kD4xLgHtcfcyLiqA==/split_config.arm64_v8a.apk' with 1 weak references
+11-07 03:16:07.332  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~itHEojHp6Y9jfHQ9oxJE-A==/com.paypal.android.p2pmobile-lkW--5kD4xLgHtcfcyLiqA==/split_config.en.apk' with 1 weak references
+11-07 03:16:07.332  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~itHEojHp6Y9jfHQ9oxJE-A==/com.paypal.android.p2pmobile-lkW--5kD4xLgHtcfcyLiqA==/split_config.xxhdpi.apk' with 1 weak references
+11-07 03:16:07.332  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~9a8RBc_dBNoW3XoRVcjZoQ==/com.phonepe.app-KMu0BWOsYkBiApTzd_y9_w==/base.apk' with 1 weak references
+11-07 03:16:07.333  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~9a8RBc_dBNoW3XoRVcjZoQ==/com.phonepe.app-KMu0BWOsYkBiApTzd_y9_w==/split_config.arm64_v8a.apk' with 1 weak references
+11-07 03:16:07.333  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~9a8RBc_dBNoW3XoRVcjZoQ==/com.phonepe.app-KMu0BWOsYkBiApTzd_y9_w==/split_config.xxhdpi.apk' with 1 weak references
+11-07 03:16:07.333  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~J5yi6r4ESbVm8eaSam0DVQ==/com.pittvandewitt.wavelet-lPfjuXClBEOWZK-e3F6hcA==/base.apk' with 1 weak references
+11-07 03:16:07.333  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~J5yi6r4ESbVm8eaSam0DVQ==/com.pittvandewitt.wavelet-lPfjuXClBEOWZK-e3F6hcA==/split_config.arm64_v8a.apk' with 1 weak references
+11-07 03:16:07.333  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~J5yi6r4ESbVm8eaSam0DVQ==/com.pittvandewitt.wavelet-lPfjuXClBEOWZK-e3F6hcA==/split_config.bn.apk' with 1 weak references
+11-07 03:16:07.333  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~J5yi6r4ESbVm8eaSam0DVQ==/com.pittvandewitt.wavelet-lPfjuXClBEOWZK-e3F6hcA==/split_config.en.apk' with 1 weak references
+11-07 03:16:07.333  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~J5yi6r4ESbVm8eaSam0DVQ==/com.pittvandewitt.wavelet-lPfjuXClBEOWZK-e3F6hcA==/split_config.gu.apk' with 1 weak references
+11-07 03:16:07.333  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~J5yi6r4ESbVm8eaSam0DVQ==/com.pittvandewitt.wavelet-lPfjuXClBEOWZK-e3F6hcA==/split_config.hi.apk' with 1 weak references
+11-07 03:16:07.333  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~J5yi6r4ESbVm8eaSam0DVQ==/com.pittvandewitt.wavelet-lPfjuXClBEOWZK-e3F6hcA==/split_config.kn.apk' with 1 weak references
+11-07 03:16:07.333  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~J5yi6r4ESbVm8eaSam0DVQ==/com.pittvandewitt.wavelet-lPfjuXClBEOWZK-e3F6hcA==/split_config.mr.apk' with 1 weak references
+11-07 03:16:07.334  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~J5yi6r4ESbVm8eaSam0DVQ==/com.pittvandewitt.wavelet-lPfjuXClBEOWZK-e3F6hcA==/split_config.ta.apk' with 1 weak references
+11-07 03:16:07.334  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~J5yi6r4ESbVm8eaSam0DVQ==/com.pittvandewitt.wavelet-lPfjuXClBEOWZK-e3F6hcA==/split_config.te.apk' with 1 weak references
+11-07 03:16:07.334  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~J5yi6r4ESbVm8eaSam0DVQ==/com.pittvandewitt.wavelet-lPfjuXClBEOWZK-e3F6hcA==/split_config.xxhdpi.apk' with 1 weak references
+11-07 03:16:07.334  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~yCHB9r_LvzyMisHSzYg4NA==/com.rapido.passenger-3z7UxjrlTZdsvVApERCXEQ==/base.apk' with 1 weak references
+11-07 03:16:07.334  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~yCHB9r_LvzyMisHSzYg4NA==/com.rapido.passenger-3z7UxjrlTZdsvVApERCXEQ==/split_config.arm64_v8a.apk' with 1 weak references
+11-07 03:16:07.334  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~yCHB9r_LvzyMisHSzYg4NA==/com.rapido.passenger-3z7UxjrlTZdsvVApERCXEQ==/split_config.en.apk' with 1 weak references
+11-07 03:16:07.335  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~yCHB9r_LvzyMisHSzYg4NA==/com.rapido.passenger-3z7UxjrlTZdsvVApERCXEQ==/split_config.xxhdpi.apk' with 1 weak references
+11-07 03:16:07.335  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~33wGL-dwzucieslRv8N42w==/com.reddit.frontpage-SDXsNfbPYVftCIzfgkq1Og==/base.apk' with 1 weak references
+11-07 03:16:07.335  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~33wGL-dwzucieslRv8N42w==/com.reddit.frontpage-SDXsNfbPYVftCIzfgkq1Og==/split_config.arm64_v8a.apk' with 1 weak references
+11-07 03:16:07.335  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~33wGL-dwzucieslRv8N42w==/com.reddit.frontpage-SDXsNfbPYVftCIzfgkq1Og==/split_config.en.apk' with 1 weak references
+11-07 03:16:07.335  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~33wGL-dwzucieslRv8N42w==/com.reddit.frontpage-SDXsNfbPYVftCIzfgkq1Og==/split_config.xxhdpi.apk' with 1 weak references
+11-07 03:16:07.335  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~uuSQxBXbcPRLlXXLhRtxJw==/com.twitter.android-gwNyR38Ggbk5nGbFtgiUBg==/base.apk' with 1 weak references
+11-07 03:16:07.336  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~uuSQxBXbcPRLlXXLhRtxJw==/com.twitter.android-gwNyR38Ggbk5nGbFtgiUBg==/split_config.arm64_v8a.apk' with 1 weak references
+11-07 03:16:07.336  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~uuSQxBXbcPRLlXXLhRtxJw==/com.twitter.android-gwNyR38Ggbk5nGbFtgiUBg==/split_config.en.apk' with 1 weak references
+11-07 03:16:07.336  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~uuSQxBXbcPRLlXXLhRtxJw==/com.twitter.android-gwNyR38Ggbk5nGbFtgiUBg==/split_config.xxhdpi.apk' with 1 weak references
+11-07 03:16:07.336  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~OqP6FjoX3PeEuwdTnAJWIQ==/com.whatsapp-U_8Vq1FN2rvr7eYvAKZBtw==/base.apk' with 1 weak references
+11-07 03:16:07.336  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~OqP6FjoX3PeEuwdTnAJWIQ==/com.whatsapp-U_8Vq1FN2rvr7eYvAKZBtw==/split_config.arm64_v8a.apk' with 1 weak references
+11-07 03:16:07.336  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~OqP6FjoX3PeEuwdTnAJWIQ==/com.whatsapp-U_8Vq1FN2rvr7eYvAKZBtw==/split_config.xxhdpi.apk' with 1 weak references
+11-07 03:16:07.337  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~OqP6FjoX3PeEuwdTnAJWIQ==/com.whatsapp-U_8Vq1FN2rvr7eYvAKZBtw==/split_i18n_bn.apk' with 1 weak references
+11-07 03:16:07.337  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~OqP6FjoX3PeEuwdTnAJWIQ==/com.whatsapp-U_8Vq1FN2rvr7eYvAKZBtw==/split_i18n_en.apk' with 1 weak references
+11-07 03:16:07.337  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~OqP6FjoX3PeEuwdTnAJWIQ==/com.whatsapp-U_8Vq1FN2rvr7eYvAKZBtw==/split_i18n_gu.apk' with 1 weak references
+11-07 03:16:07.337  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~OqP6FjoX3PeEuwdTnAJWIQ==/com.whatsapp-U_8Vq1FN2rvr7eYvAKZBtw==/split_i18n_hi.apk' with 1 weak references
+11-07 03:16:07.337  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~OqP6FjoX3PeEuwdTnAJWIQ==/com.whatsapp-U_8Vq1FN2rvr7eYvAKZBtw==/split_i18n_kn.apk' with 1 weak references
+11-07 03:16:07.337  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~OqP6FjoX3PeEuwdTnAJWIQ==/com.whatsapp-U_8Vq1FN2rvr7eYvAKZBtw==/split_i18n_ml.apk' with 1 weak references
+11-07 03:16:07.337  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~OqP6FjoX3PeEuwdTnAJWIQ==/com.whatsapp-U_8Vq1FN2rvr7eYvAKZBtw==/split_i18n_mr.apk' with 1 weak references
+11-07 03:16:07.337  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~OqP6FjoX3PeEuwdTnAJWIQ==/com.whatsapp-U_8Vq1FN2rvr7eYvAKZBtw==/split_i18n_pa.apk' with 1 weak references
+11-07 03:16:07.337  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~OqP6FjoX3PeEuwdTnAJWIQ==/com.whatsapp-U_8Vq1FN2rvr7eYvAKZBtw==/split_i18n_ta.apk' with 1 weak references
+11-07 03:16:07.338  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~OqP6FjoX3PeEuwdTnAJWIQ==/com.whatsapp-U_8Vq1FN2rvr7eYvAKZBtw==/split_i18n_te.apk' with 1 weak references
+11-07 03:16:07.338  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~OqP6FjoX3PeEuwdTnAJWIQ==/com.whatsapp-U_8Vq1FN2rvr7eYvAKZBtw==/split_i18n_ur.apk' with 1 weak references
+11-07 03:16:07.338  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~NShXAhHGbWzQ_jUr0wnvXg==/com.whereismytrain.android-A5H5ujJuIWtqbjooyAZV3Q==/base.apk' with 1 weak references
+11-07 03:16:07.339  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~ZVSIWZglsqz2YnmTln5QWw==/in.amazon.mShop.android.shopping-hlKOdXJW9tNrACLpeUuHNQ==/base.apk' with 1 weak references
+11-07 03:16:07.339  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~ZVSIWZglsqz2YnmTln5QWw==/in.amazon.mShop.android.shopping-hlKOdXJW9tNrACLpeUuHNQ==/split_config.arm64_v8a.apk' with 1 weak references
+11-07 03:16:07.339  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~ZVSIWZglsqz2YnmTln5QWw==/in.amazon.mShop.android.shopping-hlKOdXJW9tNrACLpeUuHNQ==/split_config.xxhdpi.apk' with 1 weak references
+11-07 03:16:07.339  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~b6OQX3RswOJivjNUtsSmTA==/io.github.forkmaintainers.iceraven-8hXTyKSSwVXJR_tS3etIwA==/base.apk' with 1 weak references
+11-07 03:16:07.340  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~TNcyaTzsnVHSR7tZc3KMYA==/org.telegram.messenger-TpYuPd1VVeg1Oo4uK4SueA==/base.apk' with 1 weak references
+11-07 03:16:07.340  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~TNcyaTzsnVHSR7tZc3KMYA==/org.telegram.messenger-TpYuPd1VVeg1Oo4uK4SueA==/split_config.arm64_v8a.apk' with 1 weak references
+11-07 03:16:07.340  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~TNcyaTzsnVHSR7tZc3KMYA==/org.telegram.messenger-TpYuPd1VVeg1Oo4uK4SueA==/split_config.xxhdpi.apk' with 1 weak references
+11-07 03:16:07.340  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~r2gNqjwz5uKjJ6_00PrdMQ==/org.videolan.vlc-Gj-KiW-2WVJG2E7mEmvXJQ==/base.apk' with 1 weak references
+11-07 03:16:07.341  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~r2gNqjwz5uKjJ6_00PrdMQ==/org.videolan.vlc-Gj-KiW-2WVJG2E7mEmvXJQ==/split_config.arm64_v8a.apk' with 1 weak references
+11-07 03:16:07.341  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~r2gNqjwz5uKjJ6_00PrdMQ==/org.videolan.vlc-Gj-KiW-2WVJG2E7mEmvXJQ==/split_config.xxhdpi.apk' with 1 weak references
+11-07 03:16:07.341  3546  3561 W torola.freeform: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~cTB750SiyZknr3xKr6BQdg==/ru.zdevs.zarchiver-PzQp1Z_SAlStxDt6LD1ERg==/base.apk' with 1 weak references
+11-07 03:16:07.359  1492  1492 W binder:1492_2: type=1400 audit(0.0:855617): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:16:07.365  1492  1492 W HidlServiceManagement: Waited for hwservicemanager.ready for a second, waiting another...
+11-07 03:16:07.365  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:16:07.365  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:16:07.359  1492  1492 W binder:1492_2: type=1400 audit(0.0:855618): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:16:07.379  1830  2002 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:16:07.380  1830  2002 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:16:07.385  1830  2002 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 03:16:07.386  1830  2002 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 03:16:07.387  1830  2002 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 03:16:07.466  1134  1485 I hwcomposer: [HWC] (0)fire a callback of refresh to SF[4]  
+11-07 03:16:07.472  1830  2002 W PackageManager: Missing required system package: io.github.forkmaintainers.iceraven, but found with extended search.
+11-07 03:16:07.474  1198  1661 I Scheduler: applyPolicy: UpdateRefreshRate 30 to 120 of group 0: [touch=0:0 touchBoost=0 scroll=0:0 idle=0:0]
+11-07 03:16:07.475  1167  1193 I mtkpower@impl: [setMode] type:6, enabled:1
+11-07 03:16:07.475  1167  1193 E mtkpower@impl: [setMode] unknown type
+11-07 03:16:07.507  1198  1198 I BufferQueueProducer: [StatusBar#90](this:0xb400007c09d63718,id:-1,api:0,p:-1,c:1198) queueBuffer: fps=0.13 dur=7428.07 max=7428.07 min=7428.07
+11-07 03:16:07.508  1198  1198 I SurfaceFlinger: setActiveModeInHwcIfNeeded changing active mode to 1(120.00 Hz) for display 0
+11-07 03:16:07.508  1134  1134 I hwcomposer: [HWC] (0) displaySetActiveConfig config:1  
+11-07 03:16:07.510  1167  1193 I mtkpower@impl: [setMode] type:6, enabled:0
+11-07 03:16:07.510  1167  1193 E mtkpower@impl: [setMode] unknown type
+11-07 03:16:07.523  8033  8045 D CompatibilityChangeReporter: Compat change id reported: 160794467; UID 11104; state: ENABLED
+11-07 03:16:07.538  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:16:07.535  1492  1492 W binder:1492_2: type=1400 audit(0.0:855619): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:16:07.540  1198  1198 D SurfaceFlinger: MtkOverrideDuration: update vsync 120
+11-07 03:16:07.541  1198  1198 E SurfaceFlinger: MtkDuration override mode is disabled
+11-07 03:16:07.541  1198  1198 D SurfaceFlinger: MtkOverrideDuration: reset override duration
+11-07 03:16:07.542  2298  2298 D FreeformGesture: onStateChanged: State{mIsPackageAvailable=true, mPillGestureEnabled=false, mVibrationEnabled=true, mShortcutPanelShowing=false, mSwipeInEnabled=false, mHunFreeformEnabled=true, mIsInGameMode=false, mIsRecentsShowing=false, mPillXPosition=1, mPillYPosition=600, mIsInTutorialMode=false, mIsDoubleTapPowerEnabled=false}
+11-07 03:16:07.542  2298  2298 D FreeformGesture: onStateChanged: State{mIsPackageAvailable=true, mPillGestureEnabled=false, mVibrationEnabled=true, mShortcutPanelShowing=false, mSwipeInEnabled=false, mHunFreeformEnabled=true, mIsInGameMode=false, mIsRecentsShowing=false, mPillXPosition=1, mPillYPosition=600, mIsInTutorialMode=false, mIsDoubleTapPowerEnabled=false}
+11-07 03:16:07.542  2298  2298 D FreeformGesture: onStateChanged: State{mIsPackageAvailable=true, mPillGestureEnabled=false, mVibrationEnabled=true, mShortcutPanelShowing=false, mSwipeInEnabled=false, mHunFreeformEnabled=true, mIsInGameMode=false, mIsRecentsShowing=false, mPillXPosition=1, mPillYPosition=600, mIsInTutorialMode=false, mIsDoubleTapPowerEnabled=false}
+11-07 03:16:07.542  2298  2298 D FreeformGesture: onStateChanged: State{mIsPackageAvailable=true, mPillGestureEnabled=false, mVibrationEnabled=true, mShortcutPanelShowing=false, mSwipeInEnabled=false, mHunFreeformEnabled=true, mIsInGameMode=false, mIsRecentsShowing=false, mPillXPosition=1, mPillYPosition=600, mIsInTutorialMode=false, mIsDoubleTapPowerEnabled=false}
+11-07 03:16:07.702  1134  1485 I hwcomposer: [HWC] (0)fire a callback of refresh to SF[4]  
+11-07 03:16:07.709  1134  1134 I hwcomposer: [HWCDisplay] [Display_0 (type:1)] fps:7.907287,dur:1138.19,max:316.96,min:31.41  
+11-07 03:16:07.977  1198  1661 I Scheduler: applyPolicy: UpdateRefreshRate 120 to 30 of group 0: [touch=0:0 touchBoost=0 scroll=0:0 idle=1:1]
+11-07 03:16:07.979  1198  1661 D SurfaceFlinger: MtkOverrideDuration: update vsync 30
+11-07 03:16:07.980  1198  1661 E SurfaceFlinger: MtkDuration override mode is disabled
+11-07 03:16:07.980  1198  1661 D SurfaceFlinger: MtkOverrideDuration: reset override duration
+11-07 03:16:07.980  1134  1491 I hwcomposer: [DRMDEV] (0) failed to waitNextVsync: -1  
+11-07 03:16:07.984  1134  1491 I hwcomposer: [DRMDEV] (0) failed to waitNextVsync: -1  
+11-07 03:16:07.992  1134  1491 I hwcomposer: [DRMDEV] (0) failed to waitNextVsync: -1  
+11-07 03:16:08.000  1134  1491 I hwcomposer: [DRMDEV] (0) failed to waitNextVsync: -1  
+11-07 03:16:08.009  1134  1491 I hwcomposer: [DRMDEV] (0) failed to waitNextVsync: -1  
+11-07 03:16:08.015  1198  1198 I SurfaceFlinger: setActiveModeInHwcIfNeeded changing active mode to 3(30.00 Hz) for display 0
+11-07 03:16:08.015  1134  1134 I hwcomposer: [HWC] (0) displaySetActiveConfig config:3  
+11-07 03:16:08.017  1134  1491 I hwcomposer: [DRMDEV] (0) failed to waitNextVsync: -1  
+11-07 03:16:08.060  1167  1208 I libPerfCtl: xgfGetFPS pid:2298 fps:-1
+11-07 03:16:08.060  1167  1208 I libPerfCtl: xgfGetFPS pid:31477 fps:-1
+11-07 03:16:08.355  1134  1485 I hwcomposer: [HWC] (0)fire a callback of refresh to SF[4]  
+11-07 03:16:08.355  1134  1491 I hwcomposer: [DRMDEV] (0) failed to waitNextVsync: -1  
+11-07 03:16:08.356  1198  1481 W HWComposer: Ignoring duplicate VSYNC event from HWC for display 0 (t=278050980181000)
+11-07 03:16:08.359  1134  1491 I hwcomposer: [DRMDEV] (0) failed to waitNextVsync: -1  
+11-07 03:16:08.363  1492  1492 W binder:1492_2: type=1400 audit(0.0:855620): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:16:08.365  1198  1198 I BufferQueueProducer: [FramebufferSurface](this:0xb400007c2c1716d0,id:-1,api:1,p:1198,c:1198) queueBuffer: fps=1.94 dur=1543.75 max=656.44 min=231.27
+11-07 03:16:08.366  1492  1492 W HidlServiceManagement: Waited for hwservicemanager.ready for a second, waiting another...
+11-07 03:16:08.367  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:16:08.367  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:16:08.363  1492  1492 W binder:1492_2: type=1400 audit(0.0:855621): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:16:08.789  1830  2109 E WifiDataStall: Ignore this poll. newStats: null txLinkSpeedMbps: 14 rxLinkSpeedMbps: 260 rssi: -48 connectionCapabilities: com.android.server.wifi.WifiNative$ConnectionCapabilities@97eba
+11-07 03:16:08.792  1830  1830 D EnhancedConnectivityController: Wifi onCapabilitiesChanged
+11-07 03:16:08.792  1830  1830 D EnhancedConnectivityController: Default net onCapabilitiesChanged
+11-07 03:16:08.792  1830  1830 D EnhancedConnectivityController: updateDefaultNet:553
+11-07 03:16:08.792  1830  1830 D EnhancedConnectivityController: mayUpdateNotification: shouldShow=true,UidsBlocked=false, net info=net:553,ifName=wlan0,securityType=0,isDefault=true,ssid="iBUS@MUJ",notificationId=0
+11-07 03:16:08.792  1830  1830 D EnhancedConnectivityController: educative notification has been ignored
+11-07 03:16:08.794  3595  4114 I ModemStats: [DataStallDetectService] onCapabilitiesChanged networkCapabilities=[ Transports: WIFI Capabilities: NOT_METERED&INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VPN&VALIDATED&NOT_ROAMING&FOREGROUND&NOT_CONGESTED&NOT_SUSPENDED&NOT_VCN_MANAGED LinkUpBandwidth>=12000Kbps LinkDnBandwidth>=60000Kbps TransportInfo: <SSID: <unknown ssid>, BSSID: 02:00:00:00:00:00, MAC: 02:00:00:00:00:00, IP: /10.175.15.5, Security type: 0, Supplicant state: COMPLETED, Wi-Fi standard: 11ac, RSSI: -48, Link speed: 14Mbps, Tx Link speed: 14Mbps, Max Supported Tx Link speed: 433Mbps, Calculated Tx : 0Mbps, Rx Link speed: 260Mbps, Max Supported Rx Link speed: 433Mbps, Calculated Rx : 0Mbps, Frequency: 5745MHz, Net ID: -1, Metered hint: false, score: 100, isUsable: true, CarrierMerged: false, SubscriptionId: -1, IsPrimary: -1, Trusted: true, Restricted: false, Ephemeral: false, OEM paid: false, OEM private: false, OSU AP: false, FQDN: <none>, Provider friendly name: <none>, Requesting package name: <none><none>MLO Information: , Is TID-To-Link negotiation supported by the AP: false, AP MLD Address: <none>, AP MLO Link Id: <none>, AP MLO Affiliated links: <none>, Vendor Data: <none>> SignalStrength: -48 UnderlyingNetworks: Null]
+11-07 03:16:08.794  3595  4114 I ModemStats: [DataStallDetectService] onCapabilitiesChanged NET_CAPABILITY_VALIDATED=true
+11-07 03:16:08.794  3595  4114 I ModemStats: [DataStallDetectService] onCapabilitiesChanged mDataStallManager.mDataStallInstance=null
+11-07 03:16:08.794  3595  4114 I ModemStats: [DataStallDetectService] onCapabilitiesChanged mDataStallSmart5gManager.mDataStallInstance=null
+11-07 03:16:08.794  3785  4430 D OtaApp  : PollingManagerService:NetworkCallback:networkCapabilities=[ Transports: WIFI Capabilities: NOT_METERED&INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VPN&VALIDATED&NOT_ROAMING&FOREGROUND&NOT_CONGESTED&NOT_SUSPENDED&NOT_VCN_MANAGED LinkUpBandwidth>=12000Kbps LinkDnBandwidth>=60000Kbps TransportInfo: <SSID: <unknown ssid>, BSSID: 02:00:00:00:00:00, MAC: 02:00:00:00:00:00, IP: /10.175.15.5, Security type: 0, Supplicant state: COMPLETED, Wi-Fi standard: 11ac, RSSI: -48, Link speed: 14Mbps, Tx Link speed: 14Mbps, Max Supported Tx Link speed: 433Mbps, Calculated Tx : 0Mbps, Rx Link speed: 260Mbps, Max Supported Rx Link speed: 433Mbps, Calculated Rx : 0Mbps, Frequency: 5745MHz, Net ID: -1, Metered hint: false, score: 100, isUsable: true, CarrierMerged: false, SubscriptionId: -1, IsPrimary: -1, Trusted: true, Restricted: false, Ephemeral: false, OEM paid: false, OEM private: false, OSU AP: false, FQDN: <none>, Provider friendly name: <none>, Requesting package name: <none><none>MLO Information: , Is TID-To-Link negotiation supported by the AP: false, AP MLD Address: <none>, AP MLO Link Id: <none>, AP MLO Affiliated links: <none>, Vendor Data: <none>> SignalStrength: -48 UnderlyingNetworks: Null]
+11-07 03:16:08.797 28144 28195 I dutj    : Connection state change: onCapabilitiesChanged, data connection: WIFI, manual connection eligibility: false, ntn roaming: false
+11-07 03:16:08.798 28144 28195 I dutj    : New default data network: wifi
+11-07 03:16:08.802  1830  2229 D AgpsApn : mDefaultNetworkcallback onCapabilitiesChanged: network=553, nc=[ Transports: WIFI Capabilities: NOT_METERED&INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VPN&VALIDATED&NOT_ROAMING&FOREGROUND&NOT_CONGESTED&NOT_SUSPENDED&NOT_VCN_MANAGED LinkUpBandwidth>=12000Kbps LinkDnBandwidth>=60000Kbps TransportInfo: <SSID: <unknown ssid>, BSSID: 02:00:00:00:00:00, MAC: 02:00:00:00:00:00, IP: /10.175.15.5, Security type: 0, Supplicant state: COMPLETED, Wi-Fi standard: 11ac, RSSI: -48, Link speed: 14Mbps, Tx Link speed: 14Mbps, Max Supported Tx Link speed: 433Mbps, Calculated Tx : 0Mbps, Rx Link speed: 260Mbps, Max Supported Rx Link speed: 433Mbps, Calculated Rx : 0Mbps, Frequency: 5745MHz, Net ID: -1, Metered hint: false, score: 100, isUsable: true, CarrierMerged: false, SubscriptionId: -1, IsPrimary: 1, Trusted: true, Restricted: false, Ephemeral: false, OEM paid: false, OEM private: false, OSU AP: false, FQDN: <none>, Provider friendly name: <none>, Requesting package name: <none><none>MLO Information: , Is TID-To-Link negotiation supported by the AP: false, AP MLD Address: <none>, AP MLO Link Id: <none>, AP MLO Affiliated links: <none>, Vendor Data: <none>> SignalStrength: -48 AdminUids: [1000] SSID: "iBUS@MUJ" UnderlyingNetworks: Null]
+11-07 03:16:08.802  1830  2229 D AgpsApn : onCapabilitiesChanged: mDefaultNetHasInt=true
+11-07 03:16:08.803   510   632 I emyt    : handleMessage processing message:[NOTIFY_UPTIME_IGNORE_STATE_CHANGED] with [non-null]:RcsEngineImpl reference [CONTEXT log_prefix="RcsEngineImpl:[4dd3b970-723f]>Handler" thread_id=261 ]
+11-07 03:16:08.803   510   584 I emyt    : Connected state: [1], networkType: [WIFI] [CONTEXT thread_id=255 ]
+11-07 03:16:08.805  2298  2298 D StatusBarIconController: ignoring old pipeline callback because the new wifi icon is enabled
+11-07 03:16:08.807  1830  2116 D ConnectivityService: NetReassign [no changes] [c 1] [a 1] [i 2]
+11-07 03:16:08.808  3384  7704 I NearbyMediums: Wifi changed new SSID: <unknown ssid>
+11-07 03:16:08.808  3384  7704 I NearbyMediums: WifiLanConnectivityInfo is not changed, skip notify.
+11-07 03:16:08.901  7818  7820 I AidlLazyServiceRegistrar: Process has 0 (of 1 available) client(s) in use after notification artd has clients: 0
+11-07 03:16:08.901  7818  7820 I AidlLazyServiceRegistrar: Trying to shut down the service. No clients in use for any service in process.
+11-07 03:16:08.902  7818  7820 I AidlLazyServiceRegistrar: Unregistered all clients and exiting
+11-07 03:16:08.919  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:16:08.915  1492  1492 W binder:1492_2: type=1400 audit(0.0:855622): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:16:08.920  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:16:08.915  1492  1492 W binder:1492_2: type=1400 audit(0.0:855623): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:16:09.043  1527  1731 D ULogGuard: Monitoring: 10 threads, 0 requests, 0 time-bombs; 1 guards. ResetFlags = 0x7
+11-07 03:16:09.061  1167  1208 I libPerfCtl: xgfGetFPS pid:2298 fps:-1
+11-07 03:16:09.061  1167  1208 I libPerfCtl: xgfGetFPS pid:31477 fps:-1
+11-07 03:16:09.302  3384  7704 I NearbySharing: Network state changed: NetworkState(isRestricted=false, isOnline=true, isCongested=false, isMetered=false, isWifiConnected=true)
+11-07 03:16:09.304  3384 29477 I NearbySharing: Network state changed: NetworkState(isRestricted=false, isOnline=true, isCongested=false, isMetered=false, isWifiConnected=true)
+11-07 03:16:09.369  1492  1492 W HidlServiceManagement: Waited for hwservicemanager.ready for a second, waiting another...
+11-07 03:16:09.369  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:16:09.370  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:16:09.367  1492  1492 W binder:1492_2: type=1400 audit(0.0:855624): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:16:09.367  1492  1492 W binder:1492_2: type=1400 audit(0.0:855625): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:16:10.371  1492  1492 W HidlServiceManagement: Waited for hwservicemanager.ready for a second, waiting another...
+11-07 03:16:10.372  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:16:10.372  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:16:10.367  1492  1492 W binder:1492_2: type=1400 audit(0.0:855626): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:16:10.367  1492  1492 W binder:1492_2: type=1400 audit(0.0:855627): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:16:11.374  1492  1492 W HidlServiceManagement: Waited for hwservicemanager.ready for a second, waiting another...
+11-07 03:16:11.375  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:16:11.375  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:16:11.371  1492  1492 W binder:1492_2: type=1400 audit(0.0:855628): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:16:11.371  1492  1492 W binder:1492_2: type=1400 audit(0.0:855629): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:16:11.814  1830  2109 E WifiDataStall: Ignore this poll. newStats: null txLinkSpeedMbps: 14 rxLinkSpeedMbps: 325 rssi: -49 connectionCapabilities: com.android.server.wifi.WifiNative$ConnectionCapabilities@97eba
+11-07 03:16:11.817  1830  1830 D EnhancedConnectivityController: Wifi onCapabilitiesChanged
+11-07 03:16:11.818  1830  1830 D EnhancedConnectivityController: Default net onCapabilitiesChanged
+11-07 03:16:11.818  1830  1830 D EnhancedConnectivityController: updateDefaultNet:553
+11-07 03:16:11.818  1830  1830 D EnhancedConnectivityController: mayUpdateNotification: shouldShow=true,UidsBlocked=false, net info=net:553,ifName=wlan0,securityType=0,isDefault=true,ssid="iBUS@MUJ",notificationId=0
+11-07 03:16:11.818  1830  1830 D EnhancedConnectivityController: educative notification has been ignored
+11-07 03:16:11.821  3785  4430 D OtaApp  : PollingManagerService:NetworkCallback:networkCapabilities=[ Transports: WIFI Capabilities: NOT_METERED&INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VPN&VALIDATED&NOT_ROAMING&FOREGROUND&NOT_CONGESTED&NOT_SUSPENDED&NOT_VCN_MANAGED LinkUpBandwidth>=12000Kbps LinkDnBandwidth>=60000Kbps TransportInfo: <SSID: <unknown ssid>, BSSID: 02:00:00:00:00:00, MAC: 02:00:00:00:00:00, IP: /10.175.15.5, Security type: 0, Supplicant state: COMPLETED, Wi-Fi standard: 11ac, RSSI: -49, Link speed: 14Mbps, Tx Link speed: 14Mbps, Max Supported Tx Link speed: 433Mbps, Calculated Tx : 0Mbps, Rx Link speed: 325Mbps, Max Supported Rx Link speed: 433Mbps, Calculated Rx : 0Mbps, Frequency: 5745MHz, Net ID: -1, Metered hint: false, score: 100, isUsable: true, CarrierMerged: false, SubscriptionId: -1, IsPrimary: -1, Trusted: true, Restricted: false, Ephemeral: false, OEM paid: false, OEM private: false, OSU AP: false, FQDN: <none>, Provider friendly name: <none>, Requesting package name: <none><none>MLO Information: , Is TID-To-Link negotiation supported by the AP: false, AP MLD Address: <none>, AP MLO Link Id: <none>, AP MLO Affiliated links: <none>, Vendor Data: <none>> SignalStrength: -49 UnderlyingNetworks: Null]
+11-07 03:16:11.821  3595  4114 I ModemStats: [DataStallDetectService] onCapabilitiesChanged networkCapabilities=[ Transports: WIFI Capabilities: NOT_METERED&INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VPN&VALIDATED&NOT_ROAMING&FOREGROUND&NOT_CONGESTED&NOT_SUSPENDED&NOT_VCN_MANAGED LinkUpBandwidth>=12000Kbps LinkDnBandwidth>=60000Kbps TransportInfo: <SSID: <unknown ssid>, BSSID: 02:00:00:00:00:00, MAC: 02:00:00:00:00:00, IP: /10.175.15.5, Security type: 0, Supplicant state: COMPLETED, Wi-Fi standard: 11ac, RSSI: -49, Link speed: 14Mbps, Tx Link speed: 14Mbps, Max Supported Tx Link speed: 433Mbps, Calculated Tx : 0Mbps, Rx Link speed: 325Mbps, Max Supported Rx Link speed: 433Mbps, Calculated Rx : 0Mbps, Frequency: 5745MHz, Net ID: -1, Metered hint: false, score: 100, isUsable: true, CarrierMerged: false, SubscriptionId: -1, IsPrimary: -1, Trusted: true, Restricted: false, Ephemeral: false, OEM paid: false, OEM private: false, OSU AP: false, FQDN: <none>, Provider friendly name: <none>, Requesting package name: <none><none>MLO Information: , Is TID-To-Link negotiation supported by the AP: false, AP MLD Address: <none>, AP MLO Link Id: <none>, AP MLO Affiliated links: <none>, Vendor Data: <none>> SignalStrength: -49 UnderlyingNetworks: Null]
+11-07 03:16:11.822  3595  4114 I ModemStats: [DataStallDetectService] onCapabilitiesChanged NET_CAPABILITY_VALIDATED=true
+11-07 03:16:11.822  3595  4114 I ModemStats: [DataStallDetectService] onCapabilitiesChanged mDataStallManager.mDataStallInstance=null
+11-07 03:16:11.822  3595  4114 I ModemStats: [DataStallDetectService] onCapabilitiesChanged mDataStallSmart5gManager.mDataStallInstance=null
+11-07 03:16:11.829  2298  2298 D StatusBarIconController: ignoring old pipeline callback because the new wifi icon is enabled
+11-07 03:16:11.832  1830  2229 D AgpsApn : mDefaultNetworkcallback onCapabilitiesChanged: network=553, nc=[ Transports: WIFI Capabilities: NOT_METERED&INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VPN&VALIDATED&NOT_ROAMING&FOREGROUND&NOT_CONGESTED&NOT_SUSPENDED&NOT_VCN_MANAGED LinkUpBandwidth>=12000Kbps LinkDnBandwidth>=60000Kbps TransportInfo: <SSID: <unknown ssid>, BSSID: 02:00:00:00:00:00, MAC: 02:00:00:00:00:00, IP: /10.175.15.5, Security type: 0, Supplicant state: COMPLETED, Wi-Fi standard: 11ac, RSSI: -49, Link speed: 14Mbps, Tx Link speed: 14Mbps, Max Supported Tx Link speed: 433Mbps, Calculated Tx : 0Mbps, Rx Link speed: 325Mbps, Max Supported Rx Link speed: 433Mbps, Calculated Rx : 0Mbps, Frequency: 5745MHz, Net ID: -1, Metered hint: false, score: 100, isUsable: true, CarrierMerged: false, SubscriptionId: -1, IsPrimary: 1, Trusted: true, Restricted: false, Ephemeral: false, OEM paid: false, OEM private: false, OSU AP: false, FQDN: <none>, Provider friendly name: <none>, Requesting package name: <none><none>MLO Information: , Is TID-To-Link negotiation supported by the AP: false, AP MLD Address: <none>, AP MLO Link Id: <none>, AP MLO Affiliated links: <none>, Vendor Data: <none>> SignalStrength: -49 AdminUids: [1000] SSID: "iBUS@MUJ" UnderlyingNetworks: Null]
+11-07 03:16:11.832  1830  2229 D AgpsApn : onCapabilitiesChanged: mDefaultNetHasInt=true
+11-07 03:16:11.834   510   584 I emyt    : Connected state: [1], networkType: [WIFI] [CONTEXT thread_id=255 ]
+11-07 03:16:11.834   510   632 I emyt    : handleMessage processing message:[NOTIFY_UPTIME_IGNORE_STATE_CHANGED] with [non-null]:RcsEngineImpl reference [CONTEXT log_prefix="RcsEngineImpl:[4dd3b970-723f]>Handler" thread_id=261 ]
+11-07 03:16:11.837 28144 28195 I dutj    : Connection state change: onCapabilitiesChanged, data connection: WIFI, manual connection eligibility: false, ntn roaming: false
+11-07 03:16:11.838 28144 28195 I dutj    : New default data network: wifi
+11-07 03:16:11.838  1830  2116 D ConnectivityService: NetReassign [no changes] [c 1] [a 1] [i 1]
+11-07 03:16:11.840  3384  7704 I NearbyMediums: Wifi changed new SSID: <unknown ssid>
+11-07 03:16:11.841  3384  7704 I NearbyMediums: WifiLanConnectivityInfo is not changed, skip notify.
+11-07 03:16:12.045  1527  1731 D ULogGuard: Monitoring: 10 threads, 0 requests, 0 time-bombs; 1 guards. ResetFlags = 0x7
+11-07 03:16:12.321  3384  7704 I NearbyMediums: No BLE Fast/GATT advertisements found in the latest cycle.
+11-07 03:16:12.322  3384  7704 I NearbyMediums: Current Tracked Scanning Clients are : {NearbyConnections.EnvironmentMonitor, NearbySharing}
+11-07 03:16:12.336  3384  7246 I NearbySharing: Network state changed: NetworkState(isRestricted=false, isOnline=true, isCongested=false, isMetered=false, isWifiConnected=true)
+11-07 03:16:12.336  3384  7704 I NearbySharing: Network state changed: NetworkState(isRestricted=false, isOnline=true, isCongested=false, isMetered=false, isWifiConnected=true)
+11-07 03:16:12.376  1492  1492 W HidlServiceManagement: Waited for hwservicemanager.ready for a second, waiting another...
+11-07 03:16:12.377  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:16:12.375  1492  1492 W binder:1492_2: type=1400 audit(0.0:855630): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:16:12.377  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:16:12.375  1492  1492 W binder:1492_2: type=1400 audit(0.0:855631): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:16:12.404  8033  8053 D ProfileInstaller: Installing profile for com.anchor.mine
+11-07 03:16:12.528  1830  2074 W PackageManager: Missing required system package: com.anchor.mine, but found with extended search.
+11-07 03:16:12.581  8033  8045 I TestRunner: finished: testGentleReminderFires_SetsFlag(com.anchor.mine.alarms.AlarmSelfTest)

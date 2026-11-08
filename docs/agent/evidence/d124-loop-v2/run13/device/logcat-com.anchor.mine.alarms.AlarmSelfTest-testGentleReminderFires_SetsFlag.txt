@@ -1,0 +1,701 @@
+11-07 03:24:24.996 12323 12430 I TestRunner: started: testGentleReminderFires_SetsFlag(com.anchor.mine.alarms.AlarmSelfTest)
+11-07 03:24:24.997  1830  3552 W PackageManager: Missing required system package: com.dubox.drive, but found with extended search.
+11-07 03:24:24.998 12323 12431 D nativeloader: Load /data/app/~~IwqSoF3kwWhaDa-TnfwdCA==/com.anchor.mine-xP29ONZGgTYdBRviFYlUOQ==/base.apk!/lib/arm64-v8a/libsqlcipher.so using class loader ns clns-4 (caller=/data/app/~~IwqSoF3kwWhaDa-TnfwdCA==/com.anchor.mine-xP29ONZGgTYdBRviFYlUOQ==/base.apk!classes12.dex): ok
+11-07 03:24:25.009 12323 12430 I UiAutomation: Initialized for user 0 on display 0
+11-07 03:24:25.014  1830  1883 W PackageManager: Missing required system package: org.telegram.messenger, but found with extended search.
+11-07 03:24:25.015  1830  1883 W PackageManager: Missing required system package: com.whatsapp, but found with extended search.
+11-07 03:24:25.015  1830  1883 W PackageManager: Missing required system package: com.twitter.android, but found with extended search.
+11-07 03:24:25.026  2516  2516 D CarrierSvcBindHelper: onPackageModified: com.motorola.securityhub
+11-07 03:24:25.029  1830  2071 I RoleService: Granting default roles...
+11-07 03:24:25.031  1830  1883 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:24:25.032  1830  1883 W PackageManager: Missing required system package: com.reddit.frontpage, but found with extended search.
+11-07 03:24:25.033  1830  1883 W PackageManager: Missing required system package: com.pinterest, but found with extended search.
+11-07 03:24:25.033  2516  2516 D CarrierSvcBindHelper: No carrier app for: 0
+11-07 03:24:25.033  1830  1883 W PackageManager: Missing required system package: com.microsoft.teams, but found with extended search.
+11-07 03:24:25.033  1830  1883 W PackageManager: Missing required system package: com.microsoft.office.word, but found with extended search.
+11-07 03:24:25.033  1830  1883 W PackageManager: Missing required system package: com.microsoft.office.powerpoint, but found with extended search.
+11-07 03:24:25.034  1830  1883 W PackageManager: Missing required system package: com.microsoft.office.outlook, but found with extended search.
+11-07 03:24:25.034  1830  1883 W PackageManager: Missing required system package: com.microsoft.office.excel, but found with extended search.
+11-07 03:24:25.034  1830  1883 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 03:24:25.034  2516  2516 D CarrierSvcBindHelper: No carrier app for: 1
+11-07 03:24:25.034  1830  1883 W PackageManager: Missing required system package: com.github.android, but found with extended search.
+11-07 03:24:25.034  1830  1883 W PackageManager: Missing required system package: com.dubox.drive, but found with extended search.
+11-07 03:24:25.035  1830  1883 W PackageManager: Missing required system package: com.azure.authenticator, but found with extended search.
+11-07 03:24:25.035  1830  1883 W PackageManager: Missing required system package: com.azure.authenticator, but found with extended search.
+11-07 03:24:25.035  1830  1883 W PackageManager: Missing required system package: com.azure.authenticator, but found with extended search.
+11-07 03:24:25.035  1830  1883 W PackageManager: Missing required system package: com.azure.authenticator, but found with extended search.
+11-07 03:24:25.035  1830  1883 W PackageManager: Missing required system package: com.azure.authenticator, but found with extended search.
+11-07 03:24:25.041  1830  3556 W PackageManager: Missing required system package: com.github.android, but found with extended search.
+11-07 03:24:25.043  1198  1295 E BufferQueueDebug: [WindowToken{8441ef8 type=2032 android.os.Binder@8fd865b}#36836](this:0xb400007c08d0ff18,id:-1,api:0,p:-1,c:-1) id info cannot be read from 'WindowToken{8441ef8 type=2032 android.os.Binder@8fd865b}#36836'
+11-07 03:24:25.044  1830  1883 W PackageManager: Missing required system package: app.revanced.android.gms, but found with extended search.
+11-07 03:24:25.045  1198  1295 I BufferQueueDebug: [WindowToken{8441ef8 type=2032 android.os.Binder@8fd865b}#36836](this:0xb400007c08d0ff18,id:-1,api:0,p:-1,c:-1) BufferQueue core=(1198:/system/bin/surfaceflinger)
+11-07 03:24:25.050 12323 12431 I SQLiteConnection: Database keying operation returned:0
+11-07 03:24:25.050  1830  2084 I InputReader: Reconfiguring input devices, changes=KEYBOARD_LAYOUTS
+11-07 03:24:25.059 12323 12431 I SQLiteConnection: Database keying operation returned:0
+11-07 03:24:25.060  1830  2331 W PackageManager: Missing required system package: com.google.ai.edge.gallery, but found with extended search.
+11-07 03:24:25.061 14781 14781 I PkModeUpdater: PkModeUpdater.refreshDevices():212 refreshing devices
+11-07 03:24:25.064  1830  2562 W PackageManager: Missing required system package: in.burgerfarm.app, but found with extended search.
+11-07 03:24:25.064  1830  2562 W PackageManager: Missing required system package: cris.org.in.prs.ima, but found with extended search.
+11-07 03:24:25.065  1830  2562 W PackageManager: Missing required system package: com.olacabs.customer, but found with extended search.
+11-07 03:24:25.067 14781 14781 I PkModeUpdater: PkModeUpdater.refreshDevices():212 refreshing devices
+11-07 03:24:25.068  3486  3486 W RegisteredComponentCache: Unable to load component info ResolveInfo{c5c11ea com.olacabs.customer/in.juspay.hypernfc.NfcActivity m=0x108000 userHandle=UserHandle{0}}
+11-07 03:24:25.068  3486  3486 W RegisteredComponentCache: org.xmlpull.v1.XmlPullParserException: No android.nfc.action.TECH_DISCOVERED meta-data
+11-07 03:24:25.068  3486  3486 W RegisteredComponentCache: 	at com.android.nfc.RegisteredComponentCache.parseComponentInfo(RegisteredComponentCache.java:190)
+11-07 03:24:25.068  3486  3486 W RegisteredComponentCache: 	at com.android.nfc.RegisteredComponentCache.generateComponentsList(RegisteredComponentCache.java:165)
+11-07 03:24:25.068  3486  3486 W RegisteredComponentCache: 	at com.android.nfc.RegisteredComponentCache$1.onReceive(RegisteredComponentCache.java:69)
+11-07 03:24:25.068  3486  3486 W RegisteredComponentCache: 	at android.app.LoadedApk$ReceiverDispatcher$Args.lambda$getRunnable$0(LoadedApk.java:1821)
+11-07 03:24:25.068  3486  3486 W RegisteredComponentCache: 	at android.app.LoadedApk$ReceiverDispatcher$Args.$r8$lambda$gDuJqgxY6Zb-ifyeubKeivTLAwk(LoadedApk.java:0)
+11-07 03:24:25.068  3486  3486 W RegisteredComponentCache: 	at android.app.LoadedApk$ReceiverDispatcher$Args$$ExternalSyntheticLambda0.run(D8$$SyntheticClass:2)
+11-07 03:24:25.068  3486  3486 W RegisteredComponentCache: 	at android.os.Handler.handleCallback(Handler.java:1000)
+11-07 03:24:25.068  3486  3486 W RegisteredComponentCache: 	at android.os.Handler.dispatchMessage(Handler.java:104)
+11-07 03:24:25.068  3486  3486 W RegisteredComponentCache: 	at android.os.Looper.loopOnce(Looper.java:242)
+11-07 03:24:25.068  3486  3486 W RegisteredComponentCache: 	at android.os.Looper.loop(Looper.java:362)
+11-07 03:24:25.068  3486  3486 W RegisteredComponentCache: 	at android.app.ActivityThread.main(ActivityThread.java:8393)
+11-07 03:24:25.068  3486  3486 W RegisteredComponentCache: 	at java.lang.reflect.Method.invoke(Native Method)
+11-07 03:24:25.068  3486  3486 W RegisteredComponentCache: 	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:552)
+11-07 03:24:25.068  3486  3486 W RegisteredComponentCache: 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:992)
+11-07 03:24:25.068  3486  3486 W RegisteredComponentCache: Unable to load component info ResolveInfo{27a3378 cris.org.in.prs.ima/in.juspay.hypernfc.NfcActivity m=0x108000 userHandle=UserHandle{0}}
+11-07 03:24:25.068  3486  3486 W RegisteredComponentCache: org.xmlpull.v1.XmlPullParserException: No android.nfc.action.TECH_DISCOVERED meta-data
+11-07 03:24:25.068  3486  3486 W RegisteredComponentCache: 	at com.android.nfc.RegisteredComponentCache.parseComponentInfo(RegisteredComponentCache.java:190)
+11-07 03:24:25.068  3486  3486 W RegisteredComponentCache: 	at com.android.nfc.RegisteredComponentCache.generateComponentsList(RegisteredComponentCache.java:165)
+11-07 03:24:25.068  3486  3486 W RegisteredComponentCache: 	at com.android.nfc.RegisteredComponentCache$1.onReceive(RegisteredComponentCache.java:69)
+11-07 03:24:25.068  3486  3486 W RegisteredComponentCache: 	at android.app.LoadedApk$ReceiverDispatcher$Args.lambda$getRunnable$0(LoadedApk.java:1821)
+11-07 03:24:25.068  3486  3486 W RegisteredComponentCache: 	at android.app.LoadedApk$ReceiverDispatcher$Args.$r8$lambda$gDuJqgxY6Zb-ifyeubKeivTLAwk(LoadedApk.java:0)
+11-07 03:24:25.068  3486  3486 W RegisteredComponentCache: 	at android.app.LoadedApk$ReceiverDispatcher$Args$$ExternalSyntheticLambda0.run(D8$$SyntheticClass:2)
+11-07 03:24:25.068  3486  3486 W RegisteredComponentCache: 	at android.os.Handler.handleCallback(Handler.java:1000)
+11-07 03:24:25.068  3486  3486 W RegisteredComponentCache: 	at android.os.Handler.dispatchMessage(Handler.java:104)
+11-07 03:24:25.068  3486  3486 W RegisteredComponentCache: 	at android.os.Looper.loopOnce(Looper.java:242)
+11-07 03:24:25.068  3486  3486 W RegisteredComponentCache: 	at android.os.Looper.loop(Looper.java:362)
+11-07 03:24:25.068  3486  3486 W RegisteredComponentCache: 	at android.app.ActivityThread.main(ActivityThread.java:8393)
+11-07 03:24:25.068  3486  3486 W RegisteredComponentCache: 	at java.lang.reflect.Method.invoke(Native Method)
+11-07 03:24:25.068  3486  3486 W RegisteredComponentCache: 	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:552)
+11-07 03:24:25.068  3486  3486 W RegisteredComponentCache: 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:992)
+11-07 03:24:25.069  3486  3486 W RegisteredComponentCache: Unable to load component info ResolveInfo{ce162b6 in.burgerfarm.app/com.cashfree.pg.ui.hidden.checkout.CashfreeNativeCheckoutActivity m=0x108000 userHandle=UserHandle{0}}
+11-07 03:24:25.069  3486  3486 W RegisteredComponentCache: org.xmlpull.v1.XmlPullParserException: No android.nfc.action.TECH_DISCOVERED meta-data
+11-07 03:24:25.069  3486  3486 W RegisteredComponentCache: 	at com.android.nfc.RegisteredComponentCache.parseComponentInfo(RegisteredComponentCache.java:190)
+11-07 03:24:25.069  3486  3486 W RegisteredComponentCache: 	at com.android.nfc.RegisteredComponentCache.generateComponentsList(RegisteredComponentCache.java:165)
+11-07 03:24:25.069  3486  3486 W RegisteredComponentCache: 	at com.android.nfc.RegisteredComponentCache$1.onReceive(RegisteredComponentCache.java:69)
+11-07 03:24:25.069  3486  3486 W RegisteredComponentCache: 	at android.app.LoadedApk$ReceiverDispatcher$Args.lambda$getRunnable$0(LoadedApk.java:1821)
+11-07 03:24:25.069  3486  3486 W RegisteredComponentCache: 	at android.app.LoadedApk$ReceiverDispatcher$Args.$r8$lambda$gDuJqgxY6Zb-ifyeubKeivTLAwk(LoadedApk.java:0)
+11-07 03:24:25.069  3486  3486 W RegisteredComponentCache: 	at android.app.LoadedApk$ReceiverDispatcher$Args$$ExternalSyntheticLambda0.run(D8$$SyntheticClass:2)
+11-07 03:24:25.069  3486  3486 W RegisteredComponentCache: 	at android.os.Handler.handleCallback(Handler.java:1000)
+11-07 03:24:25.069  3486  3486 W RegisteredComponentCache: 	at android.os.Handler.dispatchMessage(Handler.java:104)
+11-07 03:24:25.069  3486  3486 W RegisteredComponentCache: 	at android.os.Looper.loopOnce(Looper.java:242)
+11-07 03:24:25.069  3486  3486 W RegisteredComponentCache: 	at android.os.Looper.loop(Looper.java:362)
+11-07 03:24:25.069  3486  3486 W RegisteredComponentCache: 	at android.app.ActivityThread.main(ActivityThread.java:8393)
+11-07 03:24:25.069  3486  3486 W RegisteredComponentCache: 	at java.lang.reflect.Method.invoke(Native Method)
+11-07 03:24:25.069  3486  3486 W RegisteredComponentCache: 	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:552)
+11-07 03:24:25.069  3486  3486 W RegisteredComponentCache: 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:992)
+11-07 03:24:25.070 14781 14781 I PkModeUpdater: PkModeUpdater.refreshDevices():212 refreshing devices
+11-07 03:24:25.072  1830  3552 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:24:25.072 14781 14781 I PkModeUpdater: PkModeUpdater.refreshDevices():212 refreshing devices
+11-07 03:24:25.072  1830  3552 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 03:24:25.075  3120  3120 V MediaPlayerList: mPackageChangedBroadcastReceiver: action: android.intent.action.PACKAGE_CHANGED
+11-07 03:24:25.075 14781 14781 I PkModeUpdater: PkModeUpdater.refreshDevices():212 refreshing devices
+11-07 03:24:25.076  1830  2562 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:24:25.076  1830  2562 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 03:24:25.077  1830  2855 W PackageManager: Missing required system package: com.phonepe.app, but found with extended search.
+11-07 03:24:25.077  1830  2855 W PackageManager: Missing required system package: com.csam.icici.bank.imobile, but found with extended search.
+11-07 03:24:25.077  1830  2855 W PackageManager: Missing required system package: com.google.android.apps.nbu.paisa.user, but found with extended search.
+11-07 03:24:25.079  1198  1661 I Scheduler: applyPolicy: UpdateRefreshRate 30 to 120 of group 0: [touch=0:0 touchBoost=0 scroll=0:0 idle=0:0]
+11-07 03:24:25.081  1830  2331 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:24:25.081  1830  2331 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 03:24:25.081  1198  1198 I SurfaceFlinger: setActiveModeInHwcIfNeeded changing active mode to 1(120.00 Hz) for display 0
+11-07 03:24:25.082  8312  2981 I PermissionControllerServiceImpl: Updating user sensitive for uid 10274
+11-07 03:24:25.082  1134  1134 I hwcomposer: [HWC] (0) displaySetActiveConfig config:1  
+11-07 03:24:25.084  1830  3552 W PackageManager: Missing required system package: com.whatsapp, but found with extended search.
+11-07 03:24:25.085  1830  3552 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:24:25.085  1830  3552 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 03:24:25.089  1830  3551 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:24:25.089  1830  2561 W PackageManager: Missing required system package: com.google.android.apps.adm, but found with extended search.
+11-07 03:24:25.096  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:24:25.097  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:24:25.109  1198  1198 D SurfaceFlinger: MtkOverrideDuration: update vsync 120
+11-07 03:24:25.110  1198  1198 E SurfaceFlinger: MtkDuration override mode is disabled
+11-07 03:24:25.110  1198  1198 D SurfaceFlinger: MtkOverrideDuration: reset override duration
+11-07 03:24:25.113  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:24:25.114  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:24:25.109  1492  1492 W binder:1492_2: type=1400 audit(0.0:857395): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:24:25.109  1492  1492 W binder:1492_2: type=1400 audit(0.0:857396): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:24:25.119  8312 27537 D AccessibilitySourceService: enabled a11y services count 1
+11-07 03:24:25.145  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:24:25.146  1830  3648 W PackageManager: Missing required system package: com.google.android.apps.bard, but found with extended search.
+11-07 03:24:25.141  1492  1492 W binder:1492_2: type=1400 audit(0.0:857397): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:24:25.155  8312 27537 D AccessibilitySourceService: a11y source sending 1 issue to sc
+11-07 03:24:25.157  1830  2614 D SafetySourceDataValidat: No cert check requested for package com.google.android.permissioncontroller
+11-07 03:24:25.167  1830  2331 W PackageManager: Missing required system package: com.google.android.apps.nbu.paisa.user, but found with extended search.
+11-07 03:24:25.167  1198  1198 I BufferQueueDebug: [WindowToken{e3ee9d8 type=2032 android.os.Binder@90b30bb}#36825](this:0xb400007c09db8718,id:-1,api:0,p:-1,c:1198) onDestructor()
+11-07 03:24:25.186  1830  2539 W PackageManager: Missing required system package: com.google.android.keep, but found with extended search.
+11-07 03:24:25.192 11450 12424 W adbd    : timed out while waiting for FUNCTIONFS_BIND, trying again
+11-07 03:24:25.192 11450 12424 I adbd    : UsbFfs: connection terminated: monitor thread finished
+11-07 03:24:25.198  1830  2553 W PackageManager: Missing required system package: com.whatsapp, but found with extended search.
+11-07 03:24:25.199  1830  2553 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:24:25.199  1830  2553 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 03:24:25.202  3486  3486 D RegisteredNfcFServicesCache: Service unchanged, not updating
+11-07 03:24:25.203  2493  2575 D SecureElementService: getReaders() for com.android.nfc
+11-07 03:24:25.206  1830  2002 W PackageManager: Missing required system package: com.google.ar.lens, but found with extended search.
+11-07 03:24:25.206  1830  2553 W PackageManager: Missing required system package: com.whatsapp, but found with extended search.
+11-07 03:24:25.207  1830  2553 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:24:25.207  1830  2553 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 03:24:25.220  1830  2539 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:24:25.221  1830  2539 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 03:24:25.221  1830  2002 W PackageManager: Missing required system package: com.heytap.headset, but found with extended search.
+11-07 03:24:25.229  1830  2002 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:24:25.230  1830  2002 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 03:24:25.232 11450 11478 I adbd    : opening control endpoint /dev/usb-ffs/adb/ep0
+11-07 03:24:25.234  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:24:25.235  2516  2759 D ImsResolver: maybeAddedImsService, packageName: com.motorola.securityhub
+11-07 03:24:25.229  1492  1492 W binder:1492_2: type=1400 audit(0.0:857398): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:24:25.233  1492  1492 W binder:1492_2: type=1400 audit(0.0:857399): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:24:25.237  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:24:25.238  1830  2614 W PackageManager: Missing required system package: com.jacksoftw.webcam, but found with extended search.
+11-07 03:24:25.244  1830  1883 W PackageManager: Missing required system package: org.videolan.vlc, but found with extended search.
+11-07 03:24:25.244  1830  1883 W PackageManager: Missing required system package: com.reddit.frontpage, but found with extended search.
+11-07 03:24:25.244  1830  1883 W PackageManager: Missing required system package: com.linkedin.android, but found with extended search.
+11-07 03:24:25.245  1830  1883 W PackageManager: Missing required system package: com.google.android.apps.docs.editors.slides, but found with extended search.
+11-07 03:24:25.245  1830  1883 W PackageManager: Missing required system package: com.google.android.apps.docs.editors.sheets, but found with extended search.
+11-07 03:24:25.245  1830  1883 W PackageManager: Missing required system package: com.google.android.apps.docs.editors.docs, but found with extended search.
+11-07 03:24:25.245  1830  1883 W PackageManager: Missing required system package: app.revanced.android.youtube, but found with extended search.
+11-07 03:24:25.245  1830  1883 W PackageManager: Missing required system package: app.revanced.android.gms, but found with extended search.
+11-07 03:24:25.245  1830  1883 W PackageManager: Missing required system package: io.github.forkmaintainers.iceraven, but found with extended search.
+11-07 03:24:25.246  1830  1883 W PackageManager: Missing required system package: com.google.android.keep, but found with extended search.
+11-07 03:24:25.246  1830  1883 W PackageManager: Missing required system package: com.google.android.apps.docs.editors.slides, but found with extended search.
+11-07 03:24:25.246  1830  1883 W PackageManager: Missing required system package: com.google.android.apps.docs.editors.sheets, but found with extended search.
+11-07 03:24:25.246  1830  1883 W PackageManager: Missing required system package: com.google.android.apps.docs.editors.docs, but found with extended search.
+11-07 03:24:25.246  1830  1883 W PackageManager: Missing required system package: app.revanced.android.youtube, but found with extended search.
+11-07 03:24:25.246  1830  1883 W PackageManager: Missing required system package: app.revanced.android.apps.youtube.music, but found with extended search.
+11-07 03:24:25.246  1830  1883 W PackageManager: Missing required system package: app.mihon, but found with extended search.
+11-07 03:24:25.247  1830  1883 W PackageManager: Missing required system package: io.github.forkmaintainers.iceraven, but found with extended search.
+11-07 03:24:25.248  1830  1883 W PackageManager: Missing required system package: idm.internet.download.manager.plus, but found with extended search.
+11-07 03:24:25.258  1830  4020 W PackageManager: Missing required system package: io.github.forkmaintainers.iceraven, but found with extended search.
+11-07 03:24:25.261  1830  2614 W PackageManager: Missing required system package: com.linkedin.android, but found with extended search.
+11-07 03:24:25.281  1830  2539 W PackageManager: Missing required system package: com.microsoft.office.excel, but found with extended search.
+11-07 03:24:25.304  1830  2331 W PackageManager: Missing required system package: com.microsoft.office.powerpoint, but found with extended search.
+11-07 03:24:25.306  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:24:25.306  1830  1883 W PackageManager: Missing required system package: org.telegram.messenger, but found with extended search.
+11-07 03:24:25.306  1830  1883 W PackageManager: Missing required system package: com.whatsapp, but found with extended search.
+11-07 03:24:25.306  1830  1883 W PackageManager: Missing required system package: com.microsoft.teams, but found with extended search.
+11-07 03:24:25.307  1830  1883 W PackageManager: Missing required system package: com.microsoft.office.outlook, but found with extended search.
+11-07 03:24:25.307  1830  1883 W PackageManager: Missing required system package: com.microsoft.office.outlook, but found with extended search.
+11-07 03:24:25.307  1830  1883 W PackageManager: Missing required system package: com.google.android.keep, but found with extended search.
+11-07 03:24:25.307  1830  1883 W PackageManager: Missing required system package: com.google.android.apps.docs.editors.slides, but found with extended search.
+11-07 03:24:25.307  1830  1883 W PackageManager: Missing required system package: com.google.android.apps.docs.editors.sheets, but found with extended search.
+11-07 03:24:25.307  1830  1883 W PackageManager: Missing required system package: com.google.android.apps.docs.editors.docs, but found with extended search.
+11-07 03:24:25.307  1830  1883 W PackageManager: Missing required system package: com.dubox.drive, but found with extended search.
+11-07 03:24:25.308  1830  1883 W PackageManager: Missing required system package: app.revanced.android.gms, but found with extended search.
+11-07 03:24:25.318  1830  2553 W PackageManager: Missing required system package: com.microsoft.office.word, but found with extended search.
+11-07 03:24:25.321  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:24:25.333  1830  3556 W PackageManager: Missing required system package: com.microsoft.teams, but found with extended search.
+11-07 03:24:25.355  1830  3556 W PackageManager: Missing required system package: com.music.bitchord, but found with extended search.
+11-07 03:24:25.367 16119 16173 D BaseModelUpdateTask: Ignoring model task since loader is pending=com.android.launcher3.model.PackageUpdatedTask@e17b712
+11-07 03:24:25.367  3546  3546 W MotoFreeForm: [PackageMonitor] onPackageChangedcom.motorola.securityhub
+11-07 03:24:25.377  1830  3556 W PackageManager: Missing required system package: com.olacabs.customer, but found with extended search.
+11-07 03:24:25.379  1492  1492 W HidlServiceManagement: Waited for hwservicemanager.ready for a second, waiting another...
+11-07 03:24:25.379  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:24:25.379  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:24:25.390  1830  3556 W PackageManager: Missing required system package: com.paypal.android.p2pmobile, but found with extended search.
+11-07 03:24:25.391  8312 12183 E RoleControllerServiceImpl: Default/fallback role holder package doesn't qualify for the role, package: com.google.android.gms.supervision, role: android.app.role.SYSTEM_SUPERVISION, user: 0
+11-07 03:24:25.402  1830  3556 W PackageManager: Missing required system package: com.phonepe.app, but found with extended search.
+11-07 03:24:25.404  8312 12183 I Role    : com.google.android.gms not qualified for android.app.role.SYSTEM_CALL_STREAMING due to missing RequiredComponent{mFlags='0', mIntentFilterData=IntentFilterData{mAction='android.telecom.CallStreamingService', mCategories='[]', mDataScheme='null', mDataType='null'}, mMetaData=[], mPermission='android.permission.BIND_CALL_STREAMING_SERVICE', mQueryFlags=0} Requirement{mFeatureFlag=null, mMinTargetSdkVersion=1}
+11-07 03:24:25.405  8312 12183 E RoleControllerServiceImpl: Default/fallback role holder package doesn't qualify for the role, package: com.google.android.gms, role: android.app.role.SYSTEM_CALL_STREAMING, user: 0
+11-07 03:24:25.410  8312 12183 W SignedPackage: Package doesn't have required signing certificate: com.google.android.apps.work.clouddpc
+11-07 03:24:25.421  1830  2331 W PackageManager: Missing required system package: com.pittvandewitt.wavelet, but found with extended search.
+11-07 03:24:25.439  1830  2002 W PackageManager: Missing required system package: com.rapido.passenger, but found with extended search.
+11-07 03:24:25.454  1830  2562 W PackageManager: Missing required system package: com.reddit.frontpage, but found with extended search.
+11-07 03:24:25.471  1830  2002 W PackageManager: Missing required system package: com.twitter.android, but found with extended search.
+11-07 03:24:25.484  1830  1871 W PackageManager: Missing required system package: com.whatsapp, but found with extended search.
+11-07 03:24:25.495  1830  1871 W PackageManager: Missing required system package: com.whereismytrain.android, but found with extended search.
+11-07 03:24:25.504 27547 27578 I Finsky  : [244] SCH: jobFinished: 60--1209635107. TimeElapsed: 3693ms.
+11-07 03:24:25.505 27547 27578 I Finsky  : [244] WM::SCH: Logging work end for 60--1209635107
+11-07 03:24:25.508  1830  1871 W PackageManager: Missing required system package: cris.org.in.prs.ima, but found with extended search.
+11-07 03:24:25.525  2298  2298 D ControlsListingControllerImpl: ServiceConfig reloaded, count: 0
+11-07 03:24:25.527 27547 27573 I Finsky  : [239] SCH: Scheduling phonesky job Id: 1-1337, CT: 1793974814262, Constraints: [{ L: 43007572, D: 86207572, C: CHARGING_NONE, I: IDLE_NONE, N: NET_ANY, B: BATTERY_ANY }]
+11-07 03:24:25.528 27547 27573 I Finsky  : [239] SCH: Scheduling phonesky job Id: 12-1, CT: 1794002061494, Constraints: [{ L: 15000, D: 86400000, C: CHARGING_NONE, I: IDLE_NONE, N: NET_ANY, B: BATTERY_ANY }]
+11-07 03:24:25.528  1830  2331 W PackageManager: Missing required system package: ru.zdevs.zarchiver, but found with extended search.
+11-07 03:24:25.529 27547 27573 I Finsky  : [239] SCH: Scheduling phonesky job Id: 34-6023, CT: 1793974822717, Constraints: [{ L: 604800000, D: 2505603421, C: CHARGING_NONE, I: IDLE_NONE, N: NET_ANY, B: BATTERY_ANY }]
+11-07 03:24:25.529 27547 27573 I Finsky  : [239] SCH: Scheduling phonesky job Id: 34-6024, CT: 1793974822717, Constraints: [{ L: 604800000, D: 2584914323, C: CHARGING_NONE, I: IDLE_NONE, N: NET_ANY, B: BATTERY_ANY }]
+11-07 03:24:25.531 27547 27573 I Finsky  : [239] SCH: Scheduling phonesky job Id: 34-6027, CT: 1793974822717, Constraints: [{ L: 72113989, D: 1368113989, C: CHARGING_NONE, I: IDLE_NONE, N: NET_ANY, B: BATTERY_ANY }]
+11-07 03:24:25.531  1830  2002 W PackageManager: Missing required system package: edu.manipal.jaipur.slcm_mobile, but found with extended search.
+11-07 03:24:25.531  1830  2539 W PackageManager: Missing required system package: app.revanced.android.gms, but found with extended search.
+11-07 03:24:25.536  1830  2331 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 03:24:25.540 27547 27580 I Finsky  : [246] SCH: Scheduling 1 system job(s)
+11-07 03:24:25.541 27547 27580 I Finsky  : [246] SCH: Scheduling system job Id: 9896, L: 10954, D: 58956294, C: false, I: false, N: 1
+11-07 03:24:25.552  1830  2539 W PackageManager: Missing required system package: in.amazon.mShop.android.shopping, but found with extended search.
+11-07 03:24:25.552  1830  2539 W PackageManager: Missing required system package: in.amazon.mShop.android.shopping, but found with extended search.
+11-07 03:24:25.557 27547 12219 I Finsky  : [1270] SCH: job service finished with id 9884.
+11-07 03:24:25.568  3384 12222 I FraudProtectUtils: Not in testing population, skipping local test bank apps. [CONTEXT service_id=469 ]
+11-07 03:24:25.569  1830  2002 W PackageManager: Missing required system package: ru.zdevs.zarchiver, but found with extended search.
+11-07 03:24:25.569  1830  2539 W PackageManager: Missing required system package: in.amazon.mShop.android.shopping, but found with extended search.
+11-07 03:24:25.569  3384 12222 I FraudProtectUtils: (REDACTED) Latest bank app list size: %d, %s isBankApp: false
+11-07 03:24:25.569  1830  2539 W PackageManager: Missing required system package: in.amazon.mShop.android.shopping, but found with extended search.
+11-07 03:24:25.569  3384 12222 W ComponentChangedIO: No package name in intent data or package is not a bank app [CONTEXT service_id=469 ]
+11-07 03:24:25.586  1830  2331 W PackageManager: Missing required system package: in.burgerfarm.app, but found with extended search.
+11-07 03:24:25.595  1830  2561 W PackageManager: Missing required system package: io.github.forkmaintainers.iceraven, but found with extended search.
+11-07 03:24:25.606  1830  2331 W PackageManager: Missing required system package: org.telegram.messenger, but found with extended search.
+11-07 03:24:25.616  1830  2561 W PackageManager: Missing required system package: org.videolan.vlc, but found with extended search.
+11-07 03:24:25.625  1830  2331 W PackageManager: Missing required system package: ru.odauhsbx.xqdkkkmwh, but found with extended search.
+11-07 03:24:25.635  1830  2331 W PackageManager: Missing required system package: ru.zdevs.zarchiver, but found with extended search.
+11-07 03:24:25.643  2298  2298 D FreeformGesture: onStateChanged: State{mIsPackageAvailable=true, mPillGestureEnabled=false, mVibrationEnabled=true, mShortcutPanelShowing=false, mSwipeInEnabled=false, mHunFreeformEnabled=true, mIsInGameMode=false, mIsRecentsShowing=false, mPillXPosition=1, mPillYPosition=600, mIsInTutorialMode=false, mIsDoubleTapPowerEnabled=false}
+11-07 03:24:25.646  3546 28552 E MotoFreeForm: [FreeFormProvider] query: uri: content://com.motorola.freeform.settings/supported_packages
+11-07 03:24:25.655  1830  2539 W PackageManager: Missing required system package: ru.zdevs.zarchiver, but found with extended search.
+11-07 03:24:25.656  1830  2539 W PackageManager: Missing required system package: ru.odauhsbx.xqdkkkmwh, but found with extended search.
+11-07 03:24:25.656  1830  2539 W PackageManager: Missing required system package: org.videolan.vlc, but found with extended search.
+11-07 03:24:25.656  1830  2539 W PackageManager: Missing required system package: org.telegram.messenger, but found with extended search.
+11-07 03:24:25.657  1830  2539 W PackageManager: Missing required system package: io.github.forkmaintainers.iceraven, but found with extended search.
+11-07 03:24:25.657  1830  2539 W PackageManager: Missing required system package: in.burgerfarm.app, but found with extended search.
+11-07 03:24:25.657  1830  2539 W PackageManager: Missing required system package: in.amazon.mShop.android.shopping, but found with extended search.
+11-07 03:24:25.657  1830  2539 W PackageManager: Missing required system package: in.amazon.mShop.android.shopping, but found with extended search.
+11-07 03:24:25.657  1830  2539 W PackageManager: Missing required system package: edu.manipal.jaipur.slcm_mobile, but found with extended search.
+11-07 03:24:25.657  1830  2539 W PackageManager: Missing required system package: cris.org.in.prs.ima, but found with extended search.
+11-07 03:24:25.658  1830  2539 W PackageManager: Missing required system package: com.whereismytrain.android, but found with extended search.
+11-07 03:24:25.658  1830  2539 W PackageManager: Missing required system package: com.whatsapp, but found with extended search.
+11-07 03:24:25.658  1830  2539 W PackageManager: Missing required system package: com.twitter.android, but found with extended search.
+11-07 03:24:25.658  1830  2539 W PackageManager: Missing required system package: com.reddit.frontpage, but found with extended search.
+11-07 03:24:25.658  1830  2539 W PackageManager: Missing required system package: com.rapido.passenger, but found with extended search.
+11-07 03:24:25.658  1830  2539 W PackageManager: Missing required system package: com.pittvandewitt.wavelet, but found with extended search.
+11-07 03:24:25.658  1830  2539 W PackageManager: Missing required system package: com.phonepe.app, but found with extended search.
+11-07 03:24:25.658  1830  2539 W PackageManager: Missing required system package: com.paypal.android.p2pmobile, but found with extended search.
+11-07 03:24:25.658  1830  2539 W PackageManager: Missing required system package: com.olacabs.customer, but found with extended search.
+11-07 03:24:25.659  1830  2539 W PackageManager: Missing required system package: com.music.bitchord, but found with extended search.
+11-07 03:24:25.659  1830  2539 W PackageManager: Missing required system package: com.microsoft.teams, but found with extended search.
+11-07 03:24:25.659  1830  2539 W PackageManager: Missing required system package: com.microsoft.office.word, but found with extended search.
+11-07 03:24:25.659  1830  2539 W PackageManager: Missing required system package: com.microsoft.office.powerpoint, but found with extended search.
+11-07 03:24:25.659  1830  2539 W PackageManager: Missing required system package: com.microsoft.office.excel, but found with extended search.
+11-07 03:24:25.660  1830  2539 W PackageManager: Missing required system package: com.linkedin.android, but found with extended search.
+11-07 03:24:25.660  1830  2539 W PackageManager: Missing required system package: com.jacksoftw.webcam, but found with extended search.
+11-07 03:24:25.660  1830  2539 W PackageManager: Missing required system package: com.heytap.headset, but found with extended search.
+11-07 03:24:25.660  1830  2539 W PackageManager: Missing required system package: com.google.ar.lens, but found with extended search.
+11-07 03:24:25.660  1830  2539 W PackageManager: Missing required system package: com.google.android.keep, but found with extended search.
+11-07 03:24:25.660  1830  2539 W PackageManager: Missing required system package: com.google.android.apps.nbu.paisa.user, but found with extended search.
+11-07 03:24:25.660  1830  2539 W PackageManager: Missing required system package: com.google.android.apps.bard, but found with extended search.
+11-07 03:24:25.661  1830  2539 W PackageManager: Missing required system package: com.google.android.apps.adm, but found with extended search.
+11-07 03:24:25.661  1830  2539 W PackageManager: Missing required system package: com.google.ai.edge.gallery, but found with extended search.
+11-07 03:24:25.661  1830  2539 W PackageManager: Missing required system package: com.github.android, but found with extended search.
+11-07 03:24:25.661  1830  2539 W PackageManager: Missing required system package: com.easybrain.arrow.puzzle.game, but found with extended search.
+11-07 03:24:25.661  1830  2539 W PackageManager: Missing required system package: com.dubox.drive, but found with extended search.
+11-07 03:24:25.661  1830  2539 W PackageManager: Missing required system package: com.discord, but found with extended search.
+11-07 03:24:25.661  1830  2539 W PackageManager: Missing required system package: com.digilocker.android, but found with extended search.
+11-07 03:24:25.661  1830  2539 W PackageManager: Missing required system package: com.delhiveryConsigneeApp, but found with extended search.
+11-07 03:24:25.662  1830  2539 W PackageManager: Missing required system package: com.csam.icici.bank.imobile, but found with extended search.
+11-07 03:24:25.662  1830  2539 W PackageManager: Missing required system package: com.cloudflare.onedotonedotonedotone, but found with extended search.
+11-07 03:24:25.662  1830  2539 W PackageManager: Missing required system package: com.castle.sefirah, but found with extended search.
+11-07 03:24:25.662  1830  2539 W PackageManager: Missing required system package: com.azure.authenticator, but found with extended search.
+11-07 03:24:25.662  1830  2539 W PackageManager: Missing required system package: com.app.spacebasic, but found with extended search.
+11-07 03:24:25.662  1830  2539 W PackageManager: Missing required system package: com.app.campusadda, but found with extended search.
+11-07 03:24:25.662  1830  2539 W PackageManager: Missing required system package: com.anchor.mine, but found with extended search.
+11-07 03:24:25.662  1830  2539 W PackageManager: Missing required system package: cc.remote9.app, but found with extended search.
+11-07 03:24:25.662  1830  2539 W PackageManager: Missing required system package: app.revanced.manager.flutter, but found with extended search.
+11-07 03:24:25.662  1830  2539 W PackageManager: Missing required system package: app.revanced.android.gms, but found with extended search.
+11-07 03:24:25.663  1830  2539 W PackageManager: Missing required system package: app.revanced.android.apps.youtube.music, but found with extended search.
+11-07 03:24:25.663  1830  2539 W PackageManager: Missing required system package: app.mihon, but found with extended search.
+11-07 03:24:25.663  1830  2539 W PackageManager: Missing required system package: ai.mistral.chat, but found with extended search.
+11-07 03:24:25.663  1830  2539 W PackageManager: Missing required system package: org.zwanoo.android.speedtest, but found with extended search.
+11-07 03:24:25.663  1830  2539 W PackageManager: Missing required system package: net.sourceforge.opencamera, but found with extended search.
+11-07 03:24:25.664  1830  2539 W PackageManager: Missing required system package: idm.internet.download.manager.plus, but found with extended search.
+11-07 03:24:25.664  1830  2539 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:24:25.664  1830  2539 W PackageManager: Missing required system package: com.pinterest, but found with extended search.
+11-07 03:24:25.664  1830  2539 W PackageManager: Missing required system package: com.microsoft.office.outlook, but found with extended search.
+11-07 03:24:25.664  1830  2539 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 03:24:25.664  1830  2539 W PackageManager: Missing required system package: com.google.android.play.games, but found with extended search.
+11-07 03:24:25.664  1830  2539 W PackageManager: Missing required system package: com.google.android.apps.docs.editors.slides, but found with extended search.
+11-07 03:24:25.664  1830  2539 W PackageManager: Missing required system package: com.google.android.apps.docs.editors.sheets, but found with extended search.
+11-07 03:24:25.665  1830  2539 W PackageManager: Missing required system package: com.google.android.apps.docs.editors.docs, but found with extended search.
+11-07 03:24:25.665  1830  2539 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 03:24:25.665  1830  2539 W PackageManager: Missing required system package: app.revanced.android.youtube, but found with extended search.
+11-07 03:24:25.694  1198  1661 I Scheduler: applyPolicy: UpdateRefreshRate 120 to 30 of group 0: [touch=0:0 touchBoost=0 scroll=0:0 idle=1:1]
+11-07 03:24:25.696  1198  1661 D SurfaceFlinger: MtkOverrideDuration: update vsync 30
+11-07 03:24:25.696  1198  1661 E SurfaceFlinger: MtkDuration override mode is disabled
+11-07 03:24:25.696  1198  1661 D SurfaceFlinger: MtkOverrideDuration: reset override duration
+11-07 03:24:25.710  1198  1198 I SurfaceFlinger: setActiveModeInHwcIfNeeded changing active mode to 3(30.00 Hz) for display 0
+11-07 03:24:25.712  1134  1134 I hwcomposer: [HWC] (0) displaySetActiveConfig config:3  
+11-07 03:24:25.813  1830  2331 W PackageManager: Missing required system package: app.revanced.android.youtube, but found with extended search.
+11-07 03:24:25.822  1830  2561 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 03:24:25.832  1830  2331 W PackageManager: Missing required system package: com.google.android.apps.docs.editors.docs, but found with extended search.
+11-07 03:24:25.841  1830  2331 W PackageManager: Missing required system package: com.google.android.apps.docs.editors.sheets, but found with extended search.
+11-07 03:24:25.851  1830  2561 W PackageManager: Missing required system package: com.google.android.apps.docs.editors.slides, but found with extended search.
+11-07 03:24:25.862  1830  2561 W PackageManager: Missing required system package: com.google.android.play.games, but found with extended search.
+11-07 03:24:25.870  1830  2561 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 03:24:25.880  1830  1871 W PackageManager: Missing required system package: com.microsoft.office.outlook, but found with extended search.
+11-07 03:24:25.890  1830  1871 W PackageManager: Missing required system package: com.pinterest, but found with extended search.
+11-07 03:24:25.900  1830  2331 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:24:25.910  1830  2331 W PackageManager: Missing required system package: idm.internet.download.manager.plus, but found with extended search.
+11-07 03:24:25.920  1830  2539 W PackageManager: Missing required system package: net.sourceforge.opencamera, but found with extended search.
+11-07 03:24:25.929  1830  2331 W PackageManager: Missing required system package: org.zwanoo.android.speedtest, but found with extended search.
+11-07 03:24:26.002  1830  2539 W PackageManager: Missing required system package: ai.mistral.chat, but found with extended search.
+11-07 03:24:26.010  1830  1871 W PackageManager: Missing required system package: app.mihon, but found with extended search.
+11-07 03:24:26.021  1830  1871 W PackageManager: Missing required system package: app.revanced.android.apps.youtube.music, but found with extended search.
+11-07 03:24:26.029  1830  2539 W PackageManager: Missing required system package: app.revanced.android.gms, but found with extended search.
+11-07 03:24:26.039  1830  2539 W PackageManager: Missing required system package: app.revanced.manager.flutter, but found with extended search.
+11-07 03:24:26.047  1830  2539 W PackageManager: Missing required system package: cc.remote9.app, but found with extended search.
+11-07 03:24:26.056  1830  1871 W PackageManager: Missing required system package: com.anchor.mine, but found with extended search.
+11-07 03:24:26.066  1830  1871 W PackageManager: Missing required system package: com.app.campusadda, but found with extended search.
+11-07 03:24:26.079  1830  1871 W PackageManager: Missing required system package: com.app.spacebasic, but found with extended search.
+11-07 03:24:26.086  1830  2539 W PackageManager: Missing required system package: com.azure.authenticator, but found with extended search.
+11-07 03:24:26.104  1167  1208 I libPerfCtl: xgfGetFPS pid:-1 fps:-1
+11-07 03:24:26.105  1216  1216 E ccci_rpcd: Failed to read from RPC device (-1) !! errno = 4
+11-07 03:24:26.105  1535  1625 D PQ      : ccorr table index=3
+11-07 03:24:26.106  1535  1625 D PQ      : [PQ_SERVICE] setPQParamWithFilter configFlag: 1
+11-07 03:24:26.107  2321  2322 I [BIP]   :  [BIP AGENT] can not read data now, FD = (4), error number = (1765988436)
+11-07 03:24:26.112  1830  2539 W PackageManager: Missing required system package: com.castle.sefirah, but found with extended search.
+11-07 03:24:26.124  1830  2331 W PackageManager: Missing required system package: com.cloudflare.onedotonedotonedotone, but found with extended search.
+11-07 03:24:26.125  1830  2539 W PackageManager: Missing required system package: com.whatsapp, but found with extended search.
+11-07 03:24:26.125  1830  2539 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:24:26.125  1830  2539 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 03:24:26.129  1830  2539 W PackageManager: Missing required system package: com.whatsapp, but found with extended search.
+11-07 03:24:26.130  1830  2539 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:24:26.130  1830  2539 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 03:24:26.135  1830  1871 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:24:26.135  1830  1871 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 03:24:26.138  1830  1871 W PackageManager: Missing required system package: com.csam.icici.bank.imobile, but found with extended search.
+11-07 03:24:26.139  1830  2331 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:24:26.140  1830  2331 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 03:24:26.151  1830  2331 W PackageManager: Missing required system package: com.delhiveryConsigneeApp, but found with extended search.
+11-07 03:24:26.165  1830  2539 W PackageManager: Missing required system package: com.digilocker.android, but found with extended search.
+11-07 03:24:26.178  1830  2539 W PackageManager: Missing required system package: com.discord, but found with extended search.
+11-07 03:24:26.193  1830  2331 W PackageManager: Missing required system package: com.dubox.drive, but found with extended search.
+11-07 03:24:26.214  1830  1871 W PackageManager: Missing required system package: com.github.android, but found with extended search.
+11-07 03:24:26.227  1830  1871 W PackageManager: Missing required system package: com.google.ai.edge.gallery, but found with extended search.
+11-07 03:24:26.242  1830  2561 W PackageManager: Missing required system package: com.google.android.apps.adm, but found with extended search.
+11-07 03:24:26.251 11450 12437 W adbd    : timed out while waiting for FUNCTIONFS_BIND, trying again
+11-07 03:24:26.252 11450 12437 I adbd    : UsbFfs: connection terminated: monitor thread finished
+11-07 03:24:26.254  1830  1871 W PackageManager: Missing required system package: com.google.android.apps.bard, but found with extended search.
+11-07 03:24:26.271  1830  1871 W PackageManager: Missing required system package: com.google.android.apps.nbu.paisa.user, but found with extended search.
+11-07 03:24:26.285  1830  2539 W PackageManager: Missing required system package: com.google.android.keep, but found with extended search.
+11-07 03:24:26.297  1830  1871 W PackageManager: Missing required system package: com.google.ar.lens, but found with extended search.
+11-07 03:24:26.310  1830  2561 W PackageManager: Missing required system package: com.heytap.headset, but found with extended search.
+11-07 03:24:26.322  1830  2539 W PackageManager: Missing required system package: com.jacksoftw.webcam, but found with extended search.
+11-07 03:24:26.325 11450 11478 I adbd    : opening control endpoint /dev/usb-ffs/adb/ep0
+11-07 03:24:26.327  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:24:26.321  1492  1492 W binder:1492_2: type=1400 audit(0.0:857404): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:24:26.334  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:24:26.329  1492  1492 W binder:1492_2: type=1400 audit(0.0:857405): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:24:26.337  1830  1871 W PackageManager: Missing required system package: com.linkedin.android, but found with extended search.
+11-07 03:24:26.351  1830  2561 W PackageManager: Missing required system package: com.microsoft.office.excel, but found with extended search.
+11-07 03:24:26.354 12323 12430 D CompatibilityChangeReporter: Compat change id reported: 160794467; UID 11118; state: ENABLED
+11-07 03:24:26.367  1830  2539 W PackageManager: Missing required system package: com.microsoft.office.powerpoint, but found with extended search.
+11-07 03:24:26.379  1492  1492 W HidlServiceManagement: Waited for hwservicemanager.ready for a second, waiting another...
+11-07 03:24:26.377  1492  1492 W binder:1492_2: type=1400 audit(0.0:857406): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:24:26.380  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:24:26.377  1492  1492 W binder:1492_2: type=1400 audit(0.0:857407): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:24:26.380  1830  2331 W PackageManager: Missing required system package: com.microsoft.office.word, but found with extended search.
+11-07 03:24:26.381  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:24:26.393  1830  2331 W PackageManager: Missing required system package: com.microsoft.teams, but found with extended search.
+11-07 03:24:26.404  1830  2561 W PackageManager: Missing required system package: com.music.bitchord, but found with extended search.
+11-07 03:24:26.416  1830  2561 W PackageManager: Missing required system package: com.olacabs.customer, but found with extended search.
+11-07 03:24:26.418  1830  2331 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:24:26.424  1830  2561 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:24:26.430  1830  2561 W PackageManager: Missing required system package: com.paypal.android.p2pmobile, but found with extended search.
+11-07 03:24:26.443  1830  2331 W PackageManager: Missing required system package: com.phonepe.app, but found with extended search.
+11-07 03:24:26.445  1830  2561 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 03:24:26.450  1830  2561 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 03:24:26.455  1830  2561 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 03:24:26.456  1830  2331 W PackageManager: Missing required system package: com.pittvandewitt.wavelet, but found with extended search.
+11-07 03:24:26.469  1830  2561 W PackageManager: Missing required system package: com.rapido.passenger, but found with extended search.
+11-07 03:24:26.482  1830  2561 W PackageManager: Missing required system package: com.reddit.frontpage, but found with extended search.
+11-07 03:24:26.495  1830  2539 W PackageManager: Missing required system package: com.twitter.android, but found with extended search.
+11-07 03:24:26.510  1830  2539 W PackageManager: Missing required system package: com.whatsapp, but found with extended search.
+11-07 03:24:26.523  1830  2539 W PackageManager: Missing required system package: com.whereismytrain.android, but found with extended search.
+11-07 03:24:26.532  1830  2539 W PackageManager: Missing required system package: cris.org.in.prs.ima, but found with extended search.
+11-07 03:24:26.540  1830  2331 W PackageManager: Missing required system package: edu.manipal.jaipur.slcm_mobile, but found with extended search.
+11-07 03:24:26.548  1830  2539 W PackageManager: Missing required system package: in.amazon.mShop.android.shopping, but found with extended search.
+11-07 03:24:26.548  1830  2539 W PackageManager: Missing required system package: in.amazon.mShop.android.shopping, but found with extended search.
+11-07 03:24:26.557  1830  2539 W PackageManager: Missing required system package: in.amazon.mShop.android.shopping, but found with extended search.
+11-07 03:24:26.557  1830  2539 W PackageManager: Missing required system package: in.amazon.mShop.android.shopping, but found with extended search.
+11-07 03:24:26.566  1830  2331 W PackageManager: Missing required system package: in.burgerfarm.app, but found with extended search.
+11-07 03:24:26.574  1830  2539 W PackageManager: Missing required system package: io.github.forkmaintainers.iceraven, but found with extended search.
+11-07 03:24:26.582  1830  2539 W PackageManager: Missing required system package: org.telegram.messenger, but found with extended search.
+11-07 03:24:26.591  1830  2561 W PackageManager: Missing required system package: org.videolan.vlc, but found with extended search.
+11-07 03:24:26.599  1830  2331 W PackageManager: Missing required system package: ru.odauhsbx.xqdkkkmwh, but found with extended search.
+11-07 03:24:26.605  1830  2331 W PackageManager: Missing required system package: ru.zdevs.zarchiver, but found with extended search.
+11-07 03:24:26.611  2298  2298 D FreeformGesture: onStateChanged: State{mIsPackageAvailable=true, mPillGestureEnabled=false, mVibrationEnabled=true, mShortcutPanelShowing=false, mSwipeInEnabled=false, mHunFreeformEnabled=true, mIsInGameMode=false, mIsRecentsShowing=false, mPillXPosition=1, mPillYPosition=600, mIsInTutorialMode=false, mIsDoubleTapPowerEnabled=false}
+11-07 03:24:26.613  2298  2298 D FreeformGesture: onStateChanged: State{mIsPackageAvailable=true, mPillGestureEnabled=false, mVibrationEnabled=true, mShortcutPanelShowing=false, mSwipeInEnabled=false, mHunFreeformEnabled=true, mIsInGameMode=false, mIsRecentsShowing=false, mPillXPosition=1, mPillYPosition=600, mIsInTutorialMode=false, mIsDoubleTapPowerEnabled=false}
+11-07 03:24:26.614  3546  3565 E MotoFreeForm: [FreeFormProvider] query: uri: content://com.motorola.freeform.settings/supported_packages
+11-07 03:24:26.622  1830  2331 W PackageManager: Missing required system package: ru.zdevs.zarchiver, but found with extended search.
+11-07 03:24:26.622  1830  2331 W PackageManager: Missing required system package: ru.odauhsbx.xqdkkkmwh, but found with extended search.
+11-07 03:24:26.622  1830  2331 W PackageManager: Missing required system package: org.videolan.vlc, but found with extended search.
+11-07 03:24:26.622  1830  2331 W PackageManager: Missing required system package: org.telegram.messenger, but found with extended search.
+11-07 03:24:26.623  1830  2331 W PackageManager: Missing required system package: io.github.forkmaintainers.iceraven, but found with extended search.
+11-07 03:24:26.623  1830  2331 W PackageManager: Missing required system package: in.burgerfarm.app, but found with extended search.
+11-07 03:24:26.623  1830  2331 W PackageManager: Missing required system package: in.amazon.mShop.android.shopping, but found with extended search.
+11-07 03:24:26.623  1830  2331 W PackageManager: Missing required system package: in.amazon.mShop.android.shopping, but found with extended search.
+11-07 03:24:26.623  1830  2331 W PackageManager: Missing required system package: edu.manipal.jaipur.slcm_mobile, but found with extended search.
+11-07 03:24:26.623  1830  2331 W PackageManager: Missing required system package: cris.org.in.prs.ima, but found with extended search.
+11-07 03:24:26.623  1830  2331 W PackageManager: Missing required system package: com.whereismytrain.android, but found with extended search.
+11-07 03:24:26.623  1830  2331 W PackageManager: Missing required system package: com.whatsapp, but found with extended search.
+11-07 03:24:26.623  1830  2331 W PackageManager: Missing required system package: com.twitter.android, but found with extended search.
+11-07 03:24:26.624  1830  2331 W PackageManager: Missing required system package: com.reddit.frontpage, but found with extended search.
+11-07 03:24:26.624  1830  2331 W PackageManager: Missing required system package: com.rapido.passenger, but found with extended search.
+11-07 03:24:26.624  1830  2331 W PackageManager: Missing required system package: com.pittvandewitt.wavelet, but found with extended search.
+11-07 03:24:26.624  1830  2331 W PackageManager: Missing required system package: com.phonepe.app, but found with extended search.
+11-07 03:24:26.625  1830  2331 W PackageManager: Missing required system package: com.paypal.android.p2pmobile, but found with extended search.
+11-07 03:24:26.625  1830  2331 W PackageManager: Missing required system package: com.olacabs.customer, but found with extended search.
+11-07 03:24:26.625  1830  2331 W PackageManager: Missing required system package: com.music.bitchord, but found with extended search.
+11-07 03:24:26.625  1830  2331 W PackageManager: Missing required system package: com.microsoft.teams, but found with extended search.
+11-07 03:24:26.625  1830  2331 W PackageManager: Missing required system package: com.microsoft.office.word, but found with extended search.
+11-07 03:24:26.625  1830  2331 W PackageManager: Missing required system package: com.microsoft.office.powerpoint, but found with extended search.
+11-07 03:24:26.626  1830  2331 W PackageManager: Missing required system package: com.microsoft.office.excel, but found with extended search.
+11-07 03:24:26.626  1830  2331 W PackageManager: Missing required system package: com.linkedin.android, but found with extended search.
+11-07 03:24:26.626  1830  2331 W PackageManager: Missing required system package: com.jacksoftw.webcam, but found with extended search.
+11-07 03:24:26.626  1830  2331 W PackageManager: Missing required system package: com.heytap.headset, but found with extended search.
+11-07 03:24:26.626  1830  2331 W PackageManager: Missing required system package: com.google.ar.lens, but found with extended search.
+11-07 03:24:26.626  1830  2331 W PackageManager: Missing required system package: com.google.android.keep, but found with extended search.
+11-07 03:24:26.626  1830  2331 W PackageManager: Missing required system package: com.google.android.apps.nbu.paisa.user, but found with extended search.
+11-07 03:24:26.627  1830  2331 W PackageManager: Missing required system package: com.google.android.apps.bard, but found with extended search.
+11-07 03:24:26.627  1830  2331 W PackageManager: Missing required system package: com.google.android.apps.adm, but found with extended search.
+11-07 03:24:26.627  1830  2331 W PackageManager: Missing required system package: com.google.ai.edge.gallery, but found with extended search.
+11-07 03:24:26.627  1830  2331 W PackageManager: Missing required system package: com.github.android, but found with extended search.
+11-07 03:24:26.627  1830  2331 W PackageManager: Missing required system package: com.easybrain.arrow.puzzle.game, but found with extended search.
+11-07 03:24:26.627  1830  2331 W PackageManager: Missing required system package: com.dubox.drive, but found with extended search.
+11-07 03:24:26.628  1830  2331 W PackageManager: Missing required system package: com.discord, but found with extended search.
+11-07 03:24:26.628  1830  2331 W PackageManager: Missing required system package: com.digilocker.android, but found with extended search.
+11-07 03:24:26.628  1830  2331 W PackageManager: Missing required system package: com.delhiveryConsigneeApp, but found with extended search.
+11-07 03:24:26.628  1830  2331 W PackageManager: Missing required system package: com.csam.icici.bank.imobile, but found with extended search.
+11-07 03:24:26.628  1830  2331 W PackageManager: Missing required system package: com.cloudflare.onedotonedotonedotone, but found with extended search.
+11-07 03:24:26.628  1830  2331 W PackageManager: Missing required system package: com.castle.sefirah, but found with extended search.
+11-07 03:24:26.628  1830  2331 W PackageManager: Missing required system package: com.azure.authenticator, but found with extended search.
+11-07 03:24:26.629  1830  2331 W PackageManager: Missing required system package: com.app.spacebasic, but found with extended search.
+11-07 03:24:26.629  1830  2331 W PackageManager: Missing required system package: com.app.campusadda, but found with extended search.
+11-07 03:24:26.629  1830  2331 W PackageManager: Missing required system package: com.anchor.mine, but found with extended search.
+11-07 03:24:26.629  1830  2331 W PackageManager: Missing required system package: cc.remote9.app, but found with extended search.
+11-07 03:24:26.629  1830  2331 W PackageManager: Missing required system package: app.revanced.manager.flutter, but found with extended search.
+11-07 03:24:26.629  1830  2331 W PackageManager: Missing required system package: app.revanced.android.gms, but found with extended search.
+11-07 03:24:26.630  1830  2331 W PackageManager: Missing required system package: app.revanced.android.apps.youtube.music, but found with extended search.
+11-07 03:24:26.630  1830  2331 W PackageManager: Missing required system package: app.mihon, but found with extended search.
+11-07 03:24:26.630  1830  2331 W PackageManager: Missing required system package: ai.mistral.chat, but found with extended search.
+11-07 03:24:26.630  1830  2331 W PackageManager: Missing required system package: org.zwanoo.android.speedtest, but found with extended search.
+11-07 03:24:26.631  1830  2331 W PackageManager: Missing required system package: net.sourceforge.opencamera, but found with extended search.
+11-07 03:24:26.631  1830  2331 W PackageManager: Missing required system package: idm.internet.download.manager.plus, but found with extended search.
+11-07 03:24:26.631  1830  2331 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:24:26.631  1830  2331 W PackageManager: Missing required system package: com.pinterest, but found with extended search.
+11-07 03:24:26.631  1830  2331 W PackageManager: Missing required system package: com.microsoft.office.outlook, but found with extended search.
+11-07 03:24:26.631  1830  2331 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 03:24:26.632  1830  2331 W PackageManager: Missing required system package: com.google.android.play.games, but found with extended search.
+11-07 03:24:26.632  1830  2331 W PackageManager: Missing required system package: com.google.android.apps.docs.editors.slides, but found with extended search.
+11-07 03:24:26.632  1830  2331 W PackageManager: Missing required system package: com.google.android.apps.docs.editors.sheets, but found with extended search.
+11-07 03:24:26.632  1830  2331 W PackageManager: Missing required system package: com.google.android.apps.docs.editors.docs, but found with extended search.
+11-07 03:24:26.632  1830  2331 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 03:24:26.632  1830  2331 W PackageManager: Missing required system package: app.revanced.android.youtube, but found with extended search.
+11-07 03:24:26.673  1830  2331 W PackageManager: Missing required system package: io.github.forkmaintainers.iceraven, but found with extended search.
+11-07 03:24:26.727  8312 12183 E RoleControllerServiceImpl: Default/fallback role holder package doesn't qualify for the role, package: com.google.android.gms.supervision, role: android.app.role.SYSTEM_SUPERVISION, user: 0
+11-07 03:24:26.733  8312 12183 I Role    : com.google.android.gms not qualified for android.app.role.SYSTEM_CALL_STREAMING due to missing RequiredComponent{mFlags='0', mIntentFilterData=IntentFilterData{mAction='android.telecom.CallStreamingService', mCategories='[]', mDataScheme='null', mDataType='null'}, mMetaData=[], mPermission='android.permission.BIND_CALL_STREAMING_SERVICE', mQueryFlags=0} Requirement{mFeatureFlag=null, mMinTargetSdkVersion=1}
+11-07 03:24:26.734  8312 12183 E RoleControllerServiceImpl: Default/fallback role holder package doesn't qualify for the role, package: com.google.android.gms, role: android.app.role.SYSTEM_CALL_STREAMING, user: 0
+11-07 03:24:26.739  8312 12183 W SignedPackage: Package doesn't have required signing certificate: com.google.android.apps.work.clouddpc
+11-07 03:24:26.740  1830  2561 W PackageManager: Missing required system package: app.revanced.android.youtube, but found with extended search.
+11-07 03:24:26.749  1830  2539 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 03:24:26.757  1830  2331 W PackageManager: Missing required system package: com.google.android.apps.docs.editors.docs, but found with extended search.
+11-07 03:24:26.766  1830  2561 W PackageManager: Missing required system package: com.google.android.apps.docs.editors.sheets, but found with extended search.
+11-07 03:24:26.774  1830  2331 W PackageManager: Missing required system package: com.google.android.apps.docs.editors.slides, but found with extended search.
+11-07 03:24:26.785  1830  1871 W PackageManager: Missing required system package: com.google.android.play.games, but found with extended search.
+11-07 03:24:26.794  1830  2539 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 03:24:26.803  1830  2539 W PackageManager: Missing required system package: com.microsoft.office.outlook, but found with extended search.
+11-07 03:24:26.811  1830  1871 W PackageManager: Missing required system package: com.pinterest, but found with extended search.
+11-07 03:24:26.816  1830  2539 W PackageManager: Missing required system package: ru.zdevs.zarchiver, but found with extended search.
+11-07 03:24:26.820  1830  2539 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:24:26.829  1830  1871 W PackageManager: Missing required system package: idm.internet.download.manager.plus, but found with extended search.
+11-07 03:24:26.834  1830  1871 W PackageManager: Missing required system package: ru.zdevs.zarchiver, but found with extended search.
+11-07 03:24:26.837  1830  2331 W PackageManager: Missing required system package: net.sourceforge.opencamera, but found with extended search.
+11-07 03:24:26.845  1830  1871 W PackageManager: Missing required system package: org.zwanoo.android.speedtest, but found with extended search.
+11-07 03:24:26.913  1830  2539 W PackageManager: Missing required system package: ai.mistral.chat, but found with extended search.
+11-07 03:24:26.928  1830  2331 W PackageManager: Missing required system package: app.mihon, but found with extended search.
+11-07 03:24:26.939  1830  2539 W PackageManager: Missing required system package: app.revanced.android.apps.youtube.music, but found with extended search.
+11-07 03:24:26.949  1830  2539 W PackageManager: Missing required system package: app.revanced.android.gms, but found with extended search.
+11-07 03:24:26.958  1830  2331 W PackageManager: Missing required system package: app.revanced.manager.flutter, but found with extended search.
+11-07 03:24:26.968  1830  1871 W PackageManager: Missing required system package: cc.remote9.app, but found with extended search.
+11-07 03:24:26.977  1830  1871 W PackageManager: Missing required system package: com.anchor.mine, but found with extended search.
+11-07 03:24:26.985  1830  1871 W PackageManager: Missing required system package: com.app.campusadda, but found with extended search.
+11-07 03:24:26.993  1830  2331 W PackageManager: Missing required system package: com.app.spacebasic, but found with extended search.
+11-07 03:24:27.001  1830  2331 W PackageManager: Missing required system package: com.azure.authenticator, but found with extended search.
+11-07 03:24:27.009  1830  1871 W PackageManager: Missing required system package: com.castle.sefirah, but found with extended search.
+11-07 03:24:27.017  1830  2539 W PackageManager: Missing required system package: com.cloudflare.onedotonedotonedotone, but found with extended search.
+11-07 03:24:27.025  1830  2539 W PackageManager: Missing required system package: com.csam.icici.bank.imobile, but found with extended search.
+11-07 03:24:27.032  1830  2331 W PackageManager: Missing required system package: com.delhiveryConsigneeApp, but found with extended search.
+11-07 03:24:27.040  1830  2539 W PackageManager: Missing required system package: com.digilocker.android, but found with extended search.
+11-07 03:24:27.048  1830  2539 W PackageManager: Missing required system package: com.discord, but found with extended search.
+11-07 03:24:27.058  1830  2331 W PackageManager: Missing required system package: com.dubox.drive, but found with extended search.
+11-07 03:24:27.071  1830  1871 W PackageManager: Missing required system package: com.github.android, but found with extended search.
+11-07 03:24:27.079  1830  2539 W PackageManager: Missing required system package: com.google.ai.edge.gallery, but found with extended search.
+11-07 03:24:27.087  1830  1871 W PackageManager: Missing required system package: com.google.android.apps.adm, but found with extended search.
+11-07 03:24:27.096  1830  2539 W PackageManager: Missing required system package: com.google.android.apps.bard, but found with extended search.
+11-07 03:24:27.104  1830  2331 W PackageManager: Missing required system package: com.google.android.apps.nbu.paisa.user, but found with extended search.
+11-07 03:24:27.111  1830  2539 W PackageManager: Missing required system package: com.google.android.keep, but found with extended search.
+11-07 03:24:27.119  1830  2331 W PackageManager: Missing required system package: com.google.ar.lens, but found with extended search.
+11-07 03:24:27.127  1830  1871 W PackageManager: Missing required system package: com.heytap.headset, but found with extended search.
+11-07 03:24:27.135  1830  2331 W PackageManager: Missing required system package: com.jacksoftw.webcam, but found with extended search.
+11-07 03:24:27.143  1830  2331 W PackageManager: Missing required system package: com.linkedin.android, but found with extended search.
+11-07 03:24:27.152  1830  1871 W PackageManager: Missing required system package: com.microsoft.office.excel, but found with extended search.
+11-07 03:24:27.161  1830  2331 W PackageManager: Missing required system package: com.microsoft.office.powerpoint, but found with extended search.
+11-07 03:24:27.170  1830  2331 W PackageManager: Missing required system package: com.microsoft.office.word, but found with extended search.
+11-07 03:24:27.178  1830  2331 W PackageManager: Missing required system package: com.microsoft.teams, but found with extended search.
+11-07 03:24:27.186  1830  2539 W PackageManager: Missing required system package: com.music.bitchord, but found with extended search.
+11-07 03:24:27.194  1830  1871 W PackageManager: Missing required system package: com.olacabs.customer, but found with extended search.
+11-07 03:24:27.204  1830  2561 W PackageManager: Missing required system package: com.paypal.android.p2pmobile, but found with extended search.
+11-07 03:24:27.212  1830  2539 W PackageManager: Missing required system package: com.phonepe.app, but found with extended search.
+11-07 03:24:27.219  1830  2539 W PackageManager: Missing required system package: com.pittvandewitt.wavelet, but found with extended search.
+11-07 03:24:27.227  1830  2561 W PackageManager: Missing required system package: com.rapido.passenger, but found with extended search.
+11-07 03:24:27.235  1830  2539 W PackageManager: Missing required system package: com.reddit.frontpage, but found with extended search.
+11-07 03:24:27.243  1830  2561 W PackageManager: Missing required system package: com.twitter.android, but found with extended search.
+11-07 03:24:27.252  1830  2331 W PackageManager: Missing required system package: com.whatsapp, but found with extended search.
+11-07 03:24:27.261  1830  2561 W PackageManager: Missing required system package: com.whereismytrain.android, but found with extended search.
+11-07 03:24:27.268  1830  2331 W PackageManager: Missing required system package: com.whatsapp, but found with extended search.
+11-07 03:24:27.268  1830  2539 W PackageManager: Missing required system package: cris.org.in.prs.ima, but found with extended search.
+11-07 03:24:27.268  1830  2331 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:24:27.269  1830  2331 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 03:24:27.271  1830  2539 W PackageManager: Missing required system package: com.whatsapp, but found with extended search.
+11-07 03:24:27.271  1830  2539 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:24:27.271  1830  2539 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 03:24:27.274  1830  2539 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:24:27.274  1830  2539 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 03:24:27.276  1830  2539 W PackageManager: Missing required system package: edu.manipal.jaipur.slcm_mobile, but found with extended search.
+11-07 03:24:27.277  1830  2561 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:24:27.277  1830  2561 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 03:24:27.283  1830  2331 W PackageManager: Missing required system package: in.amazon.mShop.android.shopping, but found with extended search.
+11-07 03:24:27.283  1830  2331 W PackageManager: Missing required system package: in.amazon.mShop.android.shopping, but found with extended search.
+11-07 03:24:27.291  1830  2331 W PackageManager: Missing required system package: in.amazon.mShop.android.shopping, but found with extended search.
+11-07 03:24:27.291  1830  2331 W PackageManager: Missing required system package: in.amazon.mShop.android.shopping, but found with extended search.
+11-07 03:24:27.300  1830  2539 W PackageManager: Missing required system package: in.burgerfarm.app, but found with extended search.
+11-07 03:24:27.307  1830  2331 W PackageManager: Missing required system package: io.github.forkmaintainers.iceraven, but found with extended search.
+11-07 03:24:27.313  1830  2331 W PackageManager: Missing required system package: org.telegram.messenger, but found with extended search.
+11-07 03:24:27.321  1830  2561 W PackageManager: Missing required system package: org.videolan.vlc, but found with extended search.
+11-07 03:24:27.327  1830  2331 W PackageManager: Missing required system package: ru.odauhsbx.xqdkkkmwh, but found with extended search.
+11-07 03:24:27.329 11450 12462 W adbd    : timed out while waiting for FUNCTIONFS_BIND, trying again
+11-07 03:24:27.330 11450 12462 I adbd    : UsbFfs: connection terminated: monitor thread finished
+11-07 03:24:27.336  1830  2539 W PackageManager: Missing required system package: ru.zdevs.zarchiver, but found with extended search.
+11-07 03:24:27.341  2298  2298 D CBR_SystemUI: CarrierLabel - : updateLabel cellMsg:  cellEnabled: true
+11-07 03:24:27.342  2298  2298 D CBR_SystemUI: CarrierLabel - : updateLabel mCellBroadcastMessage Visibility: 8
+11-07 03:24:27.342  2298  2298 D CBR_SystemUI: CarrierLabel - : updateLabel cellMsg:  cellEnabled: true
+11-07 03:24:27.342  2298  2298 D CBR_SystemUI: CarrierLabel - : updateLabel mCellBroadcastMessage Visibility: 8
+11-07 03:24:27.342  2298  2298 D FreeformGesture: onStateChanged: State{mIsPackageAvailable=true, mPillGestureEnabled=false, mVibrationEnabled=true, mShortcutPanelShowing=false, mSwipeInEnabled=false, mHunFreeformEnabled=true, mIsInGameMode=false, mIsRecentsShowing=false, mPillXPosition=1, mPillYPosition=600, mIsInTutorialMode=false, mIsDoubleTapPowerEnabled=false}
+11-07 03:24:27.343  2298  2298 D FreeformGesture: onStateChanged: State{mIsPackageAvailable=true, mPillGestureEnabled=false, mVibrationEnabled=true, mShortcutPanelShowing=false, mSwipeInEnabled=false, mHunFreeformEnabled=true, mIsInGameMode=false, mIsRecentsShowing=false, mPillXPosition=1, mPillYPosition=600, mIsInTutorialMode=false, mIsDoubleTapPowerEnabled=false}
+11-07 03:24:27.344  2298  2298 D FreeformGesture: onStateChanged: State{mIsPackageAvailable=true, mPillGestureEnabled=false, mVibrationEnabled=true, mShortcutPanelShowing=false, mSwipeInEnabled=false, mHunFreeformEnabled=true, mIsInGameMode=false, mIsRecentsShowing=false, mPillXPosition=1, mPillYPosition=600, mIsInTutorialMode=false, mIsDoubleTapPowerEnabled=false}
+11-07 03:24:27.345  2298  2298 D StatusBarIconController: ignoring old pipeline callbacks, because the new mobile icons are enabled
+11-07 03:24:27.376 11450 11478 I adbd    : opening control endpoint /dev/usb-ffs/adb/ep0
+11-07 03:24:27.378  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:24:27.373  1492  1492 W binder:1492_2: type=1400 audit(0.0:857408): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:24:27.380  1492  1492 W HidlServiceManagement: Waited for hwservicemanager.ready for a second, waiting another...
+11-07 03:24:27.381  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:24:27.381  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:24:27.377  1492  1492 W binder:1492_2: type=1400 audit(0.0:857409): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:24:27.377  1492  1492 W binder:1492_2: type=1400 audit(0.0:857410): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:24:27.383  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:24:27.377  1492  1492 W binder:1492_2: type=1400 audit(0.0:857411): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:24:27.424  1830  2539 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:24:27.428  1830  2539 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:24:27.440  1830  2539 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 03:24:27.444  1830  2539 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 03:24:27.448  1830  2331 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 03:24:27.623  1830  2539 W PackageManager: Missing required system package: io.github.forkmaintainers.iceraven, but found with extended search.
+11-07 03:24:27.652  1527  1731 D ULogGuard: Monitoring: 10 threads, 0 requests, 0 time-bombs; 1 guards. ResetFlags = 0x7
+11-07 03:24:27.679  8312 12183 E RoleControllerServiceImpl: Default/fallback role holder package doesn't qualify for the role, package: com.google.android.gms.supervision, role: android.app.role.SYSTEM_SUPERVISION, user: 0
+11-07 03:24:27.687  8312 12183 I Role    : com.google.android.gms not qualified for android.app.role.SYSTEM_CALL_STREAMING due to missing RequiredComponent{mFlags='0', mIntentFilterData=IntentFilterData{mAction='android.telecom.CallStreamingService', mCategories='[]', mDataScheme='null', mDataType='null'}, mMetaData=[], mPermission='android.permission.BIND_CALL_STREAMING_SERVICE', mQueryFlags=0} Requirement{mFeatureFlag=null, mMinTargetSdkVersion=1}
+11-07 03:24:27.687  8312 12183 E RoleControllerServiceImpl: Default/fallback role holder package doesn't qualify for the role, package: com.google.android.gms, role: android.app.role.SYSTEM_CALL_STREAMING, user: 0
+11-07 03:24:27.692  8312 12183 W SignedPackage: Package doesn't have required signing certificate: com.google.android.apps.work.clouddpc
+11-07 03:24:27.767  1830  2539 W PackageManager: Missing required system package: ru.zdevs.zarchiver, but found with extended search.
+11-07 03:24:27.784  1830  2331 W PackageManager: Missing required system package: ru.zdevs.zarchiver, but found with extended search.
+11-07 03:24:28.026  1167  1208 I libPerfCtl: xgfGetFPS pid:-1 fps:-1
+11-07 03:24:28.026  1216  1216 E ccci_rpcd: Failed to read from RPC device (-1) !! errno = 4
+11-07 03:24:28.027  1535  1625 D PQ      : ccorr table index=3
+11-07 03:24:28.027  1535  1625 D PQ      : [PQ_SERVICE] setPQParamWithFilter configFlag: 1
+11-07 03:24:28.027  1205  1229 I ccci_mdinit: (1):is_delta_same delta t:17 delta b:17 delta:0
+11-07 03:24:28.028  2321  2322 I [BIP]   :  [BIP AGENT] can not read data now, FD = (4), error number = (1765988436)
+11-07 03:24:28.028  1205  1229 D ccci_mdinit: (1):monitor_time_update_thread round:61501 ########
+11-07 03:24:28.030  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:24:28.027  1492  1492 W binder:1492_2: type=1400 audit(0.0:857412): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:24:28.035  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:24:28.031  1492  1492 W binder:1492_2: type=1400 audit(0.0:857413): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:24:28.197  1167  1208 I libPerfCtl: xgfGetFPS pid:-1 fps:-1
+11-07 03:24:28.198  1216  1216 E ccci_rpcd: Failed to read from RPC device (-1) !! errno = 4
+11-07 03:24:28.198  1535  1625 D PQ      : ccorr table index=3
+11-07 03:24:28.198  1535  1625 D PQ      : [PQ_SERVICE] setPQParamWithFilter configFlag: 1
+11-07 03:24:28.287  1830  2561 W PackageManager: Missing required system package: com.whatsapp, but found with extended search.
+11-07 03:24:28.287  1830  2561 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:24:28.287  1830  2561 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 03:24:28.289  1830  2539 W PackageManager: Missing required system package: com.whatsapp, but found with extended search.
+11-07 03:24:28.289  1830  2539 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:24:28.290  1830  2539 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 03:24:28.292  1830  2561 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:24:28.292  1830  2561 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 03:24:28.294  1830  2539 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:24:28.294  1830  2539 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 03:24:28.409  1492  1492 W HidlServiceManagement: Waited for hwservicemanager.ready for a second, waiting another...
+11-07 03:24:28.410  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:24:28.410  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:24:28.413  1830  2539 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:24:28.417  1830  2561 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:24:28.429  1830  2561 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 03:24:28.432  1830  2561 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 03:24:28.434  1830  2561 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 03:24:28.515 11450 12463 W adbd    : timed out while waiting for FUNCTIONFS_BIND, trying again
+11-07 03:24:28.516 11450 12463 I adbd    : UsbFfs: connection terminated: monitor thread finished
+11-07 03:24:28.577  1167  1208 I libPerfCtl: xgfGetFPS pid:-1 fps:-1
+11-07 03:24:28.577  1216  1216 E ccci_rpcd: Failed to read from RPC device (-1) !! errno = 4
+11-07 03:24:28.579  1535  1625 D PQ      : ccorr table index=3
+11-07 03:24:28.579  1492  1492 W binder:1492_2: type=1400 audit(0.0:857416): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:24:28.579  1535  1625 D PQ      : [PQ_SERVICE] setPQParamWithFilter configFlag: 1
+11-07 03:24:28.580 11450 11478 I adbd    : opening control endpoint /dev/usb-ffs/adb/ep0
+11-07 03:24:28.581  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:24:28.587  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:24:28.583  1492  1492 W binder:1492_2: type=1400 audit(0.0:857417): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:24:28.648  1830  2539 W PackageManager: Missing required system package: io.github.forkmaintainers.iceraven, but found with extended search.
+11-07 03:24:28.699  8312 12183 E RoleControllerServiceImpl: Default/fallback role holder package doesn't qualify for the role, package: com.google.android.gms.supervision, role: android.app.role.SYSTEM_SUPERVISION, user: 0
+11-07 03:24:28.706  8312 12183 I Role    : com.google.android.gms not qualified for android.app.role.SYSTEM_CALL_STREAMING due to missing RequiredComponent{mFlags='0', mIntentFilterData=IntentFilterData{mAction='android.telecom.CallStreamingService', mCategories='[]', mDataScheme='null', mDataType='null'}, mMetaData=[], mPermission='android.permission.BIND_CALL_STREAMING_SERVICE', mQueryFlags=0} Requirement{mFeatureFlag=null, mMinTargetSdkVersion=1}
+11-07 03:24:28.707  8312 12183 E RoleControllerServiceImpl: Default/fallback role holder package doesn't qualify for the role, package: com.google.android.gms, role: android.app.role.SYSTEM_CALL_STREAMING, user: 0
+11-07 03:24:28.710  8312 12183 W SignedPackage: Package doesn't have required signing certificate: com.google.android.apps.work.clouddpc
+11-07 03:24:28.777  1830  2539 W PackageManager: Missing required system package: ru.zdevs.zarchiver, but found with extended search.
+11-07 03:24:28.795  1830  2539 W PackageManager: Missing required system package: ru.zdevs.zarchiver, but found with extended search.
+11-07 03:24:29.915  1167  1208 I libPerfCtl: xgfGetFPS pid:-1 fps:-1
+11-07 03:24:29.916  1205  1229 I ccci_mdinit: (1):is_delta_same delta t:1 delta b:2 delta:1
+11-07 03:24:29.916  1205  1229 D ccci_mdinit: (1):monitor_time_update_thread round:61502 ########
+11-07 03:24:29.916  1216  1216 E ccci_rpcd: Failed to read from RPC device (-1) !! errno = 4
+11-07 03:24:29.917  1535  1625 D PQ      : ccorr table index=3
+11-07 03:24:29.917  1535  1625 D PQ      : [PQ_SERVICE] setPQParamWithFilter configFlag: 1
+11-07 03:24:29.918  2321  2322 I [BIP]   :  [BIP AGENT] can not read data now, FD = (4), error number = (1765988436)
+11-07 03:24:29.919  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:24:29.922  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:24:29.918  1492  1492 W binder:1492_2: type=1400 audit(0.0:857419): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:24:29.946  1830  2539 W PackageManager: Missing required system package: com.whatsapp, but found with extended search.
+11-07 03:24:29.946  1830  2539 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:24:29.946  1830  2539 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 03:24:29.949  1830  2561 W PackageManager: Missing required system package: com.whatsapp, but found with extended search.
+11-07 03:24:29.949  1830  2561 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:24:29.949  1830  2561 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 03:24:29.952  1830  2539 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:24:29.952  1830  2539 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 03:24:29.954  1830  2561 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:24:29.954  1830  2561 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 03:24:30.073  1830  2561 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:24:30.075  1830  2561 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:24:30.087  1830  2539 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 03:24:30.090  1830  2539 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 03:24:30.094  1830  2561 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 03:24:30.100  1492  1492 W HidlServiceManagement: Waited for hwservicemanager.ready for a second, waiting another...
+11-07 03:24:30.101  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:24:30.101  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:24:30.094  1492  1492 W binder:1492_2: type=1400 audit(0.0:857420): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:24:30.245  1830  2539 W PackageManager: Missing required system package: io.github.forkmaintainers.iceraven, but found with extended search.
+11-07 03:24:30.325  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:24:30.318  1492  1492 W binder:1492_2: type=1400 audit(0.0:857422): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:24:30.368 11450 12530 W adbd    : timed out while waiting for FUNCTIONFS_BIND, trying again
+11-07 03:24:30.368 11450 12530 I adbd    : UsbFfs: connection terminated: monitor thread finished
+11-07 03:24:30.470  1167  1208 I libPerfCtl: xgfGetFPS pid:-1 fps:-1
+11-07 03:24:30.470  1216  1216 E ccci_rpcd: Failed to read from RPC device (-1) !! errno = 4
+11-07 03:24:30.470  1535  1625 D PQ      : ccorr table index=3
+11-07 03:24:30.471  1535  1625 D PQ      : [PQ_SERVICE] setPQParamWithFilter configFlag: 1
+11-07 03:24:30.474 11450 11478 I adbd    : opening control endpoint /dev/usb-ffs/adb/ep0
+11-07 03:24:30.476  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:24:30.470  1492  1492 W binder:1492_2: type=1400 audit(0.0:857423): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:24:30.484  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:24:30.478  1492  1492 W binder:1492_2: type=1400 audit(0.0:857424): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:24:30.796  1167  1208 I libPerfCtl: xgfGetFPS pid:-1 fps:-1
+11-07 03:24:30.796  1216  1216 E ccci_rpcd: Failed to read from RPC device (-1) !! errno = 4
+11-07 03:24:30.796  1535  1625 D PQ      : ccorr table index=3
+11-07 03:24:30.796  1535  1625 D PQ      : [PQ_SERVICE] setPQParamWithFilter configFlag: 1
+11-07 03:24:30.808  1128  1128 D [BT]    : mtk_bt_op: BT_VND_OP_LPM_WAKE_SET_STATE
+11-07 03:24:30.852  1830  2331 D TelephonyManager: requestModemActivityInfo: Sending result to app: ModemActivityInfo{ mTimestamp=315276114 mSleepTimeMs=113042577 mIdleTimeMs=32075098 mActivityStatsTechSpecificInfo=[{mRat=UNKNOWN,mFrequencyRange=UNKNOWN,mTxTimeMs[]=[2613, 13345, 55445, 265104, 1417051],mRxTimeMs=17592667}]}
+11-07 03:24:31.100  1492  1492 W HidlServiceManagement: Waited for hwservicemanager.ready for a second, waiting another...
+11-07 03:24:31.101  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:24:31.101  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:24:31.094  1492  1492 W binder:1492_2: type=1400 audit(0.0:857425): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:24:31.098  1492  1492 W binder:1492_2: type=1400 audit(0.0:857426): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:24:31.362  1830  2074 W PackageManager: Missing required system package: com.anchor.mine, but found with extended search.
+11-07 03:24:31.370  1527  1731 D ULogGuard: Monitoring: 10 threads, 0 requests, 0 time-bombs; 1 guards. ResetFlags = 0x7
+11-07 03:24:31.452 12323 12430 I TestRunner: finished: testGentleReminderFires_SetsFlag(com.anchor.mine.alarms.AlarmSelfTest)

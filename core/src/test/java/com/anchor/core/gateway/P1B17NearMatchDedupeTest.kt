@@ -240,6 +240,10 @@ class P1B17NearMatchDedupeTest {
         )
         val confirmRes = gateway.executeTool(confirmCall)
         assertTrue("Cancel must return committed cancel: $confirmRes", confirmRes is ToolResult.Committed)
+        // H-05 (R-09): a cancel changes nothing, so there is no event to undo. An empty token made
+        // the UI render an Undo button (it tests `!= null`) whose only possible outcome was
+        // "Undo token not found".
+        assertEquals("A cancel has nothing to undo", "", (confirmRes as ToolResult.Committed).undoToken)
         assertEquals(1, storage.activeNodes.size)
         assertEquals("consumed", storage.getProposal(res.proposalId)?.status)
     }

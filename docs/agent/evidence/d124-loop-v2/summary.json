@@ -1,0 +1,282 @@
+[
+  {
+    "run": 1,
+    "wallSeconds": 62.3,
+    "gradleExit": 1,
+    "source": "xml",
+    "tests": 3,
+    "failed": [],
+    "staleArtifacts": false,
+    "artifactAgeAtArchive": {
+      "test-result.pb": 54.8,
+      "test-result-exit-code.txt": 54.8,
+      "TEST-moto g73 5G - 14.xml": 54.8
+    }
+  },
+  {
+    "run": 2,
+    "wallSeconds": 66.2,
+    "gradleExit": 1,
+    "source": "xml",
+    "tests": 3,
+    "failed": [],
+    "staleArtifacts": false,
+    "artifactAgeAtArchive": {
+      "test-result.pb": 57.5,
+      "test-result-exit-code.txt": 57.5,
+      "TEST-moto g73 5G - 14.xml": 57.5
+    }
+  },
+  {
+    "run": 3,
+    "wallSeconds": 66.6,
+    "gradleExit": 1,
+    "source": "xml",
+    "tests": 3,
+    "failed": [],
+    "staleArtifacts": false,
+    "artifactAgeAtArchive": {
+      "test-result.pb": 58.4,
+      "test-result-exit-code.txt": 58.4,
+      "TEST-moto g73 5G - 14.xml": 58.4
+    }
+  },
+  {
+    "run": 4,
+    "wallSeconds": 68.2,
+    "gradleExit": 1,
+    "source": "xml",
+    "tests": 3,
+    "failed": [],
+    "staleArtifacts": false,
+    "artifactAgeAtArchive": {
+      "test-result.pb": 57.7,
+      "test-result-exit-code.txt": 57.7,
+      "TEST-moto g73 5G - 14.xml": 57.7
+    }
+  },
+  {
+    "run": 5,
+    "wallSeconds": 70.1,
+    "gradleExit": 1,
+    "source": "xml",
+    "tests": 3,
+    "failed": [],
+    "staleArtifacts": false,
+    "artifactAgeAtArchive": {
+      "test-result.pb": 60.3,
+      "test-result-exit-code.txt": 60.3,
+      "TEST-moto g73 5G - 14.xml": 60.3
+    }
+  },
+  {
+    "run": 6,
+    "wallSeconds": 61.6,
+    "gradleExit": 1,
+    "source": "xml",
+    "tests": 3,
+    "failed": [],
+    "staleArtifacts": false,
+    "artifactAgeAtArchive": {
+      "test-result.pb": 51.4,
+      "test-result-exit-code.txt": 51.4,
+      "TEST-moto g73 5G - 14.xml": 51.4
+    }
+  },
+  {
+    "run": 7,
+    "wallSeconds": 72.4,
+    "gradleExit": 1,
+    "source": "xml",
+    "tests": 3,
+    "failed": [],
+    "staleArtifacts": false,
+    "artifactAgeAtArchive": {
+      "test-result.pb": 62.9,
+      "test-result-exit-code.txt": 62.9,
+      "TEST-moto g73 5G - 14.xml": 62.9
+    }
+  },
+  {
+    "run": 8,
+    "wallSeconds": 70.0,
+    "gradleExit": 1,
+    "source": "xml",
+    "tests": 3,
+    "failed": [],
+    "staleArtifacts": false,
+    "artifactAgeAtArchive": {
+      "test-result.pb": 59.8,
+      "test-result-exit-code.txt": 59.9,
+      "TEST-moto g73 5G - 14.xml": 59.8
+    }
+  },
+  {
+    "run": 9,
+    "wallSeconds": 68.7,
+    "gradleExit": 1,
+    "source": "xml",
+    "tests": 3,
+    "failed": [],
+    "staleArtifacts": false,
+    "artifactAgeAtArchive": {
+      "test-result.pb": 58.3,
+      "test-result-exit-code.txt": 58.3,
+      "TEST-moto g73 5G - 14.xml": 58.3
+    }
+  },
+  {
+    "run": 10,
+    "wallSeconds": 75.4,
+    "gradleExit": 1,
+    "source": "xml",
+    "tests": 3,
+    "failed": [],
+    "staleArtifacts": false,
+    "artifactAgeAtArchive": {
+      "test-result.pb": 63.9,
+      "test-result-exit-code.txt": 63.9,
+      "TEST-moto g73 5G - 14.xml": 63.9
+    }
+  },
+  {
+    "run": 11,
+    "wallSeconds": 68.2,
+    "gradleExit": 1,
+    "source": "xml",
+    "tests": 3,
+    "failed": [],
+    "staleArtifacts": false,
+    "artifactAgeAtArchive": {
+      "test-result.pb": 58.9,
+      "test-result-exit-code.txt": 58.9,
+      "TEST-moto g73 5G - 14.xml": 58.9
+    }
+  },
+  {
+    "run": 12,
+    "wallSeconds": 69.3,
+    "gradleExit": 1,
+    "source": "xml",
+    "tests": 3,
+    "failed": [],
+    "staleArtifacts": false,
+    "artifactAgeAtArchive": {
+      "test-result.pb": 59.0,
+      "test-result-exit-code.txt": 59.0,
+      "TEST-moto g73 5G - 14.xml": 59.0
+    }
+  },
+  {
+    "run": 13,
+    "wallSeconds": 73.6,
+    "gradleExit": 1,
+    "source": "xml",
+    "tests": 3,
+    "failed": [],
+    "staleArtifacts": false,
+    "artifactAgeAtArchive": {
+      "test-result.pb": 64.6,
+      "test-result-exit-code.txt": 64.6,
+      "TEST-moto g73 5G - 14.xml": 64.6
+    }
+  },
+  {
+    "run": 14,
+    "wallSeconds": 71.9,
+    "gradleExit": 1,
+    "source": "xml",
+    "tests": 3,
+    "failed": [],
+    "staleArtifacts": false,
+    "artifactAgeAtArchive": {
+      "test-result.pb": 62.4,
+      "test-result-exit-code.txt": 62.4,
+      "TEST-moto g73 5G - 14.xml": 62.4
+    }
+  },
+  {
+    "run": 15,
+    "wallSeconds": 69.4,
+    "gradleExit": 1,
+    "source": "xml",
+    "tests": 3,
+    "failed": [],
+    "staleArtifacts": false,
+    "artifactAgeAtArchive": {
+      "test-result.pb": 58.4,
+      "test-result-exit-code.txt": 58.4,
+      "TEST-moto g73 5G - 14.xml": 58.4
+    }
+  },
+  {
+    "run": 16,
+    "wallSeconds": 65.0,
+    "gradleExit": 1,
+    "source": "xml",
+    "tests": 3,
+    "failed": [],
+    "staleArtifacts": false,
+    "artifactAgeAtArchive": {
+      "test-result.pb": 55.4,
+      "test-result-exit-code.txt": 55.4,
+      "TEST-moto g73 5G - 14.xml": 55.4
+    }
+  },
+  {
+    "run": 17,
+    "wallSeconds": 68.8,
+    "gradleExit": 1,
+    "source": "xml",
+    "tests": 3,
+    "failed": [],
+    "staleArtifacts": false,
+    "artifactAgeAtArchive": {
+      "test-result.pb": 60.5,
+      "test-result-exit-code.txt": 60.5,
+      "TEST-moto g73 5G - 14.xml": 60.5
+    }
+  },
+  {
+    "run": 18,
+    "wallSeconds": 63.8,
+    "gradleExit": 1,
+    "source": "xml",
+    "tests": 3,
+    "failed": [],
+    "staleArtifacts": false,
+    "artifactAgeAtArchive": {
+      "test-result.pb": 56.4,
+      "test-result-exit-code.txt": 56.4,
+      "TEST-moto g73 5G - 14.xml": 56.4
+    }
+  },
+  {
+    "run": 19,
+    "wallSeconds": 61.2,
+    "gradleExit": 1,
+    "source": "xml",
+    "tests": 3,
+    "failed": [],
+    "staleArtifacts": false,
+    "artifactAgeAtArchive": {
+      "test-result.pb": 53.9,
+      "test-result-exit-code.txt": 53.9,
+      "TEST-moto g73 5G - 14.xml": 53.9
+    }
+  },
+  {
+    "run": 20,
+    "wallSeconds": 67.4,
+    "gradleExit": 1,
+    "source": "xml",
+    "tests": 3,
+    "failed": [],
+    "staleArtifacts": false,
+    "artifactAgeAtArchive": {
+      "test-result.pb": 57.0,
+      "test-result-exit-code.txt": 57.0,
+      "TEST-moto g73 5G - 14.xml": 57.0
+    }
+  }
+]

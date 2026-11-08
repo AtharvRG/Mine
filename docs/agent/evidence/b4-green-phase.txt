@@ -1,7 +1,7 @@
 === B4 TDD GREEN PHASE: testPostImport_RebuildsMsgChunkForSearch ===
 Command: ./gradlew :app:connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=com.anchor.mine.export.ExportTest"
 Device: moto g73 5G - 14
-Gradle: BUILD FAILED ("There were failing tests") — KNOWN teardown artifact on this device (see prior segments); authoritative XML below.
+Gradle: BUILD FAILED ("There were failing tests") — KNOWN AGP 9.4.0 / UTP 32.4.0 exit-code defect (D-123), NOT a teardown artifact; authoritative XML below.
 
 XML: app/build/outputs/androidTest-results/connected/debug/TEST-moto g73 5G - 14.xml
 tests="7" failures="0" errors="0"  (timestamp 2026-11-06T06:43:56Z = run time)

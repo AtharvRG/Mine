@@ -45,18 +45,7 @@ class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(5) {
         db.execSQL("CREATE TABLE checkin_state (kind TEXT NOT NULL, day_key TEXT NOT NULL, status TEXT NOT NULL, msg_id TEXT, scheduled_for INTEGER, delivered_at INTEGER, PRIMARY KEY (kind, day_key))")
         db.execSQL("CREATE TABLE quote_slot (slot TEXT NOT NULL, day_key TEXT NOT NULL, text TEXT NOT NULL, generated_at INTEGER NOT NULL, state_hash TEXT, source TEXT NOT NULL, regen_count INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (slot, day_key))")
 
-        db.execSQL("CREATE INDEX idx_node_status_due ON node(status, due_at)")
-        db.execSQL("CREATE INDEX idx_raw_event_target ON raw_event(target_type, target_id)")
-        db.execSQL("CREATE INDEX idx_raw_message_ts ON raw_message(ts_utc)")
-        db.execSQL("CREATE INDEX idx_raw_message_day ON raw_message(day_key, ts_utc)")
-        db.execSQL("CREATE INDEX idx_reminder_fire ON reminder(fire_at)")
-        db.execSQL("CREATE INDEX idx_edge_src_type ON edge(src_id, type)")
-        db.execSQL("CREATE INDEX idx_edge_dst_type ON edge(dst_id, type)")
-
-        db.execSQL("CREATE VIRTUAL TABLE node_fts USING fts5(title, body, content='node', content_rowid='rowid')")
-        db.execSQL("CREATE VIRTUAL TABLE soul_fts USING fts5(statement, content='soul_fact', content_rowid='rowid')")
-        db.execSQL("CREATE VIRTUAL TABLE msg_chunk_fts USING fts5(text, content='msg_chunk', content_rowid='rowid')")
-
+        createIndexes(db)
         createTriggers(db)
     }
 
@@ -98,6 +87,10 @@ class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(5) {
                 db.execSQL("ALTER TABLE proposal ADD COLUMN payload TEXT")
             }
         }
+        // T19: an upgraded device must end up with the same indexes and triggers as a fresh
+        // install. Indexes were previously created in onCreate only, so a device upgraded from v1
+        // never got idx_reminder_fire - the index that makes the R-26 `ORDER BY fire_at` cheap.
+        createIndexes(db)
         createTriggers(db)
     }
 
@@ -107,7 +100,53 @@ class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(5) {
     }
 
     companion object {
+        private val INDEXES = listOf(
+            "CREATE INDEX IF NOT EXISTS idx_node_status_due ON node(status, due_at)",
+            "CREATE INDEX IF NOT EXISTS idx_raw_event_target ON raw_event(target_type, target_id)",
+            "CREATE INDEX IF NOT EXISTS idx_raw_message_ts ON raw_message(ts_utc)",
+            "CREATE INDEX IF NOT EXISTS idx_raw_message_day ON raw_message(day_key, ts_utc)",
+            "CREATE INDEX IF NOT EXISTS idx_reminder_fire ON reminder(fire_at)",
+            "CREATE INDEX IF NOT EXISTS idx_edge_src_type ON edge(src_id, type)",
+            "CREATE INDEX IF NOT EXISTS idx_edge_dst_type ON edge(dst_id, type)"
+        )
+
+        /** Every trigger created by [createTriggers], in drop order. */
+        private val TRIGGER_NAMES = listOf(
+            "trg_raw_msg_no_update",
+            "trg_raw_msg_no_delete",
+            "trg_raw_evt_no_update",
+            "trg_raw_evt_no_delete",
+            "trg_node_fts_insert",
+            "trg_node_fts_delete",
+            "trg_node_fts_update",
+            "trg_soul_fts_insert",
+            "trg_soul_fts_delete",
+            "trg_soul_fts_update",
+            "trg_msg_chunk_fts_insert",
+            "trg_msg_chunk_fts_delete",
+            "trg_msg_chunk_fts_update"
+        )
+
+        /** FTS tables backing the triggers. Created by [createTriggers] on every open. */
+        private val FTS_TABLES = listOf(
+            "CREATE VIRTUAL TABLE IF NOT EXISTS node_fts USING fts5(title, body, content='node', content_rowid='rowid')",
+            "CREATE VIRTUAL TABLE IF NOT EXISTS soul_fts USING fts5(statement, content='soul_fact', content_rowid='rowid')",
+            "CREATE VIRTUAL TABLE IF NOT EXISTS msg_chunk_fts USING fts5(text, content='msg_chunk', content_rowid='rowid')"
+        )
+
+        fun createIndexes(db: SupportSQLiteDatabase) {
+            for (sql in INDEXES) db.execSQL(sql)
+        }
+
         fun createTriggers(db: SupportSQLiteDatabase) {
+            // T19: every trigger below was `CREATE TRIGGER IF NOT EXISTS`, so a device that had
+            // already created a trigger kept the OLD body forever - editing the SQL here never
+            // reached an upgraded install. Dropping first makes this function authoritative: what
+            // is written here is what runs, on fresh installs and upgrades alike.
+            for (trigger in TRIGGER_NAMES) {
+                db.execSQL("DROP TRIGGER IF EXISTS $trigger")
+            }
+            for (sql in FTS_TABLES) db.execSQL(sql)
             db.execSQL("""
                 CREATE TRIGGER IF NOT EXISTS trg_raw_msg_no_update BEFORE UPDATE ON raw_message
                 BEGIN

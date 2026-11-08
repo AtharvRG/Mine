@@ -1,0 +1,23 @@
+11-07 03:28:03.033 14808 14886 I TestRunner: started: testAlarmClock_NextAlarmClockVerification(com.anchor.mine.alarms.AlarmSelfTest)
+11-07 03:28:03.035 17985 12803 D NotificationFeature: Mine Mine Test Reminder
+11-07 03:28:03.041  1310  1310 I FPSGO   : fpsgo_boost_sched_idle_prefer:1
+11-07 03:28:03.041  1310  1310 I mtkpower_client: perf_lock_acq, hdl:0, dur:0, num:2, tid:1310
+11-07 03:28:03.043  1167  1252 I libPowerHal: [perfLockAcq] idx:0 hdl:159572 hint:-1 pid:1310 duration:0 lock_user:fpsgo => ret_hdl:159572
+11-07 03:28:03.043  1167  1252 I libPowerHal: [PE] fpsgo update cmd:1404500 param:1
+11-07 03:28:03.044  1310  1310 I mtkpower_client: ret_hdl:159572
+11-07 03:28:03.044  1310  1310 I FPSGO   : perfLockAcq hdl:159572
+11-07 03:28:03.044  1310  1310 I FPSGO   : fpsgo_boost_sched_rate_ns:0
+11-07 03:28:03.044  1310  1310 I mtkpower_client: perf_lock_acq, hdl:0, dur:0, num:12, tid:1310
+11-07 03:28:03.044  1830  2855 I MediaFocusControl: requestAudioFocus() from uid/pid 10288/2298 AA=USAGE_NOTIFICATION/CONTENT_TYPE_SONIFICATION clientId=android.media.AudioManager@4a23799 callingPack=com.android.systemui req=3 flags=0x0 sdk=34
+11-07 03:28:03.045  1167  1252 I libPowerHal: cmdSetting - unknown cmd:1438500, scmd:(null) ,param_1:0
+11-07 03:28:03.045  1167  1252 I libPowerHal: cmdSetting - unknown cmd:1438800, scmd:(null) ,param_1:0
+11-07 03:28:03.045  1167  1252 I libPowerHal: [perfLockAcq] idx:1 hdl:159573 hint:-1 pid:1310 duration:0 lock_user:fpsgo => ret_hdl:159573
+11-07 03:28:03.045  1830  2855 D MediaFocusControl: mMultiAudioFocusEnabled: false, aa.mContentType: 4, aa.mUsage: 5, aa.mFlags: 0, callingPackageName: com.android.systemui, isDesktopOrMobileUiConnected: false
+11-07 03:28:03.045  1167  1252 I libPowerHal: [PE] fpsgo update cmd:1438300, param:0
+11-07 03:28:03.045  1830  2855 I AudioService.FadeOutManager: unfadeOutUid() uid:10288
+11-07 03:28:03.045  1167  1252 I libPowerHal: [PE] fpsgo update cmd:1438400, param:0
+11-07 03:28:03.045  1167  1252 I libPowerHal: [PE] fpsgo update cmd:1438600, param:0
+11-07 03:28:03.045  1167  1252 I libPowerHal: [PE] fpsgo update cmd:1438700, param:0
+11-07 03:28:03.046  1310  1310 I mtkpower_client: ret_hdl:159573
+11-07 03:28:03.046  1310  1310 I FPSGO   : perfLockAcq hdl:159573
+11-07 03:28:03.066 14808 14886 I TestRunner: finished: testAlarmClock_NextAlarmClockVerification(com.anchor.mine.alarms.AlarmSelfTest)

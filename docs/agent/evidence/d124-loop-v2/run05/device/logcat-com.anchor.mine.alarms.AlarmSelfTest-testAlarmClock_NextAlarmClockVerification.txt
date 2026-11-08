@@ -1,0 +1,9 @@
+11-07 03:15:16.853  7733  7750 I TestRunner: started: testAlarmClock_NextAlarmClockVerification(com.anchor.mine.alarms.AlarmSelfTest)
+11-07 03:15:16.856  1830  4476 I MediaFocusControl: requestAudioFocus() from uid/pid 10288/2298 AA=USAGE_NOTIFICATION/CONTENT_TYPE_SONIFICATION clientId=android.media.AudioManager@3cbc064 callingPack=com.android.systemui req=3 flags=0x0 sdk=34
+11-07 03:15:16.857  1830  4476 D MediaFocusControl: mMultiAudioFocusEnabled: false, aa.mContentType: 4, aa.mUsage: 5, aa.mFlags: 0, callingPackageName: com.android.systemui, isDesktopOrMobileUiConnected: false
+11-07 03:15:16.857  1830  4476 I AudioService.FadeOutManager: unfadeOutUid() uid:10288
+11-07 03:15:16.873  2298  2298 W TouchableRegionManager: onHeadsUpPinnedModeChanged
+11-07 03:15:16.880  2298  2298 W WindowOnBackDispatcher: OnBackInvokedCallback is not enabled for the application.
+11-07 03:15:16.880  2298  2298 W WindowOnBackDispatcher: Set 'android:enableOnBackInvokedCallback="true"' in the application manifest.
+11-07 03:15:16.880  2298  2298 D CentralSurfaces: Received new disable state: enaihbcrso.qingr (unchanged)
+11-07 03:15:16.887  7733  7750 I TestRunner: finished: testAlarmClock_NextAlarmClockVerification(com.anchor.mine.alarms.AlarmSelfTest)

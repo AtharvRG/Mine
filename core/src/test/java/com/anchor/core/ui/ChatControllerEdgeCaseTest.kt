@@ -699,6 +699,42 @@ class ChatControllerEdgeCaseTest {
     }
 
     @Test
+    fun testReconcileAlarms_OverdueReminder_IsSurfacedToTheUser() = runBlocking {
+        // H-01 (R-01): the reconciler now reports a reminder that came due while the device was off.
+        // A report nobody reads is still a silent miss, so the controller must surface it.
+        val storage = SharedFakeStorage().apply { settings["key"] = "test-key" }
+        val clock = FakeClock(1_000_000L)
+        storage.saveReminder(Reminder("r_overdue", "Call the dentist", 400_000L)) // 10 minutes overdue
+
+        val scheduler = object : AlarmScheduler {
+            override val lastFiredId = MutableStateFlow<String?>(null)
+            override fun schedule(reminder: Reminder) = com.anchor.core.alarms.ScheduleResult.Armed
+            override fun cancel(reminderId: String) {}
+        }
+
+        val controller = ChatController(
+            storage,
+            ProviderOrchestrator(RateLimiter { clock.now() }, object : HttpTransport { override suspend fun postStream(target: Target, body: String): Flow<String> = flow{} }),
+            com.anchor.core.context.ContextBuilder(storage, clock, DateResolver(clock), com.anchor.core.nudge.CheckinBuilder(storage, clock, DateResolver(clock))),
+            Gateway(storage, Resolver(), DateResolver(clock), clock),
+            scheduler,
+            kotlinx.coroutines.CoroutineScope(UnconfinedTestDispatcher()),
+            UnconfinedTestDispatcher(),
+            clock
+        )
+
+        controller.onAction(UiAction.RefreshStats)
+        waitUntil { controller.state.value.missedReminders.isNotEmpty() }
+
+        val missed = controller.state.value.missedReminders.single()
+        assertEquals("r_overdue", missed.reminderId)
+        assertEquals("Call the dentist", missed.text)
+        assertEquals(400_000L, missed.scheduledFor)
+        assertEquals("A reported miss is not a scheduling failure", null, controller.state.value.schedulingError)
+        assertEquals(0, controller.state.value.schedulingFailedCount)
+    }
+
+    @Test
     fun testExtractReplyFromJsonStream_ReturnsNullUntilRealReplyExists() {
         assertEquals(null, ChatController.extractReplyFromJsonStream(""))
         assertEquals(null, ChatController.extractReplyFromJsonStream("   "))

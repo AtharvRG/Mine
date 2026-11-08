@@ -131,6 +131,19 @@ class AndroidStorage(private val dbHelper: SupportSQLiteOpenHelper) : Storage {
         dbHelper.writableDatabase.execSQL("INSERT OR REPLACE INTO app_meta (\"key\", value) VALUES (?, ?)", arrayOf(key, value))
     }
 
+    override suspend fun saveSettings(values: Map<String, String>) = withContext(ioDispatcher) {
+        val db = dbHelper.writableDatabase
+        db.beginTransaction()
+        try {
+            values.forEach { (key, value) ->
+                db.execSQL("INSERT OR REPLACE INTO app_meta (\"key\", value) VALUES (?, ?)", arrayOf(key, value))
+            }
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
+    }
+
     override suspend fun getEffectiveDayRule(tsUtc: Long): DayRule = withContext(ioDispatcher) {
         dbHelper.readableDatabase.query(
             "SELECT id, effective_from, start_minute, end_minute, tz_id, created_at FROM day_rule WHERE effective_from <= ? ORDER BY effective_from DESC LIMIT 1",
@@ -284,13 +297,20 @@ class AndroidStorage(private val dbHelper: SupportSQLiteOpenHelper) : Storage {
 
     override suspend fun getStaleNodes(now: Long, cutoffMs: Long): List<Node> = withContext(ioDispatcher) {
         val cutoff = now - cutoffMs
-        val sql = "SELECT id, type, title, status, due_at, created_at, updated_at, closed_at, priority, severity, attrs, local_only FROM node WHERE (status = 'active' OR status = 'in_progress' OR status = 'paused') AND (created_at > 0 OR updated_at > 0) AND (CASE WHEN updated_at > created_at THEN updated_at ELSE created_at END) < CAST(? AS INTEGER) AND (due_at IS NULL OR due_at <= CAST(? AS INTEGER)) ORDER BY created_at DESC"
+        // D-03: local_only nodes are excluded here for the same reason every other recall
+        // path excludes them; SharedFakeStorage already did, so only the device leaked.
+        val sql = "SELECT id, type, title, status, due_at, created_at, updated_at, closed_at, priority, severity, attrs, local_only FROM node WHERE (status = 'active' OR status = 'in_progress' OR status = 'paused') AND (local_only IS NULL OR local_only = 0) AND (created_at > 0 OR updated_at > 0) AND (CASE WHEN updated_at > created_at THEN updated_at ELSE created_at END) < CAST(? AS INTEGER) AND (due_at IS NULL OR due_at <= CAST(? AS INTEGER)) ORDER BY created_at DESC"
         queryNodes(sql, arrayOf(cutoff.toString(), now.toString()))
     }
 
-    override suspend fun getActiveReminders(): List<Reminder> = withContext(ioDispatcher) {
+    // R-25: the caller's clock decides what is "active"; reading the wall clock here made the
+    // device disagree with every other clock-aware path (and made the query untestable).
+    // R-26: bounded and in fire order, so the Home list shows the soonest reminders first and the
+    // read cost is capped. The bound is far above any list a person reads; it exists so the query
+    // terminates on a pathological history, not to shape the product.
+    override suspend fun getActiveReminders(now: Long, limit: Int): List<Reminder> = withContext(ioDispatcher) {
         val list = mutableListOf<Reminder>()
-        dbHelper.readableDatabase.query("SELECT id, text, fire_at, node_id, tier FROM reminder WHERE fire_at > ?", arrayOf(System.currentTimeMillis())).use {
+        dbHelper.readableDatabase.query("SELECT id, text, fire_at, node_id, tier FROM reminder WHERE fire_at > ? ORDER BY fire_at ASC LIMIT ?", arrayOf(now.toString(), limit.toString())).use {
             while (it.moveToNext()) {
                 val tierStr = if (it.isNull(4)) "alarm" else it.getString(4)
                 val tier = if (tierStr.equals("gentle", ignoreCase = true)) AlarmTier.GENTLE else AlarmTier.ALARM
@@ -300,9 +320,11 @@ class AndroidStorage(private val dbHelper: SupportSQLiteOpenHelper) : Storage {
         list
     }
 
-    override suspend fun getPendingReminders(): List<Reminder> = withContext(ioDispatcher) {
+    // R-26: ORDER BY fire_at walks idx_reminder_fire instead of sorting the whole table, and the
+    // LIMIT means the cost of a sweep no longer grows with reminder history.
+    override suspend fun getPendingReminders(limit: Int): List<Reminder> = withContext(ioDispatcher) {
         val list = mutableListOf<Reminder>()
-        dbHelper.readableDatabase.query("SELECT id, text, fire_at, node_id, tier FROM reminder").use {
+        dbHelper.readableDatabase.query("SELECT id, text, fire_at, node_id, tier FROM reminder ORDER BY fire_at ASC LIMIT ?", arrayOf(limit.toString())).use {
             while (it.moveToNext()) {
                 val tierStr = if (it.isNull(4)) "alarm" else it.getString(4)
                 val tier = if (tierStr.equals("gentle", ignoreCase = true)) AlarmTier.GENTLE else AlarmTier.ALARM
@@ -329,7 +351,7 @@ class AndroidStorage(private val dbHelper: SupportSQLiteOpenHelper) : Storage {
                     it.getString(2).split(",").map { idStr -> ProposalOption(idStr, "Unknown") }
                 }
                 val payload = if (it.isNull(4)) null else it.getString(4)
-                Proposal(id, it.getString(0), IntentType.valueOf(it.getString(1)), opts, it.getString(3), payload)
+                Proposal(id, it.getString(0), parseIntentOrCreate(it.getString(1)), opts, it.getString(3), payload)
             } else null
         }
     }
@@ -386,7 +408,7 @@ class AndroidStorage(private val dbHelper: SupportSQLiteOpenHelper) : Storage {
                     it.getString(3).split(",").map { id -> ProposalOption(id, "Unknown") }
                 }
                 val payload = if (it.isNull(5)) null else it.getString(5)
-                list.add(Proposal(it.getString(0), it.getString(1), IntentType.valueOf(it.getString(2)), opts, it.getString(4), payload))
+                list.add(Proposal(it.getString(0), it.getString(1), parseIntentOrCreate(it.getString(2)), opts, it.getString(4), payload))
             }
         }
         list
@@ -579,8 +601,34 @@ class AndroidStorage(private val dbHelper: SupportSQLiteOpenHelper) : Storage {
         db.beginTransaction()
         try {
             val attrs = if (node.pinned) "{\"pinned\":true}" else null
-            db.execSQL("UPDATE node SET status = ?, due_at = ?, closed_at = ?, priority = ?, severity = ?, attrs = ?, updated_at = ? WHERE id = ?",
-                arrayOf<Any?>(node.status, node.dueAt, node.closedAt, node.priority, node.severity, attrs, node.updatedAt, node.id))
+            val localOnlyVal = if (node.localOnly) 1 else 0
+            // T-01: the column list must cover every mutable field the caller can change.
+            // Omitting title/type/local_only silently dropped renames on disk while
+            // SharedFakeStorage (whole-object replace) kept them, so core tests passed.
+            // R-05: a zero-row update means the node vanished between the caller's read and this
+            // write. Committing the event anyway produced a receipt for a change that never
+            // happened. executeUpdateDelete returns the affected count directly, so the guard
+            // needs no separate SELECT changes() round trip; throwing rolls back the whole
+            // transaction, event included.
+            // Bound through locals: Node is declared in :core, so its properties cannot be
+            // smart-cast here.
+            val dueAt = node.dueAt
+            val closedAt = node.closedAt
+            val updated = db.compileStatement("UPDATE node SET type = ?, title = ?, status = ?, due_at = ?, closed_at = ?, priority = ?, severity = ?, attrs = ?, local_only = ?, updated_at = ? WHERE id = ?").use { stmt ->
+                stmt.bindString(1, node.type)
+                stmt.bindString(2, node.title)
+                stmt.bindString(3, node.status)
+                if (dueAt == null) stmt.bindNull(4) else stmt.bindLong(4, dueAt)
+                if (closedAt == null) stmt.bindNull(5) else stmt.bindLong(5, closedAt)
+                stmt.bindLong(6, node.priority.toLong())
+                stmt.bindLong(7, node.severity.toLong())
+                if (attrs == null) stmt.bindNull(8) else stmt.bindString(8, attrs)
+                stmt.bindLong(9, localOnlyVal.toLong())
+                stmt.bindLong(10, node.updatedAt)
+                stmt.bindString(11, node.id)
+                stmt.executeUpdateDelete()
+            }
+            if (updated != 1) throw IllegalStateException("updateNodeAndCommit: no row for node ${node.id}")
 
             deleteReminderId?.let { db.execSQL("DELETE FROM reminder WHERE id = ?", arrayOf(it)) }
 
@@ -609,9 +657,12 @@ class AndroidStorage(private val dbHelper: SupportSQLiteOpenHelper) : Storage {
         db.beginTransaction()
         try {
             // FIX: Restore due_at, priority, severity, and attrs so snapshots roll back accurately
+            // T-02: the undo snapshot is a whole Node, so the restore must be whole too — a
+            // renamed node rolled back to its old status but kept the new title.
             val attrs = if (node.pinned) "{\"pinned\":true}" else null
-            db.execSQL("UPDATE node SET status = ?, due_at = ?, closed_at = ?, priority = ?, severity = ?, attrs = ?, updated_at = ? WHERE id = ?",
-                arrayOf<Any?>(node.status, node.dueAt, node.closedAt, node.priority, node.severity, attrs, node.updatedAt, node.id))
+            val localOnlyVal = if (node.localOnly) 1 else 0
+            db.execSQL("UPDATE node SET type = ?, title = ?, status = ?, due_at = ?, closed_at = ?, priority = ?, severity = ?, attrs = ?, local_only = ?, updated_at = ? WHERE id = ?",
+                arrayOf<Any?>(node.type, node.title, node.status, node.dueAt, node.closedAt, node.priority, node.severity, attrs, localOnlyVal, node.updatedAt, node.id))
             restoreReminder?.let { db.execSQL("INSERT OR REPLACE INTO reminder (id, node_id, text, fire_at, tier) VALUES (?, ?, ?, ?, ?)", arrayOf<Any?>(it.id, it.nodeId, it.text, it.fireAtMillis, it.tier.name.lowercase())) }
             db.execSQL("INSERT INTO raw_event (op_id, target_id, op_type, target_type, ts_utc, device_id, actor, undo_of, before_json, after_json, cause_msg_id) VALUES (?, ?, ?, ?, ?, ?, 'user', ?, ?, ?, ?)",
                 arrayOf<Any?>(event.opId, event.targetId, event.opType, event.targetType, event.tsUtc, deviceId, event.undoOf, event.beforeJson, event.afterJson, event.causeMsgId))
@@ -701,8 +752,34 @@ class AndroidStorage(private val dbHelper: SupportSQLiteOpenHelper) : Storage {
                     results.add(SearchResult(it.getString(0), "chat", it.getString(1), it.getString(2)))
                 }
             }
-        } catch (_: Exception) {}
+        } catch (e: Exception) {
+            // R-23: an empty result is indistinguishable from a genuine miss, so a broken index
+            // would make the model answer "No results found." forever. Record the failure.
+            logDiagError("searchMemoryFts failed for query '$query': ${e.message}")
+        }
         return@withContext results.take(safeLimit)
+    }
+
+    /**
+     * R-24: a stored intent this build does not know (written by a newer build, or a downgrade)
+     * must not make the proposal unreadable. Degrade to CREATE and say so in diagnostics.
+     */
+    private fun parseIntentOrCreate(raw: String?): IntentType =
+        try {
+            IntentType.valueOf(raw ?: "")
+        } catch (e: IllegalArgumentException) {
+            logDiagError("Unknown stored proposal intent '$raw'; degraded to CREATE")
+            IntentType.CREATE
+        }
+
+    /** Best-effort diagnostics write; a failing log must never turn into a failing query. */
+    private fun logDiagError(msg: String) {
+        runCatching {
+            dbHelper.writableDatabase.execSQL(
+                "INSERT INTO diag_log (ts, level, tag, msg) VALUES (?, 'ERROR', 'AndroidStorage', ?)",
+                arrayOf<Any>(System.currentTimeMillis(), msg.take(500))
+            )
+        }
     }
 
     override suspend fun getProactiveState(): ProactiveState = withContext(ioDispatcher) {
@@ -800,6 +877,16 @@ class AndroidStorage(private val dbHelper: SupportSQLiteOpenHelper) : Storage {
             } else null
         }
     }
+
+    override suspend fun getReminderById(id: String): Reminder? = withContext(ioDispatcher) {
+        dbHelper.readableDatabase.query("SELECT id, text, fire_at, node_id, tier FROM reminder WHERE id = ?", arrayOf(id)).use {
+            if (it.moveToFirst()) {
+                val tierStr = if (it.isNull(4)) "alarm" else it.getString(4)
+                val tier = if (tierStr.equals("gentle", ignoreCase = true)) AlarmTier.GENTLE else AlarmTier.ALARM
+                Reminder(it.getString(0), it.getString(1), it.getLong(2), if (it.isNull(3)) null else it.getString(3), tier)
+            } else null
+        }
+    }
     
     override suspend fun clearAlarmRegistry() = withContext(ioDispatcher) {
         dbHelper.writableDatabase.execSQL("DELETE FROM alarm_registry")
@@ -808,6 +895,24 @@ class AndroidStorage(private val dbHelper: SupportSQLiteOpenHelper) : Storage {
     override suspend fun hasReminderFire(reminderId: String, outcome: String): Boolean = withContext(ioDispatcher) {
         dbHelper.readableDatabase.query("SELECT 1 FROM reminder_fire WHERE reminder_id = ? AND outcome = ?", arrayOf(reminderId, outcome)).use {
             it.moveToFirst()
+        }
+    }
+
+    override suspend fun getReminderFire(reminderId: String, outcome: String): ReminderFire? = withContext(ioDispatcher) {
+        dbHelper.readableDatabase.query(
+            "SELECT id, reminder_id, fired_at, scheduled_for, latency_ms, outcome FROM reminder_fire WHERE reminder_id = ? AND outcome = ? ORDER BY fired_at DESC LIMIT 1",
+            arrayOf(reminderId, outcome)
+        ).use {
+            if (it.moveToFirst()) {
+                ReminderFire(
+                    id = it.getString(0),
+                    reminderId = it.getString(1),
+                    firedAt = it.getLong(2),
+                    scheduledFor = it.getLong(3),
+                    latencyMs = it.getInt(4),
+                    outcome = it.getString(5)
+                )
+            } else null
         }
     }
 
@@ -1013,11 +1118,13 @@ class AndroidStorage(private val dbHelper: SupportSQLiteOpenHelper) : Storage {
         list
     }
 
-    override suspend fun getRemindersBetween(startMs: Long, endMs: Long): List<Reminder> = withContext(ioDispatcher) {
+    // R-26: the range predicate bounds the rows scanned; the LIMIT bounds the rows returned. A day
+    // or week never approaches it — reaching it means the range itself was wrong.
+    override suspend fun getRemindersBetween(startMs: Long, endMs: Long, limit: Int): List<Reminder> = withContext(ioDispatcher) {
         val list = mutableListOf<Reminder>()
         dbHelper.readableDatabase.query(
-            "SELECT id, text, fire_at, node_id, tier FROM reminder WHERE fire_at >= ? AND fire_at <= ? ORDER BY fire_at ASC",
-            arrayOf(startMs, endMs)
+            "SELECT id, text, fire_at, node_id, tier FROM reminder WHERE fire_at >= ? AND fire_at <= ? ORDER BY fire_at ASC LIMIT ?",
+            arrayOf<Any>(startMs, endMs, limit)
         ).use {
             while (it.moveToNext()) {
                 val tierStr = if (it.isNull(4)) "alarm" else it.getString(4)
@@ -1028,8 +1135,8 @@ class AndroidStorage(private val dbHelper: SupportSQLiteOpenHelper) : Storage {
         list
     }
 
-    override suspend fun getRemindersForDay(startOfDayMs: Long, endOfDayMs: Long): List<Reminder> =
-        getRemindersBetween(startOfDayMs, endOfDayMs)
+    override suspend fun getRemindersForDay(startOfDayMs: Long, endOfDayMs: Long, limit: Int): List<Reminder> =
+        getRemindersBetween(startOfDayMs, endOfDayMs, limit)
 
     override suspend fun getQuoteSlot(slot: QuoteSlot, dayKey: String): Quote? = withContext(ioDispatcher) {
         dbHelper.readableDatabase.query(

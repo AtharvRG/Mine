@@ -1,0 +1,11 @@
+<?xml version='1.0' encoding='UTF-8' ?>
+<testsuites tests="1" failures="1" errors="0" skipped="0" time="0.000" timestamp="2026-11-06T21:04:49" hostname="localhost">
+  <testsuite name="com.anchor.mine.alarms.AlarmSelfTest" tests="1" failures="1" errors="0" skipped="0" time="3.213" timestamp="2026-11-06T21:04:49" hostname="localhost">
+    <properties>
+      <property name="device" value="10.175.15.5_5555" />
+    </properties>
+    <testcase name="testGentleReminderFires_SetsFlag" classname="com.anchor.mine.alarms.AlarmSelfTest" time="3.213">
+      <failure></failure>
+    </testcase>
+  </testsuite>
+</testsuites>

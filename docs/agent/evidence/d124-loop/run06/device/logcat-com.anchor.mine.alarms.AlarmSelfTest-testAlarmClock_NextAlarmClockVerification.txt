@@ -1,0 +1,6 @@
+11-07 02:47:49.477 17354 17379 I TestRunner: started: testAlarmClock_NextAlarmClockVerification(com.anchor.mine.alarms.AlarmSelfTest)
+11-07 02:47:49.492  1830  4014 I MediaFocusControl: requestAudioFocus() from uid/pid 10288/2298 AA=USAGE_NOTIFICATION/CONTENT_TYPE_SONIFICATION clientId=android.media.AudioManager@f98244d callingPack=com.android.systemui req=3 flags=0x0 sdk=34
+11-07 02:47:49.493  1830  4014 D MediaFocusControl: mMultiAudioFocusEnabled: false, aa.mContentType: 4, aa.mUsage: 5, aa.mFlags: 0, callingPackageName: com.android.systemui, isDesktopOrMobileUiConnected: false
+11-07 02:47:49.493  1830  4014 I AudioService.FadeOutManager: unfadeOutUid() uid:10288
+11-07 02:47:49.510  2298  2298 I KgdSliceProvider: The weather info has not change, does not need to be updated. mTempF=69 iconNumber=37 celsius=true
+11-07 02:47:49.512 17354 17379 I TestRunner: finished: testAlarmClock_NextAlarmClockVerification(com.anchor.mine.alarms.AlarmSelfTest)

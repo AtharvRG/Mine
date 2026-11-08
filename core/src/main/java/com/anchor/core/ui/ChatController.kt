@@ -88,52 +88,23 @@ class ChatController(
 
     init {
         coroutineScope.launch(defaultDispatcher) {
-            reconcileAlarms(force = true)
-
-            val proposals = storage.getOpenProposals()
-            val soulFacts = storage.getProposedSoulFacts()
-            val stale = storage.getStaleNodes(clock.now())
-            val relState = storage.getReliabilityState()
-            // B3: derive a human-readable banner from the structured issues,
-            // never surface the raw issuesJson string to the user.
-            val schedError = if (relState.score == "at_risk") {
-                val issues = AlarmReconciler.parseIssues(relState.issuesJson)
-                if (issues.isEmpty()) "Alarms or notifications at risk"
-                else issues.joinToString("; ") { it.error }
-            } else null
-            val recentReceipts = loadReceipts()
-            val priorityList = storage.getHomePriorityList(clock.now())
-            val closedNodes = storage.getRecentlyClosed(clock.now())
-            val dayMs = 24L * 3600 * 1000L
-            val nowMs = clock.now()
-            val recentlyClosed = closedNodes.map { node ->
-                val event = storage.getLatestEventForTarget("node", node.id)
-                val undoValid = event != null && (nowMs - event.tsUtc < dayMs) && !storage.hasUndo(event.opId)
-                RecentlyClosed(node, undoValid, if (undoValid) event.opId else null)
+            // H-07 (R-08): everything below is the only thing that ever paints the first frame.
+            // Uncaught, a storage failure killed this coroutine and left the default UiState on
+            // screen forever — an empty chat with no banner, indistinguishable from a slow load,
+            // and nothing retried. Report it through globalError, which MainActivity renders as a
+            // full-screen message, and rethrow CancellationException untouched.
+            try {
+                loadInitialState()
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Throwable) {
+                _state.update {
+                    it.copy(
+                        globalError = "Could not load your data: ${e.message ?: e.javaClass.simpleName}",
+                        isChatLoading = false
+                    )
+                }
             }
-            val proactive = storage.getProactiveState()
-            val activeThread = proactive.openThreadMsgId?.let { ActiveThread(it, proactive.threadOpenedAt ?: 0L) }
-
-            _state.update { it.copy(
-                receipts = recentReceipts + currentTransientReceipts(),
-                activeReminders = storage.getActiveReminders(),
-                chatMessages = if (it.isChatLoading) it.chatMessages else storage.getRecentMessages(30),
-                providerEndpoint = storage.getSetting("ep") ?: "https://api.openai.com/v1/chat/completions",
-                providerKey = storage.getSetting("key") ?: "",
-                providerModel = storage.getSetting("mod") ?: "gpt-4o-mini",
-                debugStats = storage.getDebugStats().entries.joinToString("\n") { e -> "${e.key}: ${e.value}" },
-                openProposals = proposals,
-                proposedSoulFacts = soulFacts,
-                staleItems = stale,
-                inboxCount = proposals.size + soulFacts.size + stale.size,
-                urgentItems = storage.getUrgentNodes(),
-                schedulingError = schedError ?: it.schedulingError,
-                atRisk = relState.score == "at_risk",
-                activeThread = activeThread,
-                homePriorityList = priorityList,
-                recentlyClosed = recentlyClosed
-            )}
-            _state.update { it.copy(chatItems = ChatTimelineBuilder.build(it.chatMessages, it.receipts, it.openProposals)) }
         }
         coroutineScope.launch(defaultDispatcher) {
             alarmScheduler.lastFiredId.collect { firedId ->
@@ -153,6 +124,55 @@ class ChatController(
             val q = quoteManager.onHomeOpened()
             _state.update { it.copy(homeQuote = q) }
         }
+    }
+
+    private suspend fun loadInitialState() {
+        reconcileAlarms(force = true)
+
+        val proposals = storage.getOpenProposals()
+        val soulFacts = storage.getProposedSoulFacts()
+        val stale = storage.getStaleNodes(clock.now())
+        val relState = storage.getReliabilityState()
+        // B3: derive a human-readable banner from the structured issues,
+        // never surface the raw issuesJson string to the user.
+        val schedError = if (relState.score == "at_risk") {
+            val issues = AlarmReconciler.parseIssues(relState.issuesJson)
+            if (issues.isEmpty()) "Alarms or notifications at risk"
+            else issues.joinToString("; ") { it.error }
+        } else null
+        val recentReceipts = loadReceipts()
+        val priorityList = storage.getHomePriorityList(clock.now())
+        val closedNodes = storage.getRecentlyClosed(clock.now())
+        val dayMs = 24L * 3600 * 1000L
+        val nowMs = clock.now()
+        val recentlyClosed = closedNodes.map { node ->
+            val event = storage.getLatestEventForTarget("node", node.id)
+            val undoValid = event != null && (nowMs - event.tsUtc < dayMs) && !storage.hasUndo(event.opId)
+            RecentlyClosed(node, undoValid, if (undoValid) event.opId else null)
+    }
+    val proactive = storage.getProactiveState()
+    val activeThread = proactive.openThreadMsgId?.let { ActiveThread(it, proactive.threadOpenedAt ?: 0L) }
+
+    _state.update { it.copy(
+        receipts = recentReceipts + currentTransientReceipts(),
+        activeReminders = storage.getActiveReminders(clock.now()),
+        chatMessages = if (it.isChatLoading) it.chatMessages else storage.getRecentMessages(30),
+        providerEndpoint = storage.getSetting("ep") ?: "https://api.openai.com/v1/chat/completions",
+        providerKey = storage.getSetting("key") ?: "",
+        providerModel = storage.getSetting("mod") ?: "gpt-4o-mini",
+        debugStats = storage.getDebugStats().entries.joinToString("\n") { e -> "${e.key}: ${e.value}" },
+        openProposals = proposals,
+        proposedSoulFacts = soulFacts,
+        staleItems = stale,
+        inboxCount = proposals.size + soulFacts.size + stale.size,
+        urgentItems = storage.getUrgentNodes(),
+        schedulingError = schedError ?: it.schedulingError,
+        atRisk = relState.score == "at_risk",
+        activeThread = activeThread,
+        homePriorityList = priorityList,
+        recentlyClosed = recentlyClosed
+    )}
+    _state.update { it.copy(chatItems = ChatTimelineBuilder.build(it.chatMessages, it.receipts, it.openProposals)) }
     }
 
     fun onAction(action: UiAction) {
@@ -195,36 +215,74 @@ class ChatController(
                 val ep = action.endpoint.trim()
                 val key = action.key.trim()
                 val mod = action.model.trim()
-                storage.saveSetting("ep", ep)
-                storage.saveSetting("key", key)
-                storage.saveSetting("mod", mod)
-                _state.update { it.copy(providerEndpoint = ep, providerKey = key, providerModel = mod) }
+                // One unit: a half-written config (new endpoint + old key) fails every request.
+                // On failure the UI must keep showing the config that is actually persisted.
+                try {
+                    storage.saveSettings(mapOf("ep" to ep, "key" to key, "mod" to mod))
+                    _state.update { it.copy(providerEndpoint = ep, providerKey = key, providerModel = mod) }
+                } catch (e: Exception) {
+                    if (e is kotlinx.coroutines.CancellationException) throw e
+                    _state.update { it.copy(globalError = "Could not save provider settings: ${e.message ?: e.javaClass.simpleName}") }
+                }
             }
             is UiAction.CancelReminder -> coroutineScope.launch(defaultDispatcher) {
                 val rem = storage.getPendingReminders().find { it.id == action.id }
-                val uId = "u_${UUID.randomUUID().toString().take(6)}"
-                val beforeJson = rem?.let { json.encodeToString(it) }
-                val event = RawEvent(uId, "DELETE", "reminder", action.id, beforeJson = beforeJson, afterJson = null, tsUtc = clock.now())
-                storage.deleteReminderAndCommit(action.id, event)
-                alarmScheduler.cancel(action.id)
-                storage.deleteRegisteredAlarm(action.id)
-                refreshUI()
-            }
-            is UiAction.RunSelfTest -> coroutineScope.launch(defaultDispatcher) {
-                val health = alarmScheduler.checkHealth()
-                if (health is ScheduleResult.Failed) {
-                    _state.update { it.copy(selfTestStatus = "Failed: ${health.reason}", schedulingError = health.reason, schedulingFailedCount = it.schedulingFailedCount + 1) }
+                // H-08 (R-12): cancel the OS alarm BEFORE deleting the row. Row-first left an
+                // armed alarm with no row when cancel() threw, and nothing could ever find it
+                // again: reconcile only cancels registrations whose row is gone if the
+                // registration itself is still recorded, and a failed cancel must not look like
+                // a success. Cancelling first is safe to repeat — both calls are idempotent for
+                // an unknown id, and a stale chip must not leave a live alarm behind.
+                //
+                // A throwing cancel() aborts here on purpose: the row and its registration stay
+                // in place so the alarm is still reachable, and the next reconcile retries the
+                // orphan. The error is surfaced rather than swallowed, because the user's chip
+                // is still on screen and they need to know why.
+                try {
+                    alarmScheduler.cancel(action.id)
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    throw e
+                } catch (e: Throwable) {
+                    _state.update {
+                        it.copy(schedulingError = "Could not cancel alarm: ${e.message ?: e.javaClass.simpleName}")
+                    }
                     return@launch
                 }
+                storage.deleteRegisteredAlarm(action.id)
+                if (rem != null) {
+                    val uId = "u_${UUID.randomUUID().toString().take(6)}"
+                    val event = RawEvent(uId, "DELETE", "reminder", action.id, beforeJson = json.encodeToString(rem), afterJson = null, tsUtc = clock.now())
+                    storage.deleteReminderAndCommit(action.id, event)
+                    refreshUI()
+                }
+            }
+            is UiAction.RunSelfTest -> coroutineScope.launch(defaultDispatcher) {
+                // checkHealth() is a pre-check, not the verdict: it can only see notification
+                // settings, and a false failure would deny the user the one test that proves
+                // alarms work. Attempt the arm and report what actually happened; a real
+                // notification problem is surfaced as a separate warning below.
+                val health = alarmScheduler.checkHealth()
+                val healthWarning = (health as? ScheduleResult.Failed)?.reason
                 val id = "test_${clock.now()}"
                 val fireAt = clock.now() + 5000L
                 val reminder = Reminder(id, "Self Test Fired!", fireAt)
-                storage.saveReminder(reminder)
+                // Schedule BEFORE persisting: a failed arm must not leave a reminder row that
+                // claims to be scheduled while no OS alarm exists (phantom row).
                 val schedResult = alarmScheduler.schedule(reminder)
                 if (schedResult is com.anchor.core.alarms.ScheduleResult.Armed) {
+                    storage.saveReminder(reminder)
                     storage.saveRegisteredAlarm(id, id.hashCode(), fireAt)
-                    _state.update { it.copy(selfTestStatus = "Armed for 5 seconds...", activeReminders = storage.getActiveReminders()) }
+                    val status = if (healthWarning != null) "Armed for 5 seconds... (warning: $healthWarning)" else "Armed for 5 seconds..."
+                    _state.update {
+                        it.copy(
+                            selfTestStatus = status,
+                            schedulingError = healthWarning ?: it.schedulingError,
+                            schedulingFailedCount = if (healthWarning != null) it.schedulingFailedCount + 1 else it.schedulingFailedCount,
+                            activeReminders = storage.getActiveReminders(clock.now())
+                        )
+                    }
                 } else if (schedResult is com.anchor.core.alarms.ScheduleResult.Failed) {
+                    alarmScheduler.cancel(id)
                     _state.update { it.copy(selfTestStatus = "Failed: ${schedResult.reason}", schedulingError = schedResult.reason, schedulingFailedCount = it.schedulingFailedCount + 1) }
                 }
             }
@@ -288,6 +346,24 @@ class ChatController(
                     }
                     is ToolResult.NotFound -> {
                         addTransientReceipt(ReceiptState(UUID.randomUUID().toString(), "Item not found: ${result.hint}", null, isError = true, timestamp = clock.now()))
+                    }
+                    is ToolResult.Committed -> {
+                        // H-05 (R-09): a cancel has no raw_event, so nothing rebuilds its receipt on
+                        // refresh. Without this branch the confirmation vanished from the timeline
+                        // after the next refresh, and the empty token it used to carry would have
+                        // rendered an Undo button whose only outcome was "Undo token not found".
+                        // Every other choice writes a raw_event that loadReceipts() already turns
+                        // into a receipt (with a validity-checked token), so adding one here would
+                        // show the same action twice.
+                        if (result.op == "CANCEL" && result.targetId == action.proposalId) {
+                            addTransientReceipt(ReceiptState(
+                                UUID.randomUUID().toString(),
+                                result.message,
+                                result.undoToken.ifBlank { null },
+                                isError = false,
+                                timestamp = clock.now()
+                            ))
+                        }
                     }
                     else -> {}
                 }
@@ -498,7 +574,27 @@ class ChatController(
                             turnComplete = true
                         }
                     } else {
-                        val finalTxt = rawBot.ifBlank { "..." }
+                        // O-3: a reply with no envelope performed no action. If it reads like a
+                        // confirmation ("Setting an alarm…", "Reminder set.") the user is told a
+                        // reminder exists that does not — show what actually happened instead.
+                        val claimsAction = ACTION_CLAIM_RE.containsMatchIn(rawBot)
+                        val finalTxt = when {
+                            claimsAction -> "I couldn't turn that into a reminder, so nothing was saved. Please try again."
+                            rawBot.isBlank() -> "..."
+                            else -> rawBot
+                        }
+                        if (claimsAction) {
+                            addTransientReceipt(
+                                ReceiptState(
+                                    UUID.randomUUID().toString(),
+                                    "No reminder was created — the assistant did not issue an action.",
+                                    null,
+                                    isError = true,
+                                    causeMsgId = userMsgId,
+                                    timestamp = clock.now()
+                                )
+                            )
+                        }
                         updateLastMessage(botId, finalTxt)
                         storage.insertRawMessage(botId, "assistant", finalTxt)
                         currentBotId = null
@@ -569,7 +665,8 @@ Rules:
   * The subject may appear BEFORE or AFTER the time (e.g. "notify me in 2 mins for coffee", "remind me at 5 to call doctor", "remind me to check oven in 1 min"). Both have subjects! If any task or item is mentioned anywhere in the message (such as "for coffee" or "to check"), a subject IS present.
   * Non-ASCII or Indic numerals (such as Devanagari "२" = 2 in "remind me in २ mins to take medicine") in time expressions are valid times. The task or item (e.g. "take medicine") is the subject. A subject IS present — NEVER ask "For what?".
   * When a subject IS present: NEVER ask "For what?". Call propose_change CREATE with title="<subject>" and due_text. Acknowledge directly in reply.
-  * A subject is MISSING ONLY when the message contains NO action, task, or purpose at all (e.g., ONLY "cue me in after 2 mins", ONLY "notify me in 2 mins", ONLY "give me a heads up in 1 mins", ONLY "set an alarm for 7am").
+  * A time is not a subject: "in 3 minutes", "at 4pm", "tomorrow" only say WHEN. The verb "set an alarm" / "remind me" only says HOW. "set alarm for drink water in 3 minutes" HAS the subject "drink water" — call propose_change CREATE with title="drink water" and due_text="in 3 minutes". "set alarm to buy milk in 3 minutes" HAS the subject "buy milk".
+  * A subject is MISSING ONLY when the message contains NO action, task, or purpose at all (e.g., ONLY "cue me in after 2 mins", ONLY "notify me in 2 mins", ONLY "give me a heads up in 1 mins", ONLY "set alarm in 3 minutes").
   * When the subject is MISSING: Make NO tool call. Reply with one short question: {"reply":"For what?","calls":[]}.
   * NEVER output reply="For what?" if you are calling propose_change.
 - MULTI-TURN RECOVERY:
@@ -579,6 +676,7 @@ Rules:
 
 Examples:
 CREATE: {"reply":"Setting a reminder to buy milk.","calls":[{"tool":"propose_change","args":{"intent":"CREATE", "title":"Buy milk", "due_text": "tomorrow at 4pm"}}]}
+SET_ALARM_FOR: {"reply":"Setting an alarm to drink water.","calls":[{"tool":"propose_change","args":{"intent":"CREATE", "title":"Drink water", "due_text":"in 3 minutes", "label":"alarm"}}]}
 MISSING_SUBJECT: {"reply":"For what?","calls":[]}
 RESCHEDULE: {"reply":"Rescheduling dinner to 6pm.","calls":[{"tool":"propose_change","args":{"intent":"RESCHEDULE", "hint":"dinner", "due_text":"6pm"}}]}
 UPDATE_RENAME: {"reply":"Renaming it.","calls":[{"tool":"propose_change","args":{"intent":"UPDATE", "hint":"buy milk", "new_title":"Buy oat milk"}}]}
@@ -628,7 +726,10 @@ CRITICAL: Do NOT say "Done" or "Saved" unless you issue a tool call.
         _state.update {
             it.copy(
                 schedulingError = failure?.reason,
-                schedulingFailedCount = failCount
+                schedulingFailedCount = failCount,
+                // H-01 (R-01): a miss is reported, not armed. Reconcile dedupes on the fire instance,
+                // so this list is rebuilt from the current pass rather than accumulated.
+                missedReminders = results.filterIsInstance<ScheduleResult.Overdue>()
             )
         }
     }
@@ -658,7 +759,7 @@ CRITICAL: Do NOT say "Done" or "Saved" unless you issue a tool call.
         _state.update { it.copy(
             receipts = recentReceipts + currentTransientReceipts(),
             chatMessages = if (it.isChatLoading) it.chatMessages else storage.getRecentMessages(fetchCount),
-            activeReminders = storage.getActiveReminders(),
+            activeReminders = storage.getActiveReminders(clock.now()),
             openProposals = proposals,
             proposedSoulFacts = soulFacts,
             staleItems = stale,
@@ -673,6 +774,18 @@ CRITICAL: Do NOT say "Done" or "Saved" unless you issue a tool call.
     }
 
     companion object {
+        // O-3: prose that reads as a completed action. A reply matching this with no envelope
+        // performed nothing, so it must not be shown as a confirmation. Deliberately excludes
+        // questions ("For what?") and offers ("Shall I set…"), which are honest non-actions.
+        internal val ACTION_CLAIM_RE = Regex(
+            """(?i)\b(""" +
+                """setting (an? )?(alarm|reminder|notification)|""" +
+                """(alarm|reminder|notification) (is )?(now )?set|""" +
+                """i'?ve set|i have set|i set (an? )?(alarm|reminder)|""" +
+                """(done|saved|created|added|scheduled)\b[.!]?$""" +
+                """)\b"""
+        )
+
         internal fun extractReplyFromJsonStream(jsonStream: String): String? {
             val replyMarker = "\"reply\":\""
             val start = jsonStream.indexOf(replyMarker)

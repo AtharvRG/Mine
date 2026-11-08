@@ -136,4 +136,69 @@ class DatabaseMigrationTest {
 
         helper.close()
     }
+
+    /**
+     * T19: an upgrade must repair triggers and indexes, not just add columns.
+     *
+     * Every trigger in the schema was declared `CREATE TRIGGER IF NOT EXISTS`, so a device that
+     * had already created a trigger kept the old body forever - editing the trigger SQL never
+     * reached an upgraded install. Indexes were worse: they existed only in `onCreate`, so a
+     * device upgraded from v1 never got `idx_reminder_fire`.
+     *
+     * The test corrupts a trigger body and drops the index on a live DB, then runs `onUpgrade`
+     * and asserts the schema is back to what a fresh install has.
+     */
+    @Test
+    fun testOnUpgrade_RestoresTriggersAndIndexes() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val dbName = "mine_upgrade_test.db"
+        context.deleteDatabase(dbName)
+        val key = ByteArray(32) { 3 }
+
+        val helper = DatabaseProvider.getHelper(context, key, dbName)
+        val db = helper.writableDatabase
+
+        // Simulate a stale install: a trigger with an old body that no longer enforces anything,
+        // and a missing index.
+        db.execSQL("DROP TRIGGER IF EXISTS trg_raw_msg_no_delete")
+        db.execSQL(
+            "CREATE TRIGGER trg_raw_msg_no_delete BEFORE DELETE ON raw_message " +
+                "BEGIN SELECT RAISE(ABORT, 'stale body that does nothing'); END;"
+        )
+        db.execSQL("DROP INDEX IF EXISTS idx_reminder_fire")
+
+        MineDatabaseCallback().onUpgrade(db, 1, 5)
+
+        // The index must exist again.
+        var indexFound = false
+        db.query("SELECT name FROM sqlite_master WHERE type='index' AND name='idx_reminder_fire'").use { c ->
+            indexFound = c.moveToFirst()
+        }
+        assertTrue("T19: onUpgrade must recreate idx_reminder_fire", indexFound)
+
+        // The trigger body must be the current one, not the stale one.
+        var triggerSql = ""
+        db.query("SELECT sql FROM sqlite_master WHERE type='trigger' AND name='trg_raw_msg_no_delete'").use { c ->
+            if (c.moveToFirst()) triggerSql = c.getString(0)
+        }
+        assertTrue(
+            "T19: onUpgrade must replace the stale trigger body (got: $triggerSql)",
+            triggerSql.contains("raw_message is append-only") && !triggerSql.contains("stale body")
+        )
+
+        // And it must actually enforce: a delete is refused.
+        db.execSQL(
+            "INSERT INTO raw_message (id, role, content) VALUES ('t19_msg', 'user', 'x')"
+        )
+        var deleteRefused = false
+        try {
+            db.execSQL("DELETE FROM raw_message WHERE id = 't19_msg'")
+        } catch (e: Exception) {
+            deleteRefused = true
+        }
+        assertTrue("T19: the restored trigger must refuse a raw_message delete", deleteRefused)
+
+        helper.close()
+        context.deleteDatabase(dbName)
+    }
 }

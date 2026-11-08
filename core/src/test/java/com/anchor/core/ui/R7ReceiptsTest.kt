@@ -349,6 +349,67 @@ class R7ReceiptsTest {
         assertEquals("Expired transient receipts must be removed", 0, controller.state.value.receipts.count { it.message.contains("Undo token not found") })
     }
 
+    @Test
+    fun testChipConfirmedCancel_HasNoUndoAffordance() = runBlocking {
+        // H-05 (R-09): confirming [Cancel] changes nothing, so there is no event to undo. The
+        // gateway returned an empty-string token and the ConfirmProposal handler dropped the
+        // Committed result entirely, so the receipt the user saw was the one rebuilt from
+        // raw_event — with null. The contract is the same either way: no Undo button on a cancel.
+        val clock = FakeClock(1700000000000L)
+        val storage = SharedFakeStorage(clock)
+        storage.settings["key"] = "test-key"
+        val dateResolver = DateResolver(clock) { true }
+
+        val transport = object : HttpTransport {
+            override suspend fun postStream(target: Target, body: String): Flow<String> = flow {
+                emit("""data: {"choices":[{"delta":{"content":"```json\n{\"reply\":\"Added.\",\"calls\":[{\"tool\":\"propose_change\",\"args\":{\"intent\":\"CREATE\",\"title\":\"Buy groceries\"}}]}\n```"}}]}""")
+                emit("data: [DONE]")
+            }
+        }
+
+        val controller = createController(storage, clock, dateResolver, transport)
+        controller.onAction(UiAction.UpdateDraft("Buy groceries"))
+        controller.onAction(UiAction.SendMessage)
+        waitUntil { !controller.state.value.isChatLoading && controller.state.value.receipts.isNotEmpty() }
+
+        // Second identical undated create raises the duplicate proposal.
+        controller.onAction(UiAction.UpdateDraft("Buy groceries"))
+        controller.onAction(UiAction.SendMessage)
+        waitUntil { controller.state.value.openProposals.any { it.kind == "needs_confirm" } }
+        val proposal = controller.state.value.openProposals.first { it.kind == "needs_confirm" }
+
+        controller.onAction(UiAction.ConfirmProposal(proposal.id, "cancel"))
+        waitUntil { storage.getProposal(proposal.id)?.status == "consumed" }
+        // Let the receipt refresh that follows the action land.
+        waitUntil { controller.state.value.receipts.any { it.message.contains("no changes made") } }
+
+        // Every receipt the user can see must either offer a token that undo accepts, or offer none.
+        // An empty string is neither: MainActivity renders the button on `!= null`.
+        val cancelReceipt = controller.state.value.receipts.last { it.message.contains("no changes made") }
+        assertFalse("A cancel has nothing to undo, got token '${cancelReceipt.undoToken}'", cancelReceipt.undoToken != null)
+    }
+
+    @Test
+    fun testStartupFailure_SurfacesErrorInsteadOfBlankScreen() = runBlocking {
+        // H-07 (R-08): init was one long unguarded launch. If storage threw — a Keystore failure, a
+        // corrupt DB — the coroutine died before the first _state.update, so the UI kept the default
+        // UiState: empty chat, no receipts, no banner. The user could not tell a slow load from a
+        // dead one, and nothing retried. A failed load must say so.
+        val clock = FakeClock(1700000000000L)
+        val storage = object : SharedFakeStorage(clock) {
+            override suspend fun getOpenProposals(): List<com.anchor.core.models.Proposal> =
+                throw IllegalStateException("KEYSTORE_LOST")
+        }
+        storage.settings["key"] = "test-key"
+
+        val controller = createController(storage, clock, DateResolver(clock) { true }, createSchedulerOnlyTransport())
+        waitUntil { controller.state.value.globalError != null }
+
+        val error = controller.state.value.globalError!!
+        assertTrue("Error must name the failure, got '$error'", error.contains("KEYSTORE_LOST"))
+        assertFalse("A failed load must not leave the chat spinning", controller.state.value.isChatLoading)
+    }
+
     private fun createSchedulerOnlyTransport(): HttpTransport = object : HttpTransport {
         override suspend fun postStream(target: Target, body: String): Flow<String> = flow {
             emit("data: [DONE]")

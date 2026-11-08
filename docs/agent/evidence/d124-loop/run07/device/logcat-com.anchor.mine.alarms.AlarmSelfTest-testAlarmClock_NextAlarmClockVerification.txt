@@ -1,0 +1,23 @@
+11-07 02:47:30.472 16814 17031 I TestRunner: started: testAlarmClock_NextAlarmClockVerification(com.anchor.mine.alarms.AlarmSelfTest)
+11-07 02:47:30.473  1310  1310 I FPSGO   : fpsgo_boost_sched_idle_prefer:1
+11-07 02:47:30.473  1310  1310 I mtkpower_client: perf_lock_acq, hdl:0, dur:0, num:2, tid:1310
+11-07 02:47:30.474  1167  1252 I libPowerHal: [perfLockAcq] idx:0 hdl:159073 hint:-1 pid:1310 duration:0 lock_user:fpsgo => ret_hdl:159073
+11-07 02:47:30.475  1167  1252 I libPowerHal: [PE] fpsgo update cmd:1404500 param:1
+11-07 02:47:30.475  1310  1310 I mtkpower_client: ret_hdl:159073
+11-07 02:47:30.475  1310  1310 I FPSGO   : perfLockAcq hdl:159073
+11-07 02:47:30.475  1310  1310 I FPSGO   : fpsgo_boost_sched_rate_ns:0
+11-07 02:47:30.475  1310  1310 I mtkpower_client: perf_lock_acq, hdl:0, dur:0, num:12, tid:1310
+11-07 02:47:30.476  1310  1310 I mtkpower_client: ret_hdl:159074
+11-07 02:47:30.476  1310  1310 I FPSGO   : perfLockAcq hdl:159074
+11-07 02:47:30.477  1167  1252 I libPowerHal: cmdSetting - unknown cmd:1438500, scmd:(null) ,param_1:0
+11-07 02:47:30.477  1167  1252 I libPowerHal: cmdSetting - unknown cmd:1438800, scmd:(null) ,param_1:0
+11-07 02:47:30.477  1167  1252 I libPowerHal: [perfLockAcq] idx:1 hdl:159074 hint:-1 pid:1310 duration:0 lock_user:fpsgo => ret_hdl:159074
+11-07 02:47:30.477  1167  1252 I libPowerHal: [PE] fpsgo update cmd:1438300, param:0
+11-07 02:47:30.477  1167  1252 I libPowerHal: [PE] fpsgo update cmd:1438400, param:0
+11-07 02:47:30.477  1167  1252 I libPowerHal: [PE] fpsgo update cmd:1438600, param:0
+11-07 02:47:30.477  1167  1252 I libPowerHal: [PE] fpsgo update cmd:1438700, param:0
+11-07 02:47:30.482  1830  2539 I MediaFocusControl: requestAudioFocus() from uid/pid 10288/2298 AA=USAGE_NOTIFICATION/CONTENT_TYPE_SONIFICATION clientId=android.media.AudioManager@90adc2 callingPack=com.android.systemui req=3 flags=0x0 sdk=34
+11-07 02:47:30.484  1830  2539 D MediaFocusControl: mMultiAudioFocusEnabled: false, aa.mContentType: 4, aa.mUsage: 5, aa.mFlags: 0, callingPackageName: com.android.systemui, isDesktopOrMobileUiConnected: false
+11-07 02:47:30.484  1830  2539 I AudioService.FadeOutManager: unfadeOutUid() uid:10288
+11-07 02:47:30.499  2298  2298 I KgdSliceProvider: The weather info has not change, does not need to be updated. mTempF=69 iconNumber=37 celsius=true
+11-07 02:47:30.501 16814 17031 I TestRunner: finished: testAlarmClock_NextAlarmClockVerification(com.anchor.mine.alarms.AlarmSelfTest)

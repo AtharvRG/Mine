@@ -1,0 +1,6 @@
+11-07 03:16:17.897  8033  8045 I TestRunner: started: testAlarmClock_NextAlarmClockVerification(com.anchor.mine.alarms.AlarmSelfTest)
+11-07 03:16:17.907  1830  1871 I MediaFocusControl: requestAudioFocus() from uid/pid 10288/2298 AA=USAGE_NOTIFICATION/CONTENT_TYPE_SONIFICATION clientId=android.media.AudioManager@8c7986e callingPack=com.android.systemui req=3 flags=0x0 sdk=34
+11-07 03:16:17.907  1830  1871 D MediaFocusControl: mMultiAudioFocusEnabled: false, aa.mContentType: 4, aa.mUsage: 5, aa.mFlags: 0, callingPackageName: com.android.systemui, isDesktopOrMobileUiConnected: false
+11-07 03:16:17.908  1830  1871 I AudioService.FadeOutManager: unfadeOutUid() uid:10288
+11-07 03:16:17.922  2298  2298 W TouchableRegionManager: onHeadsUpPinnedModeChanged
+11-07 03:16:17.923  8033  8045 I TestRunner: finished: testAlarmClock_NextAlarmClockVerification(com.anchor.mine.alarms.AlarmSelfTest)

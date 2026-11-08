@@ -1,0 +1,9 @@
+11-07 03:25:48.121 13693 13712 I TestRunner: started: testAlarmClock_NextAlarmClockVerification(com.anchor.mine.alarms.AlarmSelfTest)
+11-07 03:25:48.129  1830  3553 I MediaFocusControl: requestAudioFocus() from uid/pid 10288/2298 AA=USAGE_NOTIFICATION/CONTENT_TYPE_SONIFICATION clientId=android.media.AudioManager@d70e24c callingPack=com.android.systemui req=3 flags=0x0 sdk=34
+11-07 03:25:48.131  1830  3553 D MediaFocusControl: mMultiAudioFocusEnabled: false, aa.mContentType: 4, aa.mUsage: 5, aa.mFlags: 0, callingPackageName: com.android.systemui, isDesktopOrMobileUiConnected: false
+11-07 03:25:48.131  1830  3553 I AudioService.FadeOutManager: unfadeOutUid() uid:10288
+11-07 03:25:48.150  2298  2298 W TouchableRegionManager: onHeadsUpPinnedModeChanged
+11-07 03:25:48.151  1310  1310 I mtkpower_client: perf_lock_acq, hdl:0, dur:30000, num:2, tid:1310
+11-07 03:25:48.152  1310  1310 I mtkpower_client: ret_hdl:159546
+11-07 03:25:48.152  1167  1252 I libPowerHal: [perfLockAcq] idx:2 hdl:159546 hint:-1 pid:1310 duration:30000 lock_user:fpsgo => ret_hdl:159546
+11-07 03:25:48.152 13693 13712 I TestRunner: finished: testAlarmClock_NextAlarmClockVerification(com.anchor.mine.alarms.AlarmSelfTest)

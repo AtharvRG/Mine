@@ -1,0 +1,480 @@
+11-07 03:25:36.745 13693 13712 I TestRunner: started: testGentleReminderFires_SetsFlag(com.anchor.mine.alarms.AlarmSelfTest)
+11-07 03:25:36.746   886   886 D TlcKM   : TEE_Finish
+11-07 03:25:36.746   886   886 D TlcKM   : split_update_chunks
+11-07 03:25:36.746   886   886 D TlcKM   : release_operation_slot: release op slot #0 (handle 0x80b0b3825f09fa0d; 0 ops live)
+11-07 03:25:36.746   886   886 D TlcKM   : TEE_Finish exiting with 0
+11-07 03:25:36.747   886   886 D TlcKM   : TEE_Abort
+11-07 03:25:36.747   886   886 E TlcKM   : lookup_operation: op 0x80b0b3825f09fa0d not found
+11-07 03:25:36.747   886   886 E TlcKM   : lookup_operation(session, operation_handle, &op) == -28
+11-07 03:25:36.747   886   886 D TlcKM   : TEE_Abort exiting with -28
+11-07 03:25:36.748  1134  1491 I hwcomposer: [DRMDEV] (0) failed to waitNextVsync: -1  
+11-07 03:25:36.751 13693 13712 I UiAutomation: Initialized for user 0 on display 0
+11-07 03:25:36.756  1198  1295 E BufferQueueDebug: [WindowToken{d9017da type=2032 android.os.Binder@4c02d85}#36844](this:0xb400007c09e30718,id:-1,api:0,p:-1,c:-1) id info cannot be read from 'WindowToken{d9017da type=2032 android.os.Binder@4c02d85}#36844'
+11-07 03:25:36.757  1198  1295 I BufferQueueDebug: [WindowToken{d9017da type=2032 android.os.Binder@4c02d85}#36844](this:0xb400007c09e30718,id:-1,api:0,p:-1,c:-1) BufferQueue core=(1198:/system/bin/surfaceflinger)
+11-07 03:25:36.759 13693 13713 D nativeloader: Load /data/app/~~eaDmmoJdlyCv6UfoRsyx0w==/com.anchor.mine-Cgi1S-Wp5_tBKYSF-CB5Jw==/base.apk!/lib/arm64-v8a/libsqlcipher.so using class loader ns clns-4 (caller=/data/app/~~eaDmmoJdlyCv6UfoRsyx0w==/com.anchor.mine-Cgi1S-Wp5_tBKYSF-CB5Jw==/base.apk!classes12.dex): ok
+11-07 03:25:36.772  8312 26846 D AccessibilitySourceService: enabled a11y services count 1
+11-07 03:25:36.773  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:25:36.773  1134  1134 I hwcomposer: [HWCDisplay] [Display_0 (type:1)] fps:3.098216,dur:1936.60,max:1079.19,min:33.18  
+11-07 03:25:36.774  1198  1661 I Scheduler: applyPolicy: UpdateRefreshRate 30 to 120 of group 0: [touch=0:0 touchBoost=0 scroll=0:0 idle=0:0]
+11-07 03:25:36.766  1492  1492 W binder:1492_2: type=1400 audit(0.0:857739): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:25:36.782  2298  2298 D ControlsListingControllerImpl: ServiceConfig reloaded, count: 0
+11-07 03:25:36.785  1830  2002 W PackageManager: Missing required system package: app.revanced.android.gms, but found with extended search.
+11-07 03:25:36.785  1830  3648 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 03:25:36.785 13693 13713 I SQLiteConnection: Database keying operation returned:0
+11-07 03:25:36.786  8312 26846 D AccessibilitySourceService: a11y source sending 1 issue to sc
+11-07 03:25:36.786  2298  2298 D FreeformGesture: onStateChanged: State{mIsPackageAvailable=true, mPillGestureEnabled=false, mVibrationEnabled=true, mShortcutPanelShowing=false, mSwipeInEnabled=false, mHunFreeformEnabled=true, mIsInGameMode=false, mIsRecentsShowing=false, mPillXPosition=1, mPillYPosition=600, mIsInTutorialMode=false, mIsDoubleTapPowerEnabled=false}
+11-07 03:25:36.787  1830  3551 D SafetySourceDataValidat: No cert check requested for package com.google.android.permissioncontroller
+11-07 03:25:36.788 13693 13713 I SQLiteConnection: Database keying operation returned:0
+11-07 03:25:36.793  1167  1208 I libPerfCtl: xgfGetFPS pid:31477 fps:-1
+11-07 03:25:36.799  3384 13633 I FraudProtectUtils: Not in testing population, skipping local test bank apps. [CONTEXT service_id=469 ]
+11-07 03:25:36.799  3384 13633 I FraudProtectUtils: (REDACTED) Latest bank app list size: %d, %s isBankApp: false
+11-07 03:25:36.800  3384 13633 W ComponentChangedIO: No package name in intent data or package is not a bank app [CONTEXT service_id=469 ]
+11-07 03:25:36.805  1198  1198 I SurfaceFlinger: setActiveModeInHwcIfNeeded changing active mode to 1(120.00 Hz) for display 0
+11-07 03:25:36.806  1134  1134 I hwcomposer: [HWC] (0) displaySetActiveConfig config:1  
+11-07 03:25:36.827  1830  2002 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:25:36.830  1830  3551 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:25:36.838  1830  2002 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 03:25:36.838  1198  1198 D SurfaceFlinger: MtkOverrideDuration: update vsync 120
+11-07 03:25:36.838  1198  1198 E SurfaceFlinger: MtkDuration override mode is disabled
+11-07 03:25:36.838  1198  1198 D SurfaceFlinger: MtkOverrideDuration: reset override duration
+11-07 03:25:36.838  1198  1198 I BufferQueueDebug: [WindowToken{9ea5b8e type=2032 android.os.Binder@5971f89}#36837](this:0xb400007c09db8718,id:-1,api:0,p:-1,c:1198) onDestructor()
+11-07 03:25:36.840  1830  3983 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 03:25:36.843  1830  3983 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 03:25:36.944  1830  3983 W PackageManager: Missing required system package: io.github.forkmaintainers.iceraven, but found with extended search.
+11-07 03:25:36.993  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:25:36.986  1492  1492 W binder:1492_2: type=1400 audit(0.0:857740): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:25:36.997  1134  1485 I hwcomposer: [HWC] (0)fire a callback of refresh to SF[4]  
+11-07 03:25:37.000  1167  1193 I mtkpower@impl: [setMode] type:6, enabled:1
+11-07 03:25:37.000  1167  1193 E mtkpower@impl: [setMode] unknown type
+11-07 03:25:37.003  1198  1198 I BufferQueueProducer: [FramebufferSurface](this:0xb400007c2c1716d0,id:-1,api:1,p:1198,c:1198) queueBuffer: fps=1.04 dur=1931.17 max=1309.10 min=622.07
+11-07 03:25:37.078  1167  1193 I mtkpower@impl: [setMode] type:6, enabled:0
+11-07 03:25:37.078  1167  1193 E mtkpower@impl: [setMode] unknown type
+11-07 03:25:37.128  1830  2109 E WifiDataStall: Ignore this poll. newStats: null txLinkSpeedMbps: 6 rxLinkSpeedMbps: 260 rssi: -51 connectionCapabilities: com.android.server.wifi.WifiNative$ConnectionCapabilities@97eba
+11-07 03:25:37.130  1830  1830 D EnhancedConnectivityController: Wifi onCapabilitiesChanged
+11-07 03:25:37.130  1830  1830 D EnhancedConnectivityController: Default net onCapabilitiesChanged
+11-07 03:25:37.130  1830  1830 D EnhancedConnectivityController: updateDefaultNet:553
+11-07 03:25:37.130  1830  1830 D EnhancedConnectivityController: mayUpdateNotification: shouldShow=true,UidsBlocked=false, net info=net:553,ifName=wlan0,securityType=0,isDefault=true,ssid="iBUS@MUJ",notificationId=0
+11-07 03:25:37.130  1830  1830 D EnhancedConnectivityController: educative notification has been ignored
+11-07 03:25:37.133  3595  4114 I ModemStats: [DataStallDetectService] onCapabilitiesChanged networkCapabilities=[ Transports: WIFI Capabilities: NOT_METERED&INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VPN&VALIDATED&NOT_ROAMING&FOREGROUND&NOT_CONGESTED&NOT_SUSPENDED&NOT_VCN_MANAGED LinkUpBandwidth>=12000Kbps LinkDnBandwidth>=60000Kbps TransportInfo: <SSID: <unknown ssid>, BSSID: 02:00:00:00:00:00, MAC: 02:00:00:00:00:00, IP: /10.175.15.5, Security type: 0, Supplicant state: COMPLETED, Wi-Fi standard: 11ac, RSSI: -51, Link speed: 6Mbps, Tx Link speed: 6Mbps, Max Supported Tx Link speed: 433Mbps, Calculated Tx : 0Mbps, Rx Link speed: 260Mbps, Max Supported Rx Link speed: 433Mbps, Calculated Rx : 0Mbps, Frequency: 5745MHz, Net ID: -1, Metered hint: false, score: 100, isUsable: true, CarrierMerged: false, SubscriptionId: -1, IsPrimary: -1, Trusted: true, Restricted: false, Ephemeral: false, OEM paid: false, OEM private: false, OSU AP: false, FQDN: <none>, Provider friendly name: <none>, Requesting package name: <none><none>MLO Information: , Is TID-To-Link negotiation supported by the AP: false, AP MLD Address: <none>, AP MLO Link Id: <none>, AP MLO Affiliated links: <none>, Vendor Data: <none>> SignalStrength: -51 UnderlyingNetworks: Null]
+11-07 03:25:37.133  3595  4114 I ModemStats: [DataStallDetectService] onCapabilitiesChanged NET_CAPABILITY_VALIDATED=true
+11-07 03:25:37.133  3785  4430 D OtaApp  : PollingManagerService:NetworkCallback:networkCapabilities=[ Transports: WIFI Capabilities: NOT_METERED&INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VPN&VALIDATED&NOT_ROAMING&FOREGROUND&NOT_CONGESTED&NOT_SUSPENDED&NOT_VCN_MANAGED LinkUpBandwidth>=12000Kbps LinkDnBandwidth>=60000Kbps TransportInfo: <SSID: <unknown ssid>, BSSID: 02:00:00:00:00:00, MAC: 02:00:00:00:00:00, IP: /10.175.15.5, Security type: 0, Supplicant state: COMPLETED, Wi-Fi standard: 11ac, RSSI: -51, Link speed: 6Mbps, Tx Link speed: 6Mbps, Max Supported Tx Link speed: 433Mbps, Calculated Tx : 0Mbps, Rx Link speed: 260Mbps, Max Supported Rx Link speed: 433Mbps, Calculated Rx : 0Mbps, Frequency: 5745MHz, Net ID: -1, Metered hint: false, score: 100, isUsable: true, CarrierMerged: false, SubscriptionId: -1, IsPrimary: -1, Trusted: true, Restricted: false, Ephemeral: false, OEM paid: false, OEM private: false, OSU AP: false, FQDN: <none>, Provider friendly name: <none>, Requesting package name: <none><none>MLO Information: , Is TID-To-Link negotiation supported by the AP: false, AP MLD Address: <none>, AP MLO Link Id: <none>, AP MLO Affiliated links: <none>, Vendor Data: <none>> SignalStrength: -51 UnderlyingNetworks: Null]
+11-07 03:25:37.135  3595  4114 I ModemStats: [DataStallDetectService] onCapabilitiesChanged mDataStallManager.mDataStallInstance=null
+11-07 03:25:37.136  3595  4114 I ModemStats: [DataStallDetectService] onCapabilitiesChanged mDataStallSmart5gManager.mDataStallInstance=null
+11-07 03:25:37.136  1830  2229 D AgpsApn : mDefaultNetworkcallback onCapabilitiesChanged: network=553, nc=[ Transports: WIFI Capabilities: NOT_METERED&INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VPN&VALIDATED&NOT_ROAMING&FOREGROUND&NOT_CONGESTED&NOT_SUSPENDED&NOT_VCN_MANAGED LinkUpBandwidth>=12000Kbps LinkDnBandwidth>=60000Kbps TransportInfo: <SSID: <unknown ssid>, BSSID: 02:00:00:00:00:00, MAC: 02:00:00:00:00:00, IP: /10.175.15.5, Security type: 0, Supplicant state: COMPLETED, Wi-Fi standard: 11ac, RSSI: -51, Link speed: 6Mbps, Tx Link speed: 6Mbps, Max Supported Tx Link speed: 433Mbps, Calculated Tx : 0Mbps, Rx Link speed: 260Mbps, Max Supported Rx Link speed: 433Mbps, Calculated Rx : 0Mbps, Frequency: 5745MHz, Net ID: -1, Metered hint: false, score: 100, isUsable: true, CarrierMerged: false, SubscriptionId: -1, IsPrimary: 1, Trusted: true, Restricted: false, Ephemeral: false, OEM paid: false, OEM private: false, OSU AP: false, FQDN: <none>, Provider friendly name: <none>, Requesting package name: <none><none>MLO Information: , Is TID-To-Link negotiation supported by the AP: false, AP MLD Address: <none>, AP MLO Link Id: <none>, AP MLO Affiliated links: <none>, Vendor Data: <none>> SignalStrength: -51 AdminUids: [1000] SSID: "iBUS@MUJ" UnderlyingNetworks: Null]
+11-07 03:25:37.136  1830  2229 D AgpsApn : onCapabilitiesChanged: mDefaultNetHasInt=true
+11-07 03:25:37.142 28144 28167 I dutj    : Connection state change: onCapabilitiesChanged, data connection: WIFI, manual connection eligibility: false, ntn roaming: false
+11-07 03:25:37.142   510   584 I emyt    : Connected state: [1], networkType: [WIFI] [CONTEXT thread_id=255 ]
+11-07 03:25:37.142 28144 28167 I dutj    : New default data network: wifi
+11-07 03:25:37.142   510   632 I emyt    : handleMessage processing message:[NOTIFY_UPTIME_IGNORE_STATE_CHANGED] with [non-null]:RcsEngineImpl reference [CONTEXT log_prefix="RcsEngineImpl:[4dd3b970-723f]>Handler" thread_id=261 ]
+11-07 03:25:37.145  3384 10934 I NearbyMediums: Wifi changed new SSID: <unknown ssid>
+11-07 03:25:37.146  1830  2116 D ConnectivityService: NetReassign [no changes] [c 0] [a 2] [i 2]
+11-07 03:25:37.147  3384 10934 I NearbyMediums: WifiLanConnectivityInfo is not changed, skip notify.
+11-07 03:25:37.209  1492  1492 W HidlServiceManagement: Waited for hwservicemanager.ready for a second, waiting another...
+11-07 03:25:37.209  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:25:37.210  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:25:37.202  1492  1492 W binder:1492_2: type=1400 audit(0.0:857741): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:25:37.206  1492  1492 W binder:1492_2: type=1400 audit(0.0:857742): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:25:37.292  1830  1883 W PackageManager: Missing required system package: org.telegram.messenger, but found with extended search.
+11-07 03:25:37.292  1830  1883 W PackageManager: Missing required system package: com.whatsapp, but found with extended search.
+11-07 03:25:37.292  1830  1883 W PackageManager: Missing required system package: com.twitter.android, but found with extended search.
+11-07 03:25:37.292  1830  1883 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:25:37.292  1830  1883 W PackageManager: Missing required system package: com.reddit.frontpage, but found with extended search.
+11-07 03:25:37.292  1830  1883 W PackageManager: Missing required system package: com.pinterest, but found with extended search.
+11-07 03:25:37.293  1830  1883 W PackageManager: Missing required system package: com.microsoft.teams, but found with extended search.
+11-07 03:25:37.293  1830  1883 W PackageManager: Missing required system package: com.microsoft.office.word, but found with extended search.
+11-07 03:25:37.293  1830  1883 W PackageManager: Missing required system package: com.microsoft.office.powerpoint, but found with extended search.
+11-07 03:25:37.293  1830  1883 W PackageManager: Missing required system package: com.microsoft.office.outlook, but found with extended search.
+11-07 03:25:37.293  1830  1883 W PackageManager: Missing required system package: com.microsoft.office.excel, but found with extended search.
+11-07 03:25:37.293  1830  1883 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 03:25:37.293  1830  1883 W PackageManager: Missing required system package: com.github.android, but found with extended search.
+11-07 03:25:37.293  1830  1883 W PackageManager: Missing required system package: com.dubox.drive, but found with extended search.
+11-07 03:25:37.293  1830  1883 W PackageManager: Missing required system package: com.azure.authenticator, but found with extended search.
+11-07 03:25:37.293  1830  1883 W PackageManager: Missing required system package: com.azure.authenticator, but found with extended search.
+11-07 03:25:37.294  1830  1883 W PackageManager: Missing required system package: com.azure.authenticator, but found with extended search.
+11-07 03:25:37.294  1830  1883 W PackageManager: Missing required system package: com.azure.authenticator, but found with extended search.
+11-07 03:25:37.294  1830  1883 W PackageManager: Missing required system package: com.azure.authenticator, but found with extended search.
+11-07 03:25:37.294  1830  1883 W PackageManager: Missing required system package: app.revanced.android.gms, but found with extended search.
+11-07 03:25:37.296  2516  2516 D CarrierSvcBindHelper: onPackageModified: com.motorola.securityhub
+11-07 03:25:37.297  3120  3120 V MediaPlayerList: mPackageChangedBroadcastReceiver: action: android.intent.action.PACKAGE_CHANGED
+11-07 03:25:37.299  1830  2084 I InputReader: Reconfiguring input devices, changes=KEYBOARD_LAYOUTS
+11-07 03:25:37.301  2516  2516 D CarrierSvcBindHelper: No carrier app for: 0
+11-07 03:25:37.301  2516  2516 D CarrierSvcBindHelper: No carrier app for: 1
+11-07 03:25:37.303  8312  5219 I PermissionControllerServiceImpl: Updating user sensitive for uid 10274
+11-07 03:25:37.303  1830  3983 W PackageManager: Missing required system package: in.burgerfarm.app, but found with extended search.
+11-07 03:25:37.303  1830  3983 W PackageManager: Missing required system package: cris.org.in.prs.ima, but found with extended search.
+11-07 03:25:37.303  1830  3551 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:25:37.303  1830  3983 W PackageManager: Missing required system package: com.olacabs.customer, but found with extended search.
+11-07 03:25:37.303  1830  3551 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 03:25:37.303 14781 14781 I PkModeUpdater: PkModeUpdater.refreshDevices():212 refreshing devices
+11-07 03:25:37.304  3486  3486 W RegisteredComponentCache: Unable to load component info ResolveInfo{64ff7e0 com.olacabs.customer/in.juspay.hypernfc.NfcActivity m=0x108000 userHandle=UserHandle{0}}
+11-07 03:25:37.304  3486  3486 W RegisteredComponentCache: org.xmlpull.v1.XmlPullParserException: No android.nfc.action.TECH_DISCOVERED meta-data
+11-07 03:25:37.304  3486  3486 W RegisteredComponentCache: 	at com.android.nfc.RegisteredComponentCache.parseComponentInfo(RegisteredComponentCache.java:190)
+11-07 03:25:37.304  3486  3486 W RegisteredComponentCache: 	at com.android.nfc.RegisteredComponentCache.generateComponentsList(RegisteredComponentCache.java:165)
+11-07 03:25:37.304  3486  3486 W RegisteredComponentCache: 	at com.android.nfc.RegisteredComponentCache$1.onReceive(RegisteredComponentCache.java:69)
+11-07 03:25:37.304  3486  3486 W RegisteredComponentCache: 	at android.app.LoadedApk$ReceiverDispatcher$Args.lambda$getRunnable$0(LoadedApk.java:1821)
+11-07 03:25:37.304  3486  3486 W RegisteredComponentCache: 	at android.app.LoadedApk$ReceiverDispatcher$Args.$r8$lambda$gDuJqgxY6Zb-ifyeubKeivTLAwk(LoadedApk.java:0)
+11-07 03:25:37.304  3486  3486 W RegisteredComponentCache: 	at android.app.LoadedApk$ReceiverDispatcher$Args$$ExternalSyntheticLambda0.run(D8$$SyntheticClass:2)
+11-07 03:25:37.304  3486  3486 W RegisteredComponentCache: 	at android.os.Handler.handleCallback(Handler.java:1000)
+11-07 03:25:37.304  3486  3486 W RegisteredComponentCache: 	at android.os.Handler.dispatchMessage(Handler.java:104)
+11-07 03:25:37.304  3486  3486 W RegisteredComponentCache: 	at android.os.Looper.loopOnce(Looper.java:242)
+11-07 03:25:37.304  3486  3486 W RegisteredComponentCache: 	at android.os.Looper.loop(Looper.java:362)
+11-07 03:25:37.304  3486  3486 W RegisteredComponentCache: 	at android.app.ActivityThread.main(ActivityThread.java:8393)
+11-07 03:25:37.304  3486  3486 W RegisteredComponentCache: 	at java.lang.reflect.Method.invoke(Native Method)
+11-07 03:25:37.304  3486  3486 W RegisteredComponentCache: 	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:552)
+11-07 03:25:37.304  3486  3486 W RegisteredComponentCache: 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:992)
+11-07 03:25:37.304  3486  3486 W RegisteredComponentCache: Unable to load component info ResolveInfo{185815e cris.org.in.prs.ima/in.juspay.hypernfc.NfcActivity m=0x108000 userHandle=UserHandle{0}}
+11-07 03:25:37.304  3486  3486 W RegisteredComponentCache: org.xmlpull.v1.XmlPullParserException: No android.nfc.action.TECH_DISCOVERED meta-data
+11-07 03:25:37.304  3486  3486 W RegisteredComponentCache: 	at com.android.nfc.RegisteredComponentCache.parseComponentInfo(RegisteredComponentCache.java:190)
+11-07 03:25:37.304  3486  3486 W RegisteredComponentCache: 	at com.android.nfc.RegisteredComponentCache.generateComponentsList(RegisteredComponentCache.java:165)
+11-07 03:25:37.304  3486  3486 W RegisteredComponentCache: 	at com.android.nfc.RegisteredComponentCache$1.onReceive(RegisteredComponentCache.java:69)
+11-07 03:25:37.304  3486  3486 W RegisteredComponentCache: 	at android.app.LoadedApk$ReceiverDispatcher$Args.lambda$getRunnable$0(LoadedApk.java:1821)
+11-07 03:25:37.304  3486  3486 W RegisteredComponentCache: 	at android.app.LoadedApk$ReceiverDispatcher$Args.$r8$lambda$gDuJqgxY6Zb-ifyeubKeivTLAwk(LoadedApk.java:0)
+11-07 03:25:37.304  3486  3486 W RegisteredComponentCache: 	at android.app.LoadedApk$ReceiverDispatcher$Args$$ExternalSyntheticLambda0.run(D8$$SyntheticClass:2)
+11-07 03:25:37.304  3486  3486 W RegisteredComponentCache: 	at android.os.Handler.handleCallback(Handler.java:1000)
+11-07 03:25:37.304  3486  3486 W RegisteredComponentCache: 	at android.os.Handler.dispatchMessage(Handler.java:104)
+11-07 03:25:37.304  3486  3486 W RegisteredComponentCache: 	at android.os.Looper.loopOnce(Looper.java:242)
+11-07 03:25:37.304  3486  3486 W RegisteredComponentCache: 	at android.os.Looper.loop(Looper.java:362)
+11-07 03:25:37.304  3486  3486 W RegisteredComponentCache: 	at android.app.ActivityThread.main(ActivityThread.java:8393)
+11-07 03:25:37.304  3486  3486 W RegisteredComponentCache: 	at java.lang.reflect.Method.invoke(Native Method)
+11-07 03:25:37.304  3486  3486 W RegisteredComponentCache: 	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:552)
+11-07 03:25:37.304  3486  3486 W RegisteredComponentCache: 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:992)
+11-07 03:25:37.304  3486  3486 W RegisteredComponentCache: Unable to load component info ResolveInfo{cecb20c in.burgerfarm.app/com.cashfree.pg.ui.hidden.checkout.CashfreeNativeCheckoutActivity m=0x108000 userHandle=UserHandle{0}}
+11-07 03:25:37.304  3486  3486 W RegisteredComponentCache: org.xmlpull.v1.XmlPullParserException: No android.nfc.action.TECH_DISCOVERED meta-data
+11-07 03:25:37.304  3486  3486 W RegisteredComponentCache: 	at com.android.nfc.RegisteredComponentCache.parseComponentInfo(RegisteredComponentCache.java:190)
+11-07 03:25:37.304  3486  3486 W RegisteredComponentCache: 	at com.android.nfc.RegisteredComponentCache.generateComponentsList(RegisteredComponentCache.java:165)
+11-07 03:25:37.304  3486  3486 W RegisteredComponentCache: 	at com.android.nfc.RegisteredComponentCache$1.onReceive(RegisteredComponentCache.java:69)
+11-07 03:25:37.304  3486  3486 W RegisteredComponentCache: 	at android.app.LoadedApk$ReceiverDispatcher$Args.lambda$getRunnable$0(LoadedApk.java:1821)
+11-07 03:25:37.304  3486  3486 W RegisteredComponentCache: 	at android.app.LoadedApk$ReceiverDispatcher$Args.$r8$lambda$gDuJqgxY6Zb-ifyeubKeivTLAwk(LoadedApk.java:0)
+11-07 03:25:37.304  3486  3486 W RegisteredComponentCache: 	at android.app.LoadedApk$ReceiverDispatcher$Args$$ExternalSyntheticLambda0.run(D8$$SyntheticClass:2)
+11-07 03:25:37.304  3486  3486 W RegisteredComponentCache: 	at android.os.Handler.handleCallback(Handler.java:1000)
+11-07 03:25:37.304  3486  3486 W RegisteredComponentCache: 	at android.os.Handler.dispatchMessage(Handler.java:104)
+11-07 03:25:37.304  3486  3486 W RegisteredComponentCache: 	at android.os.Looper.loopOnce(Looper.java:242)
+11-07 03:25:37.304  3486  3486 W RegisteredComponentCache: 	at android.os.Looper.loop(Looper.java:362)
+11-07 03:25:37.304  3486  3486 W RegisteredComponentCache: 	at android.app.ActivityThread.main(ActivityThread.java:8393)
+11-07 03:25:37.304  3486  3486 W RegisteredComponentCache: 	at java.lang.reflect.Method.invoke(Native Method)
+11-07 03:25:37.304  3486  3486 W RegisteredComponentCache: 	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:552)
+11-07 03:25:37.304  3486  3486 W RegisteredComponentCache: 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:992)
+11-07 03:25:37.304  1830  3983 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:25:37.304  1830  3983 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 03:25:37.305  1198  1661 I Scheduler: applyPolicy: UpdateRefreshRate 120 to 30 of group 0: [touch=0:0 touchBoost=0 scroll=0:0 idle=1:1]
+11-07 03:25:37.306 14781 14781 I PkModeUpdater: PkModeUpdater.refreshDevices():212 refreshing devices
+11-07 03:25:37.306  1198  1661 D SurfaceFlinger: MtkOverrideDuration: update vsync 30
+11-07 03:25:37.306  1198  1661 E SurfaceFlinger: MtkDuration override mode is disabled
+11-07 03:25:37.306  1198  1661 D SurfaceFlinger: MtkOverrideDuration: reset override duration
+11-07 03:25:37.306  1830  3648 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:25:37.306  1134  1491 I hwcomposer: [DRMDEV] (0) failed to waitNextVsync: -1  
+11-07 03:25:37.307  1830  3983 W PackageManager: Missing required system package: com.phonepe.app, but found with extended search.
+11-07 03:25:37.307  1830  3983 W PackageManager: Missing required system package: com.csam.icici.bank.imobile, but found with extended search.
+11-07 03:25:37.307  1134  1491 I hwcomposer: [DRMDEV] (0) failed to waitNextVsync: -1  
+11-07 03:25:37.307  1830  3983 W PackageManager: Missing required system package: com.google.android.apps.nbu.paisa.user, but found with extended search.
+11-07 03:25:37.307  1830  3648 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 03:25:37.308 14781 14781 I PkModeUpdater: PkModeUpdater.refreshDevices():212 refreshing devices
+11-07 03:25:37.308  1198  1198 I SurfaceFlinger: setActiveModeInHwcIfNeeded changing active mode to 3(30.00 Hz) for display 0
+11-07 03:25:37.308  1134  1134 I hwcomposer: [HWC] (0) displaySetActiveConfig config:3  
+11-07 03:25:37.310 14781 14781 I PkModeUpdater: PkModeUpdater.refreshDevices():212 refreshing devices
+11-07 03:25:37.310  1830  4471 W PackageManager: Missing required system package: com.whatsapp, but found with extended search.
+11-07 03:25:37.310  1830  4471 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:25:37.310  1830  4471 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 03:25:37.312  1830  3983 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:25:37.312 14781 14781 I PkModeUpdater: PkModeUpdater.refreshDevices():212 refreshing devices
+11-07 03:25:37.315  1830  1883 W PackageManager: Missing required system package: org.videolan.vlc, but found with extended search.
+11-07 03:25:37.315  1830  1883 W PackageManager: Missing required system package: com.reddit.frontpage, but found with extended search.
+11-07 03:25:37.316  1830  1883 W PackageManager: Missing required system package: com.linkedin.android, but found with extended search.
+11-07 03:25:37.316  1830  1883 W PackageManager: Missing required system package: com.google.android.apps.docs.editors.slides, but found with extended search.
+11-07 03:25:37.316  1830  1883 W PackageManager: Missing required system package: com.google.android.apps.docs.editors.sheets, but found with extended search.
+11-07 03:25:37.316  1830  1883 W PackageManager: Missing required system package: com.google.android.apps.docs.editors.docs, but found with extended search.
+11-07 03:25:37.317  1830  1883 W PackageManager: Missing required system package: app.revanced.android.youtube, but found with extended search.
+11-07 03:25:37.317  1830  1883 W PackageManager: Missing required system package: app.revanced.android.gms, but found with extended search.
+11-07 03:25:37.317  1830  1883 W PackageManager: Missing required system package: io.github.forkmaintainers.iceraven, but found with extended search.
+11-07 03:25:37.318  1830  1883 W PackageManager: Missing required system package: com.google.android.keep, but found with extended search.
+11-07 03:25:37.318  1830  1883 W PackageManager: Missing required system package: com.google.android.apps.docs.editors.slides, but found with extended search.
+11-07 03:25:37.318  1830  1883 W PackageManager: Missing required system package: com.google.android.apps.docs.editors.sheets, but found with extended search.
+11-07 03:25:37.318  1830  1883 W PackageManager: Missing required system package: com.google.android.apps.docs.editors.docs, but found with extended search.
+11-07 03:25:37.319  1830  1883 W PackageManager: Missing required system package: app.revanced.android.youtube, but found with extended search.
+11-07 03:25:37.319  1830  1883 W PackageManager: Missing required system package: app.revanced.android.apps.youtube.music, but found with extended search.
+11-07 03:25:37.319  1830  1883 W PackageManager: Missing required system package: app.mihon, but found with extended search.
+11-07 03:25:37.320  1830  1883 W PackageManager: Missing required system package: io.github.forkmaintainers.iceraven, but found with extended search.
+11-07 03:25:37.320  1830  1883 W PackageManager: Missing required system package: idm.internet.download.manager.plus, but found with extended search.
+11-07 03:25:37.323  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:25:37.318  1492  1492 W binder:1492_2: type=1400 audit(0.0:857743): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:25:37.330  1830  3551 W PackageManager: Missing required system package: com.whatsapp, but found with extended search.
+11-07 03:25:37.330  1830  3551 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:25:37.331  1830  3551 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 03:25:37.333  1830  3551 W PackageManager: Missing required system package: com.whatsapp, but found with extended search.
+11-07 03:25:37.333  1830  3551 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:25:37.333  1830  3551 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 03:25:37.336  1830  3551 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:25:37.336  1830  3551 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 03:25:37.338  1830  2002 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:25:37.338  1830  2002 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 03:25:37.340  2516  2759 D ImsResolver: maybeAddedImsService, packageName: com.motorola.securityhub
+11-07 03:25:37.343  1830  1883 W PackageManager: Missing required system package: org.telegram.messenger, but found with extended search.
+11-07 03:25:37.343  1830  1883 W PackageManager: Missing required system package: com.whatsapp, but found with extended search.
+11-07 03:25:37.343  1830  1883 W PackageManager: Missing required system package: com.microsoft.teams, but found with extended search.
+11-07 03:25:37.344  1830  1883 W PackageManager: Missing required system package: com.microsoft.office.outlook, but found with extended search.
+11-07 03:25:37.344  1830  1883 W PackageManager: Missing required system package: com.microsoft.office.outlook, but found with extended search.
+11-07 03:25:37.344  3486  3486 D RegisteredNfcFServicesCache: Service unchanged, not updating
+11-07 03:25:37.344  1830  1883 W PackageManager: Missing required system package: com.google.android.keep, but found with extended search.
+11-07 03:25:37.344  1830  1883 W PackageManager: Missing required system package: com.google.android.apps.docs.editors.slides, but found with extended search.
+11-07 03:25:37.344  2493  2575 D SecureElementService: getReaders() for com.android.nfc
+11-07 03:25:37.344  1830  1883 W PackageManager: Missing required system package: com.google.android.apps.docs.editors.sheets, but found with extended search.
+11-07 03:25:37.345  1830  1883 W PackageManager: Missing required system package: com.google.android.apps.docs.editors.docs, but found with extended search.
+11-07 03:25:37.345  1830  1883 W PackageManager: Missing required system package: com.dubox.drive, but found with extended search.
+11-07 03:25:37.345  1830  1883 W PackageManager: Missing required system package: app.revanced.android.gms, but found with extended search.
+11-07 03:25:37.369 16119 16173 D BaseModelUpdateTask: Ignoring model task since loader is pending=com.android.launcher3.model.PackageUpdatedTask@9306d3
+11-07 03:25:37.369  3546  3546 W MotoFreeForm: [PackageMonitor] onPackageChangedcom.motorola.securityhub
+11-07 03:25:37.424  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:25:37.439  1527  1731 D ULogGuard: Monitoring: 10 threads, 0 requests, 0 time-bombs; 1 guards. ResetFlags = 0x7
+11-07 03:25:37.643  3384 10934 I NearbySharing: Network state changed: NetworkState(isRestricted=false, isOnline=true, isCongested=false, isMetered=false, isWifiConnected=true)
+11-07 03:25:37.643  3384  6111 I NearbySharing: Network state changed: NetworkState(isRestricted=false, isOnline=true, isCongested=false, isMetered=false, isWifiConnected=true)
+11-07 03:25:37.646  1134  1485 I hwcomposer: [HWC] (0)fire a callback of refresh to SF[4]  
+11-07 03:25:37.659  1167  1193 I mtkpower@impl: [setMode] type:6, enabled:1
+11-07 03:25:37.659  1167  1193 E mtkpower@impl: [setMode] unknown type
+11-07 03:25:37.727  1167  1193 I mtkpower@impl: [setMode] type:6, enabled:0
+11-07 03:25:37.727  1167  1193 E mtkpower@impl: [setMode] unknown type
+11-07 03:25:37.756  1198  1198 I BufferQueueProducer: [StatusBar#90](this:0xb400007c09d63718,id:-1,api:0,p:-1,c:1198) queueBuffer: fps=0.05 dur=19157.79 max=19157.79 min=19157.79
+11-07 03:25:37.768 13693 13712 D CompatibilityChangeReporter: Compat change id reported: 160794467; UID 11120; state: ENABLED
+11-07 03:25:37.792  2298  2298 D ControlsListingControllerImpl: ServiceConfig reloaded, count: 0
+11-07 03:25:37.793  2298  2298 D FreeformGesture: onStateChanged: State{mIsPackageAvailable=true, mPillGestureEnabled=false, mVibrationEnabled=true, mShortcutPanelShowing=false, mSwipeInEnabled=false, mHunFreeformEnabled=true, mIsInGameMode=false, mIsRecentsShowing=false, mPillXPosition=1, mPillYPosition=600, mIsInTutorialMode=false, mIsDoubleTapPowerEnabled=false}
+11-07 03:25:37.794  1167  1208 I libPerfCtl: xgfGetFPS pid:2298 fps:-1
+11-07 03:25:37.794  1167  1208 I libPerfCtl: xgfGetFPS pid:31477 fps:-1
+11-07 03:25:37.798  1830  3983 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 03:25:37.800  1830  3551 W PackageManager: Missing required system package: app.revanced.android.gms, but found with extended search.
+11-07 03:25:37.822  3384 13633 I FraudProtectUtils: Not in testing population, skipping local test bank apps. [CONTEXT service_id=469 ]
+11-07 03:25:37.823  3384 13633 I FraudProtectUtils: (REDACTED) Latest bank app list size: %d, %s isBankApp: false
+11-07 03:25:37.823  3384 13633 W ComponentChangedIO: No package name in intent data or package is not a bank app [CONTEXT service_id=469 ]
+11-07 03:25:37.890  1134  1485 I hwcomposer: [HWC] (0)fire a callback of refresh to SF[4]  
+11-07 03:25:37.926  1134  1134 I hwcomposer: [HWCDisplay] [Display_0 (type:1)] fps:6.940853,dur:1152.60,max:320.38,min:32.23  
+11-07 03:25:38.211  1492  1492 W HidlServiceManagement: Waited for hwservicemanager.ready for a second, waiting another...
+11-07 03:25:38.210  1492  1492 W binder:1492_2: type=1400 audit(0.0:857745): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:25:38.212  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:25:38.210  1492  1492 W binder:1492_2: type=1400 audit(0.0:857746): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:25:38.751 27547 27588 I PlayCommon: [253] Preparing logs for uploading
+11-07 03:25:38.757 27547 27588 I PlayCommon: [253] Connecting to server: https://play.googleapis.com/play/log?format=raw&proto_v2=true
+11-07 03:25:38.794  1167  1208 I libPerfCtl: xgfGetFPS pid:2298 fps:-1
+11-07 03:25:38.794  1167  1208 I libPerfCtl: xgfGetFPS pid:31477 fps:-1
+11-07 03:25:38.988 27547 27588 I PlayCommon: [253] Successfully uploaded logs.
+11-07 03:25:39.211  1492  1492 W HidlServiceManagement: Waited for hwservicemanager.ready for a second, waiting another...
+11-07 03:25:39.212  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:25:39.212  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:25:39.206  1492  1492 W binder:1492_2: type=1400 audit(0.0:857747): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:25:39.206  1492  1492 W binder:1492_2: type=1400 audit(0.0:857748): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:25:39.795  1167  1208 I libPerfCtl: xgfGetFPS pid:2298 fps:-1
+11-07 03:25:39.795  1167  1208 I libPerfCtl: xgfGetFPS pid:31477 fps:-1
+11-07 03:25:40.155  1830  2109 E WifiDataStall: Ignore this poll. newStats: null txLinkSpeedMbps: 6 rxLinkSpeedMbps: 6 rssi: -51 connectionCapabilities: com.android.server.wifi.WifiNative$ConnectionCapabilities@97eba
+11-07 03:25:40.159  1830  1830 D EnhancedConnectivityController: Wifi onCapabilitiesChanged
+11-07 03:25:40.159  1830  1830 D EnhancedConnectivityController: Default net onCapabilitiesChanged
+11-07 03:25:40.160  1830  1830 D EnhancedConnectivityController: updateDefaultNet:553
+11-07 03:25:40.160  1830  1830 D EnhancedConnectivityController: mayUpdateNotification: shouldShow=true,UidsBlocked=false, net info=net:553,ifName=wlan0,securityType=0,isDefault=true,ssid="iBUS@MUJ",notificationId=0
+11-07 03:25:40.160  1830  1830 D EnhancedConnectivityController: educative notification has been ignored
+11-07 03:25:40.163  3595  4114 I ModemStats: [DataStallDetectService] onCapabilitiesChanged networkCapabilities=[ Transports: WIFI Capabilities: NOT_METERED&INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VPN&VALIDATED&NOT_ROAMING&FOREGROUND&NOT_CONGESTED&NOT_SUSPENDED&NOT_VCN_MANAGED LinkUpBandwidth>=12000Kbps LinkDnBandwidth>=60000Kbps TransportInfo: <SSID: <unknown ssid>, BSSID: 02:00:00:00:00:00, MAC: 02:00:00:00:00:00, IP: /10.175.15.5, Security type: 0, Supplicant state: COMPLETED, Wi-Fi standard: 11ac, RSSI: -51, Link speed: 6Mbps, Tx Link speed: 6Mbps, Max Supported Tx Link speed: 433Mbps, Calculated Tx : 0Mbps, Rx Link speed: 6Mbps, Max Supported Rx Link speed: 433Mbps, Calculated Rx : 0Mbps, Frequency: 5745MHz, Net ID: -1, Metered hint: false, score: 100, isUsable: true, CarrierMerged: false, SubscriptionId: -1, IsPrimary: -1, Trusted: true, Restricted: false, Ephemeral: false, OEM paid: false, OEM private: false, OSU AP: false, FQDN: <none>, Provider friendly name: <none>, Requesting package name: <none><none>MLO Information: , Is TID-To-Link negotiation supported by the AP: false, AP MLD Address: <none>, AP MLO Link Id: <none>, AP MLO Affiliated links: <none>, Vendor Data: <none>> SignalStrength: -51 UnderlyingNetworks: Null]
+11-07 03:25:40.163  3595  4114 I ModemStats: [DataStallDetectService] onCapabilitiesChanged NET_CAPABILITY_VALIDATED=true
+11-07 03:25:40.163  3595  4114 I ModemStats: [DataStallDetectService] onCapabilitiesChanged mDataStallManager.mDataStallInstance=null
+11-07 03:25:40.163  3595  4114 I ModemStats: [DataStallDetectService] onCapabilitiesChanged mDataStallSmart5gManager.mDataStallInstance=null
+11-07 03:25:40.164  3785  4430 D OtaApp  : PollingManagerService:NetworkCallback:networkCapabilities=[ Transports: WIFI Capabilities: NOT_METERED&INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VPN&VALIDATED&NOT_ROAMING&FOREGROUND&NOT_CONGESTED&NOT_SUSPENDED&NOT_VCN_MANAGED LinkUpBandwidth>=12000Kbps LinkDnBandwidth>=60000Kbps TransportInfo: <SSID: <unknown ssid>, BSSID: 02:00:00:00:00:00, MAC: 02:00:00:00:00:00, IP: /10.175.15.5, Security type: 0, Supplicant state: COMPLETED, Wi-Fi standard: 11ac, RSSI: -51, Link speed: 6Mbps, Tx Link speed: 6Mbps, Max Supported Tx Link speed: 433Mbps, Calculated Tx : 0Mbps, Rx Link speed: 6Mbps, Max Supported Rx Link speed: 433Mbps, Calculated Rx : 0Mbps, Frequency: 5745MHz, Net ID: -1, Metered hint: false, score: 100, isUsable: true, CarrierMerged: false, SubscriptionId: -1, IsPrimary: -1, Trusted: true, Restricted: false, Ephemeral: false, OEM paid: false, OEM private: false, OSU AP: false, FQDN: <none>, Provider friendly name: <none>, Requesting package name: <none><none>MLO Information: , Is TID-To-Link negotiation supported by the AP: false, AP MLD Address: <none>, AP MLO Link Id: <none>, AP MLO Affiliated links: <none>, Vendor Data: <none>> SignalStrength: -51 UnderlyingNetworks: Null]
+11-07 03:25:40.169  1830  2229 D AgpsApn : mDefaultNetworkcallback onCapabilitiesChanged: network=553, nc=[ Transports: WIFI Capabilities: NOT_METERED&INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VPN&VALIDATED&NOT_ROAMING&FOREGROUND&NOT_CONGESTED&NOT_SUSPENDED&NOT_VCN_MANAGED LinkUpBandwidth>=12000Kbps LinkDnBandwidth>=60000Kbps TransportInfo: <SSID: <unknown ssid>, BSSID: 02:00:00:00:00:00, MAC: 02:00:00:00:00:00, IP: /10.175.15.5, Security type: 0, Supplicant state: COMPLETED, Wi-Fi standard: 11ac, RSSI: -51, Link speed: 6Mbps, Tx Link speed: 6Mbps, Max Supported Tx Link speed: 433Mbps, Calculated Tx : 0Mbps, Rx Link speed: 6Mbps, Max Supported Rx Link speed: 433Mbps, Calculated Rx : 0Mbps, Frequency: 5745MHz, Net ID: -1, Metered hint: false, score: 100, isUsable: true, CarrierMerged: false, SubscriptionId: -1, IsPrimary: 1, Trusted: true, Restricted: false, Ephemeral: false, OEM paid: false, OEM private: false, OSU AP: false, FQDN: <none>, Provider friendly name: <none>, Requesting package name: <none><none>MLO Information: , Is TID-To-Link negotiation supported by the AP: false, AP MLD Address: <none>, AP MLO Link Id: <none>, AP MLO Affiliated links: <none>, Vendor Data: <none>> SignalStrength: -51 AdminUids: [1000] SSID: "iBUS@MUJ" UnderlyingNetworks: Null]
+11-07 03:25:40.169  1830  2229 D AgpsApn : onCapabilitiesChanged: mDefaultNetHasInt=true
+11-07 03:25:40.176   510   632 I emyt    : handleMessage processing message:[NOTIFY_UPTIME_IGNORE_STATE_CHANGED] with [non-null]:RcsEngineImpl reference [CONTEXT log_prefix="RcsEngineImpl:[4dd3b970-723f]>Handler" thread_id=261 ]
+11-07 03:25:40.176   510   584 I emyt    : Connected state: [1], networkType: [WIFI] [CONTEXT thread_id=255 ]
+11-07 03:25:40.176 28144 28167 I dutj    : Connection state change: onCapabilitiesChanged, data connection: WIFI, manual connection eligibility: false, ntn roaming: false
+11-07 03:25:40.177 28144 28167 I dutj    : New default data network: wifi
+11-07 03:25:40.178  1830  2116 D ConnectivityService: NetReassign [no changes] [c 0] [a 2] [i 2]
+11-07 03:25:40.179  3384 10934 I NearbyMediums: Wifi changed new SSID: <unknown ssid>
+11-07 03:25:40.179  3384 10934 I NearbyMediums: WifiLanConnectivityInfo is not changed, skip notify.
+11-07 03:25:40.213  1492  1492 W HidlServiceManagement: Waited for hwservicemanager.ready for a second, waiting another...
+11-07 03:25:40.214  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:25:40.214  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:25:40.210  1492  1492 W binder:1492_2: type=1400 audit(0.0:857749): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:25:40.210  1492  1492 W binder:1492_2: type=1400 audit(0.0:857750): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:25:40.444  1527  1731 D ULogGuard: Monitoring: 10 threads, 0 requests, 0 time-bombs; 1 guards. ResetFlags = 0x7
+11-07 03:25:40.678  3384 10934 I NearbySharing: Network state changed: NetworkState(isRestricted=false, isOnline=true, isCongested=false, isMetered=false, isWifiConnected=true)
+11-07 03:25:40.678  3384 13250 I NearbySharing: Network state changed: NetworkState(isRestricted=false, isOnline=true, isCongested=false, isMetered=false, isWifiConnected=true)
+11-07 03:25:40.795  1167  1208 I libPerfCtl: xgfGetFPS pid:2298 fps:-1
+11-07 03:25:40.795  1167  1208 I libPerfCtl: xgfGetFPS pid:31477 fps:-1
+11-07 03:25:41.216  1492  1492 W HidlServiceManagement: Waited for hwservicemanager.ready for a second, waiting another...
+11-07 03:25:41.217  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:25:41.214  1492  1492 W binder:1492_2: type=1400 audit(0.0:857751): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:25:41.218  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:25:41.214  1492  1492 W binder:1492_2: type=1400 audit(0.0:857752): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:25:41.524  1128  3271 D [BT]    : mtk_bt_op: BT_VND_OP_LPM_WAKE_SET_STATE
+11-07 03:25:41.650  3384 13250 I NearbyMediums: No BLE Fast/GATT advertisements found in the latest cycle.
+11-07 03:25:41.651  3384 13250 I NearbyMediums: Current Tracked Scanning Clients are : {NearbyConnections.EnvironmentMonitor, NearbySharing}
+11-07 03:25:41.795  1167  1208 I libPerfCtl: xgfGetFPS pid:2298 fps:-1
+11-07 03:25:41.795  1167  1208 I libPerfCtl: xgfGetFPS pid:31477 fps:-1
+11-07 03:25:41.891 13693 13721 D ProfileInstaller: Installing profile for com.anchor.mine
+11-07 03:25:42.217  1492  1492 W HidlServiceManagement: Waited for hwservicemanager.ready for a second, waiting another...
+11-07 03:25:42.218  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:25:42.218  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:25:42.214  1492  1492 W binder:1492_2: type=1400 audit(0.0:857753): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:25:42.214  1492  1492 W binder:1492_2: type=1400 audit(0.0:857754): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:25:42.247  3384 13549 I AlarmManager: setExactAndAllowWhileIdle [name: FcmRetry type: 2 triggerAtMillis: 315467508]
+11-07 03:25:42.252  1830  2002 W PackageManager: Missing required system package: org.zwanoo.android.speedtest, but found with extended search.
+11-07 03:25:42.255  1830  2002 W PackageManager: Missing required system package: org.zwanoo.android.speedtest, but found with extended search.
+11-07 03:25:42.276  1108  1108 D Zygote  : Forked child process 13722
+11-07 03:25:42.288  3384 13680 I NetworkScheduler.Stats: (REDACTED) Task %s/%s started execution. cause:%s exec_start_elapsed_seconds: %s
+11-07 03:25:42.290 13722 13722 I libc    : SetHeapTaggingLevel: tag level set to 0
+11-07 03:25:42.290  3384 13623 I PlayGamesServices[GamesSyncAdapter]: Starting sync for bf5b4deb
+11-07 03:25:42.292  3384 13623 I PlayGamesServices[GamesSyncAdapter]: Sync duration for bf5b4deb: 1
+11-07 03:25:42.296 13722 13722 I droid.speedtest: Using generational CollectorTypeCMC GC.
+11-07 03:25:42.300 13722 13722 D nativeloader: Load libframework-connectivity-tiramisu-jni.so using APEX ns com_android_tethering for caller /apex/com.android.tethering/javalib/framework-connectivity-t.jar: ok
+11-07 03:25:42.307 13722 13722 D CompatibilityChangeReporter: Compat change id reported: 171979766; UID 10341; state: ENABLED
+11-07 03:25:42.308 13722 13722 D CompatibilityChangeReporter: Compat change id reported: 242716250; UID 10341; state: ENABLED
+11-07 03:25:42.308  3384 13623 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 03:25:42.308  3384 13623 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 03:25:42.319 13722 13722 D nativeloader: Configuring clns-4 for other apk /system/framework/org.apache.http.legacy.jar. target_sdk_version=36, uses_libraries=ALL, library_path=/data/app/~~d8_3YaEL7Nkgu6tT_Cy-VQ==/org.zwanoo.android.speedtest-gBpWPa47NPs8XcttsBOigQ==/lib/arm64:/data/app/~~d8_3YaEL7Nkgu6tT_Cy-VQ==/org.zwanoo.android.speedtest-gBpWPa47NPs8XcttsBOigQ==/base.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand:/data/user/0/org.zwanoo.android.speedtest
+11-07 03:25:42.319 13722 13722 D nativeloader: Extending system_exposed_libraries: libapuwareapusys.mtk.so:libapuwareapusys_v2.mtk.so:libapuwarexrp.mtk.so:libapuwarexrp_v2.mtk.so:libapuwareutils.mtk.so:libapuwareutils_v2.mtk.so:libapuwarehmp.mtk.so:libmcv_runtime_usdk.mtk.so:libneuron_graph_delegate.mtk.so:libneuronusdk_adapter.mtk.so:libtflite_mtk.mtk.so:libarmnn_ndk.mtk.so:libcmdl_ndk.mtk.so:libnir_neon_driver_ndk.mtk.so:libmvpu_runtime.mtk.so:libmvpu_runtime_pub.mtk.so:libmvpu_engine_pub.mtk.so:libmvpu_pattern_pub.mtk.so:libmvpuop_mtk_cv.mtk.so:libmvpuop_mtk_nn.mtk.so:libmvpu_runtime_25.mtk.so:libmvpu_runtime_25_pub.mtk.so:libmvpu_engine_25_pub.mtk.so:libmvpu_pattern_25_pub.mtk.so:libmvpuop25_mtk_cv.mtk.so:libmvpuop25_mtk_nn.mtk.so:libmvpu_config.mtk.so:libteeservice_client.trustonic.so:libjni_helper.motocameradesktop.so:libimgTuner_jni.motoimagetuner.so
+11-07 03:25:42.323  3384 13623 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 03:25:42.323  3384 13623 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 03:25:42.327  3384 13623 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 03:25:42.327  3384 13623 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 03:25:42.327  3384 13623 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 03:25:42.330  3384 13549 I NetworkScheduler.Stats: (REDACTED) Task %s/%s finished executing. cause:%s result: %s elapsed_millis: %s uptime_millis: %s exec_start_elapsed_seconds: %s
+11-07 03:25:42.340  3384 10616 I GetServiceValidatorImpl: (REDACTED) onGetService() from Client SDK version [%s], Module version [%s], PGA version [%s], Account [%s], Calling package [%s], Game package [%s]
+11-07 03:25:42.341  3384 10616 I GetGamesServiceReqFacto: (REDACTED) Parsing request with ignored arguments. signInOptionsBundle [%s], isRetryingSignIn [%s], skipWelcomePopup [%s], requireGooglePlus [%s]
+11-07 03:25:42.341  3384 10616 I GetGamesServiceReqFacto: Replacing request for `games` scope with `games_lite`
+11-07 03:25:42.350  3384 13733 I SignInPerformer-76: (REDACTED) Handling request [%s], isFirstPartyCaller [%s]
+11-07 03:25:42.352  3384 13733 I SignInPerformer-76: Successfully brokered first-party unauthenticated GamesService [CONTEXT service_id=1 ]
+11-07 03:25:42.354  3384 13733 I GetGamesServiceV2Op: (REDACTED) Successfully brokered GamesService for request %s
+11-07 03:25:42.357  3384 13623 I NetworkScheduler.Stats: (REDACTED) Task %s/%s started execution. cause:%s exec_start_elapsed_seconds: %s
+11-07 03:25:42.358  3384 13654 I PlayGamesServices[GamesSyncAdapter]: Starting sync for 6ecc5aa9
+11-07 03:25:42.360  3384 13654 I PlayGamesServices[GamesSyncAdapter]: Sync duration for 6ecc5aa9: 1
+11-07 03:25:42.368  3384 13654 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 03:25:42.369  3384 13654 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 03:25:42.379  3384 13654 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 03:25:42.379  3384 13654 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 03:25:42.383  3384 13654 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 03:25:42.383  3384 13654 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 03:25:42.383  3384 13654 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 03:25:42.385  3384 13651 I NetworkScheduler.Stats: (REDACTED) Task %s/%s finished executing. cause:%s result: %s elapsed_millis: %s uptime_millis: %s exec_start_elapsed_seconds: %s
+11-07 03:25:42.402  3384 13654 I NetworkScheduler.Stats: (REDACTED) Task %s/%s started execution. cause:%s exec_start_elapsed_seconds: %s
+11-07 03:25:42.403  3384 13654 I PlayGamesServices[GamesSyncAdapter]: Starting sync for 5113fac0
+11-07 03:25:42.403 13722 13722 D nativeloader: Configuring clns-5 for other apk /data/app/~~d8_3YaEL7Nkgu6tT_Cy-VQ==/org.zwanoo.android.speedtest-gBpWPa47NPs8XcttsBOigQ==/base.apk. target_sdk_version=36, uses_libraries=, library_path=/data/app/~~d8_3YaEL7Nkgu6tT_Cy-VQ==/org.zwanoo.android.speedtest-gBpWPa47NPs8XcttsBOigQ==/lib/arm64:/data/app/~~d8_3YaEL7Nkgu6tT_Cy-VQ==/org.zwanoo.android.speedtest-gBpWPa47NPs8XcttsBOigQ==/base.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand:/data/user/0/org.zwanoo.android.speedtest
+11-07 03:25:42.404  3384 13654 I PlayGamesServices[GamesSyncAdapter]: Sync duration for 5113fac0: 1
+11-07 03:25:42.412  3384 13654 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 03:25:42.412  3384 13654 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 03:25:42.412 13722 13722 D nativeloader: Load libframework-connectivity-jni.so using APEX ns com_android_tethering for caller /apex/com.android.tethering/javalib/framework-connectivity.jar: ok
+11-07 03:25:42.417 13722 13722 V GraphicsEnvironment: Currently set values for:
+11-07 03:25:42.417 13722 13722 V GraphicsEnvironment:   angle_gl_driver_selection_pkgs=[]
+11-07 03:25:42.417 13722 13722 V GraphicsEnvironment:   angle_gl_driver_selection_values=[]
+11-07 03:25:42.417 13722 13722 V GraphicsEnvironment: ANGLE GameManagerService for org.zwanoo.android.speedtest: false
+11-07 03:25:42.417 13722 13722 V GraphicsEnvironment: org.zwanoo.android.speedtest is not listed in per-application setting
+11-07 03:25:42.417 13722 13722 V GraphicsEnvironment: Neither updatable production driver nor prerelease driver is supported.
+11-07 03:25:42.423  3384 13654 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 03:25:42.423  3384 13654 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 03:25:42.426  3384 13654 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 03:25:42.426  3384 13654 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 03:25:42.427  3384 13654 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 03:25:42.429  3384 13549 I NetworkScheduler.Stats: (REDACTED) Task %s/%s finished executing. cause:%s result: %s elapsed_millis: %s uptime_millis: %s exec_start_elapsed_seconds: %s
+11-07 03:25:42.443 13722 13722 I MultiDex: VM with version 2.1.0 has multidex support
+11-07 03:25:42.443 13722 13722 I MultiDex: Installing application
+11-07 03:25:42.443 13722 13722 I MultiDex: VM has multidex support, MultiDex support library is disabled.
+11-07 03:25:42.446  3384 13654 I NetworkScheduler.Stats: (REDACTED) Task %s/%s started execution. cause:%s exec_start_elapsed_seconds: %s
+11-07 03:25:42.447  3384 13651 I PlayGamesServices[GamesSyncAdapter]: Starting sync for fadc5039
+11-07 03:25:42.449  3384 13651 I PlayGamesServices[GamesSyncAdapter]: Sync duration for fadc5039: 1
+11-07 03:25:42.474  3384 13651 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 03:25:42.475  3384 13651 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 03:25:42.492  3384 13651 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 03:25:42.492  3384 13651 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 03:25:42.496  3384 13651 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 03:25:42.496  3384 13651 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 03:25:42.496  3384 13651 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 03:25:42.499  3384 13549 I NetworkScheduler.Stats: (REDACTED) Task %s/%s finished executing. cause:%s result: %s elapsed_millis: %s uptime_millis: %s exec_start_elapsed_seconds: %s
+11-07 03:25:42.519  3384 13549 I NetworkScheduler.Stats: (REDACTED) Task %s/%s started execution. cause:%s exec_start_elapsed_seconds: %s
+11-07 03:25:42.520  3384 13549 I PlayGamesServices[GamesSyncAdapter]: Starting sync for 89c507ca
+11-07 03:25:42.522 13722 13722 D CompatibilityChangeReporter: Compat change id reported: 183155436; UID 10341; state: ENABLED
+11-07 03:25:42.522  3384 13549 I PlayGamesServices[GamesSyncAdapter]: Sync duration for 89c507ca: 1
+11-07 03:25:42.531  3384 13549 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 03:25:42.531  3384 13549 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 03:25:42.533 13722 13722 D SessionsDependencies: Dependency to CRASHLYTICS added.
+11-07 03:25:42.539 13722 13722 I FirebaseApp: Device unlocked: initializing all Firebase APIs for app [DEFAULT]
+11-07 03:25:42.541  3384 13549 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 03:25:42.541  3384 13549 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 03:25:42.545  3384 13549 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 03:25:42.545  3384 13549 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 03:25:42.545  3384 13549 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 03:25:42.547  3384 13654 I NetworkScheduler.Stats: (REDACTED) Task %s/%s finished executing. cause:%s result: %s elapsed_millis: %s uptime_millis: %s exec_start_elapsed_seconds: %s
+11-07 03:25:42.551 13722 13722 D CompatibilityChangeReporter: Compat change id reported: 3400644; UID 10341; state: ENABLED
+11-07 03:25:42.551 13722 13722 I FirebaseCrashlytics: Initializing Firebase Crashlytics 19.4.4 for org.zwanoo.android.speedtest
+11-07 03:25:42.565  3384 13549 I NetworkScheduler.Stats: (REDACTED) Task %s/%s started execution. cause:%s exec_start_elapsed_seconds: %s
+11-07 03:25:42.566  3384 13651 I PlayGamesServices[GamesSyncAdapter]: Starting sync for a1ba4703
+11-07 03:25:42.568  3384 13651 I PlayGamesServices[GamesSyncAdapter]: Sync duration for a1ba4703: 1
+11-07 03:25:42.570 13722 13736 I DynamiteModule: Considering local module com.google.android.gms.measurement.dynamite:152 and remote module com.google.android.gms.measurement.dynamite:217
+11-07 03:25:42.570 13722 13736 I DynamiteModule: Selected remote version of com.google.android.gms.measurement.dynamite, version >= 217
+11-07 03:25:42.570 13722 13736 V DynamiteModule: Dynamite loader version >= 2, using loadModule2NoCrashUtils
+11-07 03:25:42.570 13722 13722 D SessionsDependencies: Subscriber CRASHLYTICS registered.
+11-07 03:25:42.577 13722 13736 W System  : ClassLoader referenced unknown path: 
+11-07 03:25:42.577 13722 13736 D nativeloader: Configuring clns-6 for other apk . target_sdk_version=37, uses_libraries=, library_path=/data/app/~~mI7tN5DirvG5ze9gh4g6oA==/com.google.android.gms-gM6F6mgrDIf2kGcIdjAmBQ==/lib/arm64:/data/app/~~mI7tN5DirvG5ze9gh4g6oA==/com.google.android.gms-gM6F6mgrDIf2kGcIdjAmBQ==/base.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand:/data/user/0/com.google.android.gms
+11-07 03:25:42.584  3384 13651 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 03:25:42.585  3384 13651 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 03:25:42.612  3384 13651 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 03:25:42.612  3384 13651 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 03:25:42.618 13722 13722 D FirebaseSessions: Initializing Firebase Sessions SDK.
+11-07 03:25:42.618  3384 13651 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 03:25:42.619  3384 13651 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 03:25:42.619  3384 13651 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 03:25:42.620  3384 13250 I PhenotypeResourceReader: unable to find any Phenotype resource metadata for org.zwanoo.android.speedtest
+11-07 03:25:42.624  3384 13623 I NetworkScheduler.Stats: (REDACTED) Task %s/%s finished executing. cause:%s result: %s elapsed_millis: %s uptime_millis: %s exec_start_elapsed_seconds: %s
+11-07 03:25:42.632 13722 13762 I FIAM.Headless: Starting InAppMessaging runtime with Installation ID cb8zYGz4Ta2vg6ZAiVRBO7
+11-07 03:25:42.633 13722 13749 I FirebaseCrashlytics: No version control information found
+11-07 03:25:42.641 13722 13746 E droid.speedtest: No package ID 6b found for resource ID 0x6b0b0013.
+11-07 03:25:42.643 13722 13746 I FA      : App measurement initialized, version: 193007
+11-07 03:25:42.643 13722 13746 I FA      : To enable debug logging run: adb shell setprop log.tag.FA VERBOSE
+11-07 03:25:42.643 13722 13746 I FA      : To enable faster debug mode event logging run:
+11-07 03:25:42.643 13722 13746 I FA      :   adb shell setprop debug.firebase.analytics.app org.zwanoo.android.speedtest
+11-07 03:25:42.648  1830  4471 D ConnectivityService: requestNetwork for uid/pid:10341/13722 activeRequest: null callbackRequest: 46431 [NetworkRequest [ REQUEST id=46432, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED Uid: 10341 RequestorUid: 10341 RequestorPkg: org.zwanoo.android.speedtest UnderlyingNetworks: Null] ]] callback flags: 0 order: 2147483647 isUidTracked: false declaredMethods: AVAIL|LOST
+11-07 03:25:42.650  1830  2109 D WifiNetworkFactory: got request NetworkRequest [ REQUEST id=46432, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED Uid: 10341 RequestorUid: 10341 RequestorPkg: org.zwanoo.android.speedtest UnderlyingNetworks: Null] ]
+11-07 03:25:42.650  1830  2116 D ConnectivityService: NetReassign [46432 : null → 553] [c 1] [a 0] [i 1]
+11-07 03:25:42.650  1830  2109 D UntrustedWifiNetworkFactory: got request NetworkRequest [ REQUEST id=46432, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED Uid: 10341 RequestorUid: 10341 RequestorPkg: org.zwanoo.android.speedtest UnderlyingNetworks: Null] ]
+11-07 03:25:42.651 13722 13750 D LifecycleServiceBinder: Binding service to application.
+11-07 03:25:42.651  1830  2109 D OemPaidWifiNetworkFactory: got request NetworkRequest [ REQUEST id=46432, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED Uid: 10341 RequestorUid: 10341 RequestorPkg: org.zwanoo.android.speedtest UnderlyingNetworks: Null] ]
+11-07 03:25:42.651  1830  2109 D MultiInternetWifiNetworkFactory: got request NetworkRequest [ REQUEST id=46432, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED Uid: 10341 RequestorUid: 10341 RequestorPkg: org.zwanoo.android.speedtest UnderlyingNetworks: Null] ]
+11-07 03:25:42.652 13722 13722 I FirebaseInitProvider: FirebaseApp initialization successful
+11-07 03:25:42.661 13722 13722 D WM-WrkMgrInitializer: Initializing WorkManager with default configuration.
+11-07 03:25:42.672 13722 13722 D WM-PackageManagerHelper: Skipping component enablement for androidx.work.impl.background.systemjob.SystemJobService
+11-07 03:25:42.673 13722 13722 D WM-Schedulers: Created SystemJobScheduler and enabled SystemJobService
+11-07 03:25:42.674 13722 13722 I MapboxInitializer: MapboxSDKCommonInitializer create() is called
+11-07 03:25:42.674 13722 13722 I MapboxInitializer: MapboxInitializer started MapboxSDKCommonInitializerImpl initialization, attempt 1
+11-07 03:25:42.675  3384 13623 I NetworkScheduler.Stats: (REDACTED) Task %s/%s started execution. cause:%s exec_start_elapsed_seconds: %s
+11-07 03:25:42.677  3384 13651 I PlayGamesServices[GamesSyncAdapter]: Starting sync for ba51e104
+11-07 03:25:42.679  3384 13651 I PlayGamesServices[GamesSyncAdapter]: Sync duration for ba51e104: 1
+11-07 03:25:42.688  3384 13651 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 03:25:42.688  3384 13651 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 03:25:42.698  3384 13651 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 03:25:42.698  3384 13651 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 03:25:42.702  3384 13651 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 03:25:42.702  3384 13651 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 03:25:42.702  3384 13651 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 03:25:42.703 13722 13722 D nativeloader: Load /data/app/~~d8_3YaEL7Nkgu6tT_Cy-VQ==/org.zwanoo.android.speedtest-gBpWPa47NPs8XcttsBOigQ==/lib/arm64/libmapbox-common.so using class loader ns clns-5 (caller=/data/app/~~d8_3YaEL7Nkgu6tT_Cy-VQ==/org.zwanoo.android.speedtest-gBpWPa47NPs8XcttsBOigQ==/base.apk!classes4.dex): ok
+11-07 03:25:42.706  3384 13654 I NetworkScheduler.Stats: (REDACTED) Task %s/%s finished executing. cause:%s result: %s elapsed_millis: %s uptime_millis: %s exec_start_elapsed_seconds: %s
+11-07 03:25:42.717 13722 13775 D CompatibilityChangeReporter: Compat change id reported: 160794467; UID 10341; state: ENABLED
+11-07 03:25:42.718 13722 13722 I Mapbox  : [common]: Using Mapbox Common SDK v23.11.2(e5700a0c2)
+11-07 03:25:42.722 13722 13722 I Mapbox  : [telemetry]: Telemetry service not started, missing token
+11-07 03:25:42.725 13722 13722 I MapboxInitializer: Initialized MapboxSDKCommonInitializerImpl successfully
+11-07 03:25:42.729 13722 13722 I MapboxInitializer: MapboxMapsInitializer create() is called
+11-07 03:25:42.729  1134  1491 I hwcomposer: [DRMDEV] (0) failed to waitNextVsync: -1  
+11-07 03:25:42.729 13722 13722 I MapboxInitializer: MapboxInitializer started MapboxMapsInitializerImpl initialization, attempt 1
+11-07 03:25:42.737  3384 13654 I NetworkScheduler.Stats: (REDACTED) Task %s/%s started execution. cause:%s exec_start_elapsed_seconds: %s
+11-07 03:25:42.738  3384 13651 I PlayGamesServices[GamesSyncAdapter]: Starting sync for e9859843
+11-07 03:25:42.739  3384 13651 I PlayGamesServices[GamesSyncAdapter]: Sync duration for e9859843: 1
+11-07 03:25:42.744 13722 13722 I Mapbox  : [maps-core]: Using Mapbox Core Maps SDK v10.19.2(0e73ab3f2b)
+11-07 03:25:42.748  3384 13651 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 03:25:42.748  3384 13651 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 03:25:42.749  1134  1491 I hwcomposer: [DRMDEV] (0) failed to waitNextVsync: -1  
+11-07 03:25:42.753 13722 13722 D nativeloader: Load /data/app/~~d8_3YaEL7Nkgu6tT_Cy-VQ==/org.zwanoo.android.speedtest-gBpWPa47NPs8XcttsBOigQ==/lib/arm64/libmapbox-maps.so using class loader ns clns-5 (caller=/data/app/~~d8_3YaEL7Nkgu6tT_Cy-VQ==/org.zwanoo.android.speedtest-gBpWPa47NPs8XcttsBOigQ==/base.apk!classes4.dex): ok
+11-07 03:25:42.758  3384 13651 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 03:25:42.758  3384 13651 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 03:25:42.762  3384 13651 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 03:25:42.763  3384 13651 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 03:25:42.763  3384 13651 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 03:25:42.765  3384 13623 I NetworkScheduler.Stats: (REDACTED) Task %s/%s finished executing. cause:%s result: %s elapsed_millis: %s uptime_millis: %s exec_start_elapsed_seconds: %s
+11-07 03:25:42.767 13722 13722 I MapboxInitializer: Initialized MapboxMapsInitializerImpl successfully
+11-07 03:25:42.771  1830  2074 W PackageManager: Missing required system package: com.anchor.mine, but found with extended search.
+11-07 03:25:42.782  1134  1491 I hwcomposer: [DRMDEV] (0) failed to waitNextVsync: -1  
+11-07 03:25:42.795  1167  1208 I libPerfCtl: xgfGetFPS pid:2298 fps:-1
+11-07 03:25:42.795  1167  1208 I libPerfCtl: xgfGetFPS pid:31477 fps:-1
+11-07 03:25:42.811  3384 13549 I PlayGamesServices[GamesSyncAdapter]: Starting sync for 376502bb
+11-07 03:25:42.812 13722 13722 I Typeface: updateThemeFont new=Rookery-Regular;old=sans-serif;new=Rookery-Stacked;old=
+11-07 03:25:42.812  3384 13651 I NetworkScheduler.Stats: (REDACTED) Task %s/%s started execution. cause:%s exec_start_elapsed_seconds: %s
+11-07 03:25:42.815  1134  1491 I hwcomposer: [DRMDEV] (0) failed to waitNextVsync: -1  
+11-07 03:25:42.816  3384 13549 I PlayGamesServices[GamesSyncAdapter]: Sync duration for 376502bb: 4
+11-07 03:25:42.819 13693 13712 I TestRunner: finished: testGentleReminderFires_SetsFlag(com.anchor.mine.alarms.AlarmSelfTest)

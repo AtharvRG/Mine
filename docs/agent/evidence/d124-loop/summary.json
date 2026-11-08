@@ -1,0 +1,214 @@
+[
+  {
+    "run": 1,
+    "wallSeconds": 59.5,
+    "gradleExit": 1,
+    "pbTests": 0,
+    "results": [],
+    "failed": []
+  },
+  {
+    "run": 2,
+    "wallSeconds": 72.8,
+    "gradleExit": 1,
+    "pbTests": 0,
+    "results": [],
+    "failed": []
+  },
+  {
+    "run": 3,
+    "wallSeconds": 63.7,
+    "gradleExit": 1,
+    "pbTests": 0,
+    "results": [],
+    "failed": []
+  },
+  {
+    "run": 4,
+    "wallSeconds": 90.5,
+    "gradleExit": 1,
+    "pbTests": 3,
+    "results": [
+      {
+        "name": "testGentleReminderFires_SetsFlag",
+        "status": "PASSED"
+      },
+      {
+        "name": "testAlarmFires_SetsFlag",
+        "status": "PASSED"
+      },
+      {
+        "name": "testAlarmClock_NextAlarmClockVerification",
+        "status": "PASSED"
+      }
+    ],
+    "failed": []
+  },
+  {
+    "run": 5,
+    "wallSeconds": 80.2,
+    "gradleExit": 1,
+    "pbTests": 3,
+    "results": [
+      {
+        "name": "testGentleReminderFires_SetsFlag",
+        "status": "PASSED"
+      },
+      {
+        "name": "testAlarmFires_SetsFlag",
+        "status": "PASSED"
+      },
+      {
+        "name": "testAlarmClock_NextAlarmClockVerification",
+        "status": "PASSED"
+      }
+    ],
+    "failed": []
+  },
+  {
+    "run": 6,
+    "wallSeconds": 63.5,
+    "gradleExit": 1,
+    "pbTests": 3,
+    "results": [
+      {
+        "name": "testGentleReminderFires_SetsFlag",
+        "status": "PASSED"
+      },
+      {
+        "name": "testAlarmFires_SetsFlag",
+        "status": "PASSED"
+      },
+      {
+        "name": "testAlarmClock_NextAlarmClockVerification",
+        "status": "PASSED"
+      }
+    ],
+    "failed": []
+  },
+  {
+    "run": 7,
+    "wallSeconds": 53.6,
+    "gradleExit": 1,
+    "pbTests": 0,
+    "results": [],
+    "failed": []
+  },
+  {
+    "run": 8,
+    "wallSeconds": 84.6,
+    "gradleExit": 1,
+    "pbTests": 0,
+    "results": [],
+    "failed": []
+  },
+  {
+    "run": 9,
+    "wallSeconds": 89.5,
+    "gradleExit": 1,
+    "pbTests": 0,
+    "results": [],
+    "failed": []
+  },
+  {
+    "run": 10,
+    "wallSeconds": 65.8,
+    "gradleExit": 1,
+    "pbTests": 0,
+    "results": [],
+    "failed": []
+  },
+  {
+    "run": 11,
+    "wallSeconds": 69.4,
+    "gradleExit": 1,
+    "pbTests": 0,
+    "results": [],
+    "failed": []
+  },
+  {
+    "run": 12,
+    "wallSeconds": 80.4,
+    "gradleExit": 1,
+    "pbTests": 0,
+    "results": [],
+    "failed": []
+  },
+  {
+    "run": 13,
+    "wallSeconds": 77.7,
+    "gradleExit": 1,
+    "pbTests": 0,
+    "results": [],
+    "failed": []
+  },
+  {
+    "run": 14,
+    "wallSeconds": 59.9,
+    "gradleExit": 1,
+    "pbTests": 0,
+    "results": [],
+    "failed": []
+  },
+  {
+    "run": 15,
+    "wallSeconds": 60.0,
+    "gradleExit": 1,
+    "pbTests": 0,
+    "results": [],
+    "failed": []
+  },
+  {
+    "run": 16,
+    "wallSeconds": 66.1,
+    "gradleExit": 1,
+    "pbTests": 0,
+    "results": [],
+    "failed": []
+  },
+  {
+    "run": 17,
+    "wallSeconds": 68.2,
+    "gradleExit": 1,
+    "pbTests": 0,
+    "results": [],
+    "failed": []
+  },
+  {
+    "run": 18,
+    "wallSeconds": 60.4,
+    "gradleExit": 1,
+    "pbTests": 0,
+    "results": [],
+    "failed": []
+  },
+  {
+    "run": 19,
+    "wallSeconds": 61.3,
+    "gradleExit": 1,
+    "pbTests": 0,
+    "results": [],
+    "failed": []
+  },
+  {
+    "run": 20,
+    "wallSeconds": 68.8,
+    "gradleExit": 1,
+    "pbTests": 3,
+    "results": [
+      {
+        "name": "testGentleReminderFires_SetsFlag",
+        "status": "PASSED"
+      },
+      {
+        "name": "testAlarmFires_SetsFlag",
+        "status": "PASSED"
+      },
+      {
+        "name": "testAlarmClock_NextAlarmClockVerification",
+        "status": "PASSED"
+      }
+    ],
+    "failed": []
+  }
+]

@@ -1,0 +1,23 @@
+RUN 01  xml   tests=3 failed=- stale=False wall=62s
+RUN 02  xml   tests=3 failed=- stale=False wall=66s
+RUN 03  xml   tests=3 failed=- stale=False wall=67s
+RUN 04  xml   tests=3 failed=- stale=False wall=68s
+RUN 05  xml   tests=3 failed=- stale=False wall=70s
+RUN 06  xml   tests=3 failed=- stale=False wall=62s
+RUN 07  xml   tests=3 failed=- stale=False wall=72s
+RUN 08  xml   tests=3 failed=- stale=False wall=70s
+RUN 09  xml   tests=3 failed=- stale=False wall=69s
+RUN 10  xml   tests=3 failed=- stale=False wall=75s
+RUN 11  xml   tests=3 failed=- stale=False wall=68s
+RUN 12  xml   tests=3 failed=- stale=False wall=69s
+RUN 13  xml   tests=3 failed=- stale=False wall=74s
+RUN 14  xml   tests=3 failed=- stale=False wall=72s
+RUN 15  xml   tests=3 failed=- stale=False wall=69s
+RUN 16  xml   tests=3 failed=- stale=False wall=65s
+RUN 17  xml   tests=3 failed=- stale=False wall=69s
+RUN 18  xml   tests=3 failed=- stale=False wall=64s
+RUN 19  xml   tests=3 failed=- stale=False wall=61s
+RUN 20  xml   tests=3 failed=- stale=False wall=67s
+
+=== D-124 v2 RESULT ===
+runs: 20  with-results: 20  failing-runs: 0  stale-archives: 0

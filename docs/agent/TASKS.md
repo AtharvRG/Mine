@@ -27,7 +27,7 @@ Specs for R1-R10: docs/agent/work/session1-remediation-spec.md. Read the task's 
 [x] T20 Storage queries: day page by day_key, heat-map counts, reminder dates per month, Home priority list, structured chat items.
 [x] T-A DateResolver 24h + ambiguity chips (D-103)
 [x] T-B getActiveNodes paging + ContextBuilder budget + stale->Inbox (D-104)
-[x] T-C Alarm tiers: Alarm (setAlarmClock) vs Gentle; tier stored on the reminder; icon disclosure text exposed to UI (D-105) [unit + connected verified, human-gated status bar check]
+[~] T-C Alarm tiers: Alarm (setAlarmClock) vs Gentle; tier stored on the reminder; icon disclosure text exposed to UI (D-105) [code + unit-verified; the ALARM-tier status-bar icon is proven by screenshots (Pair C, 252 px vs 197 px container, `visibleState=ICON` vs `HIDDEN`); the **Gentle half is now captured** (armed `setAndAllowWhileIdle` alarm + `visibleState=HIDDEN`, 2026-11-08) and only the human by-eye verdict is outstanding — see D-105 at line 82 and `DECISIONS.md:14`]
 [x] T-D New edge type follow_up: migration + migration test + blueprint 13 patch + UiAction/Storage support (D-106)
 [x] T-E Calendar queries: day exists with messages, reminder dates per month, heat counts per day, reminders for a day (tooltip) [unit-verified only]
 [x] T-F Quote slots: table quote_slot(slot, day_key, text, generated_at, state_hash, source=preset|live), preset pool of generic quotes per slot, generation job (see Part 3, Home), setting flags [unit-verified only]
@@ -79,9 +79,234 @@ Specs for R1-R10: docs/agent/work/session1-remediation-spec.md. Read the task's 
 [x] B6: Crash-window test + design sketch (b) — B6CrashWindowTest 2/2 (hard-kill window characterization + reachable near-match dedupe pair proof), core 249/249; evidence b6-crash-window.md + b6-test-run.txt + b6-core-run.txt; option (a)/(b) NOT picked, no DECISIONS.md change
 [x] Reviewer + test-auditor reports on Part B changes — reviewer APPROVE (with notes, 0 blocking; 4 IMPORTANT follow-ups: ContextBuilder proposal-budget crowding, BootReceiverIgnoreTest flake hardening, B6 planned-obsolescence discipline, rebuildMsgChunks rule dedup); test-auditor PASS with notes (0 vacuous assertions; top gaps: B5 validActions coverage 1/4, B3 legacy codec branches 0 coverage, B1 budget interaction untested, B4 redact-after-import/re-import untested, B2 LRU/boundary, B6 on-device durability premise); reports partb-reviewer-report.md + partb-test-audit-report.md
 [x] R10g: Clean-install minified release APK device run (fresh, on current code) — 4/4 capabilities PASS on build `BUILD SUCCESSFUL in 5m 34s`, clean install `firstInstallTime == lastUpdateTime == 2026-11-06 15:06:40`, `versionName=1.0.0`, no DEBUGGABLE. Evidence: `docs/agent/evidence/r10g-fresh-evidence.md` (supersedes Nov 5 `r10g-evidence.md`). Two defects recorded as observations: O-1 CREATE silently fails for `set alarm ...` phrasing; O-2 provider fields append instead of replace.
-[~] D-105: Status-bar alarm icon screenshots (fresh, by-eye user check) — **ALARM half evidenced on a contamination-free Pair C**: `d105-clean-alarm-tier.png` (`visibleState=ICON`, container `678,30-930,90` = 252 px) vs `d105-clean-no-alarm.png` (`visibleState=HIDDEN`, blank `Next alarm clock information`, container `733,30-930,90` = 197 px); 55 px delta reproduced across two sessions (295→240, 252→197). Earlier Pair A/B retained but their "absent" half could not rule out the user's own `com.google.android.deskclock` alarms holding a global `setAlarmClock`. **GENTLE half NOT captured and not reachable on this build** (self test is ALARM-only, Gentle instrumentation test window is 1.5 s, chat path blocked by O-1). Report `d105-evidence-fresh.md`. **NOT marked final — user checks by eye.**
+[~] D-105: Status-bar alarm icon screenshots (fresh, by-eye user check) — **ALARM half evidenced on a contamination-free Pair C**: `d105-clean-alarm-tier.png` (`visibleState=ICON`, container `678,30-930,90` = 252 px) vs `d105-clean-no-alarm.png` (`visibleState=HIDDEN`, blank `Next alarm clock information`, container `733,30-930,90` = 197 px); 55 px delta reproduced across two sessions (295→240, 252→197). Earlier Pair A/B retained but their "absent" half could not rule out the user's own `com.google.android.deskclock` alarms holding a global `setAlarmClock`. **GENTLE half CAPTURED 2026-11-08** (device `moto g73 5G - 14`, debug build): `AlarmSelfTest.testAlarmClock_NextAlarmClockVerification` with `d105GentleHoldMs=90000` + host `d105-gentle-capture.sh`. Armed GENTLE alarm in `d105-gentle-alarms-dump.txt` (`*walarm*`, `window=+1m29s998ms`, `flags=0x20`, no `Alarm clock:` block, `origWhen` = test's now+120 s; the dump is filtered and does **not** show the `Next alarm clock information` header — that claim is not evidenced by it); SystemUI `slot='alarm_clock'` = `visibleState=HIDDEN` in both samples (`d105-gentle-systemui.txt`, `-2.txt`); screenshot `d105-gentle-pending.png` (dark theme — the Pair C light-glyph scan does not apply). Same-session `AlarmSelfTest` gate `CONNECTED GATE: PASS - 3 test(s), 0 failed, 0 skipped` (`build/tmp/d105-gentle-run3.log`). By-eye crops: `d105-gentle-statusbar-crop.png` (3×, x700–1080), `d105-gentle-statusbar-left-crop.png` (2×, x0–400). Report `d105-evidence-fresh.md`. **NOT marked final — user checks by eye.**
 [x] Final: HANDOFF block + 03_CURRENT_TASK.md + commits (committed 0f2c18f — 146 files; HANDOFF.md, 03_CURRENT_TASK.md, STATE.md, TASKS.md, LEARNINGS.md +5, evidence)
+[x] D-124: AlarmSelfTest status -1 diagnosis + 20x failure rate — **closed**. 0/20 failures, 0 stale archives, green by XML and proto in all 20; `gradleExit: 1` in all 20 (D-123 reconfirmed). Report `docs/agent/evidence/d124-loop-v2-report.md`; v1 loop marked SUPERSEDED. Receiver change + `reminder_fire` rows recorded as D-124.
+[x] #131: AlarmSelfTest ALARM-tier flake — **closed as mitigated, unproven** (D-125). No reproduction exists; the widened window is retained on measured fire-latency grounds only. Reopen only with a real failure carrying `reminder_fire` rows.
+[x] Gate gap: `connected-results-gate.py` now falls back to `results_dir/<device>/test-result.pb` when the top-level proto is absent, reading one copy only (D-125). Fixtures: device-only green PASS, device-only failing FAIL, both-copies 3 tests not 6, empty dir FAIL.
 
+## Hardening batch (2026-11-07, audit findings H1-H4)
+[x] H3: ContextBuilder drops newest user message at 3000-char budget — newest message always included (`isNewest` bypass); 2 TDD tests in `ContextBuilderTest.kt`; core 267/0.
+[x] H2: local_only titles leak via proposal option titles — filter moved into `Storage.getAllActiveNodesPaged` so every caller (incl. the Ambiguous→ProposalOption path) is safe; `H2LocalOnlyLeakTest` 3/3 (leak, resolver non-match, ordinary-node guard).
+[x] H4: second missed reminder swallowed by dedupe — `ReliabilityManager.runSweeper` now dedupes on the fire instance (`getReminderFire(...)?.scheduledFor != fireAtMillis`) instead of `(reminderId, outcome)`; reminder ids are `r_<nodeId>`, so a rescheduled node missed twice was silently swallowed. Failing-first at `ReliabilityManagerTest.kt:63`; 2 new tests (distinct miss swept, same instance still deduped).
+[x] H1: API key in release BuildConfig — `LIVE_*` fields moved from `defaultConfig` to `buildTypes { debug { … } }`. **R8 elimination proven, not assumed**: a temporary live reference to `BuildConfig.LIVE_API_KEY` put the key in `classes.dex` (1 hit); without it, 0 hits. The previously "clean" APK was an accident of minification. Release `BuildConfig.java` now has no `LIVE_*`; release APK dex scan 0 hits for key/`LIVE_*`/`mistral`; guard test `BuildConfigCredentialScopeTest` (debug half). Evidence: `docs/agent/work/h1-api-key-scope.md`. Residual: key remains in debug artifacts and `local.properties` by design.
+
+## Gate hardening (2026-11-07, discovered while starting #130)
+[x] G1: `connectedDebugAndroidTestVerify` failed open — it declared no inputs, so it was UP-TO-DATE
+    after its first run and re-printed a stale PASS. Observed: 5 testcases / 1 `<failure>` on disk
+    while the task said `UP-TO-DATE` / exit 0 and `gate.json` still held `tests: 3, failures: 0`;
+    the same script by hand on the same dir said `FAIL - 5 test(s), 1 failed`. Fix: `inputs.dir(resultsDir)`.
+    Failing-first: green fixture PASS → UP-TO-DATE → XML swapped for a failing one → re-runs and FAILS.
+    Evidence `docs/agent/work/gate-fail-open.md`; D-127.
+[x] G2: Connected-test failures were undiagnosable from their artifacts. Two independent drop points,
+    both in `gradle/connected-results-gate.py`: `parse_xml` threw away the `<failure>`/`<error>` body
+    (it returned counts and names only), and `parse_proto` never decoded `TestResult.error` (field 3;
+    `Error { error_message = 1; error_type = 2; stack_trace = 3 }` per `test-result-proto-1.0.1.jar`).
+    So a red run printed `FAILED <name>` and nothing else on **either** route — including the D-123
+    route where the XML is truncated and the proto is the only readable copy. Fixed: `parse_xml`
+    returns a 6th `failure_details` value; `parse_proto` decodes field 3 and falls back to
+    `stack_trace` when `error_message` is blank; the report gains `failureDetails` plus a note
+    counting message-less failures; the FAIL branch prints each failing test's message indented, or
+    `(no failure message recorded in the <source>)` when UTP genuinely recorded nothing. Fixtures
+    moved from `scripts/tmp_gate_fixture.py` into `gradle/test_connected_results_gate.py` (4 cases:
+    xml route, proto route, empty body, green) and wired into `:app:check` as
+    `connectedGateFixtures` — a gate nobody tests is how the message got dropped. [RED probes, both
+    from reverting the fix: (a) message printing reverted → `G2 gate fixtures: 1/4`, the 3 message
+    cases fail, stdout shows `FAILED …` with no text — the original defect verbatim; (b) proto
+    `Error` parsing disabled → `3/4`, only `proto_failure_message_reaches_stdout_and_report` fails.
+    GREEN: `4/4`, `./gradlew :app:connectedGateFixtures` `BUILD SUCCESSFUL`; `:app:check`
+    `BUILD SUCCESSFUL in 1m 18s` with `G2 gate fixtures: 4/4 passed` in the log; verdict regression
+    `scripts/tmp_gate_fixture.py` `0/4` failures; real artifacts still
+    `CONNECTED GATE: PASS - 83 test(s), 0 failed, 0 skipped (source: xml)` and `gate.json` now
+    carries `"failureDetails": []`.] **Not proven:** that UTP populates field 3 on a real failure —
+    the green proto has no `Error` on any of its 83 results (as the schema says it should not), and
+    the original red artifact is gone. The proto route is pinned against a synthetic proto built to
+    the schema, not against a captured UTP failure.
+
+## v1 finish (2026-11-07, observations O-1/O-2/O-3 + B5)
+[x] O-2: Provider fields appended instead of replaced — root cause was a `key()` on `ProviderScreen`
+    remounting it mid-edit; removed, and the screen re-seeds from `state` via `LaunchedEffect`.
+    [ProviderScreenTest green; connected-verified]
+[x] B5 (export/import UI): `BackupScreen.kt` (SAF pickers + temp-file copy; all flow rules stay in
+    `ExportController`), new Backup tab in `MainActivity`, `PassphraseDialog` (internal, uses the
+    controller's own `MIN_PASSPHRASE_LENGTH`), suspending `runExport`/`runImport`/`runVerify` +
+    `reportFailure` in `ExportController` so the caller never polls `state`. **Defect fixed while
+    wiring:** `MineApp` built `AndroidExportManager` with no `scheduler`, so the post-import
+    reconcile was skipped and an import left the OLD alarms armed for rows the user no longer had.
+    Tests: `ExportControllerTest` 11 (4 new), `BackupScreenTest` 5 on device. [unit + connected verified]
+
+## Titanium hardening (plan: docs/agent/work/titanium-hardening-plan.md)
+[x] T-01 `updateNodeAndCommit` UPDATE omitted `type`/`title`/`local_only`; real DB dropped the mutation while the fake replaced the whole object. [RED: `ComparisonFailure: title must persist…`; GREEN on device]
+[x] T-02 `undoChangeAndCommit` omitted the same three columns (this is R-04). [RED: `ComparisonFailure: rename must land before undo…`; GREEN on device]
+[x] D-03 `getStaleNodes` had no `local_only` filter; the fake did. [RED: `local_only node must not leak through getStaleNodes`; GREEN on device]
+[x] R-05 Zero-row UPDATE still wrote a `raw_event` → receipt for a no-op. Now `executeUpdateDelete()` count guard; throw rolls back the event. [RED: `update of a missing node must fail rather than report success`; GREEN on device]
+[x] H-01 R-01 Overdue reminders filtered out of reconcile (`AlarmReconciler.kt:44`) — never re-armed, never reported. Now emits `ScheduleResult.Overdue`, cancels the stale registration, dedupes on the fire instance against the sweeper's `missed` row, and surfaces via `UiState.missedReminders` → Reminders screen. [RED: `Unresolved reference 'Overdue'`; then `Unresolved reference 'missedReminders'`; GREEN: core 284/0, app 10/0]
+[x] H-02 R-02 Sweeper only ran at boot/app-open, so a miss while the app stayed closed was never reported. Fixed with a repeating inexact alarm (no new dependency): `BootReceiver.ACTION_SWEEP` + `REQUEST_CODE_SWEEP = 9109` + `SWEEP_INTERVAL_MS = 15 min`, armed by `schedulePeriodicSweep()` via `setInexactRepeating(RTC_WAKEUP, now + interval, interval, …)`; `ACTION_SWEEP` added to `onReceive`'s valid actions (so it re-enters the same reconcile → sweeper → notify → quote path) and to the manifest intent-filter; armed from `MineApp.onCreate`'s startup coroutine and re-armed on every boot/app start (idempotent — same PendingIntent replaces the registration). Observation channel is `sweepsArmed`, same reason as `retriesArmed`: a repeating inexact alarm is invisible to the app and `dumpsys alarm` needs the signature DUMP permission. Test `BootReceiverTest.testH02_Sweeper_IsScheduledPeriodically_AndItsBroadcastSweeps`. [RED (real assertion, not a compile error): with `ACTION_SWEEP` removed from the valid-actions list, `tests="3" failures="1"`, `AssertionError: H-02: the periodic sweep broadcast must report the missed reminder expected:<r_h02_…> but was:<null>` at `BootReceiverTest.kt:143`. GREEN on device 2026-11-08: `BootReceiverTest` 3/3, H-02 case 1.249 s; full suite `CONNECTED GATE: PASS - 83 test(s), 0 failed, 0 skipped`]
+[x] H-03 R-03 `BootReceiver` has no `catch`; a Keystore failure skips reconcile+sweeper for the whole boot. Fixed: `onReceive`'s coroutine now has `catch (Exception)` → `recordStorageFailure` (re-opens storage, writes `at_risk` + a `Storage unavailable at boot: …` issue) + `scheduleStorageRetry` (inexact `RTC_WAKEUP`, 15 min, `ACTION_STORAGE_RETRY` re-enters the same valid-actions path). Test `BootReceiverTest.testBootReceiver_StorageFails_StillArmsBoundedRetry` (completes `app.sharedStorage` exceptionally, asserts `retriesArmed` +1 and the recorded issue, restores the deferred in `finally`). [RED: not demonstrated — the catch did not exist, so the
+ test had nothing to fail against before the fix; the failure path is proven by the test's own
+ assertion that `retriesArmed` increments. GREEN on device 2026-11-07: `BootReceiverTest` 2/2 on
+ `moto g73 5G - 14`, including `testBootReceiver_StorageFails_StillArmsBoundedRetry` (1.546 s)]
+[x] H-04 R-10 Import copied over the live DB with no `.bak`. **The "blocked on user decision (ship now vs defer with B5)" premise was STALE — B5 shipped, so the import path is live code.** Fixed and **device-verified 2026-11-08** on `moto g73 5G - 14`.
+    - Fix (`app/.../export/AndroidExportManager.kt:296-348`): the swap is now `close live` → copy live to `$liveDbName.bak` → copy temp over live → delete stale `-wal`/`-shm` → **re-open the swapped DB and `PRAGMA quick_check`** → on any exception restore the `.bak` and rethrow; the `.bak` is deleted only after the integrity check passes. An old `.bak` from a previous interrupted swap is deleted only immediately before a fresh one is taken.
+    - Test (`ExportTest.testImport_SwapFailureRestoresLiveDbFromBak`): injects the failure through a **constructor seam** — `AndroidExportManager(copyFile = …)` defaults to `File.copyTo(overwrite = true)`; the test lets the first copy (live → `.bak`) run for real and throws `IOException` on the second (temp → live), the exact crash window the rollback exists for. Asserts exactly 3 copies ran (backup, failed swap, rollback), the exception surfaced, the live DB is **byte-identical** to the pre-import copy, and `SELECT COUNT(*) FROM raw_message` == 2 after reopening.
+    - **File-system injection does not work on a real device** (all three tried, all failed to throw): (1) a *directory* at the live path — `copyTo(overwrite = true)` deletes a directory target recursively, so the copy succeeds; (2) a directory at the `.bak` path — `bakFile.delete()` removes an empty directory before the copy; (3) a `File` subclass — `copyTo` is the `kotlin.io` extension, not a member, so `override fun copyTo` is `NOTHING_TO_OVERRIDE`. The audit's prescribed "inject a `File` copy hook" remedy is not implementable as written; the constructor seam is.
+    - **The first test written for this task was not RED.** `testImport_FailureLeavesLiveDbByteIdenticalAndNoStaleBak` (duplicate-primary-key injection) **passed on unfixed code** (8/8) because the duplicate-PK `INSERT` aborts inside the *temp* transaction, strictly before the swap. **It was removed** (it proved nothing about the swap and would have read as coverage).
+    - [RED: with the swap reverted to a single `copyTo` (`H04-RED-PROBE`), device reported `AssertionError: The failed copy must be followed by exactly one rollback copy expected:<3> but was:<1>` — one copy, no `.bak`, no rollback. GREEN on device 2026-11-08: `CONNECTED GATE: PASS - 1 test(s), 0 failed, 0 skipped (source: xml)` (`build/tmp/h04-green3.log`, re-confirmed in `build/tmp/h04-t19-green.log`)]
+[x] T19 (schema-repair sense — distinct from the completed "T19 Release (R8)" at line 24) An upgrade repaired columns but never triggers or indexes. Every trigger was `CREATE TRIGGER IF NOT EXISTS`, so a device that had already created a trigger kept the **old body forever** — editing the trigger SQL never reached an upgraded install; and `idx_reminder_fire` (the index that makes R-26's `ORDER BY fire_at` cheap) was created in `onCreate` only, so a device upgraded from v1 never got it. Fixed and **device-verified 2026-11-08**.
+    - Fix (`app/.../storage/MineDatabaseHelper.kt`): the seven indexes moved into `INDEXES` + `createIndexes(db)`, called from **both** `onCreate` and `onUpgrade`; the three FTS tables moved into `FTS_TABLES`; all 13 triggers are listed in `TRIGGER_NAMES` and **dropped before being recreated** in `createTriggers(db)`, which makes that function authoritative on fresh installs and upgrades alike (it already ran from `onOpen`).
+    - Test (`DatabaseMigrationTest.testOnUpgrade_RestoresTriggersAndIndexes`): drops `idx_reminder_fire`, replaces `trg_raw_msg_no_delete` with a stale no-op body, runs `MineDatabaseCallback().onUpgrade(db, 1, 5)`, then asserts the index is back, the trigger body is the current one, and a `DELETE FROM raw_message` is actually refused.
+    - [RED: with the `DROP TRIGGER IF EXISTS` loop removed (`T19-RED-PROBE`), device reported `CONNECTED GATE: FAIL - 2 test(s), 1 failed` — `AssertionError: T19: onUpgrade must replace the stale trigger body (got: CREATE TRIGGER trg_raw_msg_no_delete BEFORE DELETE ON raw_message BEGIN SELECT RAISE(ABORT, 'stale body that…`. GREEN on device 2026-11-08: `CONNECTED GATE: PASS - 2 test(s), 0 failed, 0 skipped (source: xml)` (`build/tmp/t19-green.log`; the task's own `BUILD FAILED` there is the AGP 9.4.0 exit-code defect, D-123)]
+[x] H-05 R-09 `Committed` with empty undo token (`Gateway.kt:472`). A cancel wrote no event, so
+    `""` reached `MainActivity`'s `undoToken != null` check and rendered an Undo button whose only
+    outcome was "Undo token not found"; the `ConfirmProposal` handler also dropped `Committed`
+    entirely, so the confirmation vanished on the next refresh. Now the handler emits the receipt
+    with `undoToken.ifBlank { null }` (cancel only — every other choice is already rebuilt from
+    `raw_event`, so adding one would duplicate it). [RED: `testChipConfirmedCancel_HasNoUndoAffordance`
+    timed out waiting for the receipt that never arrived; GREEN: R7 8/0, core 285/0, app 10/0]
+[x] H-06 R-11 `catch (Exception)` misses `Error`; init hangs forever (`MineApp.kt`). Both the
+    `MineApp` startup and `MainViewModel` now catch `Throwable` (rethrow `CancellationException`)
+    through `runSettlingStartup`/`startupFailureMessage` (`StartupFailure.kt`), so an `Error` still
+    settles both deferreds and the view model shows the banner instead of a blank screen.
+    [RED: `StartupFailureTest` could not compile against the missing seam; GREEN: app 13/0, core 286/0.
+    The hang itself is proven by `withTimeout` around `await()`, not by a poll loop.]
+[x] H-07 R-08 `ChatController` init had no try/catch → blank screen. The init body is now
+    `loadInitialState()` behind `catch (Throwable)` (rethrows `CancellationException`), which sets
+    `globalError` — the full-screen message `MainActivity` already renders — and clears
+    `isChatLoading`. [RED: `testStartupFailure_SurfacesErrorInsteadOfBlankScreen` timed out waiting
+    for `globalError`; GREEN: R7 9/0, core 286/0, app 10/0]
+[x] H-08 R-12 Cancel deletes the row before cancelling the OS alarm. Row-first left an armed
+    alarm with no row when `cancel()` threw, and reconcile could never find it: it only cancels an
+    orphan whose *registration* is still recorded, and the same pass deleted the registration. The
+    reminder then fired for something the user had cancelled and could no longer see. The handler
+    now cancels the OS alarm first, in a `try` that rethrows `CancellationException` and otherwise
+    reports `schedulingError` and returns — so a failed cancel leaves row + registration intact and
+    the next reconcile retries the orphan. [RED: `testCancelReminder_AlarmCancelThrows_KeepsRowAndRegistration`
+    failed with "A failed OS cancel must leave the row so the alarm is still reachable" under a
+    surgical row-first revert of only this handler; GREEN: core 287/0, app 13/0]
+[x] H-10 R-14 `CheckinBuilder` NPEs on a null `dueAt` (`it.dueAt!!`). Both storages filter nulls
+    today, so no such row exists — but the builder is the only thing between a null and a crash of
+    every context build. An undated row now degrades to a title-only agenda line. [RED:
+    `CheckinBuilderNullDueTest` threw a genuine `NullPointerException` (the fake filters nulls, so
+    the row must be injected by overriding `getNodesDueBetween`); GREEN: core 288/0]
+[x] H-12 R-16 `StreamEvent.Clear` on every failover wipes streamed text. Clear is the signal that
+    empties the consumer's buffer (`ChatController.kt:463`, `QuoteManager.kt:211`), so a provider
+    that streamed half an answer and then failed made the user watch text they had already read
+    disappear before the fallback's first token. The orchestrator now tracks whether the attempt
+    streamed any `TextDelta` and emits Clear only when it did not — a failed attempt is not a
+    correction of the previous one. [RED: `FailoverPartialTextTest` got
+    `[TextDelta(Partial answer), Clear, TextDelta( and the rest)]`; `ProviderTroubleTest`'s old
+    "Should clear partial stream" assertion encoded the defect and was narrowed to assert the
+    opposite for streamed text; GREEN: core 290/0]
+[x] H-16 R-21 `diffDays` by raw millis mislabels across DST — **not a bug, evidence recorded**. The
+    audit assumed a 23-hour day between the two midnights on spring-forward. Probed on this JVM
+    (17.0.20.1, tzdata bundled): America/New_York 2027-03-13 00:00 EST and 2027-03-14 00:00 EDT are
+    exactly 86_400_000 ms apart, cross-checked independently in Python; `formatChipLabel` returns
+    "Tomorrow 9:00 AM" and the fall-back case returns "Tomorrow"/"Mon" correctly. Any zone whose
+    transition is at midnight would break the arithmetic, but none of the probed zones do, and the
+    existing label tests already pin the DST-adjacent output. No code change; the probe test was
+    deleted rather than kept as a tautology.
+[x] H-14 R-19 The 0.30 text floor returned `NotFound` for a visible item. The floor ran before
+    the single-candidate branch, so a hint that overlapped the *only* candidate below 30% came back
+    as `Resolution.NotFound`, which the gateway turns into `ToolResult.NotFound` (`Gateway.kt:1064`)
+    — the user is told the item does not exist while looking at it. With exactly one candidate
+    there is nothing to disambiguate against, so the branch now runs first and returns the chip
+    (`Ambiguous(listOf(top))`) for any non-zero overlap; a zero-overlap candidate still gets
+    `NotFound`, because an unrelated hint is not evidence for the item. The floor is unchanged for
+    the multi-candidate path. [RED: `ResolverSingleLowMatchChipTest` got `NotFound` for hint
+    "quarterly report draft review" against sole candidate "Report" (1/4 tokens = 0.25);
+    GREEN: core 292/0, including the pin that a zero-overlap sole candidate stays `NotFound`]
+[x] H-13 R-15 Token-level confirmation matched negations. `matchesUserMessage` accepted the
+    confirmation if *any* user token appeared in the option title or the choice, so "no, don't set
+    the 5 pm one" confirmed the "5:00 PM" chip through the shared token "pm" and the reminder was
+    created — the opposite of what the user said. `handleConfirmChange` now runs an `isNegated`
+    gate *before* the overlap check: contractions are expanded ("don't" → "do not"), then any
+    negation token rejects, whatever the overlap. A reply that is exactly the option's own title is
+    exempt, so an item named with a negative word stays confirmable. [RED: with the gate removed,
+    `ConfirmNegationTest` committed `Created: Dinner with Alice (Due: Wed 28 Oct, 5:00 PM)` for both
+    negated replies; GREEN: core 296/0]
+[x] H-09 R-13 **PREMISE DISPROVED 2026-11-07.** The defect as stated — "an out-of-bounds index
+    throws out of the `LaunchedEffect`" — is not real. Read from the Compose 1.12.1 sources:
+    `LazyListScrollPosition.update` only requires `index >= 0` (no upper bound), and
+    `LazyLayoutScrollScope.animateScrollToItem` stops with "Hit end without finding the item" when
+    `delta != consumed`. An oversized index therefore lands at the bottom instead of throwing.
+    Confirmed empirically: injecting the old `animateScrollToItem(totalItems + 5)` into `ChatScreen`
+    still PASSED the connected run (2026-11-07, `--rerun-tasks`, 74/74 executed). The clamped
+    `layoutInfo.totalItemsCount - 1` scroll is harmless but fixes no defect.
+    **H-09b — the real defect, found and fixed 2026-11-07.** `ChatScreen` never scrolled to the
+    last item on first load. Root cause measured, not inferred: an instrumented log in the effect
+    printed `H09B: effect start total=41 lastIndex=-1`. A `LaunchedEffect` starts after the first
+    composition commits but **before** the `LazyColumn`'s first measure, so
+    `listState.layoutInfo.totalItemsCount` is 0 on entry; the `if (lastIndex >= 0)` guard then
+    silently skipped the scroll and the list stayed at item 0. Fix: await the first non-empty
+    layout — `snapshotFlow { listState.layoutInfo.totalItemsCount }.first { it > 0 } - 1` — before
+    computing the target (`MainActivity.kt:157-171`). After the fix the same log printed
+    `first=22 total=41 visible=[22..40]`.
+    **The earlier "hang" record was wrong.** There was never a `ComposeNotIdleException`; all three
+    `ChatScrollBoundsTest` cases complete in ~1-2 s each. The prior claim that the 40-message case
+    "never reaches idle" is retracted here and in STATE.md/HANDOFF.md.
+    [RED: reverting the effect to `layoutInfo.totalItemsCount - 1` makes
+    `testScrollLandsOnLastRenderedItem` fail — connected XML `tests="3" failures="1"`,
+    `AssertionError: Failed: assertExists`; GREEN: restored, `:app:connectedDebugAndroidTestVerify`
+    `CONNECTED GATE: PASS`, XML `tests="3" failures="0" errors="0"`, 2026-11-07]
+[x] H-11 R-15 POST_NOTIFICATIONS denial was silent. `UiState.notificationsBlocked` (set by
+    `MainViewModel` from `NotificationManagerCompat.areNotificationsEnabled()`, which covers both the
+    runtime grant and the system toggle) now renders a persistent error-container banner above the
+    tab row in `MineAppUI`, visible on every tab. `MineAppUI` was split into a ViewModel overload
+    and a stateless `MineAppUI(state, onAction)` so the shell is testable. [RED: not demonstrated —
+    the banner and the field did not exist. GREEN on device 2026-11-07: `NotificationsBlockedBannerTest`
+    2/2 passed on `moto g73 5G - 14` (JUnit XML `tests="2" failures="0" errors="0`); core 296/0,
+    app unit 13/0]
+[x] H-15 R-20 `QuoteAlarmScheduler.scheduleNext` used `set(RTC, …)` — inexact and non-wakeup, so
+    under Doze the prepare slot could fire after the boundary it precedes. Now
+    `setAndAllowWhileIdle(RTC_WAKEUP, …)` (the app holds `USE_EXACT_ALARM`), and the AlarmManager
+    call is wrapped so a `SecurityException`/`IllegalStateException` is logged instead of escaping
+    `MineApp`'s startup coroutine or `BootReceiver`. [RED: not demonstrated — the old `set(RTC, …)`
+    never registered a wakeup, so there was no failing assertion to write, only an absent
+    registration. GREEN on device 2026-11-07, `moto g73 5G - 14`: `adb shell dumpsys alarm` lists
+    `tag=*walarm*:com.anchor.mine.quotes.ACTION_PREPARE_QUOTE` / `type=RTC_WAKEUP
+    origWhen=2026-11-08 04:00:00.000 flags=0x20` with `idle-options` containing
+    `android:broadcast.temporaryAppAllowlistType=1` — the allow-while-idle registration.
+    **Doze re-checked the same day:** with `dumpsys deviceidle force-idle` (`mState=IDLE`), the same
+    alarm is still listed with `policyWhenElapsed … device_idle=-3s841ms` and the
+    `temporaryAppAllowlistType=1` idle-option intact; `dumpsys deviceidle unforce` restored
+    `mState=ACTIVE`. NOT proven: that the alarm actually *delivers* while idle — that needs the
+    04:00 prepare slot to be observed firing, which a forced-idle session at another hour cannot show.]
+[~] R-55 `AlarmReceiver.onReceive` cast `context.applicationContext as MineApp` inside the
+    coroutine; a process not started by `MineApp` threw `ClassCastException`, which the catch-all
+    turned into a blind "Mine (Fallback)" notification for a reminder nobody could resolve. Now
+    `as? MineApp ?: return@launch`. [RED: not demonstrated — no unit seam for a BroadcastReceiver
+    and no device; GREEN: `:app:compileDebugKotlin` exit 0, `:app:compileDebugAndroidTestKotlin`
+    exit 0, 2026-11-07]
+[~] R-54 `AlarmReceiver`'s catch-all fallback posted a notification but left no `reminder_fire`
+    row, so the next sweeper saw an unreported instance and emitted a SECOND notification for one
+    fire. Two halves:
+    (a) the fallback now records `outcome = "errored"` against the reminder's own `fireAtMillis`.
+    It cannot use `sharedStorage` (that deferred is what just failed), so it re-opens via
+    `DbKeyProvider` + `DatabaseProvider.getHelper` + `AndroidStorage` — the same path
+    `BootReceiver.recordStorageFailure` uses. The fire instant comes from `EXTRA_SCHEDULED_FOR`,
+    newly added to `AndroidAlarmScheduler.schedule`, `MainViewModel`'s sweeper broadcast and
+    `BootReceiver`'s sweeper broadcast (falling back to now when absent).
+    (b) `AlarmReconciler` treats an `"errored"` fire for the same `scheduledFor` as already
+    reported, alongside `"missed"`.
+    [RED: demonstrated 2026-11-07 — removing the `errored` arm from `AlarmReconciler` makes
+    `AlarmReconcilerTest.testReconcile_OverdueErroredInstance_IsNotReportedAgain` fail (exactly 1
+    failure), then restored. GREEN: that test passes, `AlarmReconcilerTest` 12/0, core 298/0,
+    app unit 13/0, `:app:compileDebugAndroidTestKotlin` exit 0.
+    **Receiver half (a) is now device-proven, not compile-only.** `MineApp.sharedStorage` is a
+    `@Volatile var CompletableDeferred<Storage>`, so an instrumented test can swap in a
+    failed deferred — the earlier "no seam" claim was wrong. New
+    `AlarmReceiverTest.testAlarmReceiver_StorageFails_RecordsErroredFireAndSweeperDedupes` completes
+    `app.sharedStorage` exceptionally, sends `EXTRA_ID` + `EXTRA_SCHEDULED_FOR`, then asserts the
+    `errored` fire's `scheduledFor` equals the reminder's own instant, the row survives, and
+    `AlarmReconciler.reconcile(force = false)` reports no `Overdue` for it. RED: with the `errored`
+    arm deleted the same test fails with `AssertionError: R-54: an errored fire must dedupe the
+    overdue report, got [Overdue(reminderId=r_errored_…, overdueByMs=121538)]`. GREEN on device
+    2026-11-07: `AlarmReceiverTest` 4/4 on `moto g73 5G - 14`, `CONNECTED GATE: PASS`]
+[x] R-23 `searchMemoryFts` swallowed every exception as "no results" (audit cited `AndroidStorage.kt:704`; the catch was actually at `:748` — the finding is real, the line number was stale) [RED/GREEN on device 2026-11-07. `diag_log` existed in the schema (`MineDatabaseHelper.kt:38`) but had **zero writers** anywhere in the repo, so the audit's "log to diag_log" remedy required inventing the write path: new `logDiagError(msg)` wraps the INSERT in `runCatching` so a failing log can never turn a working query into a failing one. Test `AndroidStorageTest.testSearchMemoryFts_QueryFails_IsLoggedNotSilentlyEmpty` asserts the index finds a sentinel **first** (so the later assertion is unambiguously about the failure path), then `DROP TABLE msg_chunk_fts` to force a real SQLite error, then asserts a `tag='AndroidStorage'` `diag_log` row mentioning `searchMemoryFts`. RED: `AssertionError: R-23: an FTS failure must be recorded in diag_log, not swallowed. Got []` at `AndroidStorageTest.kt:1557`. GREEN: `tests="1" failures="0"`]
+[x] R-24 `IntentType.valueOf` threw on an unknown stored intent (audit cited `:332,389`; actual call sites `:347` and `:404`) [RED/GREEN on device 2026-11-07. New `parseIntentOrCreate(raw)` degrades an unknown value to `IntentType.CREATE` and records the degrade in `diag_log`, so a downgrade is observable rather than silent. Both read paths (`getProposal`, `getOpenProposals`) route through it. Test `AndroidStorageTest.testProposalRead_UnknownStoredIntent_DoesNotThrow` inserts `intent='TELEPORT'` by raw SQL and asserts both readers return the row. RED probe: temporarily reverting both call sites to `IntentType.valueOf(...)` gave `tests="1" failures="1"`, `java.lang.IllegalArgumentException: No enum constant com.anchor.core.models.IntentType.TELEPORT at AndroidStorage.kt:347`; restored from `/tmp/AndroidStorage.kt.r24` and re-ran → `tests="1" failures="0"`. Note: the first attempt ran the test against already-fixed code and passed, which proves nothing — the RED had to be produced by reverting the fix.]
+[x] R-25 `getActiveReminders` read `System.currentTimeMillis()` inside the storage layer instead of taking the caller's clock (audit cited `AndroidStorage.kt:293`; the method was actually at `:308` — the finding is real, the line number was stale) [RED/GREEN on device 2026-11-07. Signature changed to `getActiveReminders(now: Long)` on `Storage`, `AndroidStorage` and `SharedFakeStorage`, following the existing precedent of `getActiveNodeCounts(now, …)` / `getStaleNodes(now, …)` / `getRankedCandidates(now, …)` (a `Long` parameter, not an injected `Clock`). 7 call sites migrated: `ChatController.kt:158,281,762` (pass `clock.now()` — the constructor already held a `Clock`), `AndroidStorageTest.kt:97`, `LiveSmoke15Test.kt:150`, `O1SetAlarmLiveTest.kt:109`, `DuplicateCallGuardTest.kt:60,61`. Test `AndroidStorageTest.testR25_GetActiveReminders_UsesCallerClockNotWallClock` is time-independent by construction: the reminder sits at a fixed `fireAt` and the probes are at `fireAt-1`/`fireAt`/`fireAt+1`, so under the old wall-clock implementation all three see the same `now` and at least one assertion must fail whenever it runs. RED (produced by reverting the fix to `arrayOf(System.currentTimeMillis().toString())`, backup at `/tmp/AndroidStorage.kt.r25`): `AssertionError: R-25: a reminder 1ms in the caller's future is active. Got []` at `AndroidStorageTest.kt:1608`, `tests="1" failures="1"`, `2026-11-07T17:06:51`. GREEN after restoring: `tests="1" failures="0"`, `2026-11-07T17:08:24`. The migration also exposed the defect live in `core`: `DuplicateCallGuardTest.testIdenticalCalls_SecondIsRejectedAsDuplicate` failed (`AssertionError at DuplicateCallGuardTest.kt:53`) when handed `System.currentTimeMillis()` because its `FakeClock` is pinned to 2026-10-25 and the reminder is due "tomorrow at 9am" — the wall clock put it in the past. Fixed by passing `clock.now()`. Full green: unit 311/0 (core 298, app 13), connected 80/0, `CONNECTED GATE: PASS - 80 test(s), 0 failed, 0 skipped (source: xml)`]
+[x] R-26 reminder reads had no ceiling: `getPendingReminders` read the whole table, `getActiveReminders` had neither `LIMIT` nor `ORDER BY`, `getRemindersBetween`/`getRemindersForDay` had the range predicate but no `LIMIT` (audit cited `AndroidStorage.kt:305,1016-1032`; the audit row is partly wrong — see the correction row in `docs/agent/work/robustness-audit.md`) [RED/GREEN on device 2026-11-08. Three interface signatures gained a default-parameter bound so every existing call site stayed source-compatible: `getPendingReminders(limit = PENDING_REMINDER_PAGE_LIMIT /*500*/)`, `getActiveReminders(now, limit = ACTIVE_REMINDER_PAGE_LIMIT /*1000*/)`, `getRemindersBetween`/`getRemindersForDay(…, limit = REMINDER_RANGE_PAGE_LIMIT /*1000*/)`. `AndroidStorage` now issues `ORDER BY fire_at ASC LIMIT ?` (pending, active) and `LIMIT ?` (range); `SharedFakeStorage` mirrors all three so the fake cannot return more than the device would. **The defect that mattered was not the SQL:** `AlarmReconciler.reconcile` computed truncation into a *separate* `failures` list that fed only `reliability_state`, so a full page was reported to nobody who reads `results` — a paged reconcile looked clean. Fixed by appending `ScheduleResult.Failed(ISSUE_PENDING_TRUNCATED)` to `results` first and deriving `failures` from `results`, so the two cannot diverge again. The reconciler requests `limit + 1` because a full page alone cannot distinguish "exactly one page" from "more rows exist". Tests: `AlarmReconcilerTest.testReconcile_FullPendingPage_ReportsTruncationInsteadOfSilentlyDroppingTail` / `…PartialPendingPage_DoesNotReportTruncation` (core, 14/0/0/0), `AndroidStorageTest.testR26_GetPendingReminders_IsBoundedInFireOrder_AndByIdStillFindsTheTail` (0.811s) and `AndroidStorageTest.testR26_ActiveAndRangeReminderQueries_AreBoundedInFireOrder` (0.757s) — both confirmed present by name in the connected XML. Page sizes passed explicitly (5/4/3/2) because the defect is the missing bound, not the constant. Full green: core 300/0/0/0 (49 files), app unit 13/0/0/0, `CONNECTED GATE: PASS - 82 test(s), 0 failed, 0 skipped (source: xml)`. Compile trap hit and fixed: `arrayOf(startMs, endMs, limit)` infers `Number & Comparable<*>` and AGP 9.4.0 rejects the reified intersection (`TYPE_INTERSECTION_AS_REIFIED_ERROR`) — `arrayOf<Any>(…)`. **Still open, out of scope:** `idx_reminder_fire` is created in `onCreate` only and never in `onUpgrade`, so devices upgraded from v1 lack the index that makes the new `ORDER BY fire_at` cheap — belongs with T19.]
+[ ] Tier 4: R-26…R-53 minus the verified-not-a-bug set (R-17, R-47, R-07, R-22) and R-06 (latent, no caller). R-26, H-02 and G2 are done; next in the accepted batch is **H-04**, then T19.
 ## Roadmap items to be tackled post-remediation
 [x] P1-B 16 UPDATE and RESCHEDULE intents through gateway and resolver, with undo (RESCHEDULE from R1; UPDATE new: title/due/priority/severity/pinned/tier, ambiguity + time chips, reminder sync, undo snapshots) [unit-verified: 231 core, 9 app; review APPROVE + verification PASS; 3 MEDIUM review fixes applied with regression tests]
 [x] P1-B 15 Reminder policy per blueprint 30 (lead times, reminder only when asked or per default) (D-120) [unit-verified, approved]

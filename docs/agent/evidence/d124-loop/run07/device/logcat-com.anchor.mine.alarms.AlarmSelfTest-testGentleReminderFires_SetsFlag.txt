@@ -1,0 +1,155 @@
+11-07 02:48:29.421 17720 17733 I TestRunner: started: testGentleReminderFires_SetsFlag(com.anchor.mine.alarms.AlarmSelfTest)
+11-07 02:48:29.423  1830  2890 W PackageManager: Missing required system package: org.telegram.messenger, but found with extended search.
+11-07 02:48:29.427 17720 17733 I UiAutomation: Initialized for user 0 on display 0
+11-07 02:48:29.428  1830  3983 W PackageManager: Missing required system package: org.videolan.vlc, but found with extended search.
+11-07 02:48:29.431  1134  1491 I hwcomposer: [DRMDEV] (0) failed to waitNextVsync: -1  
+11-07 02:48:29.432  1198  2080 E BufferQueueDebug: [WindowToken{ad34c33 type=2032 android.os.Binder@3a287a2}#36710](this:0xb400007c09db8718,id:-1,api:0,p:-1,c:-1) id info cannot be read from 'WindowToken{ad34c33 type=2032 android.os.Binder@3a287a2}#36710'
+11-07 02:48:29.432 17720 17734 D nativeloader: Load /data/app/~~nePzqMnf9IXOYNlelGUC-g==/com.anchor.mine-R59DP6C5NVaROLMKbgpW9g==/base.apk!/lib/arm64-v8a/libsqlcipher.so using class loader ns clns-4 (caller=/data/app/~~nePzqMnf9IXOYNlelGUC-g==/com.anchor.mine-R59DP6C5NVaROLMKbgpW9g==/base.apk!classes12.dex): ok
+11-07 02:48:29.432  1198  2080 I BufferQueueDebug: [WindowToken{ad34c33 type=2032 android.os.Binder@3a287a2}#36710](this:0xb400007c09db8718,id:-1,api:0,p:-1,c:-1) BufferQueue core=(1198:/system/bin/surfaceflinger)
+11-07 02:48:29.433  1830  2890 W PackageManager: Missing required system package: ru.odauhsbx.xqdkkkmwh, but found with extended search.
+11-07 02:48:29.438  1830  2890 W PackageManager: Missing required system package: ru.zdevs.zarchiver, but found with extended search.
+11-07 02:48:29.442  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 02:48:29.439  1492  1492 W binder:1492_2: type=1400 audit(0.0:849186): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 02:48:29.444  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 02:48:29.439  1492  1492 W binder:1492_2: type=1400 audit(0.0:849187): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 02:48:29.446  2298  2298 D FreeformGesture: onStateChanged: State{mIsPackageAvailable=true, mPillGestureEnabled=false, mVibrationEnabled=true, mShortcutPanelShowing=false, mSwipeInEnabled=false, mHunFreeformEnabled=true, mIsInGameMode=false, mIsRecentsShowing=false, mPillXPosition=1, mPillYPosition=600, mIsInTutorialMode=false, mIsDoubleTapPowerEnabled=false}
+11-07 02:48:29.447  8312 26846 D AccessibilitySourceService: enabled a11y services count 1
+11-07 02:48:29.448  2298  2298 D FreeformGesture: onStateChanged: State{mIsPackageAvailable=true, mPillGestureEnabled=false, mVibrationEnabled=true, mShortcutPanelShowing=false, mSwipeInEnabled=false, mHunFreeformEnabled=true, mIsInGameMode=false, mIsRecentsShowing=false, mPillXPosition=1, mPillYPosition=600, mIsInTutorialMode=false, mIsDoubleTapPowerEnabled=false}
+11-07 02:48:29.455  1198  1661 I Scheduler: applyPolicy: UpdateRefreshRate 30 to 120 of group 0: [touch=0:0 touchBoost=0 scroll=0:0 idle=0:0]
+11-07 02:48:29.456  1134  1134 I hwcomposer: [HWCDisplay] [Display_0 (type:1)] fps:2.222596,dur:2699.55,max:1876.56,min:31.84  
+11-07 02:48:29.456  8312 26846 D AccessibilitySourceService: a11y source sending 1 issue to sc
+11-07 02:48:29.457  1830  2561 D SafetySourceDataValidat: No cert check requested for package com.google.android.permissioncontroller
+11-07 02:48:29.465 17720 17734 I SQLiteConnection: Database keying operation returned:0
+11-07 02:48:29.471 17720 17734 I SQLiteConnection: Database keying operation returned:0
+11-07 02:48:29.488  1198  1198 I SurfaceFlinger: setActiveModeInHwcIfNeeded changing active mode to 1(120.00 Hz) for display 0
+11-07 02:48:29.488  1134  1134 I hwcomposer: [HWC] (0) displaySetActiveConfig config:1  
+11-07 02:48:29.490  1830  2561 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:48:29.493  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 02:48:29.487  1492  1492 W binder:1492_2: type=1400 audit(0.0:849188): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 02:48:29.494  2298  2298 D ControlsListingControllerImpl: ServiceConfig reloaded, count: 0
+11-07 02:48:29.494  1830  2539 W PackageManager: Missing required system package: app.revanced.android.gms, but found with extended search.
+11-07 02:48:29.494  2298  2298 D FreeformGesture: onStateChanged: State{mIsPackageAvailable=true, mPillGestureEnabled=false, mVibrationEnabled=true, mShortcutPanelShowing=false, mSwipeInEnabled=false, mHunFreeformEnabled=true, mIsInGameMode=false, mIsRecentsShowing=false, mPillXPosition=1, mPillYPosition=600, mIsInTutorialMode=false, mIsDoubleTapPowerEnabled=false}
+11-07 02:48:29.508  3384 17621 I FraudProtectUtils: Not in testing population, skipping local test bank apps. [CONTEXT service_id=469 ]
+11-07 02:48:29.508  3384 17621 I FraudProtectUtils: (REDACTED) Latest bank app list size: %d, %s isBankApp: false
+11-07 02:48:29.508  3384 17621 W ComponentChangedIO: No package name in intent data or package is not a bank app [CONTEXT service_id=469 ]
+11-07 02:48:29.520  1198  1198 D SurfaceFlinger: MtkOverrideDuration: update vsync 120
+11-07 02:48:29.520  1198  1198 E SurfaceFlinger: MtkDuration override mode is disabled
+11-07 02:48:29.520  1198  1198 D SurfaceFlinger: MtkOverrideDuration: reset override duration
+11-07 02:48:29.520  1198  1198 I BufferQueueDebug: [WindowToken{91f69ee type=2032 android.os.Binder@d17eb69}#36706](this:0xb400007c08d0ff18,id:-1,api:0,p:-1,c:1198) onDestructor()
+11-07 02:48:29.584  1830  2331 W PackageManager: Missing required system package: com.anchor.mine, but found with extended search.
+11-07 02:48:29.603 27871 27871 I adbd    : adbd service requested 'shell:getprop'
+11-07 02:48:29.607  1167  1208 I libPerfCtl: xgfGetFPS pid:2298 fps:-1
+11-07 02:48:29.616  1198  1198 I BufferQueueProducer: [bitpit.launcher/bitpit.launcher.ui.HomeActivity#36579](this:0xb400007c08d17f18,id:-1,api:0,p:-1,c:1198) queueBuffer: fps=0.03 dur=29528.42 max=29528.42 min=29528.42
+11-07 02:48:29.652  1527  1731 D ULogGuard: Monitoring: 10 threads, 0 requests, 0 time-bombs; 1 guards. ResetFlags = 0x7
+11-07 02:48:29.724  1492  1492 W HidlServiceManagement: Waited for hwservicemanager.ready for a second, waiting another...
+11-07 02:48:29.725  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 02:48:29.725  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 02:48:29.742  1205  1229 D ccci_mdinit: (1):monitor_time_update_thread round:61427 ########
+11-07 02:48:29.790  1134  1485 I hwcomposer: [HWC] (0)fire a callback of refresh to SF[4]  
+11-07 02:48:29.801  1167  1193 I mtkpower@impl: [setMode] type:6, enabled:1
+11-07 02:48:29.801  1167  1193 E mtkpower@impl: [setMode] unknown type
+11-07 02:48:29.804  1198  1198 I BufferQueueProducer: [FramebufferSurface](this:0xb400007c2c1716d0,id:-1,api:1,p:1198,c:1198) queueBuffer: fps=0.71 dur=2816.32 max=2225.84 min=590.48
+11-07 02:48:29.872  1167  1193 I mtkpower@impl: [setMode] type:6, enabled:0
+11-07 02:48:29.873  1167  1193 E mtkpower@impl: [setMode] unknown type
+11-07 02:48:29.874  1830  2109 E WifiDataStall: Ignore this poll. newStats: null txLinkSpeedMbps: 7 rxLinkSpeedMbps: 292 rssi: -48 connectionCapabilities: com.android.server.wifi.WifiNative$ConnectionCapabilities@97eba
+11-07 02:48:29.879  1830  1830 D EnhancedConnectivityController: Wifi onCapabilitiesChanged
+11-07 02:48:29.879  1830  1830 D EnhancedConnectivityController: Default net onCapabilitiesChanged
+11-07 02:48:29.879  1830  1830 D EnhancedConnectivityController: updateDefaultNet:553
+11-07 02:48:29.879  1830  1830 D EnhancedConnectivityController: mayUpdateNotification: shouldShow=true,UidsBlocked=false, net info=net:553,ifName=wlan0,securityType=0,isDefault=true,ssid="iBUS@MUJ",notificationId=0
+11-07 02:48:29.879  1830  1830 D EnhancedConnectivityController: educative notification has been ignored
+11-07 02:48:29.884  3595  4114 I ModemStats: [DataStallDetectService] onCapabilitiesChanged networkCapabilities=[ Transports: WIFI Capabilities: NOT_METERED&INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VPN&VALIDATED&NOT_ROAMING&FOREGROUND&NOT_CONGESTED&NOT_SUSPENDED&NOT_VCN_MANAGED LinkUpBandwidth>=12000Kbps LinkDnBandwidth>=60000Kbps TransportInfo: <SSID: <unknown ssid>, BSSID: 02:00:00:00:00:00, MAC: 02:00:00:00:00:00, IP: /10.175.15.5, Security type: 0, Supplicant state: COMPLETED, Wi-Fi standard: 11ac, RSSI: -48, Link speed: 7Mbps, Tx Link speed: 7Mbps, Max Supported Tx Link speed: 433Mbps, Calculated Tx : 0Mbps, Rx Link speed: 292Mbps, Max Supported Rx Link speed: 433Mbps, Calculated Rx : 0Mbps, Frequency: 5745MHz, Net ID: -1, Metered hint: false, score: 100, isUsable: true, CarrierMerged: false, SubscriptionId: -1, IsPrimary: -1, Trusted: true, Restricted: false, Ephemeral: false, OEM paid: false, OEM private: false, OSU AP: false, FQDN: <none>, Provider friendly name: <none>, Requesting package name: <none><none>MLO Information: , Is TID-To-Link negotiation supported by the AP: false, AP MLD Address: <none>, AP MLO Link Id: <none>, AP MLO Affiliated links: <none>, Vendor Data: <none>> SignalStrength: -48 UnderlyingNetworks: Null]
+11-07 02:48:29.886  3595  4114 I ModemStats: [DataStallDetectService] onCapabilitiesChanged NET_CAPABILITY_VALIDATED=true
+11-07 02:48:29.886  3595  4114 I ModemStats: [DataStallDetectService] onCapabilitiesChanged mDataStallManager.mDataStallInstance=null
+11-07 02:48:29.887  3595  4114 I ModemStats: [DataStallDetectService] onCapabilitiesChanged mDataStallSmart5gManager.mDataStallInstance=null
+11-07 02:48:29.885  3785  4430 D OtaApp  : PollingManagerService:NetworkCallback:networkCapabilities=[ Transports: WIFI Capabilities: NOT_METERED&INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VPN&VALIDATED&NOT_ROAMING&FOREGROUND&NOT_CONGESTED&NOT_SUSPENDED&NOT_VCN_MANAGED LinkUpBandwidth>=12000Kbps LinkDnBandwidth>=60000Kbps TransportInfo: <SSID: <unknown ssid>, BSSID: 02:00:00:00:00:00, MAC: 02:00:00:00:00:00, IP: /10.175.15.5, Security type: 0, Supplicant state: COMPLETED, Wi-Fi standard: 11ac, RSSI: -48, Link speed: 7Mbps, Tx Link speed: 7Mbps, Max Supported Tx Link speed: 433Mbps, Calculated Tx : 0Mbps, Rx Link speed: 292Mbps, Max Supported Rx Link speed: 433Mbps, Calculated Rx : 0Mbps, Frequency: 5745MHz, Net ID: -1, Metered hint: false, score: 100, isUsable: true, CarrierMerged: false, SubscriptionId: -1, IsPrimary: -1, Trusted: true, Restricted: false, Ephemeral: false, OEM paid: false, OEM private: false, OSU AP: false, FQDN: <none>, Provider friendly name: <none>, Requesting package name: <none><none>MLO Information: , Is TID-To-Link negotiation supported by the AP: false, AP MLD Address: <none>, AP MLO Link Id: <none>, AP MLO Affiliated links: <none>, Vendor Data: <none>> SignalStrength: -48 UnderlyingNetworks: Null]
+11-07 02:48:29.888  1830  2229 D AgpsApn : mDefaultNetworkcallback onCapabilitiesChanged: network=553, nc=[ Transports: WIFI Capabilities: NOT_METERED&INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VPN&VALIDATED&NOT_ROAMING&FOREGROUND&NOT_CONGESTED&NOT_SUSPENDED&NOT_VCN_MANAGED LinkUpBandwidth>=12000Kbps LinkDnBandwidth>=60000Kbps TransportInfo: <SSID: <unknown ssid>, BSSID: 02:00:00:00:00:00, MAC: 02:00:00:00:00:00, IP: /10.175.15.5, Security type: 0, Supplicant state: COMPLETED, Wi-Fi standard: 11ac, RSSI: -48, Link speed: 7Mbps, Tx Link speed: 7Mbps, Max Supported Tx Link speed: 433Mbps, Calculated Tx : 0Mbps, Rx Link speed: 292Mbps, Max Supported Rx Link speed: 433Mbps, Calculated Rx : 0Mbps, Frequency: 5745MHz, Net ID: -1, Metered hint: false, score: 100, isUsable: true, CarrierMerged: false, SubscriptionId: -1, IsPrimary: 1, Trusted: true, Restricted: false, Ephemeral: false, OEM paid: false, OEM private: false, OSU AP: false, FQDN: <none>, Provider friendly name: <none>, Requesting package name: <none><none>MLO Information: , Is TID-To-Link negotiation supported by the AP: false, AP MLD Address: <none>, AP MLO Link Id: <none>, AP MLO Affiliated links: <none>, Vendor Data: <none>> SignalStrength: -48 AdminUids: [1000] SSID: "iBUS@MUJ" UnderlyingNetworks: Null]
+11-07 02:48:29.888  1830  2229 D AgpsApn : onCapabilitiesChanged: mDefaultNetHasInt=true
+11-07 02:48:29.895   510   584 I emyt    : Connected state: [1], networkType: [WIFI] [CONTEXT thread_id=255 ]
+11-07 02:48:29.895   510   632 I emyt    : handleMessage processing message:[NOTIFY_UPTIME_IGNORE_STATE_CHANGED] with [non-null]:RcsEngineImpl reference [CONTEXT log_prefix="RcsEngineImpl:[4dd3b970-723f]>Handler" thread_id=261 ]
+11-07 02:48:29.896   618   662 I dutj    : Connection state change: onCapabilitiesChanged, data connection: WIFI, manual connection eligibility: false, ntn roaming: false
+11-07 02:48:29.896   618   662 I dutj    : New default data network: wifi
+11-07 02:48:29.897  3384 15910 I NearbyMediums: Wifi changed new SSID: <unknown ssid>
+11-07 02:48:29.898  3384 15910 I NearbyMediums: WifiLanConnectivityInfo is not changed, skip notify.
+11-07 02:48:29.898  1830  2116 D ConnectivityService: NetReassign [no changes] [c 1] [a 1] [i 1]
+11-07 02:48:30.112  1198  1661 I Scheduler: applyPolicy: UpdateRefreshRate 120 to 30 of group 0: [touch=0:0 touchBoost=0 scroll=0:0 idle=1:1]
+11-07 02:48:30.114  1198  1661 D SurfaceFlinger: MtkOverrideDuration: update vsync 30
+11-07 02:48:30.115  1134  1491 I hwcomposer: [DRMDEV] (0) failed to waitNextVsync: -1  
+11-07 02:48:30.115  1198  1661 E SurfaceFlinger: MtkDuration override mode is disabled
+11-07 02:48:30.115  1198  1661 D SurfaceFlinger: MtkOverrideDuration: reset override duration
+11-07 02:48:30.123  1134  1491 I hwcomposer: [DRMDEV] (0) failed to waitNextVsync: -1  
+11-07 02:48:30.131  1134  1491 I hwcomposer: [DRMDEV] (0) failed to waitNextVsync: -1  
+11-07 02:48:30.139  1134  1491 I hwcomposer: [DRMDEV] (0) failed to waitNextVsync: -1  
+11-07 02:48:30.143  1198  1198 I SurfaceFlinger: setActiveModeInHwcIfNeeded changing active mode to 3(30.00 Hz) for display 0
+11-07 02:48:30.143  1134  1134 I hwcomposer: [HWC] (0) displaySetActiveConfig config:3  
+11-07 02:48:30.318 17720 17733 D CompatibilityChangeReporter: Compat change id reported: 160794467; UID 11061; state: ENABLED
+11-07 02:48:30.390  1198  1198 I BufferQueueProducer: [StatusBar#90](this:0xb400007c09d63718,id:-1,api:0,p:-1,c:1198) queueBuffer: fps=0.27 dur=3636.66 max=3636.66 min=3636.66
+11-07 02:48:30.399  3384 15910 I NearbySharing: Network state changed: NetworkState(isRestricted=false, isOnline=true, isCongested=false, isMetered=false, isWifiConnected=true)
+11-07 02:48:30.403  3384 15911 I NearbySharing: Network state changed: NetworkState(isRestricted=false, isOnline=true, isCongested=false, isMetered=false, isWifiConnected=true)
+11-07 02:48:30.536 27871 27871 I adbd    : adbd service requested 'shell:am get-config'
+11-07 02:48:30.594  1134  1485 I hwcomposer: [HWC] (0)fire a callback of refresh to SF[4]  
+11-07 02:48:30.607  1167  1208 I libPerfCtl: xgfGetFPS pid:2298 fps:-1
+11-07 02:48:30.608  1167  1208 I libPerfCtl: xgfGetFPS pid:31477 fps:-1
+11-07 02:48:30.626  1167  1193 I mtkpower@impl: [setMode] type:6, enabled:1
+11-07 02:48:30.626  1167  1193 E mtkpower@impl: [setMode] unknown type
+11-07 02:48:30.631  1134  1134 I hwcomposer: [HWCDisplay] [Display_0 (type:1)] fps:6.804238,dur:1175.74,max:338.51,min:32.18  
+11-07 02:48:30.677  1167  1193 I mtkpower@impl: [setMode] type:6, enabled:0
+11-07 02:48:30.677  1167  1193 E mtkpower@impl: [setMode] unknown type
+11-07 02:48:30.725  1492  1492 W HidlServiceManagement: Waited for hwservicemanager.ready for a second, waiting another...
+11-07 02:48:30.726  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 02:48:30.726  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 02:48:30.723  1492  1492 W binder:1492_2: type=1400 audit(0.0:849191): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 02:48:30.723  1492  1492 W binder:1492_2: type=1400 audit(0.0:849192): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 02:48:31.018  3844  3844 D WidgetApplication: updateExistWidget: android.intent.action.BATTERY_CHANGED
+11-07 02:48:31.019  3844  4161 D CmdCenter: - RowBase2: sPrevModStatus: 1, modStatus: 1
+11-07 02:48:31.019  3844  4161 D CmdCenter: - RowBase2: sPrevBatStatus: 1, status: 1
+11-07 02:48:31.019  3844  4161 D CmdCenter: - RowBase2: sPrevChargeRate = 3, new = 3
+11-07 02:48:31.020  3844  4161 D CmdCenter: - RowBase2: sPrevPlugType: 1 plugType: 1
+11-07 02:48:31.609  1167  1208 I libPerfCtl: xgfGetFPS pid:31477 fps:-1
+11-07 02:48:31.727  1492  1492 W HidlServiceManagement: Waited for hwservicemanager.ready for a second, waiting another...
+11-07 02:48:31.728  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 02:48:31.728  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 02:48:31.727  1492  1492 W binder:1492_2: type=1400 audit(0.0:849193): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 02:48:31.727  1492  1492 W binder:1492_2: type=1400 audit(0.0:849194): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 02:48:31.821  2298  2298 D CBR_SystemUI: CarrierLabel - : updateLabel cellMsg:  cellEnabled: true
+11-07 02:48:31.821  2298  2298 D CBR_SystemUI: CarrierLabel - : updateLabel mCellBroadcastMessage Visibility: 8
+11-07 02:48:31.822  2298  2298 D CBR_SystemUI: CarrierLabel - : updateLabel cellMsg:  cellEnabled: true
+11-07 02:48:31.822  2298  2298 D CBR_SystemUI: CarrierLabel - : updateLabel mCellBroadcastMessage Visibility: 8
+11-07 02:48:31.824  2298  2298 D StatusBarIconController: ignoring old pipeline callbacks, because the new mobile icons are enabled
+11-07 02:48:32.656  1527  1731 D ULogGuard: Monitoring: 10 threads, 0 requests, 0 time-bombs; 1 guards. ResetFlags = 0x7
+11-07 02:48:32.729  1492  1492 W HidlServiceManagement: Waited for hwservicemanager.ready for a second, waiting another...
+11-07 02:48:32.730  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 02:48:32.730  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 02:48:32.723  1492  1492 W binder:1492_2: type=1400 audit(0.0:849195): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 02:48:32.727  1492  1492 W binder:1492_2: type=1400 audit(0.0:849196): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 02:48:32.902  1830  2109 E WifiDataStall: Ignore this poll. newStats: null txLinkSpeedMbps: 7 rxLinkSpeedMbps: 292 rssi: -49 connectionCapabilities: com.android.server.wifi.WifiNative$ConnectionCapabilities@97eba
+11-07 02:48:33.345 27871 27871 I adbd    : adbd service requested 'shell,v2,raw:getprop ro.build.version.release'
+11-07 02:48:33.532 27871 27871 I adbd    : adbd service requested 'shell,v2,raw:getprop'
+11-07 02:48:33.730  1492  1492 W HidlServiceManagement: Waited for hwservicemanager.ready for a second, waiting another...
+11-07 02:48:33.731  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 02:48:33.731  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 02:48:33.727  1492  1492 W binder:1492_2: type=1400 audit(0.0:849197): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 02:48:33.727  1492  1492 W binder:1492_2: type=1400 audit(0.0:849198): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 02:48:33.944 27871 27871 I adbd    : adbd service requested 'shell,v2,raw:cat /proc/meminfo'
+11-07 02:48:34.072 27871 27871 I adbd    : adbd service requested 'shell,v2,raw:cat /proc/cpuinfo'
+11-07 02:48:34.105  3844  3844 D WidgetApplication: updateExistWidget: android.intent.action.BATTERY_CHANGED
+11-07 02:48:34.106  3844  4161 D CmdCenter: - RowBase2: sPrevModStatus: 1, modStatus: 1
+11-07 02:48:34.107  3844  4161 D CmdCenter: - RowBase2: sPrevBatStatus: 1, status: 1
+11-07 02:48:34.107  3844  4161 D CmdCenter: - RowBase2: sPrevChargeRate = 3, new = 3
+11-07 02:48:34.107  3844  4161 D CmdCenter: - RowBase2: sPrevPlugType: 1 plugType: 1
+11-07 02:48:34.268 27871 27871 I adbd    : adbd service requested 'shell,v2,raw:date +%m-%d\ %H:%M:%S'
+11-07 02:48:34.393 27871 27871 I adbd    : adbd service requested 'shell,v2:export ANDROID_LOG_TAGS=''; exec logcat '-v' 'threadtime' '-b' 'main' '-b' 'crash' '-T' '11-07 02:48:34.000''
+11-07 02:48:34.403 27871 27871 I adbd    : adbd service requested 'shell,v2,raw:getprop ro.build.version.sdk'
+11-07 02:48:34.574 27871 27871 I adbd    : adbd service requested 'shell,v2,raw:settings put global verifier_verify_adb_installs 0'
+11-07 02:48:34.731  1492  1492 W HidlServiceManagement: Waited for hwservicemanager.ready for a second, waiting another...
+11-07 02:48:34.731  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 02:48:34.732  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 02:48:34.727  1492  1492 W binder:1492_2: type=1400 audit(0.0:849199): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 02:48:34.727  1492  1492 W binder:1492_2: type=1400 audit(0.0:849200): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 02:48:34.773 27871 27871 I adbd    : adbd service requested 'shell,v2,raw:am get-current-user'
+11-07 02:48:34.861 17720 17777 D ProfileInstaller: Installing profile for com.anchor.mine
+11-07 02:48:34.923 27871 27871 I adbd    : adbd service requested 'abb_exec:settings
+11-07 02:48:34.924 28097 28097 I abb     : StartCommandInProcess(73657474696e67730067657400676c6f settings.get.glo [truncated])
+11-07 02:48:34.937 27871 27871 I adbd    : adbd service requested 'abb_exec:package
+11-07 02:48:34.938 28097 28097 I abb     : StartCommandInProcess(7061636b61676500696e7374616c6c00 package.install. [truncated])
+11-07 02:48:35.323  1830  2074 W PackageManager: Missing required system package: com.anchor.mine, but found with extended search.
+11-07 02:48:35.377 17720 17733 I TestRunner: finished: testGentleReminderFires_SetsFlag(com.anchor.mine.alarms.AlarmSelfTest)

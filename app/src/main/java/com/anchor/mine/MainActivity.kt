@@ -16,12 +16,16 @@ import androidx.activity.viewModels
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
+import kotlinx.coroutines.flow.first
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -35,7 +39,10 @@ class MainActivity : ComponentActivity() {
 
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) { _ -> }
+    ) { _ ->
+        // H-11 (R-15): the user just answered the prompt; the banner must reflect the answer.
+        viewModel.refreshNotificationsBlocked()
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -54,13 +61,34 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    override fun onResume() {
+        super.onResume()
+        // H-11 (R-15): the user may have toggled notifications in system settings while we were
+        // stopped; nothing else observes that change.
+        viewModel.refreshNotificationsBlocked()
+    }
 }
 
 @Composable
 fun MineAppUI(viewModel: MainViewModel) {
     val state by viewModel.state.collectAsState()
+    MineAppUI(state, viewModel::onAction)
+}
+
+/** Stateless body of [MineAppUI], so the shell (tabs, banners) can be tested without a ViewModel. */
+@Composable
+fun MineAppUI(state: UiState, onAction: (UiAction) -> Unit) {
     var selectedTab by remember { mutableIntStateOf(0) }
-    val tabs = listOf("Chat", "Reminders", "Provider", "Debug")
+    val tabs = listOf("Chat", "Reminders", "Provider", "Backup", "Debug")
+
+    // B5: the export backend is built asynchronously in MineApp.onCreate. Until it completes the
+    // Backup tab says so rather than offering buttons that would do nothing.
+    val app = androidx.compose.ui.platform.LocalContext.current.applicationContext as? MineApp
+    var exportManager by remember { mutableStateOf<com.anchor.core.export.ExportManager?>(null) }
+    LaunchedEffect(app) {
+        exportManager = app?.let { runCatching { it.sharedExportManager.await() }.getOrNull() }
+    }
 
     if (state.globalError != null) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) {
@@ -70,13 +98,13 @@ fun MineAppUI(viewModel: MainViewModel) {
                 if (state.globalError == "KEYSTORE_LOST") {
                     Text("The database cannot be decrypted. You must reset the app to continue.", modifier = Modifier.padding(16.dp))
                     if (!state.showResetConfirm) {
-                        Button(onClick = { viewModel.onAction(UiAction.PromptResetDatabase) }) { Text("Reset Database") }
+                        Button(onClick = { onAction(UiAction.PromptResetDatabase) }) { Text("Reset Database") }
                     } else {
                         Text("Are you sure? This deletes everything.", color = MaterialTheme.colorScheme.error)
                         Row {
-                            Button(onClick = { viewModel.onAction(UiAction.ConfirmResetDatabase(true)) }) { Text("Yes, Delete") }
+                            Button(onClick = { onAction(UiAction.ConfirmResetDatabase(true)) }) { Text("Yes, Delete") }
                             Spacer(modifier = Modifier.width(8.dp))
-                            Button(onClick = { viewModel.onAction(UiAction.ConfirmResetDatabase(false)) }) { Text("Cancel") }
+                            Button(onClick = { onAction(UiAction.ConfirmResetDatabase(false)) }) { Text("Cancel") }
                         }
                     }
                 } else {
@@ -88,6 +116,15 @@ fun MineAppUI(viewModel: MainViewModel) {
     }
 
     Column(modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars)) {
+        // H-11 (R-15): shown on every tab, because a reminder that cannot notify is a lost
+        // reminder no matter which screen the user is on.
+        if (state.notificationsBlocked) {
+            Text(
+                text = "Notifications are off for Mine. Reminders will be scheduled but cannot alert you until you allow notifications in system settings.",
+                color = MaterialTheme.colorScheme.onErrorContainer,
+                modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.errorContainer).padding(8.dp).testTag("notificationsBlockedBanner")
+            )
+        }
         PrimaryTabRow(selectedTabIndex = selectedTab) {
             tabs.forEachIndexed { index, title ->
                 Tab(selected = selectedTab == index, onClick = { selectedTab = index }, text = { Text(title) })
@@ -96,23 +133,40 @@ fun MineAppUI(viewModel: MainViewModel) {
 
         Box(modifier = Modifier.weight(1f).padding(16.dp)) {
             when (selectedTab) {
-                0 -> ChatScreen(state, viewModel::onAction)
-                1 -> RemindersScreen(state, viewModel::onAction)
-                // Item 7: Using 'key' forces recomposition when DB loads
-                2 -> key(state.providerEndpoint) { ProviderScreen(state) { ep, k, m -> viewModel.onAction(UiAction.SaveProvider(ep, k, m)) } }
-                3 -> DebugScreen(state, viewModel::onAction)
+                0 -> ChatScreen(state, onAction)
+                1 -> RemindersScreen(state, onAction)
+                        // O-2: no key() here. The key remounted ProviderScreen on every config change,
+                // and a remount mid-edit re-seeded the fields from the old state, which is how a
+                // save produced the old value concatenated with the new one. ProviderScreen
+                // already follows `state` through a LaunchedEffect.
+                2 -> ProviderScreen(state) { ep, k, m -> onAction(UiAction.SaveProvider(ep, k, m)) }
+                3 -> BackupScreen(exportManager)
+                4 -> DebugScreen(state, onAction)
             }
         }
     }
 }
 
 @Composable
-fun ChatScreen(state: UiState, onAction: (UiAction) -> Unit) {
-    val listState = rememberLazyListState()
+fun ChatScreen(
+    state: UiState,
+    onAction: (UiAction) -> Unit,
+    listState: LazyListState = rememberLazyListState()
+) {
     val totalItems = state.chatMessages.size + state.receipts.size + state.openProposals.size + state.proposedSoulFacts.size + state.staleItems.size + (if (state.isChatLoading) 1 else 0)
     LaunchedEffect(totalItems) {
-        if (totalItems > 0) {
-            listState.animateScrollToItem(totalItems - 1)
+        // H-09 (R-13): the sum above assumes every counted field is rendered as exactly one
+        // LazyColumn item. Scroll to what the list actually laid out, clamped, so a mismatch
+        // cannot throw an out-of-bounds index into the coroutine.
+        //
+        // H-09b: a LaunchedEffect starts after the first composition commits but BEFORE the
+        // LazyColumn's first measure, so `totalItemsCount` is 0 on entry and the old `>= 0`
+        // guard silently skipped the scroll on the very first load — the list stayed at the
+        // top. Wait for the first non-empty layout before computing the target.
+        val lastIndex = snapshotFlow { listState.layoutInfo.totalItemsCount }
+            .first { it > 0 } - 1
+        if (lastIndex >= 0) {
+            listState.animateScrollToItem(lastIndex)
         }
     }
 
@@ -233,6 +287,17 @@ fun RemindersScreen(state: UiState, onAction: (UiAction) -> Unit) {
             Text("Run 5-sec Self Test")
         }
         Text("Test Status: ${state.selfTestStatus}")
+        // A reminder that cannot notify is a lost reminder. reconcileAlarms() records this on
+        // every refresh, so it must be visible without the user running the self-test.
+        state.schedulingError?.let {
+            Text("Reminders may not notify: $it", color = MaterialTheme.colorScheme.error)
+        }
+        // H-01 (R-01): reminders that came due while the device was off are reported, not dropped.
+        state.missedReminders.forEach { missed ->
+            val minutes = missed.overdueByMs / 60_000L
+            val ago = if (minutes >= 1) "$minutes min ago" else "${missed.overdueByMs / 1000L} sec ago"
+            Text("Missed: ${missed.text} (due $ago)", color = MaterialTheme.colorScheme.error)
+        }
 
         Spacer(modifier = Modifier.height(16.dp))
         Text(
@@ -261,16 +326,25 @@ fun ProviderScreen(state: UiState, onSave: (String, String, String) -> Unit) {
     var key by remember { mutableStateOf(state.providerKey) }
     var mod by remember { mutableStateOf(state.providerModel) }
 
+    // The controller loads settings asynchronously, so the first frame is empty. Re-seed the
+    // fields whenever the persisted config changes: without this the screen keeps showing the
+    // empty first frame forever, and a save writes blanks over a valid config.
+    LaunchedEffect(state.providerEndpoint, state.providerKey, state.providerModel) {
+        ep = state.providerEndpoint
+        key = state.providerKey
+        mod = state.providerModel
+    }
+
     Column {
-        OutlinedTextField(value = ep, onValueChange = { ep = it }, label = { Text("Endpoint") }, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(value = ep, onValueChange = { ep = it }, label = { Text("Endpoint") }, modifier = Modifier.fillMaxWidth().testTag("providerEndpoint"))
         OutlinedTextField(
             value = key,
             onValueChange = { key = it },
             label = { Text("API Key") },
             visualTransformation = PasswordVisualTransformation(),
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth().testTag("providerKey")
         )
-        OutlinedTextField(value = mod, onValueChange = { mod = it }, label = { Text("Model") }, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(value = mod, onValueChange = { mod = it }, label = { Text("Model") }, modifier = Modifier.fillMaxWidth().testTag("providerModel"))
         Button(onClick = { onSave(ep, key, mod) }) {
             Text("Save")
         }
@@ -285,7 +359,7 @@ fun DebugScreen(state: UiState, onAction: (UiAction) -> Unit) {
         Spacer(modifier = Modifier.height(16.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(onClick = { onAction(UiAction.RefreshStats) }) { Text("Refresh Stats") }
-            // ISSUE 5: Export/Import removed from debug UI until v1.1 implements the formal Android File Picker and Dialog
+            // Export/Import live on their own tab (BackupScreen, B5).
         }
     }
 }

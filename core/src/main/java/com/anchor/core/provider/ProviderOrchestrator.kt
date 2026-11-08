@@ -17,18 +17,22 @@ class ProviderOrchestrator(
 
     suspend fun chat(chain: List<Target>, prompt: String): Flow<StreamEvent> = flow {
         var lastError: Exception? = null
-        
+        // Declared outside the try: the catch clauses decide whether to emit Clear based on it.
+        var emittedText = false
+
         for (target in chain) {
             if (!limiter.canRequest(target.key, target.limitRpm)) continue
-            
+
             try {
                 limiter.recordRequest(target.key)
                 var emittedAnything = false
-                
+                emittedText = false
+
                 // B13: Catch 5xx, Timeouts, and empty 200s, then fallback to next target!
                 normalize(transport.postStream(target, prompt)).collect { event ->
                     emit(event)
                     emittedAnything = true
+                    if (event is StreamEvent.TextDelta) emittedText = true
                 }
                 
                 if (!emittedAnything) throw Exception("Empty response from provider")
@@ -37,12 +41,15 @@ class ProviderOrchestrator(
             } catch (e: Http429Exception) {
                 limiter.apply429Cooldown(target.key, e.retryAfterSeconds)
                 lastError = e
-                emit(StreamEvent.Clear)
+                // H-12 (R-16): Clear wipes the consumer's buffer. Only emit it when this attempt
+                // streamed no text — otherwise the user watches an answer they already read
+                // vanish and restart. A failed attempt is not a correction of the previous one.
+                if (!emittedText) emit(StreamEvent.Clear)
                 continue // Try next fallback target
             } catch (e: Exception) {
                 if (e is CancellationException) throw e // Never swallow coroutine cancellation
                 lastError = e
-                emit(StreamEvent.Clear)
+                if (!emittedText) emit(StreamEvent.Clear)
                 continue // 5xx, timeout, or parsing error -> Try next fallback target!
             }
         }

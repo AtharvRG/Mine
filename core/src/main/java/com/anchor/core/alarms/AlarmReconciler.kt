@@ -27,7 +27,12 @@ class AlarmReconciler(
 ) {
     suspend fun reconcile(force: Boolean): List<ScheduleResult> {
         val now = clock.now()
-        val pending = storage.getPendingReminders()
+        // R-26: the read is paged, so one extra row is requested: a full page alone cannot
+        // distinguish "exactly a page" from "more than a page". The second case is rows this pass
+        // cannot see, and it must be reported rather than treated as a clean reconcile.
+        val page = storage.getPendingReminders(Storage.PENDING_REMINDER_PAGE_LIMIT + 1)
+        val truncated = page.size > Storage.PENDING_REMINDER_PAGE_LIMIT
+        val pending = if (truncated) page.subList(0, Storage.PENDING_REMINDER_PAGE_LIMIT) else page
         val registered = storage.getRegisteredAlarmRecords()
 
         val pendingMap = pending.associateBy { it.id }
@@ -40,9 +45,40 @@ class AlarmReconciler(
             storage.deleteRegisteredAlarm(orphanId)
         }
 
-        // 2. Schedule pending reminders within 60s grace
-        val validPending = pending.filter { it.fireAtMillis >= now - 60000L }
+        // 2. Schedule pending reminders within 60s grace; report the rest as overdue (H-01/R-01).
+        //    Dropping them silently left a reminder that came due while the device was off with no
+        //    alarm and no report unless the boot/app-open sweeper happened to run.
         val results = mutableListOf<ScheduleResult>()
+        val validPending = mutableListOf<com.anchor.core.models.Reminder>()
+        for (reminder in pending) {
+            if (reminder.fireAtMillis >= now - GRACE_MS) {
+                validPending.add(reminder)
+                continue
+            }
+            // A registration for a past instant can never fire; clear it so it is not left stale.
+            if (registeredMap.containsKey(reminder.id)) {
+                scheduler.cancel(reminder.id)
+                storage.deleteRegisteredAlarm(reminder.id)
+            }
+            // Dedupe on the fire instance: the same reminder id may miss twice after a reschedule.
+            // R-54: an "errored" fire counts too — AlarmReceiver's fallback posts a notification
+            // when storage is unreadable and records "errored" for this same instance; reporting it
+            // overdue as well would surface a second notification for one fire.
+            val lastMiss = storage.getReminderFire(reminder.id, "missed")
+            val errored = storage.getReminderFire(reminder.id, "errored")
+            val alreadyReported = lastMiss?.scheduledFor == reminder.fireAtMillis ||
+                errored?.scheduledFor == reminder.fireAtMillis
+            if (!alreadyReported) {
+                results.add(
+                    ScheduleResult.Overdue(
+                        reminderId = reminder.id,
+                        text = reminder.text,
+                        scheduledFor = reminder.fireAtMillis,
+                        overdueByMs = now - reminder.fireAtMillis
+                    )
+                )
+            }
+        }
 
         for (reminder in validPending) {
             val reg = registeredMap[reminder.id]
@@ -57,7 +93,12 @@ class AlarmReconciler(
             }
         }
 
-        // 3. Recompute reliability state
+        // 3. Recompute reliability state. R-26: a truncated page is a failure of this pass, not a
+        //    clean one — it is appended to the results the caller reads, and from there folded into
+        //    the reliability issues below.
+        if (truncated) {
+            results.add(ScheduleResult.Failed(ISSUE_PENDING_TRUNCATED))
+        }
         val failures = results.filterIsInstance<ScheduleResult.Failed>()
         val currentState = storage.getReliabilityState()
         if (failures.isNotEmpty()) {
@@ -102,6 +143,12 @@ class AlarmReconciler(
         ReliabilityIssueCodec.parse(jsonStr)
 
     companion object {
+        /** How far past its fire instant a reminder is still armed rather than reported overdue. */
+        const val GRACE_MS = 60000L
+
+        /** R-26: the pending read returned a full page, so an unseen tail was not reconciled. */
+        const val ISSUE_PENDING_TRUNCATED = "pending_reminders_truncated"
+
         fun encodeIssues(issues: List<ReliabilityIssue>): String = ReliabilityIssueCodec.encode(issues)
         fun parseIssues(jsonStr: String?): List<ReliabilityIssue> = ReliabilityIssueCodec.parse(jsonStr)
     }

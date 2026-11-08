@@ -13,14 +13,14 @@
   "hooks": {
     "PreToolUse": [
       { "matcher": "Bash",
-        "hooks": [{ "type": "command", "command": "python .openclaude/hooks/guard_bash.py" }] }
+        "hooks": [{ "type": "command", "command": "python \"$CLAUDE_PROJECT_DIR/.openclaude/hooks/guard_bash.py\"" }] }
     ],
     "PostToolUse": [
       { "matcher": "Edit|Write|MultiEdit",
-        "hooks": [{ "type": "command", "command": "python .openclaude/hooks/after_edit.py" }] }
+        "hooks": [{ "type": "command", "command": "python \"$CLAUDE_PROJECT_DIR/.openclaude/hooks/after_edit.py\"" }] }
     ],
     "Stop": [
-      { "hooks": [{ "type": "command", "command": "python .openclaude/hooks/stop_gate.py", "timeout": 900 }] }
+      { "hooks": [{ "type": "command", "command": "python \"$CLAUDE_PROJECT_DIR/.openclaude/hooks/stop_gate.py\"", "timeout": 900 }] }
     ]
   }
 }

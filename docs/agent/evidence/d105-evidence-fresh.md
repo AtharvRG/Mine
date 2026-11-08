@@ -220,8 +220,15 @@ release build:
 | Route to a Gentle reminder | Why it fails |
 |---|---|
 | `Run 5-sec Self Test` (Reminders tab) | ALARM tier only — hardcoded `setAlarmClock` path |
-| `AlarmSelfTest.testGentleReminderFires_SetsFlag` | arms at `now + 1500 ms` — far too short to dump + screenshot |
+| `AlarmSelfTest.testGentleReminderFires_SetsFlag` | arms at `now + 5000 ms` (`AlarmSelfTest.kt:106`) — far too short to dump + screenshot |
 | Chat: `gentle reminder to ...` | silently fails — O-1 (no receipt, no row, no alarm) |
+
+**Route found since this file was written (2026-11-08):**
+`AlarmSelfTest.testAlarmClock_NextAlarmClockVerification` arms a **GENTLE** reminder at
+`now + 120000 ms` and holds it pending while asserting `nextAlarmClock.triggerTime != gentleFireTime`.
+Two minutes is long enough to run `dumpsys alarm`, `dumpsys SystemUIService`, and `screencap` in
+parallel from the host while the alarm is still armed. That is the capture to take when a device is
+next connected; it needs no O-1 fix and no debug-build change.
 
 The gentle fingerprint is nonetheless documented from `d105-alarms-stretch.txt` (Nov 5,
 same build lineage): `flags=0x20`, `window=+2m59s994ms`, no `Alarm clock:` block. Its
@@ -229,7 +236,58 @@ SystemUI state (`d105-systemui-gentletier-pending.txt`) reads `visibleState=HIDD
 identical to Pair C-A. That is consistent with the claim but is **not a same-session
 capture** and is not offered as proof.
 
-**Honest status: the Gentle half of D-105 is blocked on O-1 or on a debug build.**
+**Honest status (as of 2026-11-06): the Gentle half of D-105 is blocked on O-1 or on a debug build.**
+
+### 2026-11-08 — Gentle half CAPTURED (same session, debug build, device `moto g73 5G - 14`)
+
+Route used: `AlarmSelfTest.testAlarmClock_NextAlarmClockVerification` with
+`-Pandroid.testInstrumentationRunnerArguments.d105GentleHoldMs=90000`, while
+`build/tmp/d105-gentle-capture.sh` polled `dumpsys alarm` from the host.
+
+Device clock at capture: `07:51:41`. The armed alarm in `d105-gentle-alarms-dump.txt`:
+
+```
+    RTC_WAKEUP #4: Alarm{f97f9c1 type 0 origWhen 1794104553449 whenElapsed 418900314 com.anchor.mine}
+      tag=*walarm*:com.anchor.mine/.alarms.AlarmReceiver
+      type=RTC_WAKEUP origWhen=2026-11-08 07:52:33.449 window=+1m29s998ms repeatInterval=0 count=0 flags=0x20
+```
+
+`origWhen` is the test's `now + 120000 ms` (`AlarmSelfTest.kt:153`). `flags=0x20` and the
+`+1m29s998ms` window are the `setAndAllowWhileIdle` fingerprint (`AndroidAlarmScheduler.kt:54`);
+there is **no `Alarm clock:` block for Mine**, i.e. the GENTLE alarm is armed and is *not*
+registered as an alarm clock.
+
+| Signal | Gentle armed (this capture) | Nothing armed (Pair C-A) | Mine ALARM armed (Pair C-B) |
+|---|---|---|---|
+| `dumpsys alarm` Mine entry | `*walarm*`, `window=+1m29s998ms`, no `Alarm clock:` | none | `setAlarmClock` block present |
+| `dumpsys alarm` `Next alarm clock information` | **not captured** (filtered dump lacks the header — see note) | blank | `time:…` +3s793ms |
+| `slot='alarm_clock' visibleState` | **`HIDDEN` (2), `iconAppearAmount=0.0`** | `HIDDEN` (2) | `ICON` (0) |
+| PNG theme | dark (corner `[10,16,20]`) | light | light |
+
+The SystemUI samples are `d105-gentle-systemui.txt` and `d105-gentle-systemui-2.txt`; both
+read `visibleState=HIDDEN` for `slot='alarm_clock'` across all three view instances (keyguard,
+shade, and status bar) — 6 views total, `visibleState=2`, `iconAppearAmount=0.0`, and
+`grep -c "visibleState=ICON"` = 0 in both files.
+
+**Correction (2026-11-08, same day):** `d105-gentle-alarms-dump.txt` is a *filtered* extract — it
+contains the Mine alarm entry but **not** the `Next alarm clock information` header, so it cannot
+itself show that block blank. The blank-header claim rests on (a) the ALARM-tier contrast in Pair C
+where the same device *does* populate it, and (b) the Nov 5 same-tier file
+`d105-alarms-gentletier-pending.txt:188-189`, which shows the header blank with a GENTLE-shaped
+alarm pending. Do not cite `d105-gentle-alarms-dump.txt` as evidence for the blank header. Screenshot: `d105-gentle-pending.png` (521897 B, 1080×2400);
+status-bar crops `d105-gentle-statusbar-crop.png` and `d105-gentle-statusbar-left-crop.png`.
+
+**Caveat on the PNG:** the light-glyph scan in Pair C (`r>=251`, x 600–760) is not applicable —
+this capture is dark-theme. A dark-theme threshold (mean ≥ 120) finds glyphs at
+`747-779, 794-831, 890-920, 935-1027`, all ~30 px wide, i.e. the right-hand status-bar icons.
+There is **no 25 px gap-plus-glyph between them** of the kind the alarm glyph adds, but the
+dark capture has no same-session dark "nothing armed" control, so the PNG alone is not a
+differential. The differential is the SystemUI `visibleState` + `dumpsys alarm` pair above,
+taken in the same session as the armed Gentle alarm.
+
+**Machine-checkable verdict for the Gentle half: consistent with D-105's claim** — a GENTLE
+reminder is armed via `setAndAllowWhileIdle`, is absent from `nextAlarmClock`, and leaves
+`slot='alarm_clock'` at `visibleState=HIDDEN`. The by-eye verdict remains the user's.
 
 ## What this does NOT prove
 

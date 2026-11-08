@@ -17,6 +17,7 @@ import com.anchor.core.time.DateResolver
 import com.anchor.core.time.SystemClock
 import com.anchor.core.ui.ChatController
 import com.anchor.core.ui.UiAction
+import com.anchor.mine.BuildConfig
 import com.anchor.mine.alarms.AndroidAlarmScheduler
 import com.anchor.mine.provider.AndroidHttpTransport
 import com.anchor.mine.storage.AndroidStorage
@@ -29,15 +30,22 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.File
 
+@LiveTest
 @RunWith(AndroidJUnit4::class)
 class LiveSmoke15Test {
 
-    private val apiKey = "NMpzcgGsHACvrZOIRZgx6CGrfrP8N7vq"
-    private val endpoint = "https://api.mistral.ai/v1/chat/completions"
-    private val model = "mistral-small-latest"
+    // Credentials are injected from local.properties (git-ignored) at build time; see app/build.gradle.kts.
+    private val apiKey = BuildConfig.LIVE_API_KEY
+    private val endpoint = BuildConfig.LIVE_ENDPOINT
+    private val model = BuildConfig.LIVE_MODEL
 
     @Test
     fun execute15UtteranceSmokeTest() = runBlocking {
+        // A skipped run that reports green is a false success. Fail with the reason instead.
+        org.junit.Assume.assumeTrue(
+            "LIVE_API_KEY is empty — set API_KEY in local.properties to run live tests",
+            apiKey.isNotBlank()
+        )
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val dbName = "smoke_live_15.db"
         context.deleteDatabase(dbName)
@@ -139,7 +147,7 @@ class LiveSmoke15Test {
             val activeReceipts = controller.state.value.receipts
             val proposals = storage.getOpenProposals()
             val nodes = storage.getActiveNodes(50)
-            val reminders = storage.getActiveReminders()
+            val reminders = storage.getActiveReminders(System.currentTimeMillis())
 
             transcriptLines.add("- **Assistant**: $lastAssistantMsg")
             if (activeReceipts.isNotEmpty()) {

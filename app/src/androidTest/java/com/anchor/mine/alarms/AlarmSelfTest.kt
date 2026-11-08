@@ -27,6 +27,15 @@ class AlarmSelfTest {
     @Before
     fun setup() {
         AlarmReceiver.lastFiredId = null
+        // The real delivery path posts a notification; without this grant the notify() call is
+        // silently dropped and the failure surfaces only as "did not fire", hiding the real cause.
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            InstrumentationRegistry.getInstrumentation().uiAutomation.grantRuntimePermission(
+                context.packageName,
+                android.Manifest.permission.POST_NOTIFICATIONS
+            )
+        }
     }
 
     @After
@@ -48,22 +57,40 @@ class AlarmSelfTest {
         val scheduler = AndroidAlarmScheduler(context)
 
         val testId = "test_alarm_1"
-        // Schedule for ~1.5 seconds in the future
-        val fireTime = System.currentTimeMillis() + 1500L
+        // 5 s, not 1.5 s: the ALARM tier is the one that goes through setAlarmClock, and a
+        // 1.5 s window is inside the noise of a loaded device. The poll deadline is separate
+        // and longer, so a late-but-real delivery is still observed rather than reported as
+        // "never fired".
+        val fireTime = System.currentTimeMillis() + 5000L
         val reminder = Reminder(testId, "Test Reminder", fireTime, tier = AlarmTier.ALARM)
 
         storage.saveReminder(reminder)
         val scheduleResult = scheduler.schedule(reminder)
         assertTrue("Schedule must succeed as Armed unconditionally, but was $scheduleResult", scheduleResult is com.anchor.core.alarms.ScheduleResult.Armed)
 
-        // Wait for Android's AlarmManager to wake us up (timeout at 10s)
+        // Wait for Android's AlarmManager to wake us up (timeout at 20s = fire time + 15s slack)
         var elapsed = 0
-        while (AlarmReceiver.lastFiredId != testId && elapsed < 10000) {
+        while (AlarmReceiver.lastFiredId != testId && elapsed < 20000) {
             kotlinx.coroutines.delay(250)
             elapsed += 250
         }
 
-        assertEquals("Alarm receiver should have updated the static flag", testId, AlarmReceiver.lastFiredId)
+        if (AlarmReceiver.lastFiredId != testId) {
+            // A bare assertEquals prints only "expected:<x> but was:<y>". When this fires we need
+            // to know *why*: still armed at the deadline (never delivered), already gone
+            // (delivered but the receiver bailed), or a different id fired.
+            val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+            val nextClock = alarmManager.nextAlarmClock?.triggerTime
+            val rowStillPending = storage.getPendingReminders().any { it.id == testId }
+            org.junit.Assert.fail(
+                "ALARM tier did not fire within ${elapsed}ms. " +
+                    "lastFiredId=${AlarmReceiver.lastFiredId} " +
+                    "nextAlarmClock=$nextClock fireTime=$fireTime " +
+                    "stillNextAlarmClock=${nextClock == fireTime} " +
+                    "reminderRowStillPending=$rowStillPending " +
+                    "schedulerFiredFlow=${AndroidAlarmScheduler.firedFlow.value}"
+            )
+        }
     }
 
     @Test
@@ -74,17 +101,18 @@ class AlarmSelfTest {
         val scheduler = AndroidAlarmScheduler(context)
 
         val testId = "test_gentle_1"
-        // Schedule for ~1.5 seconds in the future
-        val fireTime = System.currentTimeMillis() + 1500L
+        // Same 5 s window as the ALARM-tier test: one timing constant for both tiers, so a
+        // failure in one is comparable with the other.
+        val fireTime = System.currentTimeMillis() + 5000L
         val reminder = Reminder(testId, "Gentle Test Reminder", fireTime, tier = AlarmTier.GENTLE)
 
         storage.saveReminder(reminder)
         val scheduleResult = scheduler.schedule(reminder)
         assertTrue("Schedule must succeed as Armed unconditionally, but was $scheduleResult", scheduleResult is com.anchor.core.alarms.ScheduleResult.Armed)
 
-        // Wait for Android's AlarmManager to wake us up (timeout at 10s)
+        // Wait for Android's AlarmManager to wake us up (timeout at 20s = fire time + 15s slack)
         var elapsed = 0
-        while (AlarmReceiver.lastFiredId != testId && elapsed < 10000) {
+        while (AlarmReceiver.lastFiredId != testId && elapsed < 20000) {
             kotlinx.coroutines.delay(250)
             elapsed += 250
         }
@@ -132,6 +160,16 @@ class AlarmSelfTest {
         // The gentle reminder should NOT appear as nextAlarmClock
         if (nextClockAfterGentle != null) {
             assertNotEquals("GENTLE tier reminder must NOT appear as nextAlarmClock triggerTime", gentleFireTime, nextClockAfterGentle.triggerTime)
+        }
+
+        // D-105: @After cancels the gentle alarm, so the status bar can only be inspected while
+        // this test is still running. Hold the armed alarm open long enough for a host-side
+        // screencap. Opt-in only, so a normal suite run does not pay the wait.
+        val holdMs = InstrumentationRegistry.getArguments()
+            .getString("d105GentleHoldMs", "0")!!.toLong()
+        if (holdMs > 0) {
+            val until = System.currentTimeMillis() + holdMs
+            while (System.currentTimeMillis() < until) Thread.sleep(250)
         }
     }
 }

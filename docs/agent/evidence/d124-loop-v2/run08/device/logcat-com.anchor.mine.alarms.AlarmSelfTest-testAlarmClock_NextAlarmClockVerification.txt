@@ -1,0 +1,21 @@
+11-07 03:18:40.683  9000  9043 I TestRunner: started: testAlarmClock_NextAlarmClockVerification(com.anchor.mine.alarms.AlarmSelfTest)
+11-07 03:18:40.689 17985 18106 D NotificationFeature: Mine Mine Test Reminder
+11-07 03:18:40.692  1500  9087 D GenericSource: FileSource remote
+11-07 03:18:40.694  1310  1310 I FPSGO   : fpsgo_boost_sched_idle_prefer:1
+11-07 03:18:40.694  1310  1310 I mtkpower_client: perf_lock_acq, hdl:0, dur:0, num:2, tid:1310
+11-07 03:18:40.696  1167  1252 I libPowerHal: [perfLockAcq] idx:0 hdl:159414 hint:-1 pid:1310 duration:0 lock_user:fpsgo => ret_hdl:159414
+11-07 03:18:40.696  1167  1252 I libPowerHal: [PE] fpsgo update cmd:1404500 param:1
+11-07 03:18:40.697  1310  1310 I mtkpower_client: ret_hdl:159414
+11-07 03:18:40.697  1310  1310 I FPSGO   : perfLockAcq hdl:159414
+11-07 03:18:40.697  1310  1310 I FPSGO   : fpsgo_boost_sched_rate_ns:0
+11-07 03:18:40.697  1310  1310 I mtkpower_client: perf_lock_acq, hdl:0, dur:0, num:12, tid:1310
+11-07 03:18:40.698  1310  1310 I mtkpower_client: ret_hdl:159415
+11-07 03:18:40.698  1310  1310 I FPSGO   : perfLockAcq hdl:159415
+11-07 03:18:40.698  1167  1252 I libPowerHal: cmdSetting - unknown cmd:1438500, scmd:(null) ,param_1:0
+11-07 03:18:40.698  1167  1252 I libPowerHal: cmdSetting - unknown cmd:1438800, scmd:(null) ,param_1:0
+11-07 03:18:40.698  1167  1252 I libPowerHal: [perfLockAcq] idx:1 hdl:159415 hint:-1 pid:1310 duration:0 lock_user:fpsgo => ret_hdl:159415
+11-07 03:18:40.698  1167  1252 I libPowerHal: [PE] fpsgo update cmd:1438300, param:0
+11-07 03:18:40.698  1167  1252 I libPowerHal: [PE] fpsgo update cmd:1438400, param:0
+11-07 03:18:40.698  1167  1252 I libPowerHal: [PE] fpsgo update cmd:1438600, param:0
+11-07 03:18:40.699  1167  1252 I libPowerHal: [PE] fpsgo update cmd:1438700, param:0
+11-07 03:18:40.714  9000  9043 I TestRunner: finished: testAlarmClock_NextAlarmClockVerification(com.anchor.mine.alarms.AlarmSelfTest)

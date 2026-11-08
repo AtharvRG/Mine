@@ -310,6 +310,56 @@ class ContextBuilderTest {
     }
 
     @Test
+    fun testH3_NewestUserMessage_Survives_WhenItselfLargerThanBudget() = runBlocking {
+        // H3: the newest message is the user's live turn. The 3000-char budget must never
+        // silently drop it - if it alone exceeds the budget, it is still the message the model
+        // has to answer.
+        val clock = FakeClock(1000L)
+        val dateResolver = DateResolver(clock)
+        val oversized = "A".repeat(4000)
+        val storage = SharedFakeStorage().apply {
+            messages = mutableListOf(
+                ChatMessage("m1", "user", "older message"),
+                ChatMessage("m2", "assistant", "older reply"),
+                ChatMessage("m3", "user", oversized)
+            )
+        }
+        val checkinBuilder = com.anchor.core.nudge.CheckinBuilder(storage, clock, dateResolver)
+        val builder = ContextBuilder(storage, clock, dateResolver, checkinBuilder)
+
+        val pack = builder.buildPack()
+
+        assertEquals("Newest user message must be the last element", "m3", pack.last().id)
+        assertEquals(oversized, pack.last().content)
+    }
+
+    @Test
+    fun testH3_LargeMidHistoryMessage_DoesNotStarveOlderMessages() = runBlocking {
+        // H3: one message that alone exceeds the REMAINING budget must be skipped, not used to
+        // terminate the walk - otherwise every older message is discarded even though it fits.
+        val clock = FakeClock(1000L)
+        val dateResolver = DateResolver(clock)
+        val storage = SharedFakeStorage().apply {
+            messages = mutableListOf(
+                ChatMessage("m1", "user", "first small message"),
+                ChatMessage("m2", "assistant", "second small message"),
+                ChatMessage("m3", "user", "B".repeat(3500)),
+                ChatMessage("m4", "user", "newest message")
+            )
+        }
+        val checkinBuilder = com.anchor.core.nudge.CheckinBuilder(storage, clock, dateResolver)
+        val builder = ContextBuilder(storage, clock, dateResolver, checkinBuilder)
+
+        val pack = builder.buildPack()
+        val historyIds = pack.filter { it.id.startsWith("m") }.map { it.id }
+
+        assertEquals("Newest message must survive", "m4", historyIds.last())
+        assertTrue("Older messages that fit must not be starved by one oversized message",
+            historyIds.containsAll(listOf("m1", "m2")))
+        assertFalse("The oversized message itself must not be included", historyIds.contains("m3"))
+    }
+
+    @Test
     fun testContextBuilder_200SoulFacts_RespectsBudget() = runBlocking {
         val now = 1_700_000_000_000L
         val clock = FakeClock(now)

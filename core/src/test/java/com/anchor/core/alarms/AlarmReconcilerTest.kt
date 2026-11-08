@@ -7,6 +7,7 @@ package com.anchor.core.alarms
 import com.anchor.core.SharedFakeStorage
 import com.anchor.core.models.AlarmTier
 import com.anchor.core.models.Reminder
+import com.anchor.core.storage.Storage
 import com.anchor.core.time.FakeClock
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -155,6 +156,100 @@ class AlarmReconcilerTest {
     }
 
     @Test
+    fun testReconcile_OverduePastGrace_IsReportedNotDropped() = runBlocking {
+        // H-01 (R-01): a reminder that came due while the device was off must not vanish from
+        // reconcile. It is not re-armed (arming a past instant fires immediately), it is reported.
+        val clock = FakeClock(1_000_000L)
+        val storage = SharedFakeStorage()
+        val scheduler = RecordingScheduler()
+
+        val rOverdue = Reminder("r_overdue", "Missed while off", 400_000L) // 10 minutes overdue
+        storage.saveReminder(rOverdue)
+
+        val reconciler = AlarmReconciler(storage, scheduler, clock)
+        val results = reconciler.reconcile(force = true)
+
+        assertFalse("An overdue reminder must not be re-armed in the past", scheduler.scheduled.any { it.id == "r_overdue" })
+        assertEquals("The overdue reminder must be reported exactly once", 1, results.size)
+        val overdue = results.single() as ScheduleResult.Overdue
+        assertEquals("r_overdue", overdue.reminderId)
+        assertEquals("Missed while off", overdue.text)
+        assertEquals(400_000L, overdue.scheduledFor)
+        assertEquals(600_000L, overdue.overdueByMs)
+        assertEquals("A reported miss is not a scheduling failure", "healthy", storage.getReliabilityState().score)
+    }
+
+    @Test
+    fun testReconcile_OverdueRegisteredAlarm_IsCancelledAndReported() = runBlocking {
+        val clock = FakeClock(1_000_000L)
+        val storage = SharedFakeStorage()
+        val scheduler = RecordingScheduler()
+
+        val rOverdue = Reminder("r_overdue", "Missed while off", 400_000L)
+        storage.saveReminder(rOverdue)
+        storage.saveRegisteredAlarm("r_overdue", "r_overdue".hashCode(), 400_000L)
+
+        val reconciler = AlarmReconciler(storage, scheduler, clock)
+        val results = reconciler.reconcile(force = false)
+
+        assertTrue("A stale registration for a past instant must be cancelled", scheduler.canceled.contains("r_overdue"))
+        assertFalse("A stale registration must leave the registry", storage.getRegisteredAlarms().any { it.first == "r_overdue" })
+        assertTrue("The overdue reminder must still be reported", results.any { it is ScheduleResult.Overdue })
+    }
+
+    @Test
+    fun testReconcile_OverdueReportedOncePerFireInstance() = runBlocking {
+        // The same reminder id can miss twice after a reschedule; dedupe on the fire instance.
+        val clock = FakeClock(1_000_000L)
+        val storage = SharedFakeStorage()
+        val scheduler = RecordingScheduler()
+        storage.saveReminder(Reminder("r1", "Missed", 400_000L))
+        val reconciler = AlarmReconciler(storage, scheduler, clock)
+
+        // The boot/app-open sweeper already recorded this instance as missed; reconcile must not
+        // report a reminder the user has already been told about.
+        storage.recordReminderFire(
+            com.anchor.core.models.ReminderFire("f_seed", "r1", 900_000L, 400_000L, 500_000, "missed")
+        )
+        assertEquals("An instance the sweeper already reported is not re-reported", 0, reconciler.reconcile(force = false).count { it is ScheduleResult.Overdue })
+
+        // Rescheduled to a new instance that also misses: a different fire, so it is reported.
+        storage.saveReminder(Reminder("r1", "Missed", 950_000L))
+        clock.currentTime = 1_100_000L
+        assertEquals("A rescheduled instance that also misses is reported", 1, reconciler.reconcile(force = false).count { it is ScheduleResult.Overdue })
+    }
+
+    @Test
+    fun testReconcile_OverdueErroredInstance_IsNotReportedAgain() = runBlocking {
+        // R-54: when AlarmReceiver's fallback cannot read storage it still posts a notification
+        // and records outcome="errored" for this fire instance. Reconcile must treat that as
+        // "already surfaced" — otherwise the user gets a second notification for one fire.
+        val clock = FakeClock(1_000_000L)
+        val storage = SharedFakeStorage()
+        val scheduler = RecordingScheduler()
+        storage.saveReminder(Reminder("r1", "Missed", 400_000L))
+        storage.recordReminderFire(
+            com.anchor.core.models.ReminderFire("f_err", "r1", 900_000L, 400_000L, 0, "errored")
+        )
+
+        val reconciler = AlarmReconciler(storage, scheduler, clock)
+        assertEquals(
+            "An instance already surfaced as errored must not be reported overdue again",
+            0,
+            reconciler.reconcile(force = false).count { it is ScheduleResult.Overdue }
+        )
+
+        // A different fire instance for the same id is still reported: dedupe is per instance.
+        storage.saveReminder(Reminder("r1", "Missed", 950_000L))
+        clock.currentTime = 1_100_000L
+        assertEquals(
+            "A rescheduled instance with no errored/missed record is still reported",
+            1,
+            reconciler.reconcile(force = false).count { it is ScheduleResult.Overdue }
+        )
+    }
+
+    @Test
     fun testReconcile_SchedulerFailed_UpdatesReliabilityState() = runBlocking {
         val clock = FakeClock(1000L)
         val storage = SharedFakeStorage()
@@ -245,5 +340,52 @@ class AlarmReconcilerTest {
         assertTrue(issuesJson.contains("Distinct failure reason #100"))
         // Must NOT contain an old failure (e.g., #1)
         assertFalse(issuesJson.contains("Distinct failure reason #1\""))
+    }
+
+    // R-26: getPendingReminders is paged. A full page means rows exist that this reconcile pass
+    // cannot see; silently treating the page as the whole set would leave the tail unarmed with
+    // no signal at all. The pass must still arm what it can and must report the truncation.
+    @Test
+    fun testReconcile_FullPendingPage_ReportsTruncationInsteadOfSilentlyDroppingTail() = runBlocking {
+        val clock = FakeClock(1000L)
+        val storage = SharedFakeStorage()
+        val scheduler = RecordingScheduler()
+        val limit = Storage.PENDING_REMINDER_PAGE_LIMIT
+
+        // One more reminder than a page holds, all in the future so all are armable.
+        for (i in 0 until limit + 1) {
+            storage.saveReminder(Reminder("r$i", "Reminder $i", 5000L + i, tier = AlarmTier.ALARM))
+        }
+
+        val results = AlarmReconciler(storage, scheduler, clock).reconcile(force = false)
+
+        assertEquals("every visible reminder must still be armed", limit, scheduler.scheduled.size)
+        val reportedAsTruncated = results.any { it is ScheduleResult.Failed && it.reason == AlarmReconciler.ISSUE_PENDING_TRUNCATED }
+        assertTrue(
+            "a full page must be reported, not silently treated as the whole set; results=${results.map { it.toString() }}",
+            reportedAsTruncated
+        )
+        val state = storage.getReliabilityState()
+        assertTrue(
+            "reliability state must carry the truncation issue",
+            state.issuesJson?.contains(AlarmReconciler.ISSUE_PENDING_TRUNCATED) == true
+        )
+    }
+
+    // R-26: below the page size nothing changes — no spurious issue on a normal pass.
+    @Test
+    fun testReconcile_PartialPendingPage_DoesNotReportTruncation() = runBlocking {
+        val clock = FakeClock(1000L)
+        val storage = SharedFakeStorage()
+        val scheduler = RecordingScheduler()
+        storage.saveReminder(Reminder("r1", "Only one", 5000L, tier = AlarmTier.ALARM))
+
+        val results = AlarmReconciler(storage, scheduler, clock).reconcile(force = false)
+
+        assertFalse(
+            "a partial page is a complete set",
+            results.any { it is ScheduleResult.Failed && it.reason == AlarmReconciler.ISSUE_PENDING_TRUNCATED }
+        )
+        assertEquals(1, scheduler.scheduled.size)
     }
 }

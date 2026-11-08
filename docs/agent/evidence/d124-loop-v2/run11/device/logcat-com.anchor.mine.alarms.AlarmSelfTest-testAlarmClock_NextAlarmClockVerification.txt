@@ -1,0 +1,17 @@
+11-07 03:22:13.956 10299 10313 I TestRunner: started: testAlarmClock_NextAlarmClockVerification(com.anchor.mine.alarms.AlarmSelfTest)
+11-07 03:22:13.956  1167  1252 I libPowerHal: cmdSetting - unknown cmd:1438500, scmd:(null) ,param_1:0
+11-07 03:22:13.956  1167  1252 I libPowerHal: cmdSetting - unknown cmd:1438800, scmd:(null) ,param_1:0
+11-07 03:22:13.956  1167  1252 I libPowerHal: [perfLockAcq] idx:1 hdl:159461 hint:-1 pid:1310 duration:0 lock_user:fpsgo => ret_hdl:159461
+11-07 03:22:13.956  1167  1252 I libPowerHal: [PE] fpsgo update cmd:1438300, param:0
+11-07 03:22:13.956  1167  1252 I libPowerHal: [PE] fpsgo update cmd:1438400, param:0
+11-07 03:22:13.956  1167  1252 I libPowerHal: [PE] fpsgo update cmd:1438600, param:0
+11-07 03:22:13.956  1167  1252 I libPowerHal: [PE] fpsgo update cmd:1438700, param:0
+11-07 03:22:13.966  1492  1492 W HidlServiceManagement: Waited for hwservicemanager.ready for a second, waiting another...
+11-07 03:22:13.963  1492  1492 W binder:1492_2: type=1400 audit(0.0:856850): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:22:13.966  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:22:13.966  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:22:13.963  1492  1492 W binder:1492_2: type=1400 audit(0.0:856851): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:22:13.971  1830  1872 I MediaFocusControl: requestAudioFocus() from uid/pid 10288/2298 AA=USAGE_NOTIFICATION/CONTENT_TYPE_SONIFICATION clientId=android.media.AudioManager@d3f7dc0 callingPack=com.android.systemui req=3 flags=0x0 sdk=34
+11-07 03:22:13.972  1830  1872 D MediaFocusControl: mMultiAudioFocusEnabled: false, aa.mContentType: 4, aa.mUsage: 5, aa.mFlags: 0, callingPackageName: com.android.systemui, isDesktopOrMobileUiConnected: false
+11-07 03:22:13.972  1830  1872 I AudioService.FadeOutManager: unfadeOutUid() uid:10288
+11-07 03:22:13.980 10299 10313 I TestRunner: finished: testAlarmClock_NextAlarmClockVerification(com.anchor.mine.alarms.AlarmSelfTest)

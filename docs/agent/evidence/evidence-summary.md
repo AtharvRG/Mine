@@ -19,21 +19,19 @@ B1 (1 test), B2 (1 test), B3 (3 tests) were added; forced-fresh run
 \* Connected exit-1 annotation: gradle prints "There were failing tests", but the JUnit XML
 (`app/build/outputs/androidTest-results/connected/debug/TEST-moto g73 5G - 14.xml`) and the HTML
 report (`app/build/reports/androidTests/connected/debug/index.html`) both record 53 tests,
-0 failures, 0 errors, 0 skipped, 100% success. The nonzero exit is the instrumentation
-teardown signature of this device ROM: the Nov 5 direct `am instrument` run ended with
-`OK (49 tests)` followed by `INSTRUMENTATION_CODE: -1` (see `connected-tests-runner.txt`),
-and both 2026-11-06 clean-install gradle runs show the same pattern (all-green results,
-nonzero process exit). The logcat crash buffer shows no app crash in the run windows;
-teardown is a normal "finished inst" force-stop followed by AGP uninstall cleanup.
-Not retried a third time (AGENTS.md forbids identical reruns; two runs establish it as
-deterministic, not flaky).
+0 failures, 0 errors, 0 skipped, 100% success. The nonzero exit is a **known AGP 9.4.0 /
+UTP 32.4.0 defect, not a test failure and not a device-ROM teardown artifact** (that earlier
+explanation was disproven — see `docs/agent/work/connected-red-build-rootcause.md` §7 and
+D-123). `AndroidTestEngineRunner` writes `1` to `test-result-exit-code.txt` because the
+device serial is missing from its `Map<String,Boolean>`, and the task gate reads only that
+file. The authoritative verdict now comes from `./gradlew :app:connectedDebugAndroidTestVerify`.
 
 ## Evidence Files (2026-11-06)
 
 - `unit-tests-20261106-fresh.txt` — forced fresh core+app unit run (`cleanTest`/`cleanTestDebugUnitTest`
   then `test`/`testDebugUnitTest`), BUILD SUCCESSFUL, `UNIT_EXIT=0`, 242 core + 9 app from XML.
 - `connected-clean-install-20261106.txt` — connected run 1: uninstall of both APKs (clean install),
-  then `:app:connectedDebugAndroidTest`; 53/53 green in XML/HTML, gradle exit 1 (teardown artifact).
+  then `:app:connectedDebugAndroidTest`; 53/53 green in XML/HTML, gradle exit 1 (known UTP defect, D-123).
 - `connected-clean-install-20261106-run2.txt` — connected run 2 (retry): identical signature,
   53/53 green in XML/HTML, gradle exit 1.
 - `core-test-20261106.txt`, `app-test-20261106.txt` — earlier same-day unit runs (UP-TO-DATE

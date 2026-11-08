@@ -96,4 +96,109 @@ class BootReceiverTest {
         val secondActive = notificationManager.activeNotifications.find { it.id == rId.hashCode() }
         assertNull("No new notification should be posted on second boot", secondActive)
     }
+
+    /**
+     * H-02 (R-02): the sweeper ran only at boot and at app open, so a reminder missed while the
+     * app stayed closed was never reported until the user happened to open it — the exact moment
+     * they no longer needed the notice.
+     *
+     * The observation channel is the same one H-03 uses, for the same reason: a repeating inexact
+     * alarm is invisible to the app (`getNextAlarmClock()` only reports `setAlarmClock`) and
+     * `dumpsys alarm` needs the signature-level DUMP permission. So this asserts the two things
+     * that are observable — a periodic trigger gets registered with a bounded period, and the
+     * `ACTION_SWEEP` broadcast it will deliver actually sweeps and reports.
+     */
+    @Test
+    fun testH02_Sweeper_IsScheduledPeriodically_AndItsBroadcastSweeps(): Unit = runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val storage = (context.applicationContext as MineApp).sharedStorage.await()
+        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+        // Registration: the app must arm a periodic trigger on start, not only on boot.
+        val before = BootReceiver.sweepsArmed
+        BootReceiver.schedulePeriodicSweep(context)
+        assertEquals(
+            "H-02: a periodic sweeper must be armed (before=$before)",
+            before + 1,
+            BootReceiver.sweepsArmed
+        )
+        assertTrue(
+            "H-02: the sweeper period must be bounded — a day-long period is the defect",
+            BootReceiver.SWEEP_INTERVAL_MS in 1..(60L * 60 * 1000)
+        )
+
+        // Delivery: the broadcast the trigger delivers must actually run the sweeper.
+        val rId = "r_h02_${System.currentTimeMillis()}"
+        storage.saveReminder(Reminder(rId, "H02 missed", System.currentTimeMillis() - 75000L))
+        notificationManager.cancel(rId.hashCode())
+        AlarmReceiver.lastFiredId = null
+
+        BootReceiver().onReceive(context, Intent(BootReceiver.ACTION_SWEEP))
+
+        var elapsed = 0
+        while (AlarmReceiver.lastFiredId != rId && elapsed < 6000) {
+            delay(250)
+            elapsed += 250
+        }
+        assertEquals("H-02: the periodic sweep broadcast must report the missed reminder", rId, AlarmReceiver.lastFiredId)
+        assertTrue("H-02: the missed fire must be recorded", storage.hasReminderFire(rId, "missed"))
+        assertNull(
+            "H-02: the missed reminder must be deleted from pending",
+            storage.getPendingReminders().find { it.id == rId }
+        )
+    }
+
+    @Test
+    fun testBootReceiver_StorageFails_StillArmsBoundedRetry(): Unit = runBlocking {
+        // H-03 (R-03): a Keystore failure used to skip reconcile, sweeper AND quote rescheduling
+        // for the whole boot, with no retry — every reminder stayed disarmed until the user
+        // opened the app. The receiver must still arm a bounded retry on the same path.
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val app = context.applicationContext as MineApp
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as android.app.AlarmManager
+
+        // An inexact alarm cannot be observed from the app (getNextAlarmClock() ignores set(), and
+        // dumpsys needs the signature DUMP permission), so the arming counter is the observation
+        // channel. A pre-existing slot is armed here too, to prove the receiver re-arms rather
+        // than the test merely seeing its own setup.
+        BootReceiver.scheduleStorageRetry(context, 7L * 24 * 3600 * 1000L)
+        val before = BootReceiver.retriesArmed
+
+        // Only this test may replace the process-wide deferred; it is restored in finally.
+        val original = app.sharedStorage
+        // Read back through the real storage: the receiver records the failure by re-opening, not
+        // through the injected (already-failed) deferred.
+        val realStorage = original.await()
+        try {
+            val failed = kotlinx.coroutines.CompletableDeferred<com.anchor.core.storage.Storage>()
+            failed.completeExceptionally(IllegalStateException("KEYSTORE_LOST"))
+            app.sharedStorage = failed
+
+            BootReceiver().onReceive(context, Intent(Intent.ACTION_BOOT_COMPLETED))
+
+            // The receiver does its work on Dispatchers.IO; poll the counter.
+            var elapsed = 0
+            while (BootReceiver.retriesArmed == before && elapsed < 5000) {
+                delay(100)
+                elapsed += 100
+            }
+            assertEquals("A storage failure at boot must still arm a bounded retry", before + 1, BootReceiver.retriesArmed)
+
+            // The failure must also be visible to the app, not just retried silently.
+            val recorded = realStorage.getReliabilityState()
+            assertEquals("Storage failure must be recorded as at_risk", "at_risk", recorded.score)
+            assertTrue(
+                "Storage failure reason must be in the issues list, was: ${recorded.issuesJson}",
+                recorded.issuesJson?.contains("Storage unavailable at boot") == true
+            )
+        } finally {
+            app.sharedStorage = original
+            alarmManager.cancel(android.app.PendingIntent.getBroadcast(
+                context,
+                BootReceiver.REQUEST_CODE_STORAGE_RETRY,
+                Intent(context, BootReceiver::class.java).setAction(BootReceiver.ACTION_STORAGE_RETRY),
+                android.app.PendingIntent.FLAG_NO_CREATE or android.app.PendingIntent.FLAG_IMMUTABLE
+            ))
+        }
+    }
 }

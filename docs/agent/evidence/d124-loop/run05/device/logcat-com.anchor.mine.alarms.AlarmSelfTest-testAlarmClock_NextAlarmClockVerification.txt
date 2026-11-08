@@ -1,0 +1,8 @@
+11-07 02:46:42.333 16367 16389 I TestRunner: started: testAlarmClock_NextAlarmClockVerification(com.anchor.mine.alarms.AlarmSelfTest)
+11-07 02:46:42.333  1167  1252 I libPowerHal: [PE] fpsgo update cmd:1438300, param:0
+11-07 02:46:42.334  1167  1252 I libPowerHal: [PE] fpsgo update cmd:1438400, param:0
+11-07 02:46:42.334  1167  1252 I libPowerHal: [PE] fpsgo update cmd:1438600, param:0
+11-07 02:46:42.334  1167  1252 I libPowerHal: [PE] fpsgo update cmd:1438700, param:0
+11-07 02:46:42.337  1500 16420 D GenericSource: FileSource remote
+11-07 02:46:42.362  1830  4176 I MediaFocusControl: requestAudioFocus() from uid/pid 10288/2298 AA=USAGE_NOTIFICATION/CONTENT_TYPE_SONIFICATION clientId=android.media.AudioManager@c666104 callingPack=com.android.systemui req=3 flags=0x0 sdk=34
+11-07 02:46:42.363 16367 16389 I TestRunner: finished: testAlarmClock_NextAlarmClockVerification(com.anchor.mine.alarms.AlarmSelfTest)

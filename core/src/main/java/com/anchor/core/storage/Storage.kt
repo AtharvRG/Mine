@@ -28,6 +28,15 @@ interface Storage {
     suspend fun getSetting(key: String): String?
     suspend fun saveSetting(key: String, value: String)
 
+    /**
+     * Writes several settings as one unit. A crash or throw mid-way must leave the previous
+     * values intact: a half-written provider config (new endpoint, old key) fails every request
+     * with an error the user cannot interpret.
+     */
+    suspend fun saveSettings(values: Map<String, String>) {
+        values.forEach { (k, v) -> saveSetting(k, v) }
+    }
+
     suspend fun getEffectiveDayRule(tsUtc: Long): DayRule
     suspend fun saveDayRule(rule: DayRule)
 
@@ -39,8 +48,22 @@ interface Storage {
     suspend fun getRankedCandidates(now: Long, staleCutoffMs: Long, perTierLimit: Int = 25): List<Node>
     suspend fun getActiveNodeCounts(now: Long, staleCutoffMs: Long = 30L * 24 * 3600 * 1000L): NodeCounts
     suspend fun getStaleNodes(now: Long, cutoffMs: Long = 30L * 24 * 3600 * 1000L): List<Node>
-    suspend fun getActiveReminders(): List<Reminder>
-    suspend fun getPendingReminders(): List<Reminder>
+    /**
+     * Reminders whose fire instant is still ahead of [now]. R-25: the caller's clock is passed in
+     * rather than read from the storage layer, so a test (or a device whose wall clock was moved)
+     * sees the same "active" set the rest of the system computed against.
+     */
+    suspend fun getActiveReminders(now: Long, limit: Int = ACTIVE_REMINDER_PAGE_LIMIT): List<Reminder>
+    /**
+     * Every reminder row, in fire order, bounded to [limit]. R-26: the unbounded version made
+     * reconcile and the missed-reminder sweeper read the whole history on every run — tolerable
+     * at boot, a recurring full-table read once the sweeper runs periodically (H-02).
+     *
+     * The bound is a refusal to silently truncate, not a product rule: a full page means the
+     * caller must not treat the result as complete. [AlarmReconciler] and the sweeper check
+     * [PENDING_REMINDER_PAGE_LIMIT] and report a reliability issue instead of dropping the tail.
+     */
+    suspend fun getPendingReminders(limit: Int = PENDING_REMINDER_PAGE_LIMIT): List<Reminder>
 
     suspend fun saveProposal(proposal: Proposal)
     suspend fun getProposal(id: String): Proposal?
@@ -85,8 +108,11 @@ interface Storage {
     suspend fun updateSoulFactStatus(id: String, status: String)
     suspend fun updateSoulFactStatusAndCommit(id: String, status: String, event: RawEvent)
     suspend fun getReminderByNodeId(nodeId: String): Reminder?
+    /** R-26: the by-id lookup that stays correct when [getPendingReminders] pages out the row. */
+    suspend fun getReminderById(id: String): Reminder?
     suspend fun clearAlarmRegistry()
     suspend fun hasReminderFire(reminderId: String, outcome: String): Boolean
+    suspend fun getReminderFire(reminderId: String, outcome: String): com.anchor.core.models.ReminderFire?
 
     // Purely Transactional Gateways
     suspend fun createNodeAndCommit(node: Node, event: RawEvent, reminder: Reminder?, edge: Edge? = null, edgeEvent: RawEvent? = null, consumeProposalId: String? = null)
@@ -112,13 +138,33 @@ interface Storage {
     suspend fun getDaysWithMessages(startDayKey: String, endDayKey: String): Set<String>
     suspend fun getHeatMapCounts(startDayKey: String, endDayKey: String): Map<String, Int>
     suspend fun getMessagesForDay(dayKey: String): List<ChatMessage>
-    suspend fun getRemindersBetween(startMs: Long, endMs: Long): List<Reminder>
-    suspend fun getRemindersForDay(startOfDayMs: Long, endOfDayMs: Long): List<Reminder>
+    /**
+     * Reminders in `[startMs, endMs]`, in fire order, bounded to [limit]. R-26: the range predicate
+     * already existed, so this was never a full-table read — but it had no ceiling either, and a
+     * wide range (a year, a corrupted day key) returned every row in it. The bound is generous
+     * enough that no real day or week reaches it; reaching it means the range was wrong.
+     */
+    suspend fun getRemindersBetween(startMs: Long, endMs: Long, limit: Int = REMINDER_RANGE_PAGE_LIMIT): List<Reminder>
+    suspend fun getRemindersForDay(startOfDayMs: Long, endOfDayMs: Long, limit: Int = REMINDER_RANGE_PAGE_LIMIT): List<Reminder>
 
     // Quote Slots (D-108, Blueprint 40)
     suspend fun getQuoteSlot(slot: com.anchor.core.models.QuoteSlot, dayKey: String): com.anchor.core.models.Quote?
     suspend fun saveQuoteSlot(quote: com.anchor.core.models.Quote)
     suspend fun getCompletedTodayCount(startOfDayMs: Long, endOfDayMs: Long): Int
+
+    companion object {
+        /** R-26: page size for [getPendingReminders]. Hitting it means "more rows exist". */
+        const val PENDING_REMINDER_PAGE_LIMIT = 500
+
+        /**
+         * R-26: page size for [getActiveReminders], which backs the "Active Reminders" list on the
+         * Home screen. Larger than a list a person reads; the point is only that the query stops.
+         */
+        const val ACTIVE_REMINDER_PAGE_LIMIT = 1000
+
+        /** R-26: page size for [getRemindersBetween] / [getRemindersForDay]. */
+        const val REMINDER_RANGE_PAGE_LIMIT = 1000
+    }
 }
 
 class TooManyActiveNodesException(val cap: Int) : Exception("Too many active items (exceeded $cap). Please be more specific.")
@@ -139,7 +185,11 @@ suspend fun Storage.getAllActiveNodesPaged(pageSize: Int = 200, hardCap: Int = 5
         val last = page.last()
         cursor = "${last.dueAt ?: "null"}:${last.id}"
     }
-    return all
+    // H2: local_only items are invisible to the model and to chat. getActiveNodes does not filter
+    // them (it backs the Home list, which may show them locally), so the resolver pool built from
+    // it must. Filtering here keeps every caller safe, including the Ambiguous branch that writes
+    // node.title into a ProposalOption and from there into the prompt.
+    return all.filter { !it.localOnly }
 }
 
 /**

@@ -9,6 +9,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.sqlite.db.SupportSQLiteOpenHelper
 import com.anchor.core.export.ExportManager
 import com.anchor.core.export.ExportStats
+import com.anchor.core.time.DayRollover
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.bouncycastle.crypto.generators.Argon2BytesGenerator
@@ -32,7 +33,11 @@ class AndroidExportManager(
     private val liveDbName: String = "mine_encrypted.db",
     private val scheduler: com.anchor.core.alarms.AlarmScheduler? = null,
     private val clock: com.anchor.core.time.Clock = com.anchor.core.time.SystemClock(),
-    private val reconciler: com.anchor.core.alarms.AlarmReconciler? = null
+    private val reconciler: com.anchor.core.alarms.AlarmReconciler? = null,
+    // H-04 test seam. The default is the real copy; tests override it to fail the second copy
+    // (temp -> live), which is the crash window the .bak rollback exists for. Failure of the
+    // first copy (live -> .bak) cannot be injected through the file system on a real device.
+    private val copyFile: (src: File, dst: File) -> Unit = { src, dst -> src.copyTo(dst, overwrite = true) }
 ) : ExportManager {
 
     companion object {
@@ -293,28 +298,67 @@ class AndroidExportManager(
                     importHelper?.close()
                     importHelper = null
 
-                    // ISSUE 2: SAFE SWAP. The active DB is overwritten only AFTER successful verification.
+                    // H-04 / R-10: SAFE SWAP WITH ROLLBACK. Verification covers the file, not the
+                    // swap. The swap used to be a single copyTo over the live file, so a process
+                    // death or I/O error mid-copy left the live DB truncated with the SQLCipher key
+                    // still in place - unopenable, history gone, no backup. The live file is now
+                    // copied to a .bak first and the live DB is re-opened and integrity-checked
+                    // after the swap; any failure restores the .bak and rethrows.
                     dbHelper.close()
                     val originalFile = context.getDatabasePath(liveDbName)
                     val tempFile = context.getDatabasePath(tempDbName)
-                    tempFile.copyTo(originalFile, overwrite = true)
+                    val bakFile = context.getDatabasePath("$liveDbName.bak")
+                    // A .bak left by an earlier interrupted swap is the last known-good copy; only
+                    // discard it once we have a fresh one.
+                    bakFile.delete()
+                    if (originalFile.exists()) copyFile(originalFile, bakFile)
 
-                    context.getDatabasePath("$liveDbName-wal").delete()
-                    context.getDatabasePath("$liveDbName-shm").delete()
-                    tempFile.delete()
-                    context.getDatabasePath("$tempDbName-wal").delete()
-                    context.getDatabasePath("$tempDbName-shm").delete()
+                    try {
+                        copyFile(tempFile, originalFile)
 
-                    // B4: Rebuild derived msg_chunk rows from the imported
-                    // raw_message rows. msg_chunk is deliberately excluded from
-                    // EXPORTED_TABLES (derived data), so the raw-INSERT import
-                    // path bypasses AndroidStorage.insertRawMessage's chunking.
-                    // Without this rebuild, imported chat history is invisible
-                    // to searchMemoryFts. Mirrors the insertRawMessage rule:
-                    // one chunk per message, skipping blank content, system
-                    // role, and redacted (content IS NULL) rows. The existing
-                    // trg_msg_chunk_fts_insert trigger feeds the FTS index.
-                    rebuildMsgChunks()
+                        context.getDatabasePath("$liveDbName-wal").delete()
+                        context.getDatabasePath("$liveDbName-shm").delete()
+                        tempFile.delete()
+                        context.getDatabasePath("$tempDbName-wal").delete()
+                        context.getDatabasePath("$tempDbName-shm").delete()
+
+                        // The copy is only trusted once the swapped DB opens and passes an
+                        // integrity check under the live key.
+                        val verifyHelper = com.anchor.mine.storage.DatabaseProvider.getHelper(context, dbKey, liveDbName)
+                        try {
+                            verifyHelper.readableDatabase.query("PRAGMA quick_check").use { cursor ->
+                                if (!cursor.moveToFirst() || cursor.getString(0) != "ok") {
+                                    throw IOException("Imported database failed integrity check")
+                                }
+                            }
+                        } finally {
+                            verifyHelper.close()
+                        }
+
+                        // B4: Rebuild derived msg_chunk rows from the imported raw_message rows.
+                        // This lives INSIDE the rollback window: a rebuild failure used to leave
+                        // the live DB holding imported rows with the .bak already deleted, so the
+                        // pre-import history was gone and the import was half-applied. The rebuild
+                        // derives day_key/ts_utc for rows that lack them, so a sparse export row
+                        // cannot abort the import on msg_chunk's NOT NULL constraints.
+                        rebuildMsgChunks()
+                    } catch (e: Exception) {
+                        // Roll back to the pre-import DB. If the restore itself fails there is
+                        // nothing safer to do than surface both failures.
+                        if (bakFile.exists()) {
+                            try {
+                                copyFile(bakFile, originalFile)
+                                context.getDatabasePath("$liveDbName-wal").delete()
+                                context.getDatabasePath("$liveDbName-shm").delete()
+                            } catch (restoreError: Exception) {
+                                e.addSuppressed(restoreError)
+                            }
+                        }
+                        throw e
+                    }
+
+                    // Swap verified and the rebuild succeeded: the .bak is no longer needed.
+                    bakFile.delete()
 
                     // Post-import alarm reconciliation
                     if (reconciler != null) {
@@ -392,14 +436,40 @@ class AndroidExportManager(
             db.beginTransaction()
             try {
                 db.execSQL("DELETE FROM msg_chunk")
+                val now = System.currentTimeMillis()
+                val rule = db.query(
+                    "SELECT id, effective_from, start_minute, end_minute, tz_id, created_at " +
+                        "FROM day_rule WHERE effective_from <= ? ORDER BY effective_from DESC LIMIT 1",
+                    arrayOf<Any>(now)
+                ).use {
+                    if (it.moveToFirst()) {
+                        com.anchor.core.models.DayRule(
+                            id = it.getString(0),
+                            effectiveFrom = it.getLong(1),
+                            startMinute = it.getInt(2),
+                            endMinute = it.getInt(3),
+                            tzId = it.getString(4),
+                            createdAt = it.getLong(5)
+                        )
+                    } else {
+                        DayRollover.defaultRule(now)
+                    }
+                }
                 db.query(
                     "SELECT id, day_key, ts_utc, role, content FROM raw_message " +
                         "WHERE content IS NOT NULL AND TRIM(content) != '' AND role != 'system'"
                 ).use { cursor ->
                     while (cursor.moveToNext()) {
                         val id = cursor.getString(0)
-                        val dayKey = cursor.getString(1)
-                        val ts = cursor.getLong(2)
+                        // An imported row may omit day_key/ts_utc (they are nullable on
+                        // raw_message but NOT NULL on msg_chunk). Derive them the same way
+                        // insertRawMessage does rather than aborting the whole import.
+                        val ts = if (cursor.isNull(2)) System.currentTimeMillis() else cursor.getLong(2)
+                        val dayKey = if (cursor.isNull(1)) {
+                            DayRollover.computeDayKey(ts, rule)
+                        } else {
+                            cursor.getString(1)
+                        }
                         val content = cursor.getString(4)
                         db.execSQL(
                             "INSERT INTO msg_chunk (id, day_key, ts_start, ts_end, msg_ids, text, extractor_version) VALUES (?, ?, ?, ?, ?, ?, ?)",

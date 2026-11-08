@@ -1,0 +1,665 @@
+11-07 02:45:10.483 15771 15790 I TestRunner: started: testAlarmFires_SetsFlag(com.anchor.mine.alarms.AlarmSelfTest)
+11-07 02:45:10.522  1134  1491 I hwcomposer: [DRMDEV] (0) failed to waitNextVsync: -1  
+11-07 02:45:10.550  1134  1491 I hwcomposer: [DRMDEV] (0) failed to waitNextVsync: -1  
+11-07 02:45:10.551  1830  3982 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:45:10.561  2298  2298 I KgdSliceProvider: The weather info has not change, does not need to be updated. mTempF=69 iconNumber=37 celsius=true
+11-07 02:45:10.584  2298  2298 D TileServices: Couldn't find tile for ComponentInfo{com.google.android.apps.wellbeing/com.google.android.apps.wellbeing.screen.ui.GrayscaleTileService}(0)
+11-07 02:45:10.584  1134  1491 I hwcomposer: [DRMDEV] (0) failed to waitNextVsync: -1  
+11-07 02:45:10.595  1198  1198 I BufferQueueProducer: [StatusBar#90](this:0xb400007c09d63718,id:-1,api:0,p:-1,c:1198) queueBuffer: fps=0.18 dur=5605.19 max=5605.19 min=5605.19
+11-07 02:45:10.599  1134  1134 I hwcomposer: [HWCDisplay] [Display_0 (type:1)] fps:0.896853,dur:5575.05,max:4768.77,min:33.28  
+11-07 02:45:10.668  1830  1830 D FlashNotifController: requestStartFlashNotification
+11-07 02:45:10.669  1830  1830 I FlashNotifController: startFlashNotification: type=1, tag=android
+11-07 02:45:10.669  1830  1830 D FlashNotifController: Flash notification is disabled
+11-07 02:45:10.674  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 02:45:10.667  1492  1492 W binder:1492_2: type=1400 audit(0.0:848396): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 02:45:10.676  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 02:45:10.671  1492  1492 W binder:1492_2: type=1400 audit(0.0:848397): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 02:45:10.677  1198  1661 I Scheduler: applyPolicy: UpdateRefreshRate 30 to 120 of group 0: [touch=0:0 touchBoost=0 scroll=0:0 idle=0:0]
+11-07 02:45:10.678  1310  1310 I FPSGO   : fpsgo_boost_sched_idle_prefer:1
+11-07 02:45:10.678  1310  1310 I mtkpower_client: perf_lock_acq, hdl:0, dur:0, num:2, tid:1310
+11-07 02:45:10.679  1310  1310 I mtkpower_client: ret_hdl:159026
+11-07 02:45:10.679  1310  1310 I FPSGO   : perfLockAcq hdl:159026
+11-07 02:45:10.679  1310  1310 I FPSGO   : fpsgo_boost_sched_rate_ns:0
+11-07 02:45:10.675  1492  1492 W binder:1492_2: type=1400 audit(0.0:848398): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 02:45:10.680  1310  1310 I mtkpower_client: perf_lock_acq, hdl:0, dur:0, num:12, tid:1310
+11-07 02:45:10.679  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 02:45:10.680  1167  1252 I libPowerHal: [perfLockAcq] idx:0 hdl:159026 hint:-1 pid:1310 duration:0 lock_user:fpsgo => ret_hdl:159026
+11-07 02:45:10.680  1167  1252 I libPowerHal: [PE] fpsgo update cmd:1404500 param:1
+11-07 02:45:10.681  1310  1310 I mtkpower_client: ret_hdl:159027
+11-07 02:45:10.681  1310  1310 I FPSGO   : perfLockAcq hdl:159027
+11-07 02:45:10.681  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 02:45:10.681  1167  1252 I libPowerHal: cmdSetting - unknown cmd:1438500, scmd:(null) ,param_1:0
+11-07 02:45:10.681  1167  1252 I libPowerHal: cmdSetting - unknown cmd:1438800, scmd:(null) ,param_1:0
+11-07 02:45:10.681  1167  1252 I libPowerHal: [perfLockAcq] idx:1 hdl:159027 hint:-1 pid:1310 duration:0 lock_user:fpsgo => ret_hdl:159027
+11-07 02:45:10.675  1492  1492 W binder:1492_2: type=1400 audit(0.0:848399): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 02:45:10.682  1167  1252 I libPowerHal: [PE] fpsgo update cmd:1438300, param:0
+11-07 02:45:10.682  1167  1252 I libPowerHal: [PE] fpsgo update cmd:1438400, param:0
+11-07 02:45:10.682  1167  1252 I libPowerHal: [PE] fpsgo update cmd:1438600, param:0
+11-07 02:45:10.682  1167  1252 I libPowerHal: [PE] fpsgo update cmd:1438700, param:0
+11-07 02:45:10.682  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 02:45:10.684  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 02:45:10.685  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 02:45:10.689  1500  2050 D NuPlayerDriver: NuPlayerDriver(0xf6aa4be0) created, clientPid(2298)
+11-07 02:45:10.694  1830  2553 W PackageManager: Missing required system package: com.anchor.mine, but found with extended search.
+11-07 02:45:10.703  1500 15803 D GenericSource: FileSource remote
+11-07 02:45:10.707  1198  1198 I SurfaceFlinger: setActiveModeInHwcIfNeeded changing active mode to 1(120.00 Hz) for display 0
+11-07 02:45:10.707  1134  1134 I hwcomposer: [HWC] (0) displaySetActiveConfig config:1  
+11-07 02:45:10.717 17985 12468 D NotificationFeature: Mine Mine Gentle Test Reminder
+11-07 02:45:10.718  1830  3982 I MediaFocusControl: requestAudioFocus() from uid/pid 10288/2298 AA=USAGE_NOTIFICATION/CONTENT_TYPE_SONIFICATION clientId=android.media.AudioManager@30bc118 callingPack=com.android.systemui req=3 flags=0x0 sdk=34
+11-07 02:45:10.719  1830  3982 D MediaFocusControl: mMultiAudioFocusEnabled: false, aa.mContentType: 4, aa.mUsage: 5, aa.mFlags: 0, callingPackageName: com.android.systemui, isDesktopOrMobileUiConnected: false
+11-07 02:45:10.719  1830  3982 I AudioService.FadeOutManager: unfadeOutUid() uid:10288
+11-07 02:45:10.740  1198  1198 D SurfaceFlinger: MtkOverrideDuration: update vsync 120
+11-07 02:45:10.740  1198  1198 E SurfaceFlinger: MtkDuration override mode is disabled
+11-07 02:45:10.740  1198  1198 D SurfaceFlinger: MtkOverrideDuration: reset override duration
+11-07 02:45:10.791  1310  1310 I mtkpower_client: perf_lock_acq, hdl:0, dur:30000, num:2, tid:1310
+11-07 02:45:10.792  1310  1310 I mtkpower_client: ret_hdl:159028
+11-07 02:45:10.793  1167  1252 I libPowerHal: [perfLockAcq] idx:2 hdl:159028 hint:-1 pid:1310 duration:30000 lock_user:fpsgo => ret_hdl:159028
+11-07 02:45:10.794  1167  1252 I libPowerHal: [PE] fpsgo update cmd:1408300, param:100
+11-07 02:45:10.810  3384 27056 I NearbySharing: Network state changed: NetworkState(isRestricted=false, isOnline=true, isCongested=false, isMetered=false, isWifiConnected=true)
+11-07 02:45:10.815  3384 27056 I NearbySharing: Network state changed: NetworkState(isRestricted=false, isOnline=true, isCongested=false, isMetered=false, isWifiConnected=true)
+11-07 02:45:10.825  1310  1310 I mtkpower_client: perf_lock_rel, hdl:159028, tid:1310
+11-07 02:45:10.827  1167  1252 I libPowerHal: [perfLockRel] hdl:159028, idx:2
+11-07 02:45:10.827  1167  1252 I libPowerHal: [PD] fpsgo update cmd:1408300 param:0
+11-07 02:45:11.222  2298  2298 D MediaRouter: onRestoreRoute() : route=RouteInfo{ name=Phone, description=null, status=null, category=RouteCategory{ name=System types=ROUTE_TYPE_LIVE_AUDIO ROUTE_TYPE_LIVE_VIDEO  groupable=false }, supportedTypes=ROUTE_TYPE_LIVE_AUDIO ROUTE_TYPE_LIVE_VIDEO , presentationDisplay=null }
+11-07 02:45:11.221  1500 15802 I GenericSource: start
+11-07 02:45:11.222  2298  2298 V MediaRouter: Selecting route: RouteInfo{ name=Phone, description=null, status=null, category=RouteCategory{ name=System types=ROUTE_TYPE_LIVE_AUDIO ROUTE_TYPE_LIVE_VIDEO  groupable=false }, supportedTypes=ROUTE_TYPE_LIVE_AUDIO ROUTE_TYPE_LIVE_VIDEO , presentationDisplay=null }
+11-07 02:45:11.222  2298  2298 V MediaRouter: Selecting route ignored,not new route
+11-07 02:45:11.225  1500 15802 W libc    : Access denied finding property "vendor.debug.sf.dynamic_duration.sf.decouple"
+11-07 02:45:11.230  1500 15807 D MediaCodec: CreateByType: mime audio/vorbis, encoder 0 pid 2298
+11-07 02:45:11.231  1500 15807 D MediaCodecList: processName: /system/bin/mediaserver , mime: audio/vorbis
+11-07 02:45:11.233  1500 15807 I MediaCodec: (0xf63bb400) init name(c2.android.vorbis.decoder)
+11-07 02:45:11.233  1500 15807 D CCodecBufferChannel: mBufferCountDebug=0 mIsUserLoad=1
+11-07 02:45:11.233  1500 15807 D MediaCodec: [0xf63bb400] init: CCodec 0xf6a93c00, CCodecBufferChannel 0xf650b180
+11-07 02:45:11.234  1500 15808 D MediaCodec: [0xf63bb400] setState: 1
+11-07 02:45:11.234  1500 15808 D CCodec  : allocate(c2.android.vorbis.decoder)
+11-07 02:45:11.237  1500 15808 I CCodec  : setting up 'default' as default (vendor) store
+11-07 02:45:11.241  1539 23299 I hw-BpHwBinder: onLastStrongRef automatically unlinking death recipients
+11-07 02:45:11.241  1539 23299 I hw-BpHwBinder: onLastStrongRef automatically unlinking death recipients
+11-07 02:45:11.242  1539 23299 D BufferPoolAccessor2.0: bufferpool2 0xb400007c0205fa28 : 0(0 size) total buffers - 0(0 size) used buffers - 0/0 (recycle/alloc) - 0/0 (fetch/transfer)
+11-07 02:45:11.242  1539 23299 D BufferPoolAccessor2.0: bufferpool2 0xb400007c0205fe28 : 0(0 size) total buffers - 0(0 size) used buffers - 66/70 (recycle/alloc) - 4/69 (fetch/transfer)
+11-07 02:45:11.243  1500  2047 D BufferPoolAccessor2.0: bufferpool2 0xf6381398 : 0(0 size) total buffers - 0(0 size) used buffers - 116/124 (recycle/alloc) - 8/238 (fetch/transfer)
+11-07 02:45:11.243  1500  2047 D BufferPoolAccessor2.0: Destruction - bufferpool2 0xf6381398 cached: 0/0M, 0/0% in use; allocs: 124, 94% recycled; transfers: 238, 97% unfetched
+11-07 02:45:11.243  1500  2013 D BufferPoolAccessor2.0: bufferpool2 0xf6380e98 : 0(0 size) total buffers - 0(0 size) used buffers - 115/123 (recycle/alloc) - 8/238 (fetch/transfer)
+11-07 02:45:11.244  1500  2013 D BufferPoolAccessor2.0: Destruction - bufferpool2 0xf6380e98 cached: 0/0M, 0/0% in use; allocs: 123, 93% recycled; transfers: 238, 97% unfetched
+11-07 02:45:11.245  1500 15808 I CCodec  : Created component [c2.android.vorbis.decoder]
+11-07 02:45:11.245  1500 15808 D CCodecBufferChannel: [0xf650b180] setComponent: mName c2.android.vorbis.decoder#299, mPipelineWatcher 0xf650b350
+11-07 02:45:11.245  1500 15808 D CCodecBufferChannel: PipelineWatcher debug info [c2.android.vorbis.decoder#299] enable=0
+11-07 02:45:11.246  1500 15808 D CCodecConfig: read media type: audio/vorbis
+11-07 02:45:11.250  1500 15808 D ReflectedParamUpdater: extent() != 1 for single value type: algo.buffers.max-count.values
+11-07 02:45:11.251  1500 15808 D ReflectedParamUpdater: extent() != 1 for single value type: output.subscribed-indices.values
+11-07 02:45:11.251  1500 15808 D ReflectedParamUpdater: extent() != 1 for single value type: input.buffers.allocator-ids.values
+11-07 02:45:11.252  1500 15808 D ReflectedParamUpdater: extent() != 1 for single value type: output.buffers.allocator-ids.values
+11-07 02:45:11.252  1500 15808 D ReflectedParamUpdater: extent() != 1 for single value type: algo.buffers.allocator-ids.values
+11-07 02:45:11.252  1500 15808 D ReflectedParamUpdater: extent() != 1 for single value type: output.buffers.pool-ids.values
+11-07 02:45:11.253  1500 15808 D ReflectedParamUpdater: extent() != 1 for single value type: algo.buffers.pool-ids.values
+11-07 02:45:11.256  1500 15808 I CCodecConfig: query failed after returning 7 values (BAD_INDEX)
+11-07 02:45:11.256  1500 15808 D CCodecConfig: c2 config diff is Dict {
+11-07 02:45:11.256  1500 15808 D CCodecConfig:   c2::u32 coded.bitrate.value = 64000
+11-07 02:45:11.256  1500 15808 D CCodecConfig:   c2::u32 input.buffers.max-size.value = 32768
+11-07 02:45:11.256  1500 15808 D CCodecConfig:   c2::u32 input.delay.value = 0
+11-07 02:45:11.256  1500 15808 D CCodecConfig:   string input.media-type.value = "audio/vorbis"
+11-07 02:45:11.256  1500 15808 D CCodecConfig:   string output.media-type.value = "audio/raw"
+11-07 02:45:11.256  1500 15808 D CCodecConfig:   c2::u32 raw.channel-count.value = 1
+11-07 02:45:11.256  1500 15808 D CCodecConfig:   c2::u32 raw.sample-rate.value = 48000
+11-07 02:45:11.256  1500 15808 D CCodecConfig: }
+11-07 02:45:11.257  1500 15808 D MediaCodec: [0xf63bb400] setState: 2
+11-07 02:45:11.258  1500 15808 I MediaCodec: (0xf63bb400) Component Allocated (c2.android.vorbis.decoder)
+11-07 02:45:11.260  1500 15807 I MediaCodec: (0xf63bb400) configure surface(0x0) crypto(0x0) flags(0)
+11-07 02:45:11.260  1500 15807 D MediaCodec: (0xf63bb400) configure format: AMessage(what = 0x00000000) = {
+11-07 02:45:11.260  1500 15807 D MediaCodec:       string mime = "audio/vorbis"
+11-07 02:45:11.260  1500 15807 D MediaCodec:       int64_t durationUs = 2408163
+11-07 02:45:11.260  1500 15807 D MediaCodec:       Buffer csd-0 = {
+11-07 02:45:11.260  1500 15807 D MediaCodec:         00000000:  01 76 6f 72 62 69 73 00  00 00 00 02 44 ac 00 00  .vorbis.....D...
+11-07 02:45:11.260  1500 15807 D MediaCodec:         00000010:  00 00 00 00 6d a0 07 00  00 00 00 00 b8 01        ....m.........
+11-07 02:45:11.260  1500 15807 D MediaCodec:       }
+11-07 02:45:11.260  1500 15807 D MediaCodec:       Buffer *csd-1 = 0xf6912b80
+11-07 02:45:11.260  1500 15807 D MediaCodec:       int32_t bitrate = 499821
+11-07 02:45:11.260  1500 15807 D MediaCodec:       int32_t channel-count = 2
+11-07 02:45:11.260  1500 15807 D MediaCodec:       int32_t sample-rate = 44100
+11-07 02:45:11.260  1500 15807 D MediaCodec:       int32_t channel-mask = 3
+11-07 02:45:11.260  1500 15807 D MediaCodec:       int32_t priority = 0
+11-07 02:45:11.260  1500 15807 D MediaCodec:     }
+11-07 02:45:11.261  1500 15808 D MediaCodec: flushMediametrics
+11-07 02:45:11.261  1500 15808 D MediaCodec: [0xf63bb400] setState: 3
+11-07 02:45:11.261  1500 15808 D CCodec  : [c2.android.vorbis.decoder] buffers are bound to CCodec for this session
+11-07 02:45:11.261  1500 15808 D CCodecConfig: no c2 equivalents for durationUs
+11-07 02:45:11.262  1500 15808 D CCodecConfig: no c2 equivalents for csd-1
+11-07 02:45:11.262  1500 15808 D CCodecConfig: no c2 equivalents for flags
+11-07 02:45:11.263  1500 15808 D CCodecConfig: c2 config diff is   c2::u32 coded.bitrate.value = 499821
+11-07 02:45:11.263  1500 15808 D CCodecConfig:   c2::u32 raw.channel-count.value = 2
+11-07 02:45:11.263  1500 15808 D CCodecConfig:   c2::u32 raw.sample-rate.value = 44100
+11-07 02:45:11.265  1500 15808 W Codec2Client: query -- param skipped: index = 1107298332.
+11-07 02:45:11.265  1500 15808 D CCodec  : encoding statistics level = 0
+11-07 02:45:11.266  1500 15808 D CCodec  : setup formats input: AMessage(what = 0x00000000) = {
+11-07 02:45:11.266  1500 15808 D CCodec  :   int32_t bitrate = 499821
+11-07 02:45:11.266  1500 15808 D CCodec  :   int32_t channel-count = 2
+11-07 02:45:11.266  1500 15808 D CCodec  :   int32_t max-input-size = 32768
+11-07 02:45:11.266  1500 15808 D CCodec  :   string mime = "audio/vorbis"
+11-07 02:45:11.266  1500 15808 D CCodec  :   int32_t sample-rate = 44100
+11-07 02:45:11.266  1500 15808 D CCodec  : }
+11-07 02:45:11.266  1500 15808 D CCodec  : setup formats output: AMessage(what = 0x00000000) = {
+11-07 02:45:11.266  1500 15808 D CCodec  :   int32_t channel-count = 2
+11-07 02:45:11.266  1500 15808 D CCodec  :   string mime = "audio/raw"
+11-07 02:45:11.266  1500 15808 D CCodec  :   int32_t sample-rate = 44100
+11-07 02:45:11.266  1500 15808 D CCodec  :   int32_t channel-mask = 3
+11-07 02:45:11.266  1500 15808 D CCodec  :   int32_t android._config-pcm-encoding = 2
+11-07 02:45:11.266  1500 15808 D CCodec  : }
+11-07 02:45:11.266  1500 15808 I CCodecConfig: query failed after returning 7 values (BAD_INDEX)
+11-07 02:45:11.266  1500 15808 D MediaCodec: [0xf63bb400] setState: 4
+11-07 02:45:11.268  1500 15808 I MediaCodec: MediaCodec will operate in async mode
+11-07 02:45:11.268  1500 15807 I MediaCodec: (0xf63bb400) start
+11-07 02:45:11.268  1500 15807 D MediaCodec: keep callback message for reclaim
+11-07 02:45:11.268  1500 15808 D MediaCodec: [0xf63bb400] setState: 5
+11-07 02:45:11.270  1500 15808 W Codec2Client: query -- param skipped: index = 1342179345.
+11-07 02:45:11.270  1500 15808 W Codec2Client: query -- param skipped: index = 2415921170.
+11-07 02:45:11.271  1500 15808 D BufferPoolAccessor2.0: bufferpool2 0xf6a8ee98 : 4(131072 size) total buffers - 4(131072 size) used buffers - 68/76 (recycle/alloc) - 8/144 (fetch/transfer)
+11-07 02:45:11.272  1500 15808 D CCodecBufferChannel: [c2.android.vorbis.decoder#299] Created input block pool with allocatorID 16 => poolID 773 - OK (0)
+11-07 02:45:11.272  1539 26268 D BufferPoolAccessor2.0: bufferpool2 0xb400007c02084428 : 0(0 size) total buffers - 0(0 size) used buffers - 114/117 (recycle/alloc) - 3/116 (fetch/transfer)
+11-07 02:45:11.272  1539 26268 D BufferPoolAccessor2.0: Destruction - bufferpool2 0xb400007c02084428 cached: 0/0M, 0/0% in use; allocs: 117, 97% recycled; transfers: 116, 97% unfetched
+11-07 02:45:11.272  1539 23299 D BufferPoolAccessor2.0: bufferpool2 0xb400007c02084628 : 0(0 size) total buffers - 0(0 size) used buffers - 113/117 (recycle/alloc) - 4/116 (fetch/transfer)
+11-07 02:45:11.272  1539 23299 D BufferPoolAccessor2.0: Destruction - bufferpool2 0xb400007c02084628 cached: 0/0M, 0/0% in use; allocs: 117, 97% recycled; transfers: 116, 97% unfetched
+11-07 02:45:11.274  1134  1485 I hwcomposer: [HWC] (0)fire a callback of refresh to SF[4]  
+11-07 02:45:11.274  1500 15808 I CCodecBufferChannel: [c2.android.vorbis.decoder#299] Created output block pool with allocatorID 16 => poolID 2474 - OK
+11-07 02:45:11.275  1500 15808 D CCodecBufferChannel: [c2.android.vorbis.decoder#299] Configured output block pool ids 2474 => OK
+11-07 02:45:11.275  1500 15808 D CCodecBufferChannel: [0xf650b180] [c2.android.vorbis.decoder#299] start: output->outputDelay 0, output->numSlots 4
+11-07 02:45:11.275  1539 15544 E Codec2-ComponentInterface: We have a failed config
+11-07 02:45:11.275  1500 15808 D CCodecBuffers: [c2.android.vorbis.decoder#299:1D-Output.Impl[N]] converted 0 buffers to array mode of 4
+11-07 02:45:11.276  1136  1136 D C2MtkComponentStore: setDmaBufUsage: usage 5, flags 0, heapName mtk_mm for decoder.
+11-07 02:45:11.278  1539 15809 D SimpleC2Component: Using output block pool with poolID 2474 => got 2474 - 0
+11-07 02:45:11.279  1500 15808 I MediaCodec: (0xf63bb400) kWhatStartCompleted
+11-07 02:45:11.279  1500 15808 D MediaCodec: [0xf63bb400] setState: 6
+11-07 02:45:11.280  1198  1198 I BufferQueueProducer: [FramebufferSurface](this:0xb400007c2c1716d0,id:-1,api:1,p:1198,c:1198) queueBuffer: fps=0.33 dur=6041.53 max=5449.50 min=592.02
+11-07 02:45:11.286  1136  1136 D C2MtkComponentStore: setDmaBufUsage: usage 5, flags 0, heapName mtk_mm for decoder.
+11-07 02:45:11.293  1500 15806 D AudioTrack: INSP: type=audio,case=1,set=0xf6aa9a00,stream_type=5,sample_rate=44100,format=0x1,channel_mask=0x3,frame_count=22560,flags=0x0,notification_frames=0,session_id=13121,transfer_type=0,uid=10288,pid=2298
+11-07 02:45:11.293  1500 15806 D AudioTrack: INSP: type=audio,case=1,attributes=1,content_type=4,usage=5,source=-1,flags=0x800
+11-07 02:45:11.296  1184  4504 D APM_AudioPolicyManager: getOutputForAttrInt() attributes={ Content type: AUDIO_CONTENT_TYPE_SONIFICATION Usage: AUDIO_USAGE_NOTIFICATION Source: AUDIO_SOURCE_INVALID Flags: 0x800 Tags:  } stream=AUDIO_STREAM_NOTIFICATION session 13121 selectedDeviceId 0
+11-07 02:45:11.297  1184  4504 D AudioFlinger_Threads: Client defaulted notificationFrames to 7520 for frameCount 22560
+11-07 02:45:11.298  1184  4504 D AF::Track: Track, track(0xb400007c82195700): mFastIndex -1, mStreamType 5, mId 3774, mFrameCount 22560, mSampleRate 44100, mFormat 1, mChannelCount 2, mTrackCount 3719, thread 0xb400007c820f0740, sessionId 13121, AudioOut_D, primary-2
+11-07 02:45:11.305  1500 15806 D AudioTrack: createTrack_l(4601): 0xf6aa9a00, mCblk = 0xf5d8b000, mLatency = 553, mAfLatency = 42, frameCount = 22560, mSampleRate = 44100, mFlags = 0, mReqFrameCount = 22560, mNotificationFramesAct = 7520
+11-07 02:45:11.306  1500 15806 D AudioTrack: setVolume(4601): 0xf6aa9a00, left = 1.000000, right = 1.000000
+11-07 02:45:11.306  1500 15806 D AudioTrack: setVolume: mRelativePercentage:1.000000, left:1.000000, right:1.000000
+11-07 02:45:11.309  1500 15806 D AudioTrack: setVolume(4601): 0xf6aa9a00, left = 1.000000, right = 1.000000
+11-07 02:45:11.310  1500 15806 D AudioTrack: setVolume: mRelativePercentage:1.000000, left:1.000000, right:1.000000
+11-07 02:45:11.310  1500 15806 D AudioTrack: start(4601): 0xf6aa9a00, prior state:STATE_STOPPED
+11-07 02:45:11.310  1184  4504 I AudioEffect: set 0xb400007c821a1e00 uuid: 0x0 timeLow 00000000
+11-07 02:45:11.312  1184  4504 W AudioFlinger: The package name(android) provided does not correspond to the uid 1041
+11-07 02:45:11.312  1184  4504 I AudioFlinger: createEffect pid 1184, effectClient 0xb400007c71f51d20, priority 0, sessionId 13121, io 13, factory 0xb400007c8201b8c0
+11-07 02:45:11.312  1184  4504 I AudioFlinger_Threads: createEffect_l() thread 0xb400007c820f0740 effect Notification Listener on session 13121
+11-07 02:45:11.312  1184  4504 I AudioFlinger::EffectChain: EffectChain(): new EffectChain = 0xb400007c82045fc0
+11-07 02:45:11.319  1184  4504 I AudioFlinger_Threads: createEffect_l() got effect 0x0 on chain 0xb400007c82045fc0
+11-07 02:45:11.320  1127  1127 I EffectsFactory: EffectCreate() UUID: 1F0091E3-6AD8-40FE-9B09-5948F9A26E7E
+11-07 02:45:11.320  1127  1127 I EffectsFactory: EffectCreate() create_effect
+11-07 02:45:11.320  1127  1127 V DlbVolumeListener: Create Dolby Listener Effect.
+11-07 02:45:11.320  1127  1127 V DlbVolumeListener: create CREATED_CONTEXT 0xb40000728f0e6e60 sessionId 13121 ioId 13
+11-07 02:45:11.320  1127  1127 I DlbVolumeListener: create() Created effect Notification Listener
+11-07 02:45:11.320  1127  1127 V DlbVolumeListener: effectGetDescriptor
+11-07 02:45:11.320  1127  1127 I DlbVolumeListener: effectGetDescriptor() Returning descriptor for Notification Listener
+11-07 02:45:11.320  1127  1127 V DlbVolumeListener: effectGetDescriptor
+11-07 02:45:11.320  1127  1127 I DlbVolumeListener: effectGetDescriptor() Returning descriptor for Notification Listener
+11-07 02:45:11.321  1127  1127 I EffectsFactory: Effect_Command(): self = 0xb40000728f0b08e0, cmdCode = 0
+11-07 02:45:11.321  1127  1127 V DlbVolumeListener: effectCommand
+11-07 02:45:11.321  1127  1127 V DlbVolumeListener: effectCommand :: Command EFFECT_CMD_INIT
+11-07 02:45:11.321  1127  1127 I EffectsFactory: Effect_Command(): self = 0xb40000728f0b08e0, cmdCode = 20
+11-07 02:45:11.321  1127  1127 V DlbVolumeListener: effectCommand
+11-07 02:45:11.321  1127  1127 D DlbVolumeListener: effectCommand :: Command EFFECT_CMD_OFFLOAD offload=0 ioHandle=13
+11-07 02:45:11.321  1184  4504 I AudioFlinger::EffectModule: Constructor success name Notification Listener, Interface 0xb400007c71f613a0
+11-07 02:45:11.322  1184  4504 I AudioFlinger::EffectChain: addEffect_l() effect 0xb400007c71f5c300, added in chain 0xb400007c82045fc0 at rank 0
+11-07 02:45:11.322  1127  1127 I EffectsFactory: Effect_Command(): self = 0xb40000728f0b08e0, cmdCode = 1
+11-07 02:45:11.322  1127  1127 V DlbVolumeListener: effectCommand
+11-07 02:45:11.322  1127  1127 V DlbVolumeListener: effectCommand :: Command EFFECT_CMD_SET_CONFIG
+11-07 02:45:11.323  1127  1127 I EffectsFactory: Effect_Command(): self = 0xb40000728f0b08e0, cmdCode = 1
+11-07 02:45:11.323  1127  1127 V DlbVolumeListener: effectCommand
+11-07 02:45:11.323  1127  1127 V DlbVolumeListener: effectCommand :: Command EFFECT_CMD_SET_CONFIG
+11-07 02:45:11.324  1127  1127 I EffectsFactory: Effect_Command(): self = 0xb40000728f0b08e0, cmdCode = 9
+11-07 02:45:11.324  1127  1127 V DlbVolumeListener: effectCommand
+11-07 02:45:11.324  1184  4504 D AudioFlinger: effectCreated()
+11-07 02:45:11.325  1184  4504 I AudioEffect: set() 0xb400007c821a1e00 OK effect: Notification Listener id: 46507 status 0 enabled 0 pid 1184
+11-07 02:45:11.325  1184  4504 I AudioEffect: enable 0xb400007c821a1e00
+11-07 02:45:11.326  1184  4504 D AudioPolicyManagerCustomImpl: hifiAudio_startOutputSamplerate() +output = 13  portId = 4601 samplerate = 44100 HifiState = 1 stream 5, session 13121
+11-07 02:45:11.326  1184  4504 D APM_AudioPolicyManager: startOutput() output 13, stream 5, session 13121
+11-07 02:45:11.332  1184  4504 D audioserver: FGS Logger Transaction failed
+11-07 02:45:11.332  1184  4504 D audioserver: -129
+11-07 02:45:11.333  1127  1127 D AudioALSAStreamOut: +setParameters(): flag 2, MixerThreadSleep=
+11-07 02:45:11.333  1127  1127 W AudioALSAStreamOut: setParameters(), still have param.size() = 1, remain param = "MixerThreadSleep="
+11-07 02:45:11.334  1127 28433 D AudioALSAStreamOut: +setParameters(): flag 2, NoAudioTrack=0
+11-07 02:45:11.334  1127 28433 W AudioALSAStreamOut: setParameters(), still have param.size() = 1, remain param = "NoAudioTrack=0"
+11-07 02:45:11.335  1127  3365 I EffectsFactory: Effect_Command(): self = 0xb40000728f0b08e0, cmdCode = 3
+11-07 02:45:11.335  1127  3365 V DlbVolumeListener: effectCommand
+11-07 02:45:11.335  1127  3365 V DlbVolumeListener: effectCommand :: Command EFFECT_CMD_ENABLE
+11-07 02:45:11.336  1127  5095 D AudioALSAStreamOut: write(), flag 0x2, usePolicyDevice: 1, output_devices: 0x2 -> latest policyDevice 0x2 (ori policyDevice 0x2)
+11-07 02:45:11.336  1127  5095 D AudioALSAStreamManager: +syncSharedOutDevice(), originDevice/routingSharedOutDevice: 0x2/0x2, mAudioMode: 0
+11-07 02:45:11.336  1127  5095 D AudioIEMsController: routing(+), cur out 0x0 in 0x0, hs 0, bt 0, usb 0, device 0x2, mask 0x1, on 0
+11-07 02:45:11.336  1127  5095 D AudioIEMsController: routing(-), cur out 0x0 in 0x0
+11-07 02:45:11.336  1127  5095 D AudioMTKGainController: setNormalVolume(), mSceneIndex = 0, stream 5, devices 0x2, index 4, mode 0x0, gainDevice 0x2
+11-07 02:45:11.336  1127  5095 D AudioMTKGainController: setSpeakerGain(), gain = 8, spkAnaType = 3
+11-07 02:45:11.336  1184  4504 D APM_AudioPolicyManager: listAudioPorts mAvailableInputDevices 0x80000004, 0x80000040, 0x80000080, 0x80000100, 0x80002000, 0x90000000
+11-07 02:45:11.337  1127  5095 D AudioALSAStreamOut: open(), flags 2
+11-07 02:45:11.337  1127  5095 D AudioALSAStreamManager: +createPlaybackHandler(), mAudioMode = 0, output_devices = 0x2, isMixerOut = 0, isBypassAurisys = 0, flag = 2, isIEMsSource = 0, isIEMsOn = 0
+11-07 02:45:11.337  1127  5095 D AudioALSAStreamManager: needEnableVoip(), output_devices = 0x2, flags: 0x2, mAvailableOutputFlags: 0x1c00f, enable: 0
+11-07 02:45:11.337  1127  5095 D AudioSpeechEnhanceInfo: IsAPDMNRTuningEnable(), 0
+11-07 02:45:11.337  1127  5095 D AudioALSAPlaybackHandlerMixer: open(+), source flag 2, mDevice = 0x2, buffer_size 8192, sample_rate 48000
+11-07 02:45:11.337  1184  4504 D APM_AudioPolicyManager: listAudioPorts mAvailableInputDevices 0x80000004, 0x80000040, 0x80000080, 0x80000100, 0x80002000, 0x90000000
+11-07 02:45:11.337  1127  5095 D AudioALSAPlaybackHandlerBase: CreateAurisysLibManager, ph type: 11, voip: 0, mAurisysScenario: 0
+11-07 02:45:11.337  1127  5095 D aurisys_utility: input dev: 0x80000080, fmt = 0x3, fs: 48000, max fs: 48000, ch: 2, max ch: 2, ch maks: 0x3, hw_info_mask: 0x0; output dev: 0x2, fmt = 0x3, fs: 48000, max fs: 48000, ch: 2, max ch: 2, ch maks: 0x3, hw_info_mask: 0x4; task_scene: 2, audio_mode: 0, stream_type: 5, output_flags: 0x2, input_source: 0, input_flags: 0x0; network_info: 0, enhancement_feature_mask: 0x0
+11-07 02:45:11.337  1127  5095 D AudioUtility: setupCustomInfoStr(), custom_info = "SetAudioCustomScene=;", (scene = , vol_level = -1, bt_codec = -1)
+11-07 02:45:11.337  1127  5095 D aurisys_utility: lib, working fs: 48000, fmt: 0x3, frame = 0, b_interleave = 1, num_ul_ref_buf_array = 0, num_dl_ref_buf_array = 0
+11-07 02:45:11.337  1127  5095 D aurisys_utility: dl in[type:2], ch: 2, ch_mask: 0x3, buf fs: 48000, buf content fs: 48000, fmt: 0x3; dl out[type:3], ch: 2, ch_mask: 0x3, buf fs: 48000, buf content fs: 48000, fmt: 0x3
+11-07 02:45:11.337  1127  5095 D android.hardware.audio.service.mediatek: get_custom_info_value(), cusom_info = SetAudioCustomScene=;, key= SetAudioCustomScene, ret = 0, ptr = 0x7274524830, value_str = , max_value_str_leng = 20
+11-07 02:45:11.337  1127  5095 D AudioCompFltCustParam: audioHierarchicalParamEnable [1]
+11-07 02:45:11.337  1127  5095 D AudioCompFltCustParam: getPlaybackPostProcessParameterFromXML Type/Name [5]/[PlaybackDRC]
+11-07 02:45:11.337  1127  5095 D AudioCompFltCustParam: Load from scene Scene,Default,Volume type,Music
+11-07 02:45:11.337  1127  5095 D AudioCompFltCustParam: audioHierarchicalParamEnable [1]
+11-07 02:45:11.337  1127  5095 D AudioCompFltCustParam: getPlaybackPostProcessParameterFromXML Type/Name [0]/[PlaybackACF]
+11-07 02:45:11.337  1127  5095 D AudioCompFltCustParam: Load from scene Scene,Default,Volume type,Music,Profile,Speaker
+11-07 02:45:11.337  1127  5095 D AudioCompFltCustParam: audioHierarchicalParamEnable [1]
+11-07 02:45:11.337  1127  5095 D AudioCompFltCustParam: getPlaybackPostProcessParameterFromXML Type/Name [6]/[PlaybackDRC]
+11-07 02:45:11.337  1127  5095 D AudioCompFltCustParam: Load from scene Scene,Default,Volume type,Ring
+11-07 02:45:11.337  1127  5095 D AudioCompFltCustParam: audioHierarchicalParamEnable [1]
+11-07 02:45:11.337  1127  5095 D AudioCompFltCustParam: getPlaybackPostProcessParameterFromXML Type/Name [8]/[PlaybackACF]
+11-07 02:45:11.337  1127  5095 D AudioCompFltCustParam: Load from scene Scene,Default,Volume type,Music,Profile,Speaker
+11-07 02:45:11.337  1127  5095 D aurisys_lib_handler: aurisys_arsi_parsing_param_file(), gProductInfo "platform=MT6855,device=devonf,model=moto g73 5G", file_path "/vendor/etc/audio_param", enhancement_mode 0, param_buf_size 2528, data_size 2528, custom_info SetAudioCustomScene=;
+11-07 02:45:11.338  1127  5095 D aurisys_lib_handler: aurisys_arsi_create_handler(), lib_name mtk_bessound, 0xb40000728f191000, memory_size 72724, arsi_handler 0xb4000072824bab40, retval 0x0
+11-07 02:45:11.338  1127  5095 D aurisys_lib_handler: aurisys_arsi_create_handler(), arsi_query_process_unit_bytes, ul 0, dl 4096, retval 0
+11-07 02:45:11.338  1127  5095 D aurisys_lib_manager: DL Lib, lib_name mtk_bessound, 0xb40000728f191000, sample_rate: 48000 => 48000, num_channels: 2 => 2, audio_format: 0x3 => 0x3, interleave: 1 => 1, frame: 0 => 0
+11-07 02:45:11.338  1127  5095 D aurisys_lib_manager: DL out, sample_rate: 48000 => 48000, num_channels: 2 => 2, audio_format: 0x3 => 0x3, interleave: 1 => 1, frame: 0 => 0
+11-07 02:45:11.338  1127  5095 D audio_sw_mixer: sw_mixer_source_attach(), MIXER_PLAYBACK  , name T_PRIMARY    order 4 sz 8192 fmt 3 ch 2 rate 48000 latency_us 21333
+11-07 02:45:11.338  1127  5095 D AudioUtility: chooseTargetSampleRate() hiFiState 1 isDeviceSupportHiFi 0 sampleRate 48000 targetSampleRate 48000
+11-07 02:45:11.338  1127  5095 D AudioALSAStreamManager: +createPlaybackHandler(), mAudioMode = 0, output_devices = 0x2, isMixerOut = 1, isBypassAurisys = 1, flag = 2, isIEMsSource = 0, isIEMsOn = 0
+11-07 02:45:11.338  1127  5095 D AudioALSAStreamManager: needEnableVoip(), output_devices = 0x2, flags: 0x2, mAvailableOutputFlags: 0x1c00f, enable: 0
+11-07 02:45:11.338  1127  5095 D AudioSpeechEnhanceInfo: IsAPDMNRTuningEnable(), 0
+11-07 02:45:11.338  1127  5095 D AudioALSAPlaybackHandlerNormal: +open(), flag = 2, source output_devices = 0x2, audio_format = 3, buffer_size = 8192, sample_rate = 48000
+11-07 02:45:11.338  1127  5095 D AudioALSADeviceParser: compare pcm success = 0, stringpair = Playback_1
+11-07 02:45:11.338  1127  5095 D AudioALSADeviceConfigManager: ApplyDeviceTurnonSequenceByName() DeviceName = PLAYBACK1_TO_ADDA_DL descriptor->DeviceStatusCounte = 0, Ctlsize=4
+11-07 02:45:11.338  1127  5095 W MotSpeakerHelperProximity: Sensor listener is already running
+11-07 02:45:11.338  1127  5095 D AudioALSADeviceConfigManager: Proximity listener started
+11-07 02:45:11.338  1127  5095 D AudioALSADeviceConfigManager: proxCoveredInterval = 1425.893429
+11-07 02:45:11.341  1127  5095 D AudioUtility: chooseTargetSampleRate() hiFiState 1 isDeviceSupportHiFi 0 sampleRate 48000 targetSampleRate 48000
+11-07 02:45:11.341  1127  5095 D AudioALSAPlaybackHandlerBase: transferAudioFormatToPcmFormat(), audio_format(0x4) => pcm_format(0x3)
+11-07 02:45:11.341  1127  5095 D AudioALSAPlaybackHandlerNormal: open(), flag = 2, mConfig: channels = 2, sample_rate(target) = 48000, period_size = 1024, period_count = 2, format = 3, avail_min = 1024, start_threshold = 2048
+11-07 02:45:11.344  1127  5095 D AudioALSAPlaybackHandlerBase: openPcmDriverWithFlag(), pcm device = 0 flag = 0x8 mPcm = 0xb4000072827db280
+11-07 02:45:11.345  1127  5095 D AudioALSAPlaybackHandlerBase: CreateAurisysLibManager, ph type: 0, voip: 0, mAurisysScenario: 9
+11-07 02:45:11.345  1127  5095 D aurisys_utility: input dev: 0x80000080, fmt = 0x3, fs: 48000, max fs: 48000, ch: 2, max ch: 2, ch maks: 0x3, hw_info_mask: 0x0; output dev: 0x2, fmt = 0x3, fs: 48000, max fs: 48000, ch: 2, max ch: 2, ch maks: 0x3, hw_info_mask: 0x4; task_scene: 9, audio_mode: 0, stream_type: 5, output_flags: 0x2, input_source: 0, input_flags: 0x0; network_info: 0, enhancement_feature_mask: 0x0
+11-07 02:45:11.345  1127  5095 D AudioUtility: setupCustomInfoStr(), custom_info = "SetAudioCustomScene=;", (scene = , vol_level = -1, bt_codec = -1)
+11-07 02:45:11.345  1127  5095 D aurisys_utility: lib, working fs: 48000, fmt: 0x3, frame = 0, b_interleave = 1, num_ul_ref_buf_array = 0, num_dl_ref_buf_array = 0
+11-07 02:45:11.345  1127  5095 D aurisys_utility: dl in[type:2], ch: 2, ch_mask: 0x3, buf fs: 48000, buf content fs: 48000, fmt: 0x3; dl out[type:3], ch: 2, ch_mask: 0x3, buf fs: 48000, buf content fs: 48000, fmt: 0x3
+11-07 02:45:11.345  1127  5095 I [Awinic]: aw_skt_arsi_query_param_buf_size_by_custom_info:reserve2 [0] cust_scene[0] ---> aw_scene[0]
+11-07 02:45:11.345  1127  5095 I [Awinic]: find [Music] scene_block with id 0
+11-07 02:45:11.345  1127  5095 I [Awinic]: aw_skt_arsi_query_param_buf_size_by_custom_info:aw_scene[Music] params len is 18132
+11-07 02:45:11.345  1127  5095 I [Awinic]: aw_skt_arsi_parsing_param_file_by_custom_info:reserve2 [0] cust_scene[0] ---> aw_scene[0]
+11-07 02:45:11.345  1127  5095 I [Awinic]: find [Music] scene_block with id 0
+11-07 02:45:11.345  1127  5095 I [Awinic]: aw_skt_arsi_parsing_param_file_by_custom_info:load aw_scene[Music] params done
+11-07 02:45:11.345  1127  5095 D aurisys_lib_handler: aurisys_arsi_parsing_param_file(), gProductInfo "platform=MT6855,device=devonf,model=moto g73 5G", file_path "/vendor/etc", enhancement_mode 0, param_buf_size 18132, data_size 18132, custom_info SetAudioCustomScene=;
+11-07 02:45:11.345  1310  1310 I mtkpower_client: perf_lock_acq, hdl:0, dur:30000, num:2, tid:1310
+11-07 02:45:11.345  1127  5095 I [Awinic]: SKTune_v5.3.1.42
+11-07 02:45:11.345  1127  5095 D [Awinic]: spin init done!
+11-07 02:45:11.345  1127  5095 D [Awinic]: init Done !
+11-07 02:45:11.346  1310  1310 I mtkpower_client: ret_hdl:159029
+11-07 02:45:11.346  1167  1252 I libPowerHal: [perfLockAcq] idx:2 hdl:159029 hint:-1 pid:1310 duration:30000 lock_user:fpsgo => ret_hdl:159029
+11-07 02:45:11.347  1167  1252 I libPowerHal: [PE] fpsgo update cmd:1408300, param:100
+11-07 02:45:11.347  1127  5095 I [Awinic]: Create kctl monitor update pThread success!
+11-07 02:45:11.347  1127  5095 I [Awinic]: local_cfg->fade_out_deg_num = 8091
+11-07 02:45:11.347  1127  5095 I [Awinic]: local_cfg->mute_in_num = 868239
+11-07 02:45:11.347  1127  5095 I [Awinic]: local_cfg->fade_in_deg_num = 16183
+11-07 02:45:11.347  1127  5095 D [Awinic]: set parameter done!
+11-07 02:45:11.347  1127  5095 D [Awinic]: fade in out backup_params done!
+11-07 02:45:11.347  1127  5095 D aurisys_lib_handler: aurisys_arsi_create_handler(), lib_name smartpa_aw88xxx, 0xb40000728f191c00, memory_size 437092, arsi_handler 0xb400007282591840, retval 0x0
+11-07 02:45:11.347  1127  5095 D aurisys_lib_handler: aurisys_arsi_create_handler(), arsi_query_process_unit_bytes, ul 4096, dl 4096, retval 0
+11-07 02:45:11.347  1127  5095 D aurisys_lib_manager: DL Lib, lib_name smartpa_aw88xxx, 0xb40000728f191c00, sample_rate: 48000 => 48000, num_channels: 2 => 2, audio_format: 0x3 => 0x3, interleave: 1 => 1, frame: 0 => 0
+11-07 02:45:11.347  1127  5095 D aurisys_lib_manager: DL out, sample_rate: 48000 => 48000, num_channels: 2 => 2, audio_format: 0x3 => 0x4, interleave: 1 => 1, frame: 0 => 0
+11-07 02:45:11.347  1127  5095 D AudioALSAHardwareResourceManager: +startOutputDevice(), new_devices = 0x2, mOutputDevices = 0x0, mStartOutputDevicesCount = 0 SampleRate = 48000
+11-07 02:45:11.348  1127  5095 W libc    : Access denied finding property "vendor.af.awinic.support"
+11-07 02:45:11.348  1127  5095 D AudioALSAHardwareResourceManager: startOutputDevice_l(), skt_aurisys: Music(0)
+11-07 02:45:11.348  1127  5095 I [Awinic]: aw_mtk_set_scene:cust_scene[0] ---> aw_scene[0]
+11-07 02:45:11.348  1127  5095 I [Awinic]: find [Music] scene_block with id 0
+11-07 02:45:11.348  1127  5095 I [Awinic]: aw_mtk_set_scene:set scene success!
+11-07 02:45:11.348  1127  5095 D [Awinic]: params same 18132!
+11-07 02:45:11.348  1127  5095 I [Awinic]: params swtich done!
+11-07 02:45:11.348  1127  5095 D aurisys_lib_handler: lib_name smartpa_aw88xxx, 0xb40000728f191c00, ADB_CMD_ADDR_VALUE: set *0x10013d30 = 0x0, retval 0
+11-07 02:45:11.348  1127  5095 D AudioALSADeviceConfigManager: ApplyDeviceTurnonSequenceByName() DeviceName = dual_speaker_output descriptor->DeviceStatusCounte = 0, Ctlsize=6
+11-07 02:45:11.348  1127  5095 W MotSpeakerHelperProximity: Sensor listener is already running
+11-07 02:45:11.348  1127  5095 D AudioALSADeviceConfigManager: Proximity listener started
+11-07 02:45:11.348  1127  5095 D AudioALSADeviceConfigManager: proxCoveredInterval = 1425.903561
+11-07 02:45:11.352  1127  5095 D AudioALSADeviceConfigManager: ApplyDeviceTurnonSequenceByName() DeviceName = ext_speaker_output descriptor->DeviceStatusCounte = 0, Ctlsize=2
+11-07 02:45:11.352  1127  5095 W MotSpeakerHelperProximity: Sensor listener is already running
+11-07 02:45:11.352  1127  5095 D AudioALSADeviceConfigManager: Proximity listener started
+11-07 02:45:11.352  1127  5095 D AudioALSADeviceConfigManager: proxCoveredInterval = 1425.907619
+11-07 02:45:11.381  1127  5095 D AudioALSAHardwareResourceManager: notifyOutputDeviceStatusChange(), device = 2, status = 0, sampleRate = 48000, mOpenSpeakerPathCount = 1
+11-07 02:45:11.381  1127  5095 D AudioALSAStreamManager: speakerStatusChangeCb(), status = 0, sampleRate = 48000
+11-07 02:45:11.381  1127  5095 D AudioALSAVoiceWakeUpController: setSpeakerSampleRate(), sampleRate = 48000
+11-07 02:45:11.381  1127  5095 D AudioALSAVoiceWakeUpController: updateSpeakerPlaybackStatus(), isSpeakerPlaying = 1
+11-07 02:45:11.381  1127  5095 D AudioALSAVoiceWakeUpController: +setBargeInEnable(), enable = 1
+11-07 02:45:11.381  1127  5095 D AudioALSAVoiceWakeUpController: setBargeInEnable(), format = 0, channels = 2, rate = 48000, period_size = 480, period_count = 4
+11-07 02:45:11.381  1127  5095 D AudioALSAVoiceWakeUpController: setBargeInEnable(), Interconn VOW_BARGE_IN_ECHO
+11-07 02:45:11.381  1127  5095 D AudioALSADeviceConfigManager: ApplyDeviceTurnonSequenceByName() DeviceName = VOW_BARGE_IN_ECHO descriptor->DeviceStatusCounte = 0, Ctlsize=20
+11-07 02:45:11.381  1127  5095 W MotSpeakerHelperProximity: Sensor listener is already running
+11-07 02:45:11.381  1127  5095 D AudioALSADeviceConfigManager: Proximity listener started
+11-07 02:45:11.381  1127  5095 D AudioALSADeviceConfigManager: proxCoveredInterval = 1425.936411
+11-07 02:45:11.384  1127  5095 D AudioALSADeviceParser: compare pcm success = 11, stringpair = Capture_2
+11-07 02:45:11.386  1127  5095 D AudioALSAVoiceWakeUpController: setBargeInEnable(), mBargeInPcm = 0xb4000072827db8c0, pcmUlRet = 0
+11-07 02:45:11.402  1127  5095 D AudioALSAVoiceWakeUpController: setBargeInEnable(), VOW_BARGEIN_ON set, irq = 15, ret = 0
+11-07 02:45:11.403  1127  5095 D AudioALSAVoiceWakeUpController: -setBargeInEnable(), mBargeInPcm = 0xb4000072827db8c0, mBargeInEnable = 1
+11-07 02:45:11.403  1127  5095 D AudioALSAPlaybackHandlerNormal: -open()
+11-07 02:45:11.403  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 02:45:11.403  1127  5095 D audio_sw_mixer: sw_mixer_target_attach(), MIXER_PLAYBACK  , name T_PRIMARY    order 4 sz 8192 fmt 3 ch 2 rate 48000 latency_us 21333
+11-07 02:45:11.403  1127  5095 D audio_sw_mixer: sw_mixer_manager_create_path(), MIXER_PLAYBACK  , path T_PRIMARY=>T_PRIMARY, source: order 4 sz 8192 fmt 3 ch 2 rate 48000 latency_us 21333, target: order 4 sz 8192 fmt 3 ch 2 rate 48000 latency_us 21333
+11-07 02:45:11.403  1127  5095 D audio_sw_mixer: dump_path_list(), MIXER_PLAYBACK  , T_PRIMARY=>T_PRIMARY[8192, 4, y] 
+11-07 02:45:11.403  1127  5095 D AudioALSAPlaybackHandlerMixer: open(-), target flag 2, mDevice 0x2, buffer_size 8192, frame_count 1024, sample_rate 48000
+11-07 02:45:11.403  1127  1747 D audio_sw_mixer: sw_mixer_mix_thread(), thread mix1:0 running: target T_PRIMARY
+11-07 02:45:11.403  1127  5095 D AudioALSAPlaybackHandlerNormal: setScreenState(), flag = 0x2, mode = 1, sample_rate(source/target) = 48000/48000, buffer_size(source/target) = 8192/16384, device_support_hifi = 0
+11-07 02:45:11.403  1127  5095 D AudioALSAPlaybackHandlerNormal: setScreenState(), flag = 2, rate = 1024, mInterrupt = 0.021333, mode = 1, sample_rate(target) = 48000, buffer_size = 8192, channel = 2, format = 4, reduceInterruptSize = 1024
+11-07 02:45:11.404  1127  1747 D audio_sw_mixer: sw_mixer_wait_to_mix(), MIXER_PLAYBACK  , target T_PRIMARY    thread enter direct mode
+11-07 02:45:11.406  1127  5095 E AudioALSAPlaybackHandlerBase: getQueuedFramesInfo(), pcm_get_htimestamp or trylock fail, ret -1, pcm_get_error 
+11-07 02:45:11.407  1127  1127 I EffectsFactory: Effect_Command(): self = 0xb40000728f0b08e0, cmdCode = 10
+11-07 02:45:11.407  1127  1127 V DlbVolumeListener: effectCommand
+11-07 02:45:11.407  1127  1127 V DlbVolumeListener: Command EFFECT_CMD_SET_VOLUME: left 2369855, right 2369855
+11-07 02:45:11.407  1127  2061 D DlbDapEndpointParamCache: commit() Applying parameters for device 0x40000000
+11-07 02:45:11.407  1127  2061 D DlbDapEndpointParamCache: doCommit() Committed 0 parameters out of 14.
+11-07 02:45:11.407  1127  2061 D DlbDapEndpointParamCache: commit() Overriding parameters for current device 0x00000002
+11-07 02:45:11.407  1127  2061 D DlbDapEndpointParamCache: doCommit() Committed 0 parameters out of 66.
+11-07 02:45:11.407  1184  1763 D AudioMixer: setParameter(RESAMPLE, SAMPLE_RATE, 44100, channelMask 0x3)
+11-07 02:45:11.409  1500 15806 D AudioTrack: getTimestamp_l(4601): device stall time corrected using current time 276194035280152
+11-07 02:45:11.417  1184  1763 D AudioFlinger_Threads: mixer(0xb400007c820f0740) throttle begin: ret(8192) deltaMs(7) requires sleep 3 ms
+11-07 02:45:11.436  1184  1763 D AudioFlinger_Threads: mixer(0xb400007c820f0740) throttle end: throttle time(3)
+11-07 02:45:11.455  1492  1492 W HidlServiceManagement: Waited for hwservicemanager.ready for a second, waiting another...
+11-07 02:45:11.456  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 02:45:11.456  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 02:45:11.524  1527  1731 D ULogGuard: Monitoring: 10 threads, 0 requests, 0 time-bombs; 1 guards. ResetFlags = 0x7
+11-07 02:45:11.570  1167  1208 I libPerfCtl: xgfGetFPS pid:2298 fps:74
+11-07 02:45:11.604  1198  1661 I Scheduler: applyPolicy: UpdateRefreshRate 120 to 30 of group 0: [touch=0:0 touchBoost=0 scroll=0:0 idle=1:1]
+11-07 02:45:11.607  1198  1661 D SurfaceFlinger: MtkOverrideDuration: update vsync 30
+11-07 02:45:11.608  1198  1661 E SurfaceFlinger: MtkDuration override mode is disabled
+11-07 02:45:11.608  1134  1491 I hwcomposer: [DRMDEV] (0) failed to waitNextVsync: -1  
+11-07 02:45:11.608  1198  1661 D SurfaceFlinger: MtkOverrideDuration: reset override duration
+11-07 02:45:11.609  1134  1491 I hwcomposer: [DRMDEV] (0) failed to waitNextVsync: -1  
+11-07 02:45:11.617  1134  1491 I hwcomposer: [DRMDEV] (0) failed to waitNextVsync: -1  
+11-07 02:45:11.621  1198  1198 I SurfaceFlinger: setActiveModeInHwcIfNeeded changing active mode to 3(30.00 Hz) for display 0
+11-07 02:45:11.621  1134  1134 I hwcomposer: [HWC] (0) displaySetActiveConfig config:3  
+11-07 02:45:11.624  1134  1134 I hwcomposer: [HWCDisplay] [Display_0 (type:1)] fps:33.189102,dur:1024.43,max:343.57,min:7.35  
+11-07 02:45:11.773  3384 15642 I NetworkScheduler.Stats: (REDACTED) Task %s/%s started execution. cause:%s exec_start_elapsed_seconds: %s
+11-07 02:45:11.776  3384 14631 I PlayGamesServices[GamesSyncAdapter]: Starting sync for bf5b4deb
+11-07 02:45:11.779  3384 14631 I PlayGamesServices[GamesSyncAdapter]: Sync duration for bf5b4deb: 2
+11-07 02:45:11.793  3384 14631 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:11.793  3384 14631 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:11.804  3384 14631 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:11.804  3384 14631 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:11.807  3384 14631 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:11.808  3384 14631 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:11.808  3384 14631 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:11.811  3384 15642 I NetworkScheduler.Stats: (REDACTED) Task %s/%s finished executing. cause:%s result: %s elapsed_millis: %s uptime_millis: %s exec_start_elapsed_seconds: %s
+11-07 02:45:11.830  3384 10616 I GetServiceValidatorImpl: (REDACTED) onGetService() from Client SDK version [%s], Module version [%s], PGA version [%s], Account [%s], Calling package [%s], Game package [%s]
+11-07 02:45:11.831  3384 10616 I GetGamesServiceReqFacto: (REDACTED) Parsing request with ignored arguments. signInOptionsBundle [%s], isRetryingSignIn [%s], skipWelcomePopup [%s], requireGooglePlus [%s]
+11-07 02:45:11.831  3384 10616 I GetGamesServiceReqFacto: Replacing request for `games` scope with `games_lite`
+11-07 02:45:11.843  3384 15813 I SignInPerformer-45: (REDACTED) Handling request [%s], isFirstPartyCaller [%s]
+11-07 02:45:11.845  3384 15813 I SignInPerformer-45: Successfully brokered first-party unauthenticated GamesService [CONTEXT service_id=1 ]
+11-07 02:45:11.847  3384 15813 I GetGamesServiceV2Op: (REDACTED) Successfully brokered GamesService for request %s
+11-07 02:45:11.849  3384 14631 I NetworkScheduler.Stats: (REDACTED) Task %s/%s started execution. cause:%s exec_start_elapsed_seconds: %s
+11-07 02:45:11.851  3384 15728 I PlayGamesServices[GamesSyncAdapter]: Starting sync for 6ecc5aa9
+11-07 02:45:11.853  3384 15728 I PlayGamesServices[GamesSyncAdapter]: Sync duration for 6ecc5aa9: 1
+11-07 02:45:11.866  3384 15728 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:11.866  3384 15728 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:11.877  3384 15728 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:11.877  3384 15728 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:11.880  3384 15728 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:11.881  3384 15728 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:11.881  3384 15728 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:11.884  3384 15728 I NetworkScheduler.Stats: (REDACTED) Task %s/%s finished executing. cause:%s result: %s elapsed_millis: %s uptime_millis: %s exec_start_elapsed_seconds: %s
+11-07 02:45:11.901  3384 15642 I NetworkScheduler.Stats: (REDACTED) Task %s/%s started execution. cause:%s exec_start_elapsed_seconds: %s
+11-07 02:45:11.903  3384 14718 I PlayGamesServices[GamesSyncAdapter]: Starting sync for 5113fac0
+11-07 02:45:11.905  3384 14718 I PlayGamesServices[GamesSyncAdapter]: Sync duration for 5113fac0: 1
+11-07 02:45:11.916  3384 14718 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:11.916  3384 14718 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:11.926  3384 14718 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:11.926  3384 14718 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:11.930  3384 14718 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:11.930  3384 14718 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:11.930  3384 14718 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:11.932  3384 15658 I NetworkScheduler.Stats: (REDACTED) Task %s/%s finished executing. cause:%s result: %s elapsed_millis: %s uptime_millis: %s exec_start_elapsed_seconds: %s
+11-07 02:45:11.949  3384 14718 I NetworkScheduler.Stats: (REDACTED) Task %s/%s started execution. cause:%s exec_start_elapsed_seconds: %s
+11-07 02:45:11.950  3384 14718 I PlayGamesServices[GamesSyncAdapter]: Starting sync for fadc5039
+11-07 02:45:11.952  3384 14718 I PlayGamesServices[GamesSyncAdapter]: Sync duration for fadc5039: 1
+11-07 02:45:11.961  3384 14718 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:11.961  3384 14718 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:11.966  1134  1485 I hwcomposer: [HWC] (0)fire a callback of refresh to SF[4]  
+11-07 02:45:11.972  3384 14718 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:11.972  3384 14718 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:11.975  3384 14718 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:11.976  3384 14718 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:11.976  3384 14718 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:11.978  3384 15249 I NetworkScheduler.Stats: (REDACTED) Task %s/%s finished executing. cause:%s result: %s elapsed_millis: %s uptime_millis: %s exec_start_elapsed_seconds: %s
+11-07 02:45:11.979  3844  3844 D WidgetApplication: updateExistWidget: android.intent.action.BATTERY_CHANGED
+11-07 02:45:11.980  3844  4161 D CmdCenter: - RowBase2: sPrevModStatus: 1, modStatus: 1
+11-07 02:45:11.980  3844  4161 D CmdCenter: - RowBase2: sPrevBatStatus: 1, status: 1
+11-07 02:45:11.981  3844  4161 D CmdCenter: - RowBase2: sPrevChargeRate = 3, new = 3
+11-07 02:45:11.981  3844  4161 D CmdCenter: - RowBase2: sPrevPlugType: 1 plugType: 1
+11-07 02:45:12.009  3384 15728 I NetworkScheduler.Stats: (REDACTED) Task %s/%s started execution. cause:%s exec_start_elapsed_seconds: %s
+11-07 02:45:12.010  3384 14718 I PlayGamesServices[GamesSyncAdapter]: Starting sync for 89c507ca
+11-07 02:45:12.011  3384 14718 I PlayGamesServices[GamesSyncAdapter]: Sync duration for 89c507ca: 1
+11-07 02:45:12.021  3384 14718 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:12.021  3384 14718 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:12.032  3384 14718 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:12.032  3384 14718 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:12.035  3384 14718 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:12.036  3384 14718 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:12.036  3384 14718 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:12.038  3384 15642 I NetworkScheduler.Stats: (REDACTED) Task %s/%s finished executing. cause:%s result: %s elapsed_millis: %s uptime_millis: %s exec_start_elapsed_seconds: %s
+11-07 02:45:12.056  3384 15728 I NetworkScheduler.Stats: (REDACTED) Task %s/%s started execution. cause:%s exec_start_elapsed_seconds: %s
+11-07 02:45:12.057  3384 14718 I PlayGamesServices[GamesSyncAdapter]: Starting sync for a1ba4703
+11-07 02:45:12.058  3384 14718 I PlayGamesServices[GamesSyncAdapter]: Sync duration for a1ba4703: 1
+11-07 02:45:12.066  3384 14718 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:12.066  3384 14718 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:12.076  3384 14718 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:12.076  3384 14718 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:12.080  3384 14718 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:12.080  3384 14718 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:12.080  3384 14718 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:12.082  3384 15658 I NetworkScheduler.Stats: (REDACTED) Task %s/%s finished executing. cause:%s result: %s elapsed_millis: %s uptime_millis: %s exec_start_elapsed_seconds: %s
+11-07 02:45:12.105  3384 15728 I NetworkScheduler.Stats: (REDACTED) Task %s/%s started execution. cause:%s exec_start_elapsed_seconds: %s
+11-07 02:45:12.106  3384 14718 I PlayGamesServices[GamesSyncAdapter]: Starting sync for ba51e104
+11-07 02:45:12.107  3384 14718 I PlayGamesServices[GamesSyncAdapter]: Sync duration for ba51e104: 1
+11-07 02:45:12.115  3384 14718 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:12.116  3384 14718 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:12.128  3384 14718 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:12.128  3384 14718 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:12.132  3384 14718 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:12.132  3384 14718 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:12.132  3384 14718 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:12.136  3384 15658 I NetworkScheduler.Stats: (REDACTED) Task %s/%s finished executing. cause:%s result: %s elapsed_millis: %s uptime_millis: %s exec_start_elapsed_seconds: %s
+11-07 02:45:12.154  3384 14718 I NetworkScheduler.Stats: (REDACTED) Task %s/%s started execution. cause:%s exec_start_elapsed_seconds: %s
+11-07 02:45:12.157  3384 15658 I PlayGamesServices[GamesSyncAdapter]: Starting sync for e9859843
+11-07 02:45:12.160  3384 15658 I PlayGamesServices[GamesSyncAdapter]: Sync duration for e9859843: 2
+11-07 02:45:12.172  1310  1310 I mtkpower_client: perf_lock_rel, hdl:159029, tid:1310
+11-07 02:45:12.172  3384 15658 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:12.173  3384 15658 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:12.173  1310  1310 I FPSGO   : fpsgo_boost_sched_idle_prefer:0
+11-07 02:45:12.173  1310  1310 I mtkpower_client: perf_lock_rel, hdl:159026, tid:1310
+11-07 02:45:12.173  1167  1252 I libPowerHal: [perfLockRel] hdl:159029, idx:2
+11-07 02:45:12.173  1167  1252 I libPowerHal: [PD] fpsgo update cmd:1408300 param:0
+11-07 02:45:12.175  1310  1310 I FPSGO   : perfLockRel hdl:159026
+11-07 02:45:12.175  1167  1252 I libPowerHal: [perfLockRel] hdl:159026, idx:0
+11-07 02:45:12.175  1310  1310 I FPSGO   : fpsgo_boost_sched_rate_ns:-1
+11-07 02:45:12.175  1310  1310 I mtkpower_client: perf_lock_rel, hdl:159027, tid:1310
+11-07 02:45:12.176  1167  1252 I libPowerHal: [PD] fpsgo update cmd:1404500 param:0
+11-07 02:45:12.177  1310  1310 I FPSGO   : perfLockRel hdl:159027
+11-07 02:45:12.177  1167  1252 I libPowerHal: [perfLockRel] hdl:159027, idx:1
+11-07 02:45:12.178  1167  1252 I libPowerHal: [PD] fpsgo update cmd:1438300, param:1000
+11-07 02:45:12.178  1167  1252 I libPowerHal: [PD] fpsgo update cmd:1438400, param:1000
+11-07 02:45:12.178  1167  1252 I libPowerHal: [PD] fpsgo update cmd:1438600 param:1000
+11-07 02:45:12.178  1167  1252 I libPowerHal: [PD] fpsgo update cmd:1438700 param:1000
+11-07 02:45:12.183  3384 15658 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:12.184  3384 15658 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:12.187  3384 15658 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:12.187  3384 15658 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:12.188  3384 15658 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:12.190  3384 15642 I NetworkScheduler.Stats: (REDACTED) Task %s/%s finished executing. cause:%s result: %s elapsed_millis: %s uptime_millis: %s exec_start_elapsed_seconds: %s
+11-07 02:45:12.208  3384 15658 I NetworkScheduler.Stats: (REDACTED) Task %s/%s started execution. cause:%s exec_start_elapsed_seconds: %s
+11-07 02:45:12.211  3384 15642 I PlayGamesServices[GamesSyncAdapter]: Starting sync for 376502bb
+11-07 02:45:12.214  3384 15642 I PlayGamesServices[GamesSyncAdapter]: Sync duration for 376502bb: 3
+11-07 02:45:12.225  3384 15642 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:12.225  3384 15642 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:12.235  3384 15642 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:12.235  3384 15642 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:12.239  3384 15642 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:12.239  3384 15642 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:12.239  3384 15642 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:12.241  3384 14631 I NetworkScheduler.Stats: (REDACTED) Task %s/%s finished executing. cause:%s result: %s elapsed_millis: %s uptime_millis: %s exec_start_elapsed_seconds: %s
+11-07 02:45:12.261  3384 15642 I NetworkScheduler.Stats: (REDACTED) Task %s/%s started execution. cause:%s exec_start_elapsed_seconds: %s
+11-07 02:45:12.263  3384 14631 I PlayGamesServices[GamesSyncAdapter]: Starting sync for 4408ff4a
+11-07 02:45:12.266  3384 14631 I PlayGamesServices[GamesSyncAdapter]: Sync duration for 4408ff4a: 2
+11-07 02:45:12.278  3384 14631 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:12.278  3384 14631 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:12.289  3384 14631 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:12.289  3384 14631 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:12.293  3384 14631 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:12.294  3384 14631 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:12.294  3384 14631 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:12.299  3384 15728 I NetworkScheduler.Stats: (REDACTED) Task %s/%s finished executing. cause:%s result: %s elapsed_millis: %s uptime_millis: %s exec_start_elapsed_seconds: %s
+11-07 02:45:12.332  3384 14631 I NetworkScheduler.Stats: (REDACTED) Task %s/%s started execution. cause:%s exec_start_elapsed_seconds: %s
+11-07 02:45:12.336  3384 15728 I PlayGamesServices[GamesSyncAdapter]: Starting sync for c2bf514e
+11-07 02:45:12.339  3384 15728 I PlayGamesServices[GamesSyncAdapter]: Sync duration for c2bf514e: 3
+11-07 02:45:12.357  3384 15728 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:12.357  3384 15728 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:12.369  3384 15728 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:12.369  3384 15728 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:12.372  3384 15728 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:12.373  3384 15728 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:12.373  3384 15728 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:12.375  3384 14631 I NetworkScheduler.Stats: (REDACTED) Task %s/%s finished executing. cause:%s result: %s elapsed_millis: %s uptime_millis: %s exec_start_elapsed_seconds: %s
+11-07 02:45:12.397  3384 15728 I NetworkScheduler.Stats: (REDACTED) Task %s/%s started execution. cause:%s exec_start_elapsed_seconds: %s
+11-07 02:45:12.400  3384 14631 I PlayGamesServices[GamesSyncAdapter]: Starting sync for a89b57c0
+11-07 02:45:12.404  3384 14631 I PlayGamesServices[GamesSyncAdapter]: Sync duration for a89b57c0: 3
+11-07 02:45:12.417  3384 14631 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:12.418  3384 14631 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:12.429  3384 14631 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:12.430  3384 14631 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:12.433  3384 14631 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:12.433  3384 14631 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:12.434  3384 14631 W PlayGamesServices[DataBroker]: No player ID found when refreshing
+11-07 02:45:12.436  3384 15728 I NetworkScheduler.Stats: (REDACTED) Task %s/%s finished executing. cause:%s result: %s elapsed_millis: %s uptime_millis: %s exec_start_elapsed_seconds: %s
+11-07 02:45:12.456  1492  1492 W HidlServiceManagement: Waited for hwservicemanager.ready for a second, waiting another...
+11-07 02:45:12.457  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 02:45:12.458  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 02:45:12.451  1492  1492 W binder:1492_2: type=1400 audit(0.0:848408): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 02:45:12.451  1492  1492 W binder:1492_2: type=1400 audit(0.0:848409): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 02:45:12.571  1167  1208 I libPerfCtl: xgfGetFPS pid:2298 fps:-1
+11-07 02:45:13.308  1830  2109 E WifiDataStall: Ignore this poll. newStats: null txLinkSpeedMbps: 13 rxLinkSpeedMbps: 6 rssi: -48 connectionCapabilities: com.android.server.wifi.WifiNative$ConnectionCapabilities@97eba
+11-07 02:45:13.398  1500 15808 D CCodecBufferChannel: [c2.android.vorbis.decoder#299] input EOS
+11-07 02:45:13.400  1500 15808 D CCodecBufferChannel: [c2.android.vorbis.decoder#299] buffers after EOS ignored (0 us)
+11-07 02:45:13.400  1500 15808 D CCodecBufferChannel: [c2.android.vorbis.decoder#299] buffers after EOS ignored (0 us)
+11-07 02:45:13.401  1500 15808 D CCodecBufferChannel: [c2.android.vorbis.decoder#299] buffers after EOS ignored (0 us)
+11-07 02:45:13.402  1500 15806 D AudioTrack: stop(4601): 0xf6aa9a00, prior state:STATE_ACTIVE
+11-07 02:45:13.402  1500 15806 D AudioTrackShared: this(0xf638c3c0), mCblk(0xf5d8b000), front(89376), mIsOut 1, interrupt() FUTEX_WAKE
+11-07 02:45:13.403  1500 15806 D AudioTrack: stop(4601): 0xf6aa9a00 stop done
+11-07 02:45:13.458  1492  1492 W HidlServiceManagement: Waited for hwservicemanager.ready for a second, waiting another...
+11-07 02:45:13.459  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 02:45:13.455  1492  1492 W binder:1492_2: type=1400 audit(0.0:848410): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 02:45:13.459  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 02:45:13.455  1492  1492 W binder:1492_2: type=1400 audit(0.0:848411): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 02:45:13.571  1167  1208 I libPerfCtl: xgfGetFPS pid:2298 fps:-1
+11-07 02:45:13.774 27806  4030 E MM.MotoApp: Not found flag com.motorola.sensi.theme
+11-07 02:45:13.775 27806  4030 E MM.MotoApp: Error on getSupportVersionInMotorolaSettings null
+11-07 02:45:13.779  1830  3982 E DatabaseUtils: Writing exception to parcel
+11-07 02:45:13.779  1830  3982 E DatabaseUtils: java.lang.SecurityException: Permission denial: writing to settings requires:com.motorola.permission.WRITE_SECURE_SETTINGS
+11-07 02:45:13.779  1830  3982 E DatabaseUtils: 	at com.motorola.android.providers.settings.MotorolaSettingsProvider.enforceWritePermission(MotorolaSettingsProvider.java:1171)
+11-07 02:45:13.779  1830  3982 E DatabaseUtils: 	at com.motorola.android.providers.settings.MotorolaSettingsProvider.mutateGlobalSetting(MotorolaSettingsProvider.java:742)
+11-07 02:45:13.779  1830  3982 E DatabaseUtils: 	at com.motorola.android.providers.settings.MotorolaSettingsProvider.insertGlobalSetting(MotorolaSettingsProvider.java:712)
+11-07 02:45:13.779  1830  3982 E DatabaseUtils: 	at com.motorola.android.providers.settings.MotorolaSettingsProvider.call(MotorolaSettingsProvider.java:248)
+11-07 02:45:13.779  1830  3982 E DatabaseUtils: 	at android.content.ContentProvider.call(ContentProvider.java:2730)
+11-07 02:45:13.779  1830  3982 E DatabaseUtils: 	at android.content.ContentProvider$Transport.call(ContentProvider.java:640)
+11-07 02:45:13.779  1830  3982 E DatabaseUtils: 	at android.content.ContentProviderNative.onTransact(ContentProviderNative.java:307)
+11-07 02:45:13.779  1830  3982 E DatabaseUtils: 	at android.os.Binder.execTransactInternal(Binder.java:1367)
+11-07 02:45:13.779  1830  3982 E DatabaseUtils: 	at android.os.Binder.execTransact(Binder.java:1297)
+11-07 02:45:13.780 27806  4030 E MM.MotoApp: Error on updateSupportVersionInMotorolaSettings Permission denial: writing to settings requires:com.motorola.permission.WRITE_SECURE_SETTINGS
+11-07 02:45:13.784  1184  1763 D MtkAudioResamplerDyn: MtkAudioResamplerDyn InBuffer::reset!!
+11-07 02:45:13.805  1127 28433 D AudioALSAStreamOut: +setParameters(): flag 2, MixerThreadSleep=
+11-07 02:45:13.806  1127 28433 W AudioALSAStreamOut: setParameters(), still have param.size() = 1, remain param = "MixerThreadSleep="
+11-07 02:45:13.828  1127 28433 D AudioALSAStreamOut: +setParameters(): flag 2, MixerThreadSleep=
+11-07 02:45:13.828  1127 28433 W AudioALSAStreamOut: setParameters(), still have param.size() = 1, remain param = "MixerThreadSleep="
+11-07 02:45:13.845  1500 15806 D AudioTrack: pause(4601): 0xf6aa9a00, prior state:STATE_STOPPED
+11-07 02:45:13.847  1830  2553 I MediaFocusControl: abandonAudioFocus() from uid/pid 10288/2298 clientId=android.media.AudioManager@30bc118
+11-07 02:45:13.848  1184  1763 D audioserver: FGS Logger Transaction failed
+11-07 02:45:13.848  1184  1763 D audioserver: -129
+11-07 02:45:13.848  1830  2553 I AudioService.FadeOutManager: unfadeOutUid() uid:10740
+11-07 02:45:13.849  2298 15800 V MediaPlayer: resetDrmState:  mDrmInfo=null mDrmProvisioningThread=null mPrepareDrmInProgress=false mActiveDrmScheme=false
+11-07 02:45:13.849  2298 15800 V MediaPlayer: cleanDrmObj: mDrmObj=null mDrmSessionId=null
+11-07 02:45:13.850  1184  1525 I AudioEffect: disable 0xb400007c821a1e00
+11-07 02:45:13.850  1500  2050 D AudioSink: setIsReset, 1
+11-07 02:45:13.850  1500  2050 D NuPlayerDriver: reset(0xf6aa4be0) at state 6
+11-07 02:45:13.851  1184  1525 I AudioEffect: Destructor 0xb400007c821a1e00
+11-07 02:45:13.851  1184  1525 I AudioFlinger_Threads: removeEffect_l(): 0xb400007c820f0740, effect = 0xb400007c71f5c300, name = Notification Listener
+11-07 02:45:13.852  1127 28433 I EffectsFactory: Effect_Command(): self = 0xb40000728f0b08e0, cmdCode = 4
+11-07 02:45:13.852  1127 28433 V DlbVolumeListener: effectCommand
+11-07 02:45:13.852  1127 28433 V DlbVolumeListener: effectCommand :: Command EFFECT_CMD_DISABLE
+11-07 02:45:13.853  1127 28433 I EffectsFactory: EffectRelease(): 0xb40000728f0b08e0
+11-07 02:45:13.853  1127 28433 V DlbVolumeListener: release(handle=0xb40000728f0e6e60)
+11-07 02:45:13.853  1500 15806 D AudioTrack: pause(4601): 0xf6aa9a00, prior state:STATE_STOPPED
+11-07 02:45:13.854  1500 15806 D AudioTrack: flush(4601): 0xf6aa9a00, prior state:STATE_STOPPED
+11-07 02:45:13.855  1184  1525 I AudioFlinger::EffectChain: removeEffect_l() effect 0xb400007c71f5c300, removed from chain 0xb400007c82045fc0 at rank 0
+11-07 02:45:13.855  1184  1525 I AudioFlinger_Threads: removeEffectChain_l() 0xb400007c82045fc0 from thread 0xb400007c820f0740 for session 13121
+11-07 02:45:13.856  1184  1525 I AudioFlinger::EffectModule: Destructor 0xb400007c71f5c300
+11-07 02:45:13.856  1184  1763 I AudioFlinger::EffectChain: ~EffectChain(): delete EffectChain = 0xb400007c82045fc0
+11-07 02:45:13.856  1127 28433 D AudioALSAStreamOut: +setParameters(): flag 2, NoAudioTrack=1
+11-07 02:45:13.856  1184  1525 W audioserver: Binder 0xb400007c71f60cc8 destroyed after setMinSchedulerPolicy before being parceled.
+11-07 02:45:13.856  1127 28433 W AudioALSAStreamOut: setParameters(), still have param.size() = 1, remain param = "NoAudioTrack=1"
+11-07 02:45:13.857  1184  1525 D AudioPolicyManagerCustomImpl: hifiAudio_stopOutputSamplerate() -output = 13, porId = 4601, samplerate = 44100  HifiState = 1,  stream 5, session 13121
+11-07 02:45:13.858  1184  1525 W AudioPolicyManagerCustomImpl: [MTK_APM_Route]setOutputDevices() mIoHandle 13 mId 1 device (0x2)(0x1, 0x2, 0x4, 0x8, 0x10, 0x20, 0x40, 0x800, 0x1000, 0x4000, 0x100000, 0x4000000) delayMs 84 force 0 size 5
+11-07 02:45:13.858  1500 15806 D AudioTrack: stop(4601): 0xf6aa9a00, prior state:STATE_FLUSHED
+11-07 02:45:13.859  1500 15807 I MediaCodec: (0xf63bb400) flush
+11-07 02:45:13.859  1500 15808 D MediaCodec: [0xf63bb400] setState: 7
+11-07 02:45:13.860  1500 15808 D MediaCodec: [0xf63bb400] setState: 8
+11-07 02:45:13.860  1500 15807 D MediaCodec: [0xf63bb400] [c2.android.vorbis.decoder] release
+11-07 02:45:13.861  1500 15808 D MediaCodec: [0xf63bb400] setState: 10
+11-07 02:45:13.863  1500 15808 I hw-BpHwBinder: onLastStrongRef automatically unlinking death recipients
+11-07 02:45:13.863  1539 15544 I hw-BpHwBinder: onLastStrongRef automatically unlinking death recipients
+11-07 02:45:13.864  1500 15808 D MediaCodec: [0xf63bb400] [c2.android.vorbis.decoder] kWhatReleaseCompleted
+11-07 02:45:13.864  1500 15808 D MediaCodec: [0xf63bb400] setState: 0
+11-07 02:45:13.865  1500 15807 D MediaCodec: [0xf63bb400] ~MediaCodec
+11-07 02:45:13.865  1539 15544 D BufferPoolAccessor2.0: Destruction - bufferpool2 0xb400007c02084228 cached: 0/0M, 0/0% in use; allocs: 0, 0% recycled; transfers: 0, 0% unfetched
+11-07 02:45:13.865  1500 15807 D MediaCodec: flushMediametrics
+11-07 02:45:13.873  1500 15802 D NuPlayerDriver: notifyResetComplete(0xf6aa4be0)
+11-07 02:45:13.874  1500  2050 W AMessage: failed to post message as target looper for handler 0 is gone.
+11-07 02:45:13.875  1500  2050 D AudioSink: setIsReset, 1
+11-07 02:45:13.876  1500  2050 D AudioTrack: ~AudioTrack(4601): 0xf6aa9a00
+11-07 02:45:13.877  1500  2050 D AudioTrack: stop(4601): 0xf6aa9a00, prior state:STATE_FLUSHED
+11-07 02:45:13.879  1184  1525 D APM_AudioPolicyManager: [MTK_APM_Output]releaseOutput() 13 portId 4601
+11-07 02:45:13.881  1184  4504 D audioserver: FGS Logger Transaction failed
+11-07 02:45:13.882  1184  4504 D audioserver: -129
+11-07 02:45:14.459  1492  1492 W HidlServiceManagement: Waited for hwservicemanager.ready for a second, waiting another...
+11-07 02:45:14.460  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 02:45:14.455  1492  1492 W binder:1492_2: type=1400 audit(0.0:848412): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 02:45:14.455  1492  1492 W binder:1492_2: type=1400 audit(0.0:848413): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 02:45:14.525  1527  1731 D ULogGuard: Monitoring: 10 threads, 0 requests, 0 time-bombs; 1 guards. ResetFlags = 0x7
+11-07 02:45:14.571  1167  1208 I libPerfCtl: xgfGetFPS pid:2298 fps:-1
+11-07 02:45:14.701  2298  2298 D CBR_SystemUI: CarrierLabel - : updateLabel cellMsg:  cellEnabled: true
+11-07 02:45:14.702  2298  2298 D CBR_SystemUI: CarrierLabel - : updateLabel mCellBroadcastMessage Visibility: 8
+11-07 02:45:14.702  2298  2298 D CBR_SystemUI: CarrierLabel - : updateLabel cellMsg:  cellEnabled: true
+11-07 02:45:14.703  2298  2298 D CBR_SystemUI: CarrierLabel - : updateLabel mCellBroadcastMessage Visibility: 8
+11-07 02:45:14.704  2298  2298 D StatusBarIconController: ignoring old pipeline callbacks, because the new mobile icons are enabled
+11-07 02:45:15.460  1492  1492 W HidlServiceManagement: Waited for hwservicemanager.ready for a second, waiting another...
+11-07 02:45:15.461  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 02:45:15.461  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 02:45:15.459  1492  1492 W binder:1492_2: type=1400 audit(0.0:848414): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 02:45:15.459  1492  1492 W binder:1492_2: type=1400 audit(0.0:848415): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 02:45:15.507  1830  2074 W PackageManager: Missing required system package: com.anchor.mine, but found with extended search.
+11-07 02:45:15.549  1134  1491 I hwcomposer: [DRMDEV] (0) failed to waitNextVsync: -1  
+11-07 02:45:15.559  1134  1491 I hwcomposer: [DRMDEV] (0) failed to waitNextVsync: -1  
+11-07 02:45:15.563  2298  2298 I KgdSliceProvider: The weather info has not change, does not need to be updated. mTempF=69 iconNumber=37 celsius=true
+11-07 02:45:15.569  1198  1661 I Scheduler: applyPolicy: UpdateRefreshRate 30 to 120 of group 0: [touch=0:0 touchBoost=0 scroll=0:0 idle=0:0]
+11-07 02:45:15.571  1167  1208 I libPerfCtl: xgfGetFPS pid:2298 fps:-1
+11-07 02:45:15.575  1830  3982 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:45:15.592  1134  1491 I hwcomposer: [DRMDEV] (0) failed to waitNextVsync: -1  
+11-07 02:45:15.596  2298  2298 D TileServices: Couldn't find tile for ComponentInfo{com.google.android.apps.wellbeing/com.google.android.apps.wellbeing.screen.ui.GrayscaleTileService}(0)
+11-07 02:45:15.602  1198  1198 I BufferQueueProducer: [StatusBar#90](this:0xb400007c09d63718,id:-1,api:0,p:-1,c:1198) queueBuffer: fps=6.59 dur=5006.38 max=4490.61 min=7.78
+11-07 02:45:15.603  1198  1198 I SurfaceFlinger: setActiveModeInHwcIfNeeded changing active mode to 1(120.00 Hz) for display 0
+11-07 02:45:15.603  1134  1134 I hwcomposer: [HWC] (0) displaySetActiveConfig config:1  
+11-07 02:45:15.605  1134  1134 I hwcomposer: [HWCDisplay] [Display_0 (type:1)] fps:0.753462,dur:3981.62,max:3634.82,min:32.12  
+11-07 02:45:15.635  1198  1198 D SurfaceFlinger: MtkOverrideDuration: update vsync 120
+11-07 02:45:15.635  1198  1198 E SurfaceFlinger: MtkDuration override mode is disabled
+11-07 02:45:15.635  1198  1198 D SurfaceFlinger: MtkOverrideDuration: reset override duration
+11-07 02:45:15.757  1830  1830 D FlashNotifController: requestStartFlashNotification
+11-07 02:45:15.758  1830  1830 I FlashNotifController: startFlashNotification: type=1, tag=android
+11-07 02:45:15.758  1830  1830 D FlashNotifController: Flash notification is disabled
+11-07 02:45:15.771  1830  1830 W PackageManager: Missing required system package: com.anchor.mine, but found with extended search.
+11-07 02:45:15.773  1830  3479 W PackageManager: Missing required system package: com.anchor.mine, but found with extended search.
+11-07 02:45:15.779  1500  2050 D NuPlayerDriver: NuPlayerDriver(0xf6aa4be0) created, clientPid(2298)
+11-07 02:45:15.790 17985 12468 D NotificationFeature: Mine Mine Test Reminder
+11-07 02:45:15.791 15771 15790 I TestRunner: finished: testAlarmFires_SetsFlag(com.anchor.mine.alarms.AlarmSelfTest)

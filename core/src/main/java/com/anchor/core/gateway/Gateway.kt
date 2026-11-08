@@ -29,8 +29,9 @@ class Gateway(
 
     suspend fun executeTool(call: ToolCall, executedCalls: MutableSet<String> = mutableSetOf(), userMessage: String? = null, causeMsgId: String? = null): ToolResult {
         val args = EnvelopeParser.resolveArgs(call)
-        val callHash = call.tool + args.toString()
-        if (!executedCalls.add(callHash)) return ToolResult.Error("Duplicate tool call ignored")
+        // Keyed on the raw arguments: resolution drops placeholders, which would make two
+        // genuinely different calls look identical and silently drop the second one.
+        if (!executedCalls.add(EnvelopeParser.dedupeKey(call))) return ToolResult.Error("Duplicate tool call ignored")
 
         return when (call.tool) {
             "search_memory" -> {
@@ -454,7 +455,13 @@ class Gateway(
             it.id == choice || (choice == "update" && it.id != "add_new" && it.id != "cancel")
         } ?: return ToolResult.Error("Invalid choice")
 
-        if (userMessage != null && !matchesUserMessage(userMessage, chosenOption, choice)) {
+        // H-13 (R-15): the overlap check below is "any shared token", so a reply that *rejects*
+        // the option ("no, don't set dinner") matched it through "dinner" and committed. A
+        // negated reply never confirms, whatever it names.
+        if (userMessage != null && isNegated(userMessage, chosenOption, proposal)) {
+            return ToolResult.Error("Cannot confirm proposal: the reply rejects it")
+        }
+        if (userMessage != null && !matchesUserMessage(userMessage, chosenOption, choice, proposal)) {
             return ToolResult.Error("Cannot confirm proposal: choice '$choice' does not match user's response")
         }
 
@@ -468,6 +475,8 @@ class Gateway(
                     choice == "cancel" || choice == "no" -> {
                         val consumed = storage.consumeProposalCas(proposal.id)
                         if (!consumed) return ToolResult.Error("Proposal already resolved")
+                        // H-05 (R-09): no event was written, so there is nothing to undo. An empty
+                        // token is not "no token" — the UI renders Undo on `undoToken != null`.
                         ToolResult.Committed("CANCEL", proposal.id, "Cancelled: no changes made", "")
                     }
                     choice == "set" -> {
@@ -761,20 +770,55 @@ class Gateway(
         }
     }
 
-    private fun matchesUserMessage(userMessage: String, option: ProposalOption, choice: String): Boolean {
+    /**
+     * H-13 (R-15): true when the reply rejects rather than selects. Contractions are expanded
+     * first ("don't" → "do not"), then any negation token rejects — a reply like "no, dinner" or
+     * "not the dinner one" names the option and still rejects it. The one exception is a reply
+     * that *is* the title of the item the option acts on ("not now review"): the user is naming
+     * the item, not negating it, so the title's own words must not count against it. The item
+     * title is read from the proposal payload — an option's own title is a label like "Update
+     * existing", never the item name, so exempting it would exempt nothing.
+     */
+    private fun isNegated(userMessage: String, option: ProposalOption, proposal: Proposal): Boolean {
+        val expanded = userMessage.trim().lowercase(java.util.Locale.US)
+            .replace("’", "'")
+            .replace("cannot", "can not")
+            .replace("n't", " not")
+        val tokens = expanded.split(Regex("[^a-z0-9]+")).filter { it.isNotEmpty() }
+        val tokenSet = tokens.toSet()
+        val itemTitle = proposal.payload?.let {
+            try { json.decodeFromString<ProposalPayload>(it).title } catch (e: Exception) { null }
+        }
+        val titleTokens = itemTitle?.trim()?.lowercase(java.util.Locale.US)
+            ?.split(Regex("[^a-z0-9]+"))?.filter { it.isNotEmpty() }.orEmpty()
+        if (titleTokens.isNotEmpty() && tokenSet == titleTokens.toSet()) {
+            return false
+        }
+        return tokens.any { it in NEGATION_TOKENS }
+    }
+
+    private fun matchesUserMessage(userMessage: String, option: ProposalOption, choice: String, proposal: Proposal): Boolean {
         val cleanMsg = userMessage.trim().lowercase(java.util.Locale.US)
         val cleanChoice = choice.trim().lowercase(java.util.Locale.US)
         val cleanTitle = option.title.trim().lowercase(java.util.Locale.US)
+        // The item's own name is a valid way to select its option: a dedupe chip's option title
+        // is "Update existing" and its id is the node id, so without this the only way to answer
+        // "Similar item already exists: Not now review" by name is refused.
+        val itemTitle = proposal.payload?.let {
+            try { json.decodeFromString<ProposalPayload>(it).title } catch (e: Exception) { null }
+        }?.trim()?.lowercase(java.util.Locale.US).orEmpty()
 
         if (cleanMsg == cleanChoice || cleanMsg == cleanTitle) return true
+        if (itemTitle.isNotEmpty() && cleanMsg == itemTitle) return true
         if (cleanTitle.contains(cleanMsg) || cleanMsg.contains(cleanTitle)) return true
 
         val stopWords = setOf("the", "a", "an", "to", "for", "in", "on", "at", "my", "me", "i", "it", "this", "that", "please")
         val userTokens = cleanMsg.split(Regex("[^a-zA-Z0-9]+")).filter { it.length >= 2 && it !in stopWords }
         val optionTokens = cleanTitle.split(Regex("[^a-zA-Z0-9]+")).filter { it.length >= 2 && it !in stopWords }
         val choiceTokens = cleanChoice.split(Regex("[^a-zA-Z0-9]+")).filter { it.length >= 2 && it !in stopWords }
+        val itemTokens = itemTitle.split(Regex("[^a-zA-Z0-9]+")).filter { it.length >= 2 && it !in stopWords }
 
-        if (userTokens.any { it in optionTokens || it in choiceTokens }) return true
+        if (userTokens.any { it in optionTokens || it in choiceTokens || it in itemTokens }) return true
 
         val chosenMillis = choice.toLongOrNull()
         if (chosenMillis != null) {
@@ -1094,9 +1138,10 @@ class Gateway(
                     else -> return ToolResult.Error("${intent.name} is not supported yet")
                 }
 
-                val activeRems = storage.getPendingReminders()
-                // D5: Fetch cleanly by relational node ID, not by fragile string prefix
-                val oldRem = storage.getReminderByNodeId(oldNode.id) ?: activeRems.find { it.nodeId == oldNode.id || it.id == "r_${oldNode.id}" }
+                // R-26: the pending read is paged, so it is only a fallback. A reminder outside
+                // the page must still be found by its node, or RESCHEDULE would create a second row.
+                val oldRem = storage.getReminderByNodeId(oldNode.id)
+                    ?: storage.getPendingReminders().find { it.nodeId == oldNode.id || it.id == "r_${oldNode.id}" }
                 val remId = oldRem?.id ?: "rem_${UUID.randomUUID().toString().take(8)}"
                 val existingTier = oldRem?.tier ?: AlarmTier.ALARM
 
@@ -1342,6 +1387,11 @@ class Gateway(
 
     companion object {
         const val DEDUPE_TIME_WINDOW_MS = 2 * 60 * 60 * 1000L // 2 hours
+
+        private val NEGATION_TOKENS = setOf(
+            "no", "not", "never", "nor", "neither", "none", "without",
+            "dont", "doesnt", "didnt", "wont", "isnt", "arent"
+        )
 
         fun isNearMatch(existingDueAt: Long?, newDueAt: Long?): Boolean {
             if (existingDueAt != null && newDueAt != null) {

@@ -112,13 +112,17 @@ class ContextBuilder(
         var currentCharsHistory = 0
         val includedHistory = mutableListOf<ChatMessage>()
 
+        // H3: newest-first walk. The newest message is the user's live turn and is always kept,
+        // even when it alone exceeds the budget. Any other message that does not fit is skipped
+        // rather than ending the walk, so one large message cannot starve all older history.
         for (msg in recentHistory.reversed()) {
             if (msg.content == null) continue
             val msgChars = msg.content.length
-            if (currentCharsHistory + msgChars <= allowedChatChars) {
+            val isNewest = includedHistory.isEmpty()
+            if (isNewest || currentCharsHistory + msgChars <= allowedChatChars) {
                 includedHistory.add(0, msg)
                 currentCharsHistory += msgChars
-            } else break
+            }
         }
 
         pack.addAll(includedHistory)

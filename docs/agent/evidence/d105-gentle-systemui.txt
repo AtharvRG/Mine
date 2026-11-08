@@ -1,0 +1,45 @@
+        [0] icon=StatusBarIconView(slot='screen_record' alpha=1.0 icon=StatusBarIcon(icon=Icon(typ=RESOURCE pkg=com.android.systemui id=0x7f080bae) user=0 ) visibleState=HIDDEN iconColor=#0 visibleState=2 iconAppearAmount=0.0 translationZ=0.0 notification=null)
+        [1] icon=StatusBarIconView(slot='vault_profile' alpha=1.0 icon=StatusBarIcon(icon=Icon(typ=RESOURCE pkg=com.android.systemui id=0x7f080c91) user=0 ) visibleState=HIDDEN iconColor=#0 visibleState=2 iconAppearAmount=0.0 translationZ=0.0 notification=null)
+        [2] icon=StatusBarIconView(slot='alarm_clock' alpha=1.0 icon=StatusBarIcon(icon=Icon(typ=RESOURCE pkg=com.android.systemui id=0x7f080b9a) user=0 ) visibleState=HIDDEN iconColor=#0 visibleState=2 iconAppearAmount=0.0 translationZ=0.0 notification=null)
+        [3] icon=StatusBarIconView(slot='rotate' alpha=1.0 icon=StatusBarIcon(icon=Icon(typ=RESOURCE pkg=com.android.systemui id=0x7f080bad) visible user=0 ) visibleState=HIDDEN iconColor=#0 visibleState=2 iconAppearAmount=0.0 translationZ=0.0 notification=null)
+        [4] icon=StatusBarIconView(slot='data_saver' alpha=1.0 icon=StatusBarIcon(icon=Icon(typ=RESOURCE pkg=com.android.systemui id=0x7f080b9f) user=0 ) visibleState=HIDDEN iconColor=#0 visibleState=2 iconAppearAmount=0.0 translationZ=0.0 notification=null)
+        [5] icon=StatusBarIconView(slot='nfc' alpha=1.0 icon=StatusBarIcon(icon=Icon(typ=RESOURCE pkg=com.android.systemui id=0x7f080e14) user=0 ) visibleState=HIDDEN iconColor=#0 visibleState=2 iconAppearAmount=0.0 translationZ=0.0 notification=null)
+        [6] icon=StatusBarIconView(slot='cast' alpha=1.0 icon=StatusBarIcon(icon=Icon(typ=RESOURCE pkg=com.android.systemui id=0x7f080b9d) user=0 ) visibleState=HIDDEN iconColor=#0 visibleState=2 iconAppearAmount=0.0 translationZ=0.0 notification=null)
+--
+         3:(screen_record) holder=StatusBarIconHolder(type=ICON tag=0 idDual=false subId1=0 subId2=0 isErrorSim=false visible=false) 
+         4:(vault_profile) holder=StatusBarIconHolder(type=ICON tag=0 idDual=false subId1=0 subId2=0 isErrorSim=false visible=false) 
+         5:(alarm_clock) holder=StatusBarIconHolder(type=ICON tag=0 idDual=false subId1=0 subId2=0 isErrorSim=false visible=false) 
+         6:(rotate) holder=StatusBarIconHolder(type=ICON tag=0 idDual=false subId1=0 subId2=0 isErrorSim=false visible=true) 
+         7:(headset) holder=null 
+         8:(data_saver) holder=StatusBarIconHolder(type=ICON tag=0 idDual=false subId1=0 subId2=0 isErrorSim=false visible=false) 
+         9:(ime) holder=null 
+--
+            com.android.systemui.statusbar.policy.LocationControllerImpl@63d158e
+          Categories: 
+        (android.app.action.NEXT_ALARM_CLOCK_CHANGED: exported):
+          Registered: true
+          Receivers:
+            com.android.systemui.statusbar.policy.NextAlarmControllerImpl@430284f
+            com.android.keyguard.KeyguardUpdateMonitor$9@216528d
+--
+                          android.widget.ImageView{2bc63ce G.ED..... ......I. 0,0-0,0 #7f0a059e app:id/mobile_type_vzw}
+                          com.android.systemui.statusbar.AnimatedImageView{ff372ef V.ED..... ......I. 0,0-0,0 #7f0a058a app:id/mobile_inout_vzw}
+                com.android.systemui.statusbar.phone.StatusIconContainer{291a8df V.E...... .......D 737,30-934,90 #7f0a086f app:id/statusIcons}
+                  StatusBarIconView(slot='screen_record' alpha=1.0 icon=StatusBarIcon(icon=Icon(typ=RESOURCE pkg=com.android.systemui id=0x7f080bae) user=0 ) visibleState=HIDDEN iconColor=#ffffede5 visibleState=2 iconAppearAmount=0.0 translationZ=0.0 notification=null)
+                  StatusBarIconView(slot='vault_profile' alpha=1.0 icon=StatusBarIcon(icon=Icon(typ=RESOURCE pkg=com.android.systemui id=0x7f080c91) user=0 ) visibleState=HIDDEN iconColor=#ffffede5 visibleState=2 iconAppearAmount=0.0 translationZ=0.0 notification=null)
+                  StatusBarIconView(slot='alarm_clock' alpha=1.0 icon=StatusBarIcon(icon=Icon(typ=RESOURCE pkg=com.android.systemui id=0x7f080b9a) user=0 ) visibleState=HIDDEN iconColor=#ffffede5 visibleState=2 iconAppearAmount=0.0 translationZ=0.0 notification=null)
+                  StatusBarIconView(slot='rotate' alpha=1.0 icon=StatusBarIcon(icon=Icon(typ=RESOURCE pkg=com.android.systemui id=0x7f080bad) visible user=0 ) visibleState=HIDDEN iconColor=#ffffede5 visibleState=2 iconAppearAmount=0.0 translationZ=0.0 notification=null)
+                  StatusBarIconView(slot='data_saver' alpha=1.0 icon=StatusBarIcon(icon=Icon(typ=RESOURCE pkg=com.android.systemui id=0x7f080b9f) user=0 ) visibleState=HIDDEN iconColor=#ffffede5 visibleState=2 iconAppearAmount=0.0 translationZ=0.0 notification=null)
+                  StatusBarIconView(slot='nfc' alpha=1.0 icon=StatusBarIcon(icon=Icon(typ=RESOURCE pkg=com.android.systemui id=0x7f080e14) user=0 ) visibleState=HIDDEN iconColor=#ffffede5 visibleState=2 iconAppearAmount=0.0 translationZ=0.0 notification=null)
+                  StatusBarIconView(slot='cast' alpha=1.0 icon=StatusBarIcon(icon=Icon(typ=RESOURCE pkg=com.android.systemui id=0x7f080b9d) user=0 ) visibleState=HIDDEN iconColor=#ffffede5 visibleState=2 iconAppearAmount=0.0 translationZ=0.0 notification=null)
+--
+                  android.widget.FrameLayout{6209bd0 V.E...... ......ID 0,8-448,117 #7f0a08d1 app:id/system_icons_container}
+                    android.widget.LinearLayout{fad0f93 V.E...... ......ID 156,0-448,109 #7f0a08d0 app:id/system_icons}
+                      com.android.systemui.statusbar.phone.StatusIconContainer{445bc82 V.E...... ......ID 0,0-197,109 #7f0a086f app:id/statusIcons}
+                        StatusBarIconView(slot='screen_record' alpha=1.0 icon=StatusBarIcon(icon=Icon(typ=RESOURCE pkg=com.android.systemui id=0x7f080bae) user=0 ) visibleState=HIDDEN iconColor=#ffffffff visibleState=2 iconAppearAmount=0.0 translationZ=0.0 notification=null)
+                        StatusBarIconView(slot='vault_profile' alpha=1.0 icon=StatusBarIcon(icon=Icon(typ=RESOURCE pkg=com.android.systemui id=0x7f080c91) user=0 ) visibleState=HIDDEN iconColor=#ffffffff visibleState=2 iconAppearAmount=0.0 translationZ=0.0 notification=null)
+                        StatusBarIconView(slot='alarm_clock' alpha=1.0 icon=StatusBarIcon(icon=Icon(typ=RESOURCE pkg=com.android.systemui id=0x7f080b9a) user=0 ) visibleState=HIDDEN iconColor=#ffffffff visibleState=2 iconAppearAmount=0.0 translationZ=0.0 notification=null)
+                        StatusBarIconView(slot='rotate' alpha=1.0 icon=StatusBarIcon(icon=Icon(typ=RESOURCE pkg=com.android.systemui id=0x7f080bad) visible user=0 ) visibleState=HIDDEN iconColor=#ffffffff visibleState=2 iconAppearAmount=0.0 translationZ=0.0 notification=null)
+                        StatusBarIconView(slot='data_saver' alpha=1.0 icon=StatusBarIcon(icon=Icon(typ=RESOURCE pkg=com.android.systemui id=0x7f080b9f) user=0 ) visibleState=HIDDEN iconColor=#ffffffff visibleState=2 iconAppearAmount=0.0 translationZ=0.0 notification=null)
+                        StatusBarIconView(slot='nfc' alpha=1.0 icon=StatusBarIcon(icon=Icon(typ=RESOURCE pkg=com.android.systemui id=0x7f080e14) user=0 ) visibleState=HIDDEN iconColor=#ffffffff visibleState=2 iconAppearAmount=0.0 translationZ=0.0 notification=null)
+                        StatusBarIconView(slot='cast' alpha=1.0 icon=StatusBarIcon(icon=Icon(typ=RESOURCE pkg=com.android.systemui id=0x7f080b9d) user=0 ) visibleState=HIDDEN iconColor=#ffffffff visibleState=2 iconAppearAmount=0.0 translationZ=0.0 notification=null)

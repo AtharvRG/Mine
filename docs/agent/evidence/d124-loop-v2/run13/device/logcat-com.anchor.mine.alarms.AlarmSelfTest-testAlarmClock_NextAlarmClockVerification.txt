@@ -1,0 +1,25 @@
+11-07 03:24:36.799 12323 12430 I TestRunner: started: testAlarmClock_NextAlarmClockVerification(com.anchor.mine.alarms.AlarmSelfTest)
+11-07 03:24:36.800  1527 25792 D AdaptCALTM: GetCustomParameters: No Nvram Content!
+11-07 03:24:36.804  3604 22248 D Camera2Helper: image ready640 480
+11-07 03:24:36.805  3604 22248 D com.motorola.faceunlock.camera.Camera2AuthController: Camera frame arrival
+11-07 03:24:36.805  3604 22248 D com.motorola.faceunlock.service.FaceAuthService: handleData start
+11-07 03:24:36.808  3384  3389 I gle.android.gms: Background young concurrent mark compact GC freed 75MB AllocSpace bytes, 99(12MB) LOS objects, 73% free, 31MB/117MB, paused 644us,3.884ms total 169.084ms
+11-07 03:24:36.812  1527 12760 D MtkCam/ATMsEventMgr: [HIDL]get factor(APP_NAME), factor_value(3rd_party)
+11-07 03:24:36.812 28144 28167 I dutj    : Connection state change: onCapabilitiesChanged, data connection: WIFI, manual connection eligibility: false, ntn roaming: false
+11-07 03:24:36.812  1527 12760 D MtkCam/ATMsEventMgr: [HIDL]get factor(APP_NAME), factor_value(3rd_party)
+11-07 03:24:36.812  1527 12760 D MtkCam/ATMsEventMgr: [HIDL]get factor(APP_NAME), factor_value(3rd_party)
+11-07 03:24:36.813 28144 28167 I dutj    : New default data network: wifi
+11-07 03:24:36.813  1527 12760 D MtkCam/ATMsEventMgr: [HIDL]get factor(APP_NAME), factor_value(3rd_party)
+11-07 03:24:36.813  1527 12760 D MtkCam/ATMsEventMgr: [HIDL]get factor(APP_NAME), factor_value(3rd_party)
+11-07 03:24:36.814  1527 12760 D isp_tuning_custom: is_to_invoke_capture_in_color lkf111111
+11-07 03:24:36.817  1527  1953 D MtkCam/ATMsEventMgr: [ATMsEventMgr]set factor(APP_NAME), factor_value(3rd_party)
+11-07 03:24:36.826  3604 22248 E ArcSoft : Algorithm, Detect face failed  7002
+11-07 03:24:36.826  3604 22248 I ArcImpl : compare finish: 28674
+11-07 03:24:36.826  3604 22248 D com.motorola.faceunlock.service.FaceAuthService: handleData result = 5 run: fake = 0, low = 0, compare score:0 live score:0.0
+11-07 03:24:36.832  1830  3983 W WifiService: Permission violation - getScanResults not allowed for uid=10173, packageName=com.google.android.gms, reason=java.lang.SecurityException: Location mode is disabled for the device
+11-07 03:24:36.834  3604 22248 D Camera2Helper: image ready640 480
+11-07 03:24:36.835  3604 22248 D com.motorola.faceunlock.camera.Camera2AuthController: Camera frame arrival
+11-07 03:24:36.835  3604 22248 D com.motorola.faceunlock.service.FaceAuthService: handleData start
+11-07 03:24:36.836  1527 25792 D AdaptCALTM: GetCustomParameters: No Nvram Content!
+11-07 03:24:36.834  1492  1492 W binder:1492_2: type=1400 audit(0.0:857503): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:24:36.839 12323 12430 I TestRunner: finished: testAlarmClock_NextAlarmClockVerification(com.anchor.mine.alarms.AlarmSelfTest)

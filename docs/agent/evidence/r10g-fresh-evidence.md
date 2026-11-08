@@ -154,7 +154,8 @@ PASS com.anchor.mine.export.ExportTest testImport_RejectsUnknownTable
 ```
 
 **Honest note on exit code 1:** `connectedAndroidTest` exits 1 on this device even when
-every test passes — a known teardown artifact. The authoritative result is the parsed
+every test passes — a known AGP 9.4.0 / UTP 32.4.0 exit-code defect (D-123), not a
+teardown artifact. The authoritative result is the parsed
 XML: `tests 7 failures 0 errors 0`. Full HTML: `r10g-export-test-results.html`.
 
 ---

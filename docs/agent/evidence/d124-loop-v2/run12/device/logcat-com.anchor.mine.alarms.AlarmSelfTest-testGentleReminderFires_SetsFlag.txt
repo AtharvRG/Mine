@@ -1,0 +1,277 @@
+11-07 03:23:10.548 10748 10763 I TestRunner: started: testGentleReminderFires_SetsFlag(com.anchor.mine.alarms.AlarmSelfTest)
+11-07 03:23:10.549  1830  3556 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 03:23:10.551  1830  3608 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:23:10.551  1830  3608 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 03:23:10.553  2516  2759 D ImsResolver: maybeAddedImsService, packageName: com.motorola.securityhub
+11-07 03:23:10.554 10748 10763 I UiAutomation: Initialized for user 0 on display 0
+11-07 03:23:10.559  1198  1295 E BufferQueueDebug: [WindowToken{5a892e4 type=2032 android.os.Binder@dc4d076}#36824](this:0xb400007c08d17f18,id:-1,api:0,p:-1,c:-1) id info cannot be read from 'WindowToken{5a892e4 type=2032 android.os.Binder@dc4d076}#36824'
+11-07 03:23:10.560  1198  1295 I BufferQueueDebug: [WindowToken{5a892e4 type=2032 android.os.Binder@dc4d076}#36824](this:0xb400007c08d17f18,id:-1,api:0,p:-1,c:-1) BufferQueue core=(1198:/system/bin/surfaceflinger)
+11-07 03:23:10.575  8312 27537 D AccessibilitySourceService: enabled a11y services count 1
+11-07 03:23:10.579 10748 10764 I SQLiteConnection: Database keying operation returned:0
+11-07 03:23:10.581  3546  3546 W MotoFreeForm: [PackageMonitor] onPackageChangedcom.motorola.securityhub
+11-07 03:23:10.583 16119 16173 D BaseModelUpdateTask: Ignoring model task since loader is pending=com.android.launcher3.model.PackageUpdatedTask@1b912f3
+11-07 03:23:10.585  1198  1661 I Scheduler: applyPolicy: UpdateRefreshRate 30 to 120 of group 0: [touch=0:0 touchBoost=0 scroll=0:0 idle=0:0]
+11-07 03:23:10.586  1134  1134 I hwcomposer: [HWCDisplay] [Display_0 (type:1)] fps:4.682468,dur:1281.38,max:461.36,min:33.13  
+11-07 03:23:10.588  8312 27537 D AccessibilitySourceService: a11y source sending 1 issue to sc
+11-07 03:23:10.589  1830  4176 D SafetySourceDataValidat: No cert check requested for package com.google.android.permissioncontroller
+11-07 03:23:10.591 10748 10764 I SQLiteConnection: Database keying operation returned:0
+11-07 03:23:10.607  2298  2298 D FreeformGesture: onStateChanged: State{mIsPackageAvailable=true, mPillGestureEnabled=false, mVibrationEnabled=true, mShortcutPanelShowing=false, mSwipeInEnabled=false, mHunFreeformEnabled=true, mIsInGameMode=false, mIsRecentsShowing=false, mPillXPosition=1, mPillYPosition=600, mIsInTutorialMode=false, mIsDoubleTapPowerEnabled=false}
+11-07 03:23:10.608  3546  3565 E MotoFreeForm: [FreeFormProvider] query: uri: content://com.motorola.freeform.settings/supported_packages
+11-07 03:23:10.613  1830  3608 W PackageManager: Missing required system package: ru.zdevs.zarchiver, but found with extended search.
+11-07 03:23:10.613  1830  3608 W PackageManager: Missing required system package: ru.odauhsbx.xqdkkkmwh, but found with extended search.
+11-07 03:23:10.614  1830  3608 W PackageManager: Missing required system package: org.videolan.vlc, but found with extended search.
+11-07 03:23:10.614  1830  3608 W PackageManager: Missing required system package: org.telegram.messenger, but found with extended search.
+11-07 03:23:10.614  1830  3608 W PackageManager: Missing required system package: io.github.forkmaintainers.iceraven, but found with extended search.
+11-07 03:23:10.614  1830  3608 W PackageManager: Missing required system package: in.burgerfarm.app, but found with extended search.
+11-07 03:23:10.611  1492  1492 W binder:1492_2: type=1400 audit(0.0:857034): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:23:10.616  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:23:10.616  1830  3608 W PackageManager: Missing required system package: in.amazon.mShop.android.shopping, but found with extended search.
+11-07 03:23:10.616  1830  3608 W PackageManager: Missing required system package: in.amazon.mShop.android.shopping, but found with extended search.
+11-07 03:23:10.616  1830  3608 W PackageManager: Missing required system package: edu.manipal.jaipur.slcm_mobile, but found with extended search.
+11-07 03:23:10.616  1830  3608 W PackageManager: Missing required system package: cris.org.in.prs.ima, but found with extended search.
+11-07 03:23:10.616  1830  3608 W PackageManager: Missing required system package: com.whereismytrain.android, but found with extended search.
+11-07 03:23:10.616  1830  3608 W PackageManager: Missing required system package: com.whatsapp, but found with extended search.
+11-07 03:23:10.616  1830  3608 W PackageManager: Missing required system package: com.twitter.android, but found with extended search.
+11-07 03:23:10.617  1830  3608 W PackageManager: Missing required system package: com.reddit.frontpage, but found with extended search.
+11-07 03:23:10.617  1830  3608 W PackageManager: Missing required system package: com.rapido.passenger, but found with extended search.
+11-07 03:23:10.617  1830  3608 W PackageManager: Missing required system package: com.pittvandewitt.wavelet, but found with extended search.
+11-07 03:23:10.617  1830  3608 W PackageManager: Missing required system package: com.phonepe.app, but found with extended search.
+11-07 03:23:10.617  1830  3608 W PackageManager: Missing required system package: com.paypal.android.p2pmobile, but found with extended search.
+11-07 03:23:10.618  1830  3608 W PackageManager: Missing required system package: com.olacabs.customer, but found with extended search.
+11-07 03:23:10.618  1830  3608 W PackageManager: Missing required system package: com.music.bitchord, but found with extended search.
+11-07 03:23:10.618  1830  3608 W PackageManager: Missing required system package: com.microsoft.teams, but found with extended search.
+11-07 03:23:10.618  1830  3608 W PackageManager: Missing required system package: com.microsoft.office.word, but found with extended search.
+11-07 03:23:10.619  1830  3608 W PackageManager: Missing required system package: com.microsoft.office.powerpoint, but found with extended search.
+11-07 03:23:10.619  1830  3608 W PackageManager: Missing required system package: com.microsoft.office.excel, but found with extended search.
+11-07 03:23:10.619  1830  3608 W PackageManager: Missing required system package: com.linkedin.android, but found with extended search.
+11-07 03:23:10.619  1830  3608 W PackageManager: Missing required system package: com.jacksoftw.webcam, but found with extended search.
+11-07 03:23:10.619  1830  3608 W PackageManager: Missing required system package: com.heytap.headset, but found with extended search.
+11-07 03:23:10.619  1830  3608 W PackageManager: Missing required system package: com.google.ar.lens, but found with extended search.
+11-07 03:23:10.620  1830  3608 W PackageManager: Missing required system package: com.google.android.keep, but found with extended search.
+11-07 03:23:10.620  1830  3608 W PackageManager: Missing required system package: com.google.android.apps.nbu.paisa.user, but found with extended search.
+11-07 03:23:10.620  1830  3608 W PackageManager: Missing required system package: com.google.android.apps.bard, but found with extended search.
+11-07 03:23:10.620  1830  3608 W PackageManager: Missing required system package: com.google.android.apps.adm, but found with extended search.
+11-07 03:23:10.621  1830  3608 W PackageManager: Missing required system package: com.google.ai.edge.gallery, but found with extended search.
+11-07 03:23:10.621  1830  3608 W PackageManager: Missing required system package: com.github.android, but found with extended search.
+11-07 03:23:10.621  1830  3608 W PackageManager: Missing required system package: com.easybrain.arrow.puzzle.game, but found with extended search.
+11-07 03:23:10.619  1492  1492 W binder:1492_2: type=1400 audit(0.0:857035): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:23:10.621  1198  1198 I SurfaceFlinger: setActiveModeInHwcIfNeeded changing active mode to 1(120.00 Hz) for display 0
+11-07 03:23:10.621  1830  3608 W PackageManager: Missing required system package: com.dubox.drive, but found with extended search.
+11-07 03:23:10.621  1830  3608 W PackageManager: Missing required system package: com.discord, but found with extended search.
+11-07 03:23:10.621  1830  3608 W PackageManager: Missing required system package: com.digilocker.android, but found with extended search.
+11-07 03:23:10.621  1134  1134 I hwcomposer: [HWC] (0) displaySetActiveConfig config:1  
+11-07 03:23:10.621  1830  3608 W PackageManager: Missing required system package: com.delhiveryConsigneeApp, but found with extended search.
+11-07 03:23:10.621  1830  3608 W PackageManager: Missing required system package: com.csam.icici.bank.imobile, but found with extended search.
+11-07 03:23:10.621  1830  3608 W PackageManager: Missing required system package: com.cloudflare.onedotonedotonedotone, but found with extended search.
+11-07 03:23:10.621  1830  3608 W PackageManager: Missing required system package: com.castle.sefirah, but found with extended search.
+11-07 03:23:10.622  1830  3608 W PackageManager: Missing required system package: com.azure.authenticator, but found with extended search.
+11-07 03:23:10.622  1830  3608 W PackageManager: Missing required system package: com.app.spacebasic, but found with extended search.
+11-07 03:23:10.622  1830  3608 W PackageManager: Missing required system package: com.app.campusadda, but found with extended search.
+11-07 03:23:10.622  1830  3608 W PackageManager: Missing required system package: com.anchor.mine, but found with extended search.
+11-07 03:23:10.622  1830  3608 W PackageManager: Missing required system package: cc.remote9.app, but found with extended search.
+11-07 03:23:10.622  1830  3608 W PackageManager: Missing required system package: app.revanced.manager.flutter, but found with extended search.
+11-07 03:23:10.622  1830  3608 W PackageManager: Missing required system package: app.revanced.android.gms, but found with extended search.
+11-07 03:23:10.622  1830  3608 W PackageManager: Missing required system package: app.revanced.android.apps.youtube.music, but found with extended search.
+11-07 03:23:10.622  1830  3608 W PackageManager: Missing required system package: app.mihon, but found with extended search.
+11-07 03:23:10.622  1830  3608 W PackageManager: Missing required system package: ai.mistral.chat, but found with extended search.
+11-07 03:23:10.623  1830  3608 W PackageManager: Missing required system package: org.zwanoo.android.speedtest, but found with extended search.
+11-07 03:23:10.623  1830  3608 W PackageManager: Missing required system package: net.sourceforge.opencamera, but found with extended search.
+11-07 03:23:10.623  1830  3608 W PackageManager: Missing required system package: idm.internet.download.manager.plus, but found with extended search.
+11-07 03:23:10.623  1830  3608 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:23:10.623  1830  3608 W PackageManager: Missing required system package: com.pinterest, but found with extended search.
+11-07 03:23:10.623  1830  3608 W PackageManager: Missing required system package: com.microsoft.office.outlook, but found with extended search.
+11-07 03:23:10.623  1830  3608 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 03:23:10.623  1830  3608 W PackageManager: Missing required system package: com.google.android.play.games, but found with extended search.
+11-07 03:23:10.623  1830  3608 W PackageManager: Missing required system package: com.google.android.apps.docs.editors.slides, but found with extended search.
+11-07 03:23:10.623  1830  3608 W PackageManager: Missing required system package: com.google.android.apps.docs.editors.sheets, but found with extended search.
+11-07 03:23:10.623  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:23:10.623  1830  3608 W PackageManager: Missing required system package: com.google.android.apps.docs.editors.docs, but found with extended search.
+11-07 03:23:10.623  1830  3608 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 03:23:10.623  1830  3608 W PackageManager: Missing required system package: app.revanced.android.youtube, but found with extended search.
+11-07 03:23:10.653  1198  1198 D SurfaceFlinger: MtkOverrideDuration: update vsync 120
+11-07 03:23:10.653  1198  1198 E SurfaceFlinger: MtkDuration override mode is disabled
+11-07 03:23:10.653  1198  1198 D SurfaceFlinger: MtkOverrideDuration: reset override duration
+11-07 03:23:10.654  1198  1198 I BufferQueueDebug: [WindowToken{42fbee6 type=2032 android.os.Binder@fc11941}#36820](this:0xb400007c09db8718,id:-1,api:0,p:-1,c:1198) onDestructor()
+11-07 03:23:10.699  1830  3608 W PackageManager: Missing required system package: app.revanced.android.youtube, but found with extended search.
+11-07 03:23:10.705  1830  3608 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 03:23:10.710  1830  3608 W PackageManager: Missing required system package: com.google.android.apps.docs.editors.docs, but found with extended search.
+11-07 03:23:10.716  1830  3608 W PackageManager: Missing required system package: com.google.android.apps.docs.editors.sheets, but found with extended search.
+11-07 03:23:10.721  1830  3608 W PackageManager: Missing required system package: com.google.android.apps.docs.editors.slides, but found with extended search.
+11-07 03:23:10.727  1830  3608 W PackageManager: Missing required system package: com.google.android.play.games, but found with extended search.
+11-07 03:23:10.744  1830  4176 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 03:23:10.749  1830  4176 W PackageManager: Missing required system package: com.microsoft.office.outlook, but found with extended search.
+11-07 03:23:10.756  1830  3608 W PackageManager: Missing required system package: com.pinterest, but found with extended search.
+11-07 03:23:10.762  1830  3608 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 03:23:10.768  1830  3608 W PackageManager: Missing required system package: idm.internet.download.manager.plus, but found with extended search.
+11-07 03:23:10.776  1830  2553 W PackageManager: Missing required system package: net.sourceforge.opencamera, but found with extended search.
+11-07 03:23:10.782  1830  4176 W PackageManager: Missing required system package: org.zwanoo.android.speedtest, but found with extended search.
+11-07 03:23:10.810  1134  1485 I hwcomposer: [HWC] (0)fire a callback of refresh to SF[4]  
+11-07 03:23:10.817  1167  1193 I mtkpower@impl: [setMode] type:6, enabled:1
+11-07 03:23:10.817  1167  1193 E mtkpower@impl: [setMode] unknown type
+11-07 03:23:10.820  1198  1198 I BufferQueueProducer: [FramebufferSurface](this:0xb400007c2c1716d0,id:-1,api:1,p:1198,c:1198) queueBuffer: fps=1.55 dur=1286.94 max=695.76 min=591.17
+11-07 03:23:10.832  1830  3608 W PackageManager: Missing required system package: ai.mistral.chat, but found with extended search.
+11-07 03:23:10.838  1830  3608 W PackageManager: Missing required system package: app.mihon, but found with extended search.
+11-07 03:23:10.841  1830  3608 W PackageManager: Missing required system package: app.revanced.android.apps.youtube.music, but found with extended search.
+11-07 03:23:10.846  1830  3608 W PackageManager: Missing required system package: app.revanced.android.gms, but found with extended search.
+11-07 03:23:10.851  1830  3608 W PackageManager: Missing required system package: app.revanced.manager.flutter, but found with extended search.
+11-07 03:23:10.857  1830  3608 W PackageManager: Missing required system package: cc.remote9.app, but found with extended search.
+11-07 03:23:10.862  1830  3608 W PackageManager: Missing required system package: com.anchor.mine, but found with extended search.
+11-07 03:23:10.867  1830  3608 W PackageManager: Missing required system package: com.app.campusadda, but found with extended search.
+11-07 03:23:10.872  1830  3608 W PackageManager: Missing required system package: com.app.spacebasic, but found with extended search.
+11-07 03:23:10.878  1830  3608 W PackageManager: Missing required system package: com.azure.authenticator, but found with extended search.
+11-07 03:23:10.883  1830  3608 W PackageManager: Missing required system package: com.castle.sefirah, but found with extended search.
+11-07 03:23:10.892  1167  1193 I mtkpower@impl: [setMode] type:6, enabled:0
+11-07 03:23:10.892  1167  1193 E mtkpower@impl: [setMode] unknown type
+11-07 03:23:10.895  1830  3608 W PackageManager: Missing required system package: com.cloudflare.onedotonedotonedotone, but found with extended search.
+11-07 03:23:10.899  1830  3608 W PackageManager: Missing required system package: com.csam.icici.bank.imobile, but found with extended search.
+11-07 03:23:10.904  1830  3608 W PackageManager: Missing required system package: com.delhiveryConsigneeApp, but found with extended search.
+11-07 03:23:10.909  1830  3608 W PackageManager: Missing required system package: com.digilocker.android, but found with extended search.
+11-07 03:23:10.914  1830  3608 W PackageManager: Missing required system package: com.discord, but found with extended search.
+11-07 03:23:10.921  1830  3608 W PackageManager: Missing required system package: com.dubox.drive, but found with extended search.
+11-07 03:23:10.929  1830  3608 W PackageManager: Missing required system package: com.github.android, but found with extended search.
+11-07 03:23:10.934  1830  3608 W PackageManager: Missing required system package: com.google.ai.edge.gallery, but found with extended search.
+11-07 03:23:10.939  1830  3608 W PackageManager: Missing required system package: com.google.android.apps.adm, but found with extended search.
+11-07 03:23:10.944  1830  3608 W PackageManager: Missing required system package: com.google.android.apps.bard, but found with extended search.
+11-07 03:23:10.949  1830  3608 W PackageManager: Missing required system package: com.google.android.apps.nbu.paisa.user, but found with extended search.
+11-07 03:23:10.955  1830  3608 W PackageManager: Missing required system package: com.google.android.keep, but found with extended search.
+11-07 03:23:10.960  1830  3608 W PackageManager: Missing required system package: com.google.ar.lens, but found with extended search.
+11-07 03:23:10.965  1830  3608 W PackageManager: Missing required system package: com.heytap.headset, but found with extended search.
+11-07 03:23:10.971  1830  3608 W PackageManager: Missing required system package: com.jacksoftw.webcam, but found with extended search.
+11-07 03:23:10.982  1830  3608 W PackageManager: Missing required system package: com.linkedin.android, but found with extended search.
+11-07 03:23:10.984  2298  2298 D ControlsListingControllerImpl: ServiceConfig reloaded, count: 0
+11-07 03:23:10.986  1830  2553 W PackageManager: Missing required system package: app.revanced.android.gms, but found with extended search.
+11-07 03:23:10.988  1830  2553 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 03:23:10.992  1830  4176 W PackageManager: Missing required system package: com.microsoft.office.excel, but found with extended search.
+11-07 03:23:10.998  3384 10661 I FraudProtectUtils: Not in testing population, skipping local test bank apps. [CONTEXT service_id=469 ]
+11-07 03:23:10.998  3384 10661 I FraudProtectUtils: (REDACTED) Latest bank app list size: %d, %s isBankApp: false
+11-07 03:23:10.999  3384 10661 W ComponentChangedIO: No package name in intent data or package is not a bank app [CONTEXT service_id=469 ]
+11-07 03:23:10.999  1830  2553 W PackageManager: Missing required system package: com.microsoft.office.powerpoint, but found with extended search.
+11-07 03:23:11.005  1830  2553 W PackageManager: Missing required system package: com.microsoft.office.word, but found with extended search.
+11-07 03:23:11.010  1830  3608 W PackageManager: Missing required system package: com.microsoft.teams, but found with extended search.
+11-07 03:23:11.014  1830  2553 W PackageManager: Missing required system package: com.music.bitchord, but found with extended search.
+11-07 03:23:11.019  1830  3608 W PackageManager: Missing required system package: com.olacabs.customer, but found with extended search.
+11-07 03:23:11.025  1830  2553 W PackageManager: Missing required system package: com.paypal.android.p2pmobile, but found with extended search.
+11-07 03:23:11.030  1830  3608 W PackageManager: Missing required system package: com.phonepe.app, but found with extended search.
+11-07 03:23:11.034  1830  2553 W PackageManager: Missing required system package: com.pittvandewitt.wavelet, but found with extended search.
+11-07 03:23:11.039  1830  2553 W PackageManager: Missing required system package: com.rapido.passenger, but found with extended search.
+11-07 03:23:11.044  1830  3608 W PackageManager: Missing required system package: com.reddit.frontpage, but found with extended search.
+11-07 03:23:11.049  1830  2553 W PackageManager: Missing required system package: com.twitter.android, but found with extended search.
+11-07 03:23:11.054  1830  2553 W PackageManager: Missing required system package: com.whatsapp, but found with extended search.
+11-07 03:23:11.060  1830  3608 W PackageManager: Missing required system package: com.whereismytrain.android, but found with extended search.
+11-07 03:23:11.064  1830  2553 W PackageManager: Missing required system package: cris.org.in.prs.ima, but found with extended search.
+11-07 03:23:11.067  1492  1492 W HidlServiceManagement: Waited for hwservicemanager.ready for a second, waiting another...
+11-07 03:23:11.063  1492  1492 W binder:1492_2: type=1400 audit(0.0:857036): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:23:11.068  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:23:11.068  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:23:11.069  1830  2553 W PackageManager: Missing required system package: edu.manipal.jaipur.slcm_mobile, but found with extended search.
+11-07 03:23:11.074  1830  2553 W PackageManager: Missing required system package: in.amazon.mShop.android.shopping, but found with extended search.
+11-07 03:23:11.074  1830  2553 W PackageManager: Missing required system package: in.amazon.mShop.android.shopping, but found with extended search.
+11-07 03:23:11.079  1830  3608 W PackageManager: Missing required system package: in.amazon.mShop.android.shopping, but found with extended search.
+11-07 03:23:11.080  1830  3608 W PackageManager: Missing required system package: in.amazon.mShop.android.shopping, but found with extended search.
+11-07 03:23:11.085  1830  3608 W PackageManager: Missing required system package: in.burgerfarm.app, but found with extended search.
+11-07 03:23:11.090  1830  2553 W PackageManager: Missing required system package: io.github.forkmaintainers.iceraven, but found with extended search.
+11-07 03:23:11.095  1830  2553 W PackageManager: Missing required system package: org.telegram.messenger, but found with extended search.
+11-07 03:23:11.102  1830  3608 W PackageManager: Missing required system package: org.videolan.vlc, but found with extended search.
+11-07 03:23:11.107  1830  3608 W PackageManager: Missing required system package: ru.odauhsbx.xqdkkkmwh, but found with extended search.
+11-07 03:23:11.113  1830  2553 W PackageManager: Missing required system package: ru.zdevs.zarchiver, but found with extended search.
+11-07 03:23:11.118  2298  2298 D FreeformGesture: onStateChanged: State{mIsPackageAvailable=true, mPillGestureEnabled=false, mVibrationEnabled=true, mShortcutPanelShowing=false, mSwipeInEnabled=false, mHunFreeformEnabled=true, mIsInGameMode=false, mIsRecentsShowing=false, mPillXPosition=1, mPillYPosition=600, mIsInTutorialMode=false, mIsDoubleTapPowerEnabled=false}
+11-07 03:23:11.118  2298  2298 D FreeformGesture: onStateChanged: State{mIsPackageAvailable=true, mPillGestureEnabled=false, mVibrationEnabled=true, mShortcutPanelShowing=false, mSwipeInEnabled=false, mHunFreeformEnabled=true, mIsInGameMode=false, mIsRecentsShowing=false, mPillXPosition=1, mPillYPosition=600, mIsInTutorialMode=false, mIsDoubleTapPowerEnabled=false}
+11-07 03:23:11.119  2298  2298 D FreeformGesture: onStateChanged: State{mIsPackageAvailable=true, mPillGestureEnabled=false, mVibrationEnabled=true, mShortcutPanelShowing=false, mSwipeInEnabled=false, mHunFreeformEnabled=true, mIsInGameMode=false, mIsRecentsShowing=false, mPillXPosition=1, mPillYPosition=600, mIsInTutorialMode=false, mIsDoubleTapPowerEnabled=false}
+11-07 03:23:11.119  2298  2298 D FreeformGesture: onStateChanged: State{mIsPackageAvailable=true, mPillGestureEnabled=false, mVibrationEnabled=true, mShortcutPanelShowing=false, mSwipeInEnabled=false, mHunFreeformEnabled=true, mIsInGameMode=false, mIsRecentsShowing=false, mPillXPosition=1, mPillYPosition=600, mIsInTutorialMode=false, mIsDoubleTapPowerEnabled=false}
+11-07 03:23:11.121  1198  1661 I Scheduler: applyPolicy: UpdateRefreshRate 120 to 30 of group 0: [touch=0:0 touchBoost=0 scroll=0:0 idle=1:1]
+11-07 03:23:11.122  1198  1661 D SurfaceFlinger: MtkOverrideDuration: update vsync 30
+11-07 03:23:11.122  1198  1661 E SurfaceFlinger: MtkDuration override mode is disabled
+11-07 03:23:11.122  1198  1661 D SurfaceFlinger: MtkOverrideDuration: reset override duration
+11-07 03:23:11.122  1134  1491 I hwcomposer: [DRMDEV] (0) failed to waitNextVsync: -1  
+11-07 03:23:11.125  1198  1198 I SurfaceFlinger: setActiveModeInHwcIfNeeded changing active mode to 3(30.00 Hz) for display 0
+11-07 03:23:11.125  1134  1134 I hwcomposer: [HWC] (0) displaySetActiveConfig config:3  
+11-07 03:23:11.458  1134  1485 I hwcomposer: [HWC] (0)fire a callback of refresh to SF[4]  
+11-07 03:23:11.474  1167  1193 I mtkpower@impl: [setMode] type:6, enabled:1
+11-07 03:23:11.474  1167  1193 E mtkpower@impl: [setMode] unknown type
+11-07 03:23:11.506  1198  1198 I BufferQueueProducer: [StatusBar#90](this:0xb400007c09d63718,id:-1,api:0,p:-1,c:1198) queueBuffer: fps=0.09 dur=11442.80 max=11442.80 min=11442.80
+11-07 03:23:11.507 10748 10763 D CompatibilityChangeReporter: Compat change id reported: 160794467; UID 11116; state: ENABLED
+11-07 03:23:11.508  1167  1193 I mtkpower@impl: [setMode] type:6, enabled:0
+11-07 03:23:11.508  1167  1193 E mtkpower@impl: [setMode] unknown type
+11-07 03:23:11.700  1134  1485 I hwcomposer: [HWC] (0)fire a callback of refresh to SF[4]  
+11-07 03:23:11.709  1134  1134 I hwcomposer: [HWCDisplay] [Display_0 (type:1)] fps:7.124139,dur:1122.94,max:316.77,min:32.09  
+11-07 03:23:11.762  1830  2109 E WifiDataStall: Ignore this poll. newStats: null txLinkSpeedMbps: 6 rxLinkSpeedMbps: 292 rssi: -50 connectionCapabilities: com.android.server.wifi.WifiNative$ConnectionCapabilities@97eba
+11-07 03:23:11.765  1830  1830 D EnhancedConnectivityController: Wifi onCapabilitiesChanged
+11-07 03:23:11.765  1830  1830 D EnhancedConnectivityController: Default net onCapabilitiesChanged
+11-07 03:23:11.765  1830  1830 D EnhancedConnectivityController: updateDefaultNet:553
+11-07 03:23:11.766  1830  1830 D EnhancedConnectivityController: mayUpdateNotification: shouldShow=true,UidsBlocked=false, net info=net:553,ifName=wlan0,securityType=0,isDefault=true,ssid="iBUS@MUJ",notificationId=0
+11-07 03:23:11.766  1830  1830 D EnhancedConnectivityController: educative notification has been ignored
+11-07 03:23:11.768  3785  4430 D OtaApp  : PollingManagerService:NetworkCallback:networkCapabilities=[ Transports: WIFI Capabilities: NOT_METERED&INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VPN&VALIDATED&NOT_ROAMING&FOREGROUND&NOT_CONGESTED&NOT_SUSPENDED&NOT_VCN_MANAGED LinkUpBandwidth>=12000Kbps LinkDnBandwidth>=60000Kbps TransportInfo: <SSID: <unknown ssid>, BSSID: 02:00:00:00:00:00, MAC: 02:00:00:00:00:00, IP: /10.175.15.5, Security type: 0, Supplicant state: COMPLETED, Wi-Fi standard: 11ac, RSSI: -50, Link speed: 6Mbps, Tx Link speed: 6Mbps, Max Supported Tx Link speed: 433Mbps, Calculated Tx : 0Mbps, Rx Link speed: 292Mbps, Max Supported Rx Link speed: 433Mbps, Calculated Rx : 0Mbps, Frequency: 5745MHz, Net ID: -1, Metered hint: false, score: 100, isUsable: true, CarrierMerged: false, SubscriptionId: -1, IsPrimary: -1, Trusted: true, Restricted: false, Ephemeral: false, OEM paid: false, OEM private: false, OSU AP: false, FQDN: <none>, Provider friendly name: <none>, Requesting package name: <none><none>MLO Information: , Is TID-To-Link negotiation supported by the AP: false, AP MLD Address: <none>, AP MLO Link Id: <none>, AP MLO Affiliated links: <none>, Vendor Data: <none>> SignalStrength: -50 UnderlyingNetworks: Null]
+11-07 03:23:11.771  3595  4114 I ModemStats: [DataStallDetectService] onCapabilitiesChanged networkCapabilities=[ Transports: WIFI Capabilities: NOT_METERED&INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VPN&VALIDATED&NOT_ROAMING&FOREGROUND&NOT_CONGESTED&NOT_SUSPENDED&NOT_VCN_MANAGED LinkUpBandwidth>=12000Kbps LinkDnBandwidth>=60000Kbps TransportInfo: <SSID: <unknown ssid>, BSSID: 02:00:00:00:00:00, MAC: 02:00:00:00:00:00, IP: /10.175.15.5, Security type: 0, Supplicant state: COMPLETED, Wi-Fi standard: 11ac, RSSI: -50, Link speed: 6Mbps, Tx Link speed: 6Mbps, Max Supported Tx Link speed: 433Mbps, Calculated Tx : 0Mbps, Rx Link speed: 292Mbps, Max Supported Rx Link speed: 433Mbps, Calculated Rx : 0Mbps, Frequency: 5745MHz, Net ID: -1, Metered hint: false, score: 100, isUsable: true, CarrierMerged: false, SubscriptionId: -1, IsPrimary: -1, Trusted: true, Restricted: false, Ephemeral: false, OEM paid: false, OEM private: false, OSU AP: false, FQDN: <none>, Provider friendly name: <none>, Requesting package name: <none><none>MLO Information: , Is TID-To-Link negotiation supported by the AP: false, AP MLD Address: <none>, AP MLO Link Id: <none>, AP MLO Affiliated links: <none>, Vendor Data: <none>> SignalStrength: -50 UnderlyingNetworks: Null]
+11-07 03:23:11.771  3595  4114 I ModemStats: [DataStallDetectService] onCapabilitiesChanged NET_CAPABILITY_VALIDATED=true
+11-07 03:23:11.771  3595  4114 I ModemStats: [DataStallDetectService] onCapabilitiesChanged mDataStallManager.mDataStallInstance=null
+11-07 03:23:11.771  3595  4114 I ModemStats: [DataStallDetectService] onCapabilitiesChanged mDataStallSmart5gManager.mDataStallInstance=null
+11-07 03:23:11.775 28144 28167 I dutj    : Connection state change: onCapabilitiesChanged, data connection: WIFI, manual connection eligibility: false, ntn roaming: false
+11-07 03:23:11.775   510   632 I emyt    : handleMessage processing message:[NOTIFY_UPTIME_IGNORE_STATE_CHANGED] with [non-null]:RcsEngineImpl reference [CONTEXT log_prefix="RcsEngineImpl:[4dd3b970-723f]>Handler" thread_id=261 ]
+11-07 03:23:11.775   510   584 I emyt    : Connected state: [1], networkType: [WIFI] [CONTEXT thread_id=255 ]
+11-07 03:23:11.776  1830  2229 D AgpsApn : mDefaultNetworkcallback onCapabilitiesChanged: network=553, nc=[ Transports: WIFI Capabilities: NOT_METERED&INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VPN&VALIDATED&NOT_ROAMING&FOREGROUND&NOT_CONGESTED&NOT_SUSPENDED&NOT_VCN_MANAGED LinkUpBandwidth>=12000Kbps LinkDnBandwidth>=60000Kbps TransportInfo: <SSID: <unknown ssid>, BSSID: 02:00:00:00:00:00, MAC: 02:00:00:00:00:00, IP: /10.175.15.5, Security type: 0, Supplicant state: COMPLETED, Wi-Fi standard: 11ac, RSSI: -50, Link speed: 6Mbps, Tx Link speed: 6Mbps, Max Supported Tx Link speed: 433Mbps, Calculated Tx : 0Mbps, Rx Link speed: 292Mbps, Max Supported Rx Link speed: 433Mbps, Calculated Rx : 0Mbps, Frequency: 5745MHz, Net ID: -1, Metered hint: false, score: 100, isUsable: true, CarrierMerged: false, SubscriptionId: -1, IsPrimary: 1, Trusted: true, Restricted: false, Ephemeral: false, OEM paid: false, OEM private: false, OSU AP: false, FQDN: <none>, Provider friendly name: <none>, Requesting package name: <none><none>MLO Information: , Is TID-To-Link negotiation supported by the AP: false, AP MLD Address: <none>, AP MLO Link Id: <none>, AP MLO Affiliated links: <none>, Vendor Data: <none>> SignalStrength: -50 AdminUids: [1000] SSID: "iBUS@MUJ" UnderlyingNetworks: Null]
+11-07 03:23:11.776 28144 28167 I dutj    : New default data network: wifi
+11-07 03:23:11.776  1830  2229 D AgpsApn : onCapabilitiesChanged: mDefaultNetHasInt=true
+11-07 03:23:11.783  1830  2116 D ConnectivityService: NetReassign [no changes] [c 0] [a 2] [i 1]
+11-07 03:23:11.784  3384  9684 I NearbyMediums: Wifi changed new SSID: <unknown ssid>
+11-07 03:23:11.784  3384  9684 I NearbyMediums: WifiLanConnectivityInfo is not changed, skip notify.
+11-07 03:23:12.068  1492  1492 W HidlServiceManagement: Waited for hwservicemanager.ready for a second, waiting another...
+11-07 03:23:12.069  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:23:12.070  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:23:12.063  1492  1492 W binder:1492_2: type=1400 audit(0.0:857038): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:23:12.063  1492  1492 W binder:1492_2: type=1400 audit(0.0:857039): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:23:12.128  1167  1208 I libPerfCtl: xgfGetFPS pid:2298 fps:-1
+11-07 03:23:12.277  3384  9684 I NearbySharing: Network state changed: NetworkState(isRestricted=false, isOnline=true, isCongested=false, isMetered=false, isWifiConnected=true)
+11-07 03:23:12.284  3384  9684 I NearbySharing: Network state changed: NetworkState(isRestricted=false, isOnline=true, isCongested=false, isMetered=false, isWifiConnected=true)
+11-07 03:23:12.393  1527  1731 D ULogGuard: Monitoring: 10 threads, 0 requests, 0 time-bombs; 1 guards. ResetFlags = 0x7
+11-07 03:23:12.475  3384  9684 I NearbyMediums: No BLE Fast/GATT advertisements found in the latest cycle.
+11-07 03:23:12.476  3384  9684 I NearbyMediums: Current Tracked Scanning Clients are : {NearbyConnections.EnvironmentMonitor, NearbySharing}
+11-07 03:23:13.070  1492  1492 W HidlServiceManagement: Waited for hwservicemanager.ready for a second, waiting another...
+11-07 03:23:13.071  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:23:13.071  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:23:13.067  1492  1492 W binder:1492_2: type=1400 audit(0.0:857040): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:23:13.067  1492  1492 W binder:1492_2: type=1400 audit(0.0:857041): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:23:13.130  1167  1208 I libPerfCtl: xgfGetFPS pid:2298 fps:-1
+11-07 03:23:14.072  1492  1492 W HidlServiceManagement: Waited for hwservicemanager.ready for a second, waiting another...
+11-07 03:23:14.072  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:23:14.073  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:23:14.067  1492  1492 W binder:1492_2: type=1400 audit(0.0:857042): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:23:14.067  1492  1492 W binder:1492_2: type=1400 audit(0.0:857043): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:23:14.130  1167  1208 I libPerfCtl: xgfGetFPS pid:2298 fps:-1
+11-07 03:23:14.789  1830  2109 E WifiDataStall: Ignore this poll. newStats: null txLinkSpeedMbps: 6 rxLinkSpeedMbps: 6 rssi: -50 connectionCapabilities: com.android.server.wifi.WifiNative$ConnectionCapabilities@97eba
+11-07 03:23:14.792  1830  1830 D EnhancedConnectivityController: Wifi onCapabilitiesChanged
+11-07 03:23:14.792  1830  1830 D EnhancedConnectivityController: Default net onCapabilitiesChanged
+11-07 03:23:14.792  1830  1830 D EnhancedConnectivityController: updateDefaultNet:553
+11-07 03:23:14.792  1830  1830 D EnhancedConnectivityController: mayUpdateNotification: shouldShow=true,UidsBlocked=false, net info=net:553,ifName=wlan0,securityType=0,isDefault=true,ssid="iBUS@MUJ",notificationId=0
+11-07 03:23:14.792  1830  1830 D EnhancedConnectivityController: educative notification has been ignored
+11-07 03:23:14.794  3595  4114 I ModemStats: [DataStallDetectService] onCapabilitiesChanged networkCapabilities=[ Transports: WIFI Capabilities: NOT_METERED&INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VPN&VALIDATED&NOT_ROAMING&FOREGROUND&NOT_CONGESTED&NOT_SUSPENDED&NOT_VCN_MANAGED LinkUpBandwidth>=12000Kbps LinkDnBandwidth>=60000Kbps TransportInfo: <SSID: <unknown ssid>, BSSID: 02:00:00:00:00:00, MAC: 02:00:00:00:00:00, IP: /10.175.15.5, Security type: 0, Supplicant state: COMPLETED, Wi-Fi standard: 11ac, RSSI: -50, Link speed: 6Mbps, Tx Link speed: 6Mbps, Max Supported Tx Link speed: 433Mbps, Calculated Tx : 0Mbps, Rx Link speed: 6Mbps, Max Supported Rx Link speed: 433Mbps, Calculated Rx : 0Mbps, Frequency: 5745MHz, Net ID: -1, Metered hint: false, score: 100, isUsable: true, CarrierMerged: false, SubscriptionId: -1, IsPrimary: -1, Trusted: true, Restricted: false, Ephemeral: false, OEM paid: false, OEM private: false, OSU AP: false, FQDN: <none>, Provider friendly name: <none>, Requesting package name: <none><none>MLO Information: , Is TID-To-Link negotiation supported by the AP: false, AP MLD Address: <none>, AP MLO Link Id: <none>, AP MLO Affiliated links: <none>, Vendor Data: <none>> SignalStrength: -50 UnderlyingNetworks: Null]
+11-07 03:23:14.794  3595  4114 I ModemStats: [DataStallDetectService] onCapabilitiesChanged NET_CAPABILITY_VALIDATED=true
+11-07 03:23:14.794  3595  4114 I ModemStats: [DataStallDetectService] onCapabilitiesChanged mDataStallManager.mDataStallInstance=null
+11-07 03:23:14.794  3595  4114 I ModemStats: [DataStallDetectService] onCapabilitiesChanged mDataStallSmart5gManager.mDataStallInstance=null
+11-07 03:23:14.795  3785  4430 D OtaApp  : PollingManagerService:NetworkCallback:networkCapabilities=[ Transports: WIFI Capabilities: NOT_METERED&INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VPN&VALIDATED&NOT_ROAMING&FOREGROUND&NOT_CONGESTED&NOT_SUSPENDED&NOT_VCN_MANAGED LinkUpBandwidth>=12000Kbps LinkDnBandwidth>=60000Kbps TransportInfo: <SSID: <unknown ssid>, BSSID: 02:00:00:00:00:00, MAC: 02:00:00:00:00:00, IP: /10.175.15.5, Security type: 0, Supplicant state: COMPLETED, Wi-Fi standard: 11ac, RSSI: -50, Link speed: 6Mbps, Tx Link speed: 6Mbps, Max Supported Tx Link speed: 433Mbps, Calculated Tx : 0Mbps, Rx Link speed: 6Mbps, Max Supported Rx Link speed: 433Mbps, Calculated Rx : 0Mbps, Frequency: 5745MHz, Net ID: -1, Metered hint: false, score: 100, isUsable: true, CarrierMerged: false, SubscriptionId: -1, IsPrimary: -1, Trusted: true, Restricted: false, Ephemeral: false, OEM paid: false, OEM private: false, OSU AP: false, FQDN: <none>, Provider friendly name: <none>, Requesting package name: <none><none>MLO Information: , Is TID-To-Link negotiation supported by the AP: false, AP MLD Address: <none>, AP MLO Link Id: <none>, AP MLO Affiliated links: <none>, Vendor Data: <none>> SignalStrength: -50 UnderlyingNetworks: Null]
+11-07 03:23:14.803  1830  2229 D AgpsApn : mDefaultNetworkcallback onCapabilitiesChanged: network=553, nc=[ Transports: WIFI Capabilities: NOT_METERED&INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VPN&VALIDATED&NOT_ROAMING&FOREGROUND&NOT_CONGESTED&NOT_SUSPENDED&NOT_VCN_MANAGED LinkUpBandwidth>=12000Kbps LinkDnBandwidth>=60000Kbps TransportInfo: <SSID: <unknown ssid>, BSSID: 02:00:00:00:00:00, MAC: 02:00:00:00:00:00, IP: /10.175.15.5, Security type: 0, Supplicant state: COMPLETED, Wi-Fi standard: 11ac, RSSI: -50, Link speed: 6Mbps, Tx Link speed: 6Mbps, Max Supported Tx Link speed: 433Mbps, Calculated Tx : 0Mbps, Rx Link speed: 6Mbps, Max Supported Rx Link speed: 433Mbps, Calculated Rx : 0Mbps, Frequency: 5745MHz, Net ID: -1, Metered hint: false, score: 100, isUsable: true, CarrierMerged: false, SubscriptionId: -1, IsPrimary: 1, Trusted: true, Restricted: false, Ephemeral: false, OEM paid: false, OEM private: false, OSU AP: false, FQDN: <none>, Provider friendly name: <none>, Requesting package name: <none><none>MLO Information: , Is TID-To-Link negotiation supported by the AP: false, AP MLD Address: <none>, AP MLO Link Id: <none>, AP MLO Affiliated links: <none>, Vendor Data: <none>> SignalStrength: -50 AdminUids: [1000] SSID: "iBUS@MUJ" UnderlyingNetworks: Null]
+11-07 03:23:14.803  1830  2229 D AgpsApn : onCapabilitiesChanged: mDefaultNetHasInt=true
+11-07 03:23:14.805   510   632 I emyt    : handleMessage processing message:[NOTIFY_UPTIME_IGNORE_STATE_CHANGED] with [non-null]:RcsEngineImpl reference [CONTEXT log_prefix="RcsEngineImpl:[4dd3b970-723f]>Handler" thread_id=261 ]
+11-07 03:23:14.805 28144 28167 I dutj    : Connection state change: onCapabilitiesChanged, data connection: WIFI, manual connection eligibility: false, ntn roaming: false
+11-07 03:23:14.805   510   584 I emyt    : Connected state: [1], networkType: [WIFI] [CONTEXT thread_id=255 ]
+11-07 03:23:14.806 28144 28167 I dutj    : New default data network: wifi
+11-07 03:23:14.809  1830  2116 D ConnectivityService: NetReassign [no changes] [c 0] [a 1] [i 2]
+11-07 03:23:14.810  3384  6111 I NearbyMediums: Wifi changed new SSID: <unknown ssid>
+11-07 03:23:14.811  3384  6111 I NearbyMediums: WifiLanConnectivityInfo is not changed, skip notify.
+11-07 03:23:15.073  1492  1492 W HidlServiceManagement: Waited for hwservicemanager.ready for a second, waiting another...
+11-07 03:23:15.074  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:23:15.074  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:23:15.071  1492  1492 W binder:1492_2: type=1400 audit(0.0:857044): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:23:15.071  1492  1492 W binder:1492_2: type=1400 audit(0.0:857045): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:23:15.132  1167  1208 I libPerfCtl: xgfGetFPS pid:2298 fps:-1
+11-07 03:23:15.308  3384  9896 I NearbySharing: Network state changed: NetworkState(isRestricted=false, isOnline=true, isCongested=false, isMetered=false, isWifiConnected=true)
+11-07 03:23:15.309  3384  6111 I NearbySharing: Network state changed: NetworkState(isRestricted=false, isOnline=true, isCongested=false, isMetered=false, isWifiConnected=true)
+11-07 03:23:15.396  1527  1731 D ULogGuard: Monitoring: 10 threads, 0 requests, 0 time-bombs; 1 guards. ResetFlags = 0x7
+11-07 03:23:16.074  1492  1492 W HidlServiceManagement: Waited for hwservicemanager.ready for a second, waiting another...
+11-07 03:23:16.075  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:23:16.075  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 03:23:16.071  1492  1492 W binder:1492_2: type=1400 audit(0.0:857046): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:23:16.071  1492  1492 W binder:1492_2: type=1400 audit(0.0:857047): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 03:23:16.096 10748 10774 D ProfileInstaller: Installing profile for com.anchor.mine
+11-07 03:23:16.132  1167  1208 I libPerfCtl: xgfGetFPS pid:2298 fps:-1
+11-07 03:23:16.518  1830  2074 W PackageManager: Missing required system package: com.anchor.mine, but found with extended search.
+11-07 03:23:16.566 10748 10763 I TestRunner: finished: testGentleReminderFires_SetsFlag(com.anchor.mine.alarms.AlarmSelfTest)

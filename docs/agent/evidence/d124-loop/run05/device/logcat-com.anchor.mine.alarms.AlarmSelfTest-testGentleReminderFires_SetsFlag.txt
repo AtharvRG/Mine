@@ -1,0 +1,1186 @@
+11-07 02:46:30.978 16367 16389 I TestRunner: started: testGentleReminderFires_SetsFlag(com.anchor.mine.alarms.AlarmSelfTest)
+11-07 02:46:30.979  1830  4471 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:30.979  1830  2562 W PackageManager: Missing required system package: org.telegram.messenger, but found with extended search.
+11-07 02:46:30.983  1830  1872 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:30.985  1830  4014 W PackageManager: Missing required system package: org.videolan.vlc, but found with extended search.
+11-07 02:46:30.987  1830  1872 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:30.987 16367 16391 I SQLiteConnection: Database keying operation returned:0
+11-07 02:46:30.990 16367 16391 I SQLiteConnection: Database keying operation returned:0
+11-07 02:46:30.991  1830  4014 W PackageManager: Missing required system package: ru.odauhsbx.xqdkkkmwh, but found with extended search.
+11-07 02:46:30.992  1830  1872 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:30.992 16367 16389 I UiAutomation: Initialized for user 0 on display 0
+11-07 02:46:30.996  1830  4471 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:30.997  1830  4471 W PackageManager: Missing required system package: ru.zdevs.zarchiver, but found with extended search.
+11-07 02:46:30.997  1198  1295 E BufferQueueDebug: [WindowToken{65bff9d type=2032 android.os.Binder@dd9e74}#36695](this:0xb400007c08d0ff18,id:-1,api:0,p:-1,c:-1) id info cannot be read from 'WindowToken{65bff9d type=2032 android.os.Binder@dd9e74}#36695'
+11-07 02:46:30.998  1198  1295 I BufferQueueDebug: [WindowToken{65bff9d type=2032 android.os.Binder@dd9e74}#36695](this:0xb400007c08d0ff18,id:-1,api:0,p:-1,c:-1) BufferQueue core=(1198:/system/bin/surfaceflinger)
+11-07 02:46:30.998  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.003  1134  1491 I hwcomposer: [DRMDEV] (0) failed to waitNextVsync: -1  
+11-07 02:46:31.004  2298  2298 D FreeformGesture: onStateChanged: State{mIsPackageAvailable=true, mPillGestureEnabled=false, mVibrationEnabled=true, mShortcutPanelShowing=false, mSwipeInEnabled=false, mHunFreeformEnabled=true, mIsInGameMode=false, mIsRecentsShowing=false, mPillXPosition=1, mPillYPosition=600, mIsInTutorialMode=false, mIsDoubleTapPowerEnabled=false}
+11-07 02:46:31.005  3546 28552 E MotoFreeForm: [FreeFormProvider] query: uri: content://com.motorola.freeform.settings/supported_packages
+11-07 02:46:31.005  2298  2298 D FreeformGesture: onStateChanged: State{mIsPackageAvailable=true, mPillGestureEnabled=false, mVibrationEnabled=true, mShortcutPanelShowing=false, mSwipeInEnabled=false, mHunFreeformEnabled=true, mIsInGameMode=false, mIsRecentsShowing=false, mPillXPosition=1, mPillYPosition=600, mIsInTutorialMode=false, mIsDoubleTapPowerEnabled=false}
+11-07 02:46:31.006  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.009  1830  3551 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.011  1830  2562 W PackageManager: Missing required system package: ru.zdevs.zarchiver, but found with extended search.
+11-07 02:46:31.011  1830  3551 W PackageManager: Missing required system package: app.revanced.android.gms, but found with extended search.
+11-07 02:46:31.011  1830  2562 W PackageManager: Missing required system package: ru.odauhsbx.xqdkkkmwh, but found with extended search.
+11-07 02:46:31.012  1830  2562 W PackageManager: Missing required system package: org.videolan.vlc, but found with extended search.
+11-07 02:46:31.012  1830  2562 W PackageManager: Missing required system package: org.telegram.messenger, but found with extended search.
+11-07 02:46:31.012  8312 27537 D AccessibilitySourceService: enabled a11y services count 1
+11-07 02:46:31.012  1830  2562 W PackageManager: Missing required system package: io.github.forkmaintainers.iceraven, but found with extended search.
+11-07 02:46:31.013  1830  2562 W PackageManager: Missing required system package: in.burgerfarm.app, but found with extended search.
+11-07 02:46:31.013  1830  2562 W PackageManager: Missing required system package: in.amazon.mShop.android.shopping, but found with extended search.
+11-07 02:46:31.014  1830  2562 W PackageManager: Missing required system package: in.amazon.mShop.android.shopping, but found with extended search.
+11-07 02:46:31.014  1830  2562 W PackageManager: Missing required system package: edu.manipal.jaipur.slcm_mobile, but found with extended search.
+11-07 02:46:31.014  1830  2562 W PackageManager: Missing required system package: cris.org.in.prs.ima, but found with extended search.
+11-07 02:46:31.015  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 02:46:31.015  1830  2562 W PackageManager: Missing required system package: com.whereismytrain.android, but found with extended search.
+11-07 02:46:31.015  1830  2562 W PackageManager: Missing required system package: com.whatsapp, but found with extended search.
+11-07 02:46:31.016  1830  2562 W PackageManager: Missing required system package: com.twitter.android, but found with extended search.
+11-07 02:46:31.016  1830  2562 W PackageManager: Missing required system package: com.reddit.frontpage, but found with extended search.
+11-07 02:46:31.016  1830  2562 W PackageManager: Missing required system package: com.rapido.passenger, but found with extended search.
+11-07 02:46:31.017  1830  2562 W PackageManager: Missing required system package: com.pittvandewitt.wavelet, but found with extended search.
+11-07 02:46:31.017  8312 27537 D AccessibilitySourceService: a11y source sending 1 issue to sc
+11-07 02:46:31.017  1830  2562 W PackageManager: Missing required system package: com.phonepe.app, but found with extended search.
+11-07 02:46:31.017  1830  2562 W PackageManager: Missing required system package: com.paypal.android.p2pmobile, but found with extended search.
+11-07 02:46:31.017  1830  4471 D SafetySourceDataValidat: No cert check requested for package com.google.android.permissioncontroller
+11-07 02:46:31.018  1830  2562 W PackageManager: Missing required system package: com.olacabs.customer, but found with extended search.
+11-07 02:46:31.018  1830  2562 W PackageManager: Missing required system package: com.music.bitchord, but found with extended search.
+11-07 02:46:31.018  1830  2562 W PackageManager: Missing required system package: com.microsoft.teams, but found with extended search.
+11-07 02:46:31.019  1830  2562 W PackageManager: Missing required system package: com.microsoft.office.word, but found with extended search.
+11-07 02:46:31.019  1830  2562 W PackageManager: Missing required system package: com.microsoft.office.powerpoint, but found with extended search.
+11-07 02:46:31.019  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.019  1830  2562 W PackageManager: Missing required system package: com.microsoft.office.excel, but found with extended search.
+11-07 02:46:31.020  1830  2562 W PackageManager: Missing required system package: com.linkedin.android, but found with extended search.
+11-07 02:46:31.020  1830  2562 W PackageManager: Missing required system package: com.jacksoftw.webcam, but found with extended search.
+11-07 02:46:31.020  1830  2562 W PackageManager: Missing required system package: com.heytap.headset, but found with extended search.
+11-07 02:46:31.020  1830  2562 W PackageManager: Missing required system package: com.google.ar.lens, but found with extended search.
+11-07 02:46:31.021  1830  2562 W PackageManager: Missing required system package: com.google.android.keep, but found with extended search.
+11-07 02:46:31.021  1830  2562 W PackageManager: Missing required system package: com.google.android.apps.nbu.paisa.user, but found with extended search.
+11-07 02:46:31.021  1830  2562 W PackageManager: Missing required system package: com.google.android.apps.bard, but found with extended search.
+11-07 02:46:31.021  1830  2562 W PackageManager: Missing required system package: com.google.android.apps.adm, but found with extended search.
+11-07 02:46:31.021  1830  2562 W PackageManager: Missing required system package: com.google.ai.edge.gallery, but found with extended search.
+11-07 02:46:31.022  1830  2562 W PackageManager: Missing required system package: com.github.android, but found with extended search.
+11-07 02:46:31.022  1830  4471 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.022  1830  2562 W PackageManager: Missing required system package: com.easybrain.arrow.puzzle.game, but found with extended search.
+11-07 02:46:31.022  1830  2562 W PackageManager: Missing required system package: com.dubox.drive, but found with extended search.
+11-07 02:46:31.022  1830  2562 W PackageManager: Missing required system package: com.discord, but found with extended search.
+11-07 02:46:31.023  1830  2562 W PackageManager: Missing required system package: com.digilocker.android, but found with extended search.
+11-07 02:46:31.023  1830  2562 W PackageManager: Missing required system package: com.delhiveryConsigneeApp, but found with extended search.
+11-07 02:46:31.023  1830  2562 W PackageManager: Missing required system package: com.csam.icici.bank.imobile, but found with extended search.
+11-07 02:46:31.023  1830  2562 W PackageManager: Missing required system package: com.cloudflare.onedotonedotonedotone, but found with extended search.
+11-07 02:46:31.024  1830  2562 W PackageManager: Missing required system package: com.castle.sefirah, but found with extended search.
+11-07 02:46:31.024  1830  2562 W PackageManager: Missing required system package: com.azure.authenticator, but found with extended search.
+11-07 02:46:31.024  1830  2562 W PackageManager: Missing required system package: com.app.spacebasic, but found with extended search.
+11-07 02:46:31.024  1830  2562 W PackageManager: Missing required system package: com.app.campusadda, but found with extended search.
+11-07 02:46:31.024  1830  2562 W PackageManager: Missing required system package: com.anchor.mine, but found with extended search.
+11-07 02:46:31.024  1830  2562 W PackageManager: Missing required system package: cc.remote9.app, but found with extended search.
+11-07 02:46:31.024  1830  2562 W PackageManager: Missing required system package: app.revanced.manager.flutter, but found with extended search.
+11-07 02:46:31.025  1830  2562 W PackageManager: Missing required system package: app.revanced.android.gms, but found with extended search.
+11-07 02:46:31.025  1830  2562 W PackageManager: Missing required system package: app.revanced.android.apps.youtube.music, but found with extended search.
+11-07 02:46:31.025  1830  1872 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.025  1830  2562 W PackageManager: Missing required system package: app.mihon, but found with extended search.
+11-07 02:46:31.025  1830  2562 W PackageManager: Missing required system package: ai.mistral.chat, but found with extended search.
+11-07 02:46:31.026  1830  2562 W PackageManager: Missing required system package: org.zwanoo.android.speedtest, but found with extended search.
+11-07 02:46:31.026  1830  2562 W PackageManager: Missing required system package: net.sourceforge.opencamera, but found with extended search.
+11-07 02:46:31.026  1198  1661 I Scheduler: applyPolicy: UpdateRefreshRate 30 to 120 of group 0: [touch=0:0 touchBoost=0 scroll=0:0 idle=0:0]
+11-07 02:46:31.026  1830  2562 W PackageManager: Missing required system package: idm.internet.download.manager.plus, but found with extended search.
+11-07 02:46:31.027  1830  2562 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 02:46:31.027  1830  2562 W PackageManager: Missing required system package: com.pinterest, but found with extended search.
+11-07 02:46:31.027  1830  2562 W PackageManager: Missing required system package: com.microsoft.office.outlook, but found with extended search.
+11-07 02:46:31.027  1830  2562 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 02:46:31.027  1830  2562 W PackageManager: Missing required system package: com.google.android.play.games, but found with extended search.
+11-07 02:46:31.028  1830  2562 W PackageManager: Missing required system package: com.google.android.apps.docs.editors.slides, but found with extended search.
+11-07 02:46:31.028  1830  2562 W PackageManager: Missing required system package: com.google.android.apps.docs.editors.sheets, but found with extended search.
+11-07 02:46:31.028  1134  1134 I hwcomposer: [HWCDisplay] [Display_0 (type:1)] fps:1.879083,dur:1596.52,max:1244.63,min:33.53  
+11-07 02:46:31.028  1830  2562 W PackageManager: Missing required system package: com.google.android.apps.docs.editors.docs, but found with extended search.
+11-07 02:46:31.028  1830  4471 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.028  1830  2562 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.029  1830  2562 W PackageManager: Missing required system package: app.revanced.android.youtube, but found with extended search.
+11-07 02:46:31.031  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.035  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.040  1830  4471 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.043  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.046  1830  1872 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.049  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.051  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.054  1830  1872 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.058  1830  1872 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.060  1198  1198 I SurfaceFlinger: setActiveModeInHwcIfNeeded changing active mode to 1(120.00 Hz) for display 0
+11-07 02:46:31.060  1134  1134 I hwcomposer: [HWC] (0) displaySetActiveConfig config:1  
+11-07 02:46:31.066  1830  1872 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.067  1830  3551 W PackageManager: Missing required system package: app.mihon, but found with extended search.
+11-07 02:46:31.069  1830  2562 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.072  1830  3551 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.076  1830  3551 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.079  1830  3551 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.082  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.084  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.087  1830  2562 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.091  1830  2562 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.092  1198  1198 D SurfaceFlinger: MtkOverrideDuration: update vsync 120
+11-07 02:46:31.092  1198  1198 E SurfaceFlinger: MtkDuration override mode is disabled
+11-07 02:46:31.092  1198  1198 D SurfaceFlinger: MtkOverrideDuration: reset override duration
+11-07 02:46:31.092  1198  1198 I BufferQueueDebug: [WindowToken{7a88283 type=2032 android.os.Binder@c6c6532}#36691](this:0xb400007c09db8718,id:-1,api:0,p:-1,c:1198) onDestructor()
+11-07 02:46:31.094  1830  3551 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.097  1830  2562 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.100  1830  2562 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.103  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.106  1830  3551 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.108  1830  2562 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.108  1830  2340 W PackageManager: Missing required system package: app.revanced.android.youtube, but found with extended search.
+11-07 02:46:31.111  1830  3551 W PackageManager: Missing required system package: io.github.forkmaintainers.iceraven, but found with extended search.
+11-07 02:46:31.111  1830  2562 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.113  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.115  1830  2562 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.118  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.119  1830  2340 W PackageManager: Missing required system package: com.google.android.apps.docs.editors.docs, but found with extended search.
+11-07 02:46:31.122  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.125  1830  2340 W PackageManager: Missing required system package: com.google.android.apps.docs.editors.sheets, but found with extended search.
+11-07 02:46:31.125  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.126  1830  3551 W PackageManager: Missing required system package: org.videolan.vlc, but found with extended search.
+11-07 02:46:31.129  1830  2562 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.131  1830  3551 W PackageManager: Missing required system package: com.google.android.apps.docs.editors.slides, but found with extended search.
+11-07 02:46:31.132  1830  2340 W PackageManager: Missing required system package: cris.org.in.prs.ima, but found with extended search.
+11-07 02:46:31.135  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.136  1830  3551 W PackageManager: Missing required system package: com.google.android.play.games, but found with extended search.
+11-07 02:46:31.140  1830  3551 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 02:46:31.142  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.144  1830  3551 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 02:46:31.144  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.146  1830  2340 W PackageManager: Missing required system package: com.microsoft.office.outlook, but found with extended search.
+11-07 02:46:31.147  1830  3551 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.149  8312 15974 E RoleControllerServiceImpl: Default/fallback role holder package doesn't qualify for the role, package: com.google.android.gms.supervision, role: android.app.role.SYSTEM_SUPERVISION, user: 0
+11-07 02:46:31.150  1830  2562 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.151  1830  2340 W PackageManager: Missing required system package: com.pinterest, but found with extended search.
+11-07 02:46:31.153  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.154  8312 15974 I Role    : com.google.android.gms not qualified for android.app.role.SYSTEM_CALL_STREAMING due to missing RequiredComponent{mFlags='0', mIntentFilterData=IntentFilterData{mAction='android.telecom.CallStreamingService', mCategories='[]', mDataScheme='null', mDataType='null'}, mMetaData=[], mPermission='android.permission.BIND_CALL_STREAMING_SERVICE', mQueryFlags=0} Requirement{mFeatureFlag=null, mMinTargetSdkVersion=1}
+11-07 02:46:31.154  8312 15974 E RoleControllerServiceImpl: Default/fallback role holder package doesn't qualify for the role, package: com.google.android.gms, role: android.app.role.SYSTEM_CALL_STREAMING, user: 0
+11-07 02:46:31.156  1830  2562 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 02:46:31.156  1830  1872 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.157  8312 15974 W SignedPackage: Package doesn't have required signing certificate: com.google.android.apps.work.clouddpc
+11-07 02:46:31.159  1830  2562 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.160  1830  3551 W PackageManager: Missing required system package: idm.internet.download.manager.plus, but found with extended search.
+11-07 02:46:31.162  1830  3551 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.164  1830  3551 W PackageManager: Missing required system package: net.sourceforge.opencamera, but found with extended search.
+11-07 02:46:31.165  1830  1872 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.168  1830  3551 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.169  1830  2340 W PackageManager: Missing required system package: org.zwanoo.android.speedtest, but found with extended search.
+11-07 02:46:31.170  1830  3551 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.173  1830  3551 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.176  1830  1872 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.179  1830  3551 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.182  1830  3551 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.185  1830  3551 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.188  1830  2562 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.191  1830  2562 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.194  1830  3551 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.196  1830  2562 W PackageManager: Missing required system package: edu.manipal.jaipur.slcm_mobile, but found with extended search.
+11-07 02:46:31.197  1830  1872 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.204  1830  2562 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.206  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.208  1830  3551 W PackageManager: Missing required system package: ru.zdevs.zarchiver, but found with extended search.
+11-07 02:46:31.209  1830  3551 W PackageManager: Missing required system package: ai.mistral.chat, but found with extended search.
+11-07 02:46:31.209  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.212  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.214  1830  3551 W PackageManager: Missing required system package: app.mihon, but found with extended search.
+11-07 02:46:31.215  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.218  1830  2562 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.218  1830  2340 W PackageManager: Missing required system package: app.revanced.android.apps.youtube.music, but found with extended search.
+11-07 02:46:31.220  1830  2562 W PackageManager: Missing required system package: ru.zdevs.zarchiver, but found with extended search.
+11-07 02:46:31.221  1830  3551 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.223  1830  2562 W PackageManager: Missing required system package: app.revanced.android.gms, but found with extended search.
+11-07 02:46:31.224  1830  3551 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.227  1830  1872 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.228  1830  1872 W PackageManager: Missing required system package: app.revanced.manager.flutter, but found with extended search.
+11-07 02:46:31.230  1830  2562 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.232  1830  1872 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.233  1830  2340 W PackageManager: Missing required system package: cc.remote9.app, but found with extended search.
+11-07 02:46:31.235  1830  1872 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.238  1830  1872 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.238  1830  3551 W PackageManager: Missing required system package: com.anchor.mine, but found with extended search.
+11-07 02:46:31.241  1830  3551 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.243  1830  2340 W PackageManager: Missing required system package: com.app.campusadda, but found with extended search.
+11-07 02:46:31.244  1830  3551 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.247  1830  3551 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.248  1830  2340 W PackageManager: Missing required system package: com.app.spacebasic, but found with extended search.
+11-07 02:46:31.249  1830  1872 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.250  1134  1485 I hwcomposer: [HWC] (0)fire a callback of refresh to SF[4]  
+11-07 02:46:31.252  1830  3551 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.254  1830  1872 W PackageManager: Missing required system package: com.azure.authenticator, but found with extended search.
+11-07 02:46:31.254  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.255  1167  1193 I mtkpower@impl: [setMode] type:6, enabled:1
+11-07 02:46:31.255  1167  1193 E mtkpower@impl: [setMode] unknown type
+11-07 02:46:31.258  1830  1872 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.258  1198  1198 I BufferQueueProducer: [FramebufferSurface](this:0xb400007c2c1716d0,id:-1,api:1,p:1198,c:1198) queueBuffer: fps=0.97 dur=2066.21 max=1475.26 min=590.95
+11-07 02:46:31.260  1830  3551 W PackageManager: Missing required system package: com.castle.sefirah, but found with extended search.
+11-07 02:46:31.261  1830  1872 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.264  1830  2562 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.265  1830  2562 W PackageManager: Missing required system package: com.cloudflare.onedotonedotonedotone, but found with extended search.
+11-07 02:46:31.267  1830  3551 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.270  1830  3551 W PackageManager: Missing required system package: com.csam.icici.bank.imobile, but found with extended search.
+11-07 02:46:31.272  1830  1872 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.275  1830  1872 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.275  1830  3551 W PackageManager: Missing required system package: com.delhiveryConsigneeApp, but found with extended search.
+11-07 02:46:31.279  1830  1872 W PackageManager: Missing required system package: com.digilocker.android, but found with extended search.
+11-07 02:46:31.280  1830  3551 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.282  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.284  1830  1872 W PackageManager: Missing required system package: com.discord, but found with extended search.
+11-07 02:46:31.285  1830  2340 W PackageManager: Missing required system package: idm.internet.download.manager.plus, but found with extended search.
+11-07 02:46:31.286  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.288  1830  1872 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.289  1830  3551 W PackageManager: Missing required system package: com.dubox.drive, but found with extended search.
+11-07 02:46:31.290  1830  4014 W PackageManager: Missing required system package: com.cloudflare.onedotonedotonedotone, but found with extended search.
+11-07 02:46:31.290  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.293  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.296  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.298  1830  3551 W PackageManager: Missing required system package: com.anchor.mine, but found with extended search.
+11-07 02:46:31.299  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.299  1830  2562 W PackageManager: Missing required system package: com.github.android, but found with extended search.
+11-07 02:46:31.302  1830  3551 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.303  1830  2562 W PackageManager: Missing required system package: com.music.bitchord, but found with extended search.
+11-07 02:46:31.305  1830  3551 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.308  1830  3551 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.308  1830  2340 W PackageManager: Missing required system package: com.google.ai.edge.gallery, but found with extended search.
+11-07 02:46:31.311  1830  3551 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.313  1830  2562 W PackageManager: Missing required system package: com.google.android.apps.adm, but found with extended search.
+11-07 02:46:31.315  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.318  1830  3551 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.320  1830  4014 W PackageManager: Missing required system package: com.google.android.apps.bard, but found with extended search.
+11-07 02:46:31.321  1830  2562 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.324  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.325  1830  2340 W PackageManager: Missing required system package: com.linkedin.android, but found with extended search.
+11-07 02:46:31.326  1830  3551 W PackageManager: Missing required system package: com.google.android.apps.nbu.paisa.user, but found with extended search.
+11-07 02:46:31.328  1830  3551 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.331  1167  1193 I mtkpower@impl: [setMode] type:6, enabled:0
+11-07 02:46:31.331  1167  1193 E mtkpower@impl: [setMode] unknown type
+11-07 02:46:31.331  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.331  1830  4014 W PackageManager: Missing required system package: com.google.android.keep, but found with extended search.
+11-07 02:46:31.333  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.336  1830  4014 W PackageManager: Missing required system package: com.google.ar.lens, but found with extended search.
+11-07 02:46:31.337  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.338  1830  4014 W PackageManager: Missing required system package: com.google.android.apps.nbu.paisa.user, but found with extended search.
+11-07 02:46:31.339  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.341  1830  2562 W PackageManager: Missing required system package: com.heytap.headset, but found with extended search.
+11-07 02:46:31.342  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.345  1830  2562 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.345  1830  4014 W PackageManager: Missing required system package: com.jacksoftw.webcam, but found with extended search.
+11-07 02:46:31.347  1830  3551 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.350  1830  2562 W PackageManager: Missing required system package: com.linkedin.android, but found with extended search.
+11-07 02:46:31.350  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.352  1830  3551 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.355  1830  2562 W PackageManager: Missing required system package: com.microsoft.office.excel, but found with extended search.
+11-07 02:46:31.357 27806 27806 I MM.MotoApp: Waiting update execution for com.motorola.securityhub
+11-07 02:46:31.358  2298  2298 D ControlsListingControllerImpl: ServiceConfig reloaded, count: 0
+11-07 02:46:31.358 27806 31122 I MM.MotoApp: Update finished for com.motorola.securityhub
+11-07 02:46:31.359  1830  4176 W PackageManager: Missing required system package: app.revanced.android.gms, but found with extended search.
+11-07 02:46:31.360  1830  3551 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.361  1830  1872 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.362  1830  2562 W PackageManager: Missing required system package: com.microsoft.office.powerpoint, but found with extended search.
+11-07 02:46:31.363  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.367  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.368  1830  2890 W PackageManager: Missing required system package: com.microsoft.office.word, but found with extended search.
+11-07 02:46:31.370  1830  2562 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.373  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.376  3384 16319 I FraudProtectUtils: Not in testing population, skipping local test bank apps. [CONTEXT service_id=469 ]
+11-07 02:46:31.376  3384 16319 I FraudProtectUtils: (REDACTED) Latest bank app list size: %d, %s isBankApp: false
+11-07 02:46:31.376  3384 16319 W ComponentChangedIO: No package name in intent data or package is not a bank app [CONTEXT service_id=469 ]
+11-07 02:46:31.376  1830  4014 W PackageManager: Missing required system package: com.microsoft.teams, but found with extended search.
+11-07 02:46:31.377  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.379  1830  2562 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.382  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.382  1830  2890 W PackageManager: Missing required system package: com.music.bitchord, but found with extended search.
+11-07 02:46:31.385  1830  2890 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.387  1830  4014 W PackageManager: Missing required system package: com.olacabs.customer, but found with extended search.
+11-07 02:46:31.387  1830  2562 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.390  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.393  1830  2562 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.393  1830  4176 W PackageManager: Missing required system package: com.paypal.android.p2pmobile, but found with extended search.
+11-07 02:46:31.395  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.397  1830  2562 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.398  1830  4176 W PackageManager: Missing required system package: com.phonepe.app, but found with extended search.
+11-07 02:46:31.400  1830  3551 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.402  1830  2562 W PackageManager: Missing required system package: com.pittvandewitt.wavelet, but found with extended search.
+11-07 02:46:31.403  1830  3551 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.405  1830  2562 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.407  1830  4014 W PackageManager: Missing required system package: com.rapido.passenger, but found with extended search.
+11-07 02:46:31.408  1830  2562 W PackageManager: Missing required system package: com.rapido.passenger, but found with extended search.
+11-07 02:46:31.408  1830  3551 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.411  1830  2562 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.412  1830  4014 W PackageManager: Missing required system package: com.reddit.frontpage, but found with extended search.
+11-07 02:46:31.413  1830  2562 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.416  1830  3551 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.417  1830  2562 W PackageManager: Missing required system package: com.digilocker.android, but found with extended search.
+11-07 02:46:31.417  1830  4014 W PackageManager: Missing required system package: com.twitter.android, but found with extended search.
+11-07 02:46:31.418  1830  2890 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.421  1830  2562 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.421  1830  4014 W PackageManager: Missing required system package: com.whatsapp, but found with extended search.
+11-07 02:46:31.424  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.426  1830  4176 W PackageManager: Missing required system package: com.whereismytrain.android, but found with extended search.
+11-07 02:46:31.426  1830  3551 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.429  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.430  1830  2890 W PackageManager: Missing required system package: com.app.spacebasic, but found with extended search.
+11-07 02:46:31.430  1830  2890 W PackageManager: Missing required system package: cris.org.in.prs.ima, but found with extended search.
+11-07 02:46:31.431  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.435  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.435  1830  2890 W PackageManager: Missing required system package: edu.manipal.jaipur.slcm_mobile, but found with extended search.
+11-07 02:46:31.436  1830  4014 W PackageManager: Missing required system package: com.google.android.keep, but found with extended search.
+11-07 02:46:31.437  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.437  1830  4014 W PackageManager: Missing required system package: com.dubox.drive, but found with extended search.
+11-07 02:46:31.440  1830  2890 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.440  1830  4176 W PackageManager: Missing required system package: in.amazon.mShop.android.shopping, but found with extended search.
+11-07 02:46:31.440  1830  4176 W PackageManager: Missing required system package: in.amazon.mShop.android.shopping, but found with extended search.
+11-07 02:46:31.443  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.446  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.447  1830  4176 W PackageManager: Missing required system package: in.amazon.mShop.android.shopping, but found with extended search.
+11-07 02:46:31.447  1830  4176 W PackageManager: Missing required system package: in.amazon.mShop.android.shopping, but found with extended search.
+11-07 02:46:31.449  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.451  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.452  1830  4176 W PackageManager: Missing required system package: in.burgerfarm.app, but found with extended search.
+11-07 02:46:31.454  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.456  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.457  1830  2890 W PackageManager: Missing required system package: io.github.forkmaintainers.iceraven, but found with extended search.
+11-07 02:46:31.459  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.461  1830  4176 W PackageManager: Missing required system package: org.telegram.messenger, but found with extended search.
+11-07 02:46:31.462  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.465  1830  2890 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.466  1830  3551 W PackageManager: Missing required system package: org.videolan.vlc, but found with extended search.
+11-07 02:46:31.468  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.471  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.471  1830  3551 W PackageManager: Missing required system package: ru.odauhsbx.xqdkkkmwh, but found with extended search.
+11-07 02:46:31.474  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.474 12575 12616 D WM-DelayedWorkTracker: Scheduling work 194952af-c7a9-43a4-a68b-48c59f29a2b2
+11-07 02:46:31.475 12575 12616 D WM-GreedyScheduler: Starting tracking for 194952af-c7a9-43a4-a68b-48c59f29a2b2
+11-07 02:46:31.476  1830  2890 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.477  1830  3551 W PackageManager: Missing required system package: ru.zdevs.zarchiver, but found with extended search.
+11-07 02:46:31.479  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.482  2298  2298 D FreeformGesture: onStateChanged: State{mIsPackageAvailable=true, mPillGestureEnabled=false, mVibrationEnabled=true, mShortcutPanelShowing=false, mSwipeInEnabled=false, mHunFreeformEnabled=true, mIsInGameMode=false, mIsRecentsShowing=false, mPillXPosition=1, mPillYPosition=600, mIsInTutorialMode=false, mIsDoubleTapPowerEnabled=false}
+11-07 02:46:31.482  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.482 12575 12593 D WM-ConstraintTracker: sal: initial state = false
+11-07 02:46:31.483 12575 12593 D WM-BrdcstRcvrCnstrntTrc: sal: registering receiver
+11-07 02:46:31.483  2298  2298 D FreeformGesture: onStateChanged: State{mIsPackageAvailable=true, mPillGestureEnabled=false, mVibrationEnabled=true, mShortcutPanelShowing=false, mSwipeInEnabled=false, mHunFreeformEnabled=true, mIsInGameMode=false, mIsRecentsShowing=false, mPillXPosition=1, mPillYPosition=600, mIsInTutorialMode=false, mIsDoubleTapPowerEnabled=false}
+11-07 02:46:31.484  2298  2298 D FreeformGesture: onStateChanged: State{mIsPackageAvailable=true, mPillGestureEnabled=false, mVibrationEnabled=true, mShortcutPanelShowing=false, mSwipeInEnabled=false, mHunFreeformEnabled=true, mIsInGameMode=false, mIsRecentsShowing=false, mPillXPosition=1, mPillYPosition=600, mIsInTutorialMode=false, mIsDoubleTapPowerEnabled=false}
+11-07 02:46:31.485  1830  2890 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.486 12575 12593 D WM-GreedyScheduler: Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=194952af-c7a9-43a4-a68b-48c59f29a2b2, generation=3323)
+11-07 02:46:31.488  1830  2890 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.491  1830  2890 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.492  1830  4014 W PackageManager: Missing required system package: com.azure.authenticator, but found with extended search.
+11-07 02:46:31.493  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.496  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.499  1830  2890 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.502  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.505  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.508  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.509  1830  4176 W PackageManager: Missing required system package: com.whatsapp, but found with extended search.
+11-07 02:46:31.509  1830  4176 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 02:46:31.509  1830  4176 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 02:46:31.510  1830  4176 W PackageManager: Missing required system package: com.whatsapp, but found with extended search.
+11-07 02:46:31.510  1830  2890 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.511  1830  4176 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 02:46:31.511  1830  4176 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 02:46:31.512  1830  2890 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 02:46:31.512  1830  2890 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 02:46:31.513  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.514  1830  4014 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 02:46:31.514  1830  4014 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 02:46:31.515  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.518  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.521  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.524  1830  2890 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.525  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.527  1830  2890 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.529  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.530  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.531  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.534  1830  2890 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.537  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.539  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.541  1830  2890 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.543  1830  2890 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.546  1830  2890 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.549  1830  4014 W PackageManager: Missing required system package: com.heytap.headset, but found with extended search.
+11-07 02:46:31.560  1198  1661 I Scheduler: applyPolicy: UpdateRefreshRate 120 to 30 of group 0: [touch=0:0 touchBoost=0 scroll=0:0 idle=1:1]
+11-07 02:46:31.561  1198  1661 D SurfaceFlinger: MtkOverrideDuration: update vsync 30
+11-07 02:46:31.561  1198  1661 E SurfaceFlinger: MtkDuration override mode is disabled
+11-07 02:46:31.561  1198  1661 D SurfaceFlinger: MtkOverrideDuration: reset override duration
+11-07 02:46:31.561  1134  1491 I hwcomposer: [DRMDEV] (0) failed to waitNextVsync: -1  
+11-07 02:46:31.561  1134  1491 I hwcomposer: [DRMDEV] (0) failed to waitNextVsync: -1  
+11-07 02:46:31.563  1198  1198 I SurfaceFlinger: setActiveModeInHwcIfNeeded changing active mode to 3(30.00 Hz) for display 0
+11-07 02:46:31.563  1134  1134 I hwcomposer: [HWC] (0) displaySetActiveConfig config:3  
+11-07 02:46:31.567  1492  1492 W HidlServiceManagement: Waited for hwservicemanager.ready for a second, waiting another...
+11-07 02:46:31.567  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 02:46:31.567  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 02:46:31.563  1492  1492 W binder:1492_2: type=1400 audit(0.0:848715): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 02:46:31.563  1492  1492 W binder:1492_2: type=1400 audit(0.0:848716): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 02:46:31.580  1830  4014 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 02:46:31.582  1830  4014 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 02:46:31.585  1830  2890 W PackageManager: Missing required system package: com.google.android.play.games, but found with extended search.
+11-07 02:46:31.589  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.590  1830  2890 W PackageManager: Missing required system package: com.google.android.apps.adm, but found with extended search.
+11-07 02:46:31.591  1830  2890 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.593  1830  2890 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.600  1830  4176 W PackageManager: Missing required system package: io.github.forkmaintainers.iceraven, but found with extended search.
+11-07 02:46:31.626  1830  2890 W PackageManager: Missing required system package: cc.remote9.app, but found with extended search.
+11-07 02:46:31.639  1830  2890 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.641  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.643  1830  1872 W PackageManager: Missing required system package: com.microsoft.teams, but found with extended search.
+11-07 02:46:31.644  1830  2890 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.647  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.650  1830  2890 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.652  1830  2890 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.655  1830  2890 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.656  1830  4176 W PackageManager: Missing required system package: ru.zdevs.zarchiver, but found with extended search.
+11-07 02:46:31.656  1830  4176 W PackageManager: Missing required system package: ru.odauhsbx.xqdkkkmwh, but found with extended search.
+11-07 02:46:31.657  1830  4176 W PackageManager: Missing required system package: org.videolan.vlc, but found with extended search.
+11-07 02:46:31.657  1830  4176 W PackageManager: Missing required system package: org.telegram.messenger, but found with extended search.
+11-07 02:46:31.657  1830  4176 W PackageManager: Missing required system package: io.github.forkmaintainers.iceraven, but found with extended search.
+11-07 02:46:31.657  1830  4176 W PackageManager: Missing required system package: in.burgerfarm.app, but found with extended search.
+11-07 02:46:31.657  1830  4176 W PackageManager: Missing required system package: in.amazon.mShop.android.shopping, but found with extended search.
+11-07 02:46:31.657  1830  4176 W PackageManager: Missing required system package: in.amazon.mShop.android.shopping, but found with extended search.
+11-07 02:46:31.657  1830  4176 W PackageManager: Missing required system package: edu.manipal.jaipur.slcm_mobile, but found with extended search.
+11-07 02:46:31.657  1830  1872 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.657  1830  4176 W PackageManager: Missing required system package: cris.org.in.prs.ima, but found with extended search.
+11-07 02:46:31.657  1830  4176 W PackageManager: Missing required system package: com.whereismytrain.android, but found with extended search.
+11-07 02:46:31.657  1830  4176 W PackageManager: Missing required system package: com.whatsapp, but found with extended search.
+11-07 02:46:31.658  1830  4176 W PackageManager: Missing required system package: com.twitter.android, but found with extended search.
+11-07 02:46:31.658  1830  4176 W PackageManager: Missing required system package: com.reddit.frontpage, but found with extended search.
+11-07 02:46:31.658  1830  4176 W PackageManager: Missing required system package: com.rapido.passenger, but found with extended search.
+11-07 02:46:31.658  1830  4176 W PackageManager: Missing required system package: com.pittvandewitt.wavelet, but found with extended search.
+11-07 02:46:31.658  1830  4176 W PackageManager: Missing required system package: com.phonepe.app, but found with extended search.
+11-07 02:46:31.658  1830  4176 W PackageManager: Missing required system package: com.paypal.android.p2pmobile, but found with extended search.
+11-07 02:46:31.658  1830  4176 W PackageManager: Missing required system package: com.olacabs.customer, but found with extended search.
+11-07 02:46:31.658  1830  4176 W PackageManager: Missing required system package: com.music.bitchord, but found with extended search.
+11-07 02:46:31.659  1830  4176 W PackageManager: Missing required system package: com.microsoft.teams, but found with extended search.
+11-07 02:46:31.659  1830  4176 W PackageManager: Missing required system package: com.microsoft.office.word, but found with extended search.
+11-07 02:46:31.659  1830  4176 W PackageManager: Missing required system package: com.microsoft.office.powerpoint, but found with extended search.
+11-07 02:46:31.659  1830  4176 W PackageManager: Missing required system package: com.microsoft.office.excel, but found with extended search.
+11-07 02:46:31.659  1830  4176 W PackageManager: Missing required system package: com.linkedin.android, but found with extended search.
+11-07 02:46:31.659  1830  4176 W PackageManager: Missing required system package: com.jacksoftw.webcam, but found with extended search.
+11-07 02:46:31.659  1830  4176 W PackageManager: Missing required system package: com.heytap.headset, but found with extended search.
+11-07 02:46:31.659  1830  4176 W PackageManager: Missing required system package: com.google.ar.lens, but found with extended search.
+11-07 02:46:31.659  1830  4176 W PackageManager: Missing required system package: com.google.android.keep, but found with extended search.
+11-07 02:46:31.659  1830  4176 W PackageManager: Missing required system package: com.google.android.apps.nbu.paisa.user, but found with extended search.
+11-07 02:46:31.659  1830  4176 W PackageManager: Missing required system package: com.google.android.apps.bard, but found with extended search.
+11-07 02:46:31.660  1830  4176 W PackageManager: Missing required system package: com.google.android.apps.adm, but found with extended search.
+11-07 02:46:31.660  1830  4176 W PackageManager: Missing required system package: com.google.ai.edge.gallery, but found with extended search.
+11-07 02:46:31.660  1830  1872 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.660  1830  4176 W PackageManager: Missing required system package: com.github.android, but found with extended search.
+11-07 02:46:31.660  1830  4176 W PackageManager: Missing required system package: com.easybrain.arrow.puzzle.game, but found with extended search.
+11-07 02:46:31.660  1830  4176 W PackageManager: Missing required system package: com.dubox.drive, but found with extended search.
+11-07 02:46:31.660  1830  4176 W PackageManager: Missing required system package: com.discord, but found with extended search.
+11-07 02:46:31.660  1830  4176 W PackageManager: Missing required system package: com.digilocker.android, but found with extended search.
+11-07 02:46:31.660  1830  4176 W PackageManager: Missing required system package: com.delhiveryConsigneeApp, but found with extended search.
+11-07 02:46:31.660  2298  2298 D TileServices: Couldn't find tile for ComponentInfo{com.google.android.apps.wellbeing/com.google.android.apps.wellbeing.focusmode.quicksettings.FocusModeTileService}(0)
+11-07 02:46:31.660  1830  4176 W PackageManager: Missing required system package: com.csam.icici.bank.imobile, but found with extended search.
+11-07 02:46:31.661  1830  4176 W PackageManager: Missing required system package: com.cloudflare.onedotonedotonedotone, but found with extended search.
+11-07 02:46:31.661  1830  4176 W PackageManager: Missing required system package: com.castle.sefirah, but found with extended search.
+11-07 02:46:31.661  1830  4176 W PackageManager: Missing required system package: com.azure.authenticator, but found with extended search.
+11-07 02:46:31.661  1830  4176 W PackageManager: Missing required system package: com.app.spacebasic, but found with extended search.
+11-07 02:46:31.661  1830  4176 W PackageManager: Missing required system package: com.app.campusadda, but found with extended search.
+11-07 02:46:31.661  1830  4176 W PackageManager: Missing required system package: com.anchor.mine, but found with extended search.
+11-07 02:46:31.661  1830  4176 W PackageManager: Missing required system package: cc.remote9.app, but found with extended search.
+11-07 02:46:31.661  1830  4176 W PackageManager: Missing required system package: app.revanced.manager.flutter, but found with extended search.
+11-07 02:46:31.661  1830  4176 W PackageManager: Missing required system package: app.revanced.android.gms, but found with extended search.
+11-07 02:46:31.661  1830  4176 W PackageManager: Missing required system package: app.revanced.android.apps.youtube.music, but found with extended search.
+11-07 02:46:31.661  1830  4176 W PackageManager: Missing required system package: app.mihon, but found with extended search.
+11-07 02:46:31.662  1830  4176 W PackageManager: Missing required system package: ai.mistral.chat, but found with extended search.
+11-07 02:46:31.662  1830  4176 W PackageManager: Missing required system package: org.zwanoo.android.speedtest, but found with extended search.
+11-07 02:46:31.662  1830  4176 W PackageManager: Missing required system package: net.sourceforge.opencamera, but found with extended search.
+11-07 02:46:31.662  1830  4176 W PackageManager: Missing required system package: idm.internet.download.manager.plus, but found with extended search.
+11-07 02:46:31.662  1830  4176 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 02:46:31.662  1830  4176 W PackageManager: Missing required system package: com.pinterest, but found with extended search.
+11-07 02:46:31.662  1830  4176 W PackageManager: Missing required system package: com.microsoft.office.outlook, but found with extended search.
+11-07 02:46:31.663  1830  4176 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 02:46:31.663  1830  4176 W PackageManager: Missing required system package: com.google.android.play.games, but found with extended search.
+11-07 02:46:31.663  1830  4176 W PackageManager: Missing required system package: com.google.android.apps.docs.editors.slides, but found with extended search.
+11-07 02:46:31.663  1830  4176 W PackageManager: Missing required system package: com.google.android.apps.docs.editors.sheets, but found with extended search.
+11-07 02:46:31.663  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.663  1830  4176 W PackageManager: Missing required system package: com.google.android.apps.docs.editors.docs, but found with extended search.
+11-07 02:46:31.663  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.663  1830  4176 W PackageManager: Missing required system package: app.revanced.android.youtube, but found with extended search.
+11-07 02:46:31.666  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.668  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.671  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.674  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.676  1830  1872 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.679  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.681  1830  1872 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.685  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.688  1830  1872 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.691  1830  1872 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.693  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.697  1830  1872 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.700  1830  1872 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.702  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.704  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.708  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.711  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.713  1830  1872 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.716  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.719  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.721  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.721  1830  1872 W PackageManager: Missing required system package: io.github.forkmaintainers.iceraven, but found with extended search.
+11-07 02:46:31.723  1830  1872 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.725  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.728  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.730  1830  1872 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.733  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.734  1830  1872 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.735  1830  1872 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.737  1830  1872 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.738  1830  1872 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.740  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.741  1830  1872 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.743  1830  4176 W PackageManager: Missing required system package: com.castle.sefirah, but found with extended search.
+11-07 02:46:31.743  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.746  1830  1872 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.749  1830  1872 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.749  1830  4014 W PackageManager: Missing required system package: app.revanced.android.apps.youtube.music, but found with extended search.
+11-07 02:46:31.750  8312 15974 E RoleControllerServiceImpl: Default/fallback role holder package doesn't qualify for the role, package: com.google.android.gms.supervision, role: android.app.role.SYSTEM_SUPERVISION, user: 0
+11-07 02:46:31.751  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.754  1167  1208 I libPerfCtl: xgfGetFPS pid:2298 fps:-1
+11-07 02:46:31.754  1167  1208 I libPerfCtl: xgfGetFPS pid:31477 fps:-1
+11-07 02:46:31.755  8312 15974 I Role    : com.google.android.gms not qualified for android.app.role.SYSTEM_CALL_STREAMING due to missing RequiredComponent{mFlags='0', mIntentFilterData=IntentFilterData{mAction='android.telecom.CallStreamingService', mCategories='[]', mDataScheme='null', mDataType='null'}, mMetaData=[], mPermission='android.permission.BIND_CALL_STREAMING_SERVICE', mQueryFlags=0} Requirement{mFeatureFlag=null, mMinTargetSdkVersion=1}
+11-07 02:46:31.755  8312 15974 E RoleControllerServiceImpl: Default/fallback role holder package doesn't qualify for the role, package: com.google.android.gms, role: android.app.role.SYSTEM_CALL_STREAMING, user: 0
+11-07 02:46:31.755  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.757  8312 15974 W SignedPackage: Package doesn't have required signing certificate: com.google.android.apps.work.clouddpc
+11-07 02:46:31.758  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.758  1830  4176 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 02:46:31.760  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.762  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.763  1830  4176 W PackageManager: Missing required system package: com.whereismytrain.android, but found with extended search.
+11-07 02:46:31.763  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.765  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.765  1830  4014 W PackageManager: Missing required system package: org.telegram.messenger, but found with extended search.
+11-07 02:46:31.767  1830  4014 W PackageManager: Missing required system package: com.google.android.apps.docs.editors.docs, but found with extended search.
+11-07 02:46:31.767  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.768  1830  2340 W PackageManager: Missing required system package: com.phonepe.app, but found with extended search.
+11-07 02:46:31.770  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.770  1830  4176 W PackageManager: Missing required system package: com.jacksoftw.webcam, but found with extended search.
+11-07 02:46:31.772  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.775  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.776  1830  4176 W PackageManager: Missing required system package: in.burgerfarm.app, but found with extended search.
+11-07 02:46:31.777  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.780  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.781  1830  4014 W PackageManager: Missing required system package: app.revanced.android.youtube, but found with extended search.
+11-07 02:46:31.782  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.784  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.787  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.787  1830  4176 W PackageManager: Missing required system package: com.whatsapp, but found with extended search.
+11-07 02:46:31.789  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.790  1830  4176 W PackageManager: Missing required system package: com.google.android.apps.docs.editors.sheets, but found with extended search.
+11-07 02:46:31.791  1830  2340 W PackageManager: Missing required system package: com.google.android.apps.docs.editors.slides, but found with extended search.
+11-07 02:46:31.792  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.794  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.795  1830  4014 W PackageManager: Missing required system package: ru.zdevs.zarchiver, but found with extended search.
+11-07 02:46:31.797  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.799  1830  2340 W PackageManager: Missing required system package: com.paypal.android.p2pmobile, but found with extended search.
+11-07 02:46:31.799  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.800  1830  4176 W PackageManager: Missing required system package: com.discord, but found with extended search.
+11-07 02:46:31.800  1830  2340 W PackageManager: Missing required system package: ru.zdevs.zarchiver, but found with extended search.
+11-07 02:46:31.802  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.802  1830  4014 W PackageManager: Missing required system package: com.delhiveryConsigneeApp, but found with extended search.
+11-07 02:46:31.805  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.806  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.808  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.809  1830  4014 W PackageManager: Missing required system package: com.microsoft.office.excel, but found with extended search.
+11-07 02:46:31.809  1830  4014 W PackageManager: Missing required system package: ru.zdevs.zarchiver, but found with extended search.
+11-07 02:46:31.810  1830  2340 W PackageManager: Missing required system package: in.amazon.mShop.android.shopping, but found with extended search.
+11-07 02:46:31.810  1830  2340 W PackageManager: Missing required system package: in.amazon.mShop.android.shopping, but found with extended search.
+11-07 02:46:31.810  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.812  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.814  1830  2340 W PackageManager: Missing required system package: com.github.android, but found with extended search.
+11-07 02:46:31.814  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.816  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.818  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.821  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.822  1830  4014 W PackageManager: Missing required system package: com.google.ar.lens, but found with extended search.
+11-07 02:46:31.823  1830  4014 W PackageManager: Missing required system package: org.zwanoo.android.speedtest, but found with extended search.
+11-07 02:46:31.823  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.825  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.831  1830  1872 W PackageManager: Missing required system package: com.reddit.frontpage, but found with extended search.
+11-07 02:46:31.832  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.835  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.838  1830  1872 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.840  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.842  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.843  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.845  1830  1872 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.845  1830  4014 W PackageManager: Missing required system package: ai.mistral.chat, but found with extended search.
+11-07 02:46:31.847  1830  1872 W PackageManager: Missing required system package: app.revanced.manager.flutter, but found with extended search.
+11-07 02:46:31.847  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.848  1830  4014 W PackageManager: Missing required system package: com.google.ai.edge.gallery, but found with extended search.
+11-07 02:46:31.849  1830  4014 W PackageManager: Missing required system package: com.pinterest, but found with extended search.
+11-07 02:46:31.849  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.853  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.855  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.857  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.860  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.861  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.862  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.864  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.864  1830  2340 W PackageManager: Missing required system package: com.olacabs.customer, but found with extended search.
+11-07 02:46:31.865  1830  4014 W PackageManager: Missing required system package: com.microsoft.office.outlook, but found with extended search.
+11-07 02:46:31.866  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.869  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.871  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.873  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.875  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.878  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.879  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.880  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.883  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.885  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.886  1830  2340 W PackageManager: Missing required system package: com.pittvandewitt.wavelet, but found with extended search.
+11-07 02:46:31.887  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.889  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.892  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.894  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.896  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.897  1830  2340 W PackageManager: Missing required system package: com.easybrain.arrow.puzzle.game, but found with extended search.
+11-07 02:46:31.898  1134  1485 I hwcomposer: [HWC] (0)fire a callback of refresh to SF[4]  
+11-07 02:46:31.898  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.899  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.901  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.901  1830  2340 W PackageManager: Missing required system package: ru.odauhsbx.xqdkkkmwh, but found with extended search.
+11-07 02:46:31.902  1830  4176 W PackageManager: Missing required system package: com.twitter.android, but found with extended search.
+11-07 02:46:31.902  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.904  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.905  1830  4014 W PackageManager: Missing required system package: net.sourceforge.opencamera, but found with extended search.
+11-07 02:46:31.906  1830  4014 W PackageManager: Missing required system package: com.csam.icici.bank.imobile, but found with extended search.
+11-07 02:46:31.906  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.908  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.910  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.912  1167  1193 I mtkpower@impl: [setMode] type:6, enabled:1
+11-07 02:46:31.912  1167  1193 E mtkpower@impl: [setMode] unknown type
+11-07 02:46:31.912  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.914  1830  4176 W PackageManager: Missing required system package: com.google.android.apps.bard, but found with extended search.
+11-07 02:46:31.914  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.915  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.916  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.918  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.919  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.919  1830  4176 W PackageManager: Missing required system package: com.microsoft.office.word, but found with extended search.
+11-07 02:46:31.921  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.922  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.925  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.927  1830  4014 W PackageManager: Missing required system package: com.microsoft.office.powerpoint, but found with extended search.
+11-07 02:46:31.928  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.931  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.934  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.936  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.938  1830  2340 W PackageManager: Missing required system package: com.app.campusadda, but found with extended search.
+11-07 02:46:31.939  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.942  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.945  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.945 16367 16389 D CompatibilityChangeReporter: Compat change id reported: 160794467; UID 11055; state: ENABLED
+11-07 02:46:31.948  1830  4176 W PackageManager: Missing required system package: app.revanced.android.gms, but found with extended search.
+11-07 02:46:31.948  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.951  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.953  1830  1872 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.955  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.956  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.957  1830  2340 W PackageManager: Missing required system package: app.mihon, but found with extended search.
+11-07 02:46:31.959  1830  1872 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.961  1830  1872 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.963  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.965  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.966  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.967  1830  4176 W PackageManager: Missing required system package: org.videolan.vlc, but found with extended search.
+11-07 02:46:31.967  1830  1872 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.969  1830  4176 W PackageManager: Missing required system package: cris.org.in.prs.ima, but found with extended search.
+11-07 02:46:31.970  1830  1872 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.970  1830  2340 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 02:46:31.971  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.975  1830  1872 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.977  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.979  1830  1872 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.981  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.982  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.983  1830  2340 W PackageManager: Missing required system package: edu.manipal.jaipur.slcm_mobile, but found with extended search.
+11-07 02:46:31.985  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.988  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.989  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.991  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.993  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.994  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.995  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.997  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.997  1830  4014 W PackageManager: Missing required system package: idm.internet.download.manager.plus, but found with extended search.
+11-07 02:46:31.998  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:31.998  1830  4014 W PackageManager: Missing required system package: com.cloudflare.onedotonedotonedotone, but found with extended search.
+11-07 02:46:31.999  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.000  1830  4176 W PackageManager: Missing required system package: com.anchor.mine, but found with extended search.
+11-07 02:46:32.000  1830  4176 W PackageManager: Missing required system package: com.music.bitchord, but found with extended search.
+11-07 02:46:32.002  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.003  1830  2340 W PackageManager: Missing required system package: com.linkedin.android, but found with extended search.
+11-07 02:46:32.005  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.005  1830  4014 W PackageManager: Missing required system package: com.google.android.apps.nbu.paisa.user, but found with extended search.
+11-07 02:46:32.007  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.009  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.010  1198  1198 I BufferQueueProducer: [StatusBar#90](this:0xb400007c09d63718,id:-1,api:0,p:-1,c:1198) queueBuffer: fps=1.22 dur=5752.28 max=5533.95 min=8.33
+11-07 02:46:32.010  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.012  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.012  1167  1193 I mtkpower@impl: [setMode] type:6, enabled:0
+11-07 02:46:32.012  1167  1193 E mtkpower@impl: [setMode] unknown type
+11-07 02:46:32.014  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.017  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.020  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.022  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.024  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.025  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.026  1830  4176 W PackageManager: Missing required system package: com.rapido.passenger, but found with extended search.
+11-07 02:46:32.027  1830  4176 W PackageManager: Missing required system package: com.digilocker.android, but found with extended search.
+11-07 02:46:32.027  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.028  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.029  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.031  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.032  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.033  1830  2340 W PackageManager: Missing required system package: com.app.spacebasic, but found with extended search.
+11-07 02:46:32.033  1830  2340 W PackageManager: Missing required system package: com.google.android.keep, but found with extended search.
+11-07 02:46:32.034  1830  2340 W PackageManager: Missing required system package: com.dubox.drive, but found with extended search.
+11-07 02:46:32.034  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.037  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.039  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.040  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.042  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.043  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.044  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.045  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.047  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.049  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.050  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.051  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.054  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.055  1830  4176 W PackageManager: Missing required system package: com.azure.authenticator, but found with extended search.
+11-07 02:46:32.055  1539  1961 D BufferPoolAccessor2.0: bufferpool2 0xb400007c02084628 : 0(0 size) total buffers - 0(0 size) used buffers - 112/115 (recycle/alloc) - 3/114 (fetch/transfer)
+11-07 02:46:32.055  1539  1961 D BufferPoolAccessor2.0: evictor expired: 2, evicted: 1
+11-07 02:46:32.057  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.060  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.062  1500  2031 D BufferPoolAccessor2.0: bufferpool2 0xf6381398 : 0(0 size) total buffers - 0(0 size) used buffers - 110/118 (recycle/alloc) - 8/234 (fetch/transfer)
+11-07 02:46:32.062  1500  2031 D BufferPoolAccessor2.0: evictor expired: 1, evicted: 1
+11-07 02:46:32.062  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.064  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.066  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.067  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.068  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.069  1830  4176 W PackageManager: Missing required system package: com.heytap.headset, but found with extended search.
+11-07 02:46:32.071  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.072  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.073  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.074  1830  4176 W PackageManager: Missing required system package: com.google.android.play.games, but found with extended search.
+11-07 02:46:32.074  1830  2340 W PackageManager: Missing required system package: com.google.android.apps.adm, but found with extended search.
+11-07 02:46:32.076  1830  2340 W PackageManager: Missing required system package: io.github.forkmaintainers.iceraven, but found with extended search.
+11-07 02:46:32.076  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.077  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.079  1830  2109 E WifiDataStall: Ignore this poll. newStats: null txLinkSpeedMbps: 6 rxLinkSpeedMbps: 325 rssi: -48 connectionCapabilities: com.android.server.wifi.WifiNative$ConnectionCapabilities@97eba
+11-07 02:46:32.080  1830  2340 W PackageManager: Missing required system package: cc.remote9.app, but found with extended search.
+11-07 02:46:32.080  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.083  1830  4014 W PackageManager: Missing required system package: com.microsoft.teams, but found with extended search.
+11-07 02:46:32.083  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.084  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.086  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.087  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.088  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.090  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.092  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.093  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.095  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.096  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.097  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.098  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.100  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.101  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.102  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.103  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.104  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.105  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.106  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.107  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.108  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.110  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.111  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.111  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.112  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.113  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.115  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.116  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.116  1830  2340 W PackageManager: Missing required system package: com.whatsapp, but found with extended search.
+11-07 02:46:32.116  1830  2340 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 02:46:32.117  1830  2340 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 02:46:32.117  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.118  1830  4014 W PackageManager: Missing required system package: com.whatsapp, but found with extended search.
+11-07 02:46:32.118  1830  4014 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 02:46:32.118  1830  4014 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 02:46:32.119  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.119  1830  4014 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 02:46:32.119  1830  4014 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 02:46:32.120  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.121  1830  4014 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 02:46:32.121  1830  4014 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 02:46:32.122  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.124  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.125  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.127  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.128  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.130  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.131  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.133  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.134  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.136  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.139  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.142  1134  1485 I hwcomposer: [HWC] (0)fire a callback of refresh to SF[4]  
+11-07 02:46:32.143  1830  4014 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.144  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.147  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.149  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.151  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.153  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.155  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.156  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.158  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.159  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.161  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.162  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.164  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.166  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.167  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.169  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.170  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.171  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.173  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.175  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.176  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.178  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.179  1134  1134 I hwcomposer: [HWCDisplay] [Display_0 (type:1)] fps:6.950904,dur:1150.93,max:318.00,min:31.98  
+11-07 02:46:32.179  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.180  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.182  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.183  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.184  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.185  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.187  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.188  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.189  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.190  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.191  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.192  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.193  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.194  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.196  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.197  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.198  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.199  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.200  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.201  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.203  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.203  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.204  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.205  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.206  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.208  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.209  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.210  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.211  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.212  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.213  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.214  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.215  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.216  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.217  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.219  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.220  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.221  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.222  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.224  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.225  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.226  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.227  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.229  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.230  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.232  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.232  1830  2340 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 02:46:32.233  1830  4176 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 02:46:32.235  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.237  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.238  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.238  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.239  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.243  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.246  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.249  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.252  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.256  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.258  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.261  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.263  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.264  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.266  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.268  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.272  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.276  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.278  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.279  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.281  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.282  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.286  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.287  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.290  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.291  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.293  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.295  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.297  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.300  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.301  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.304  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.307  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.309  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.310  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.312  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.316  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.317  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.319  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.320  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.320  1830  4014 W PackageManager: Missing required system package: io.github.forkmaintainers.iceraven, but found with extended search.
+11-07 02:46:32.322  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.323  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.324  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.325  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.326  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.327  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.328  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.329  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.330  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.331  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.332  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.333  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.333  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.334  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.335  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.336  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.337  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.338  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.339  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.340  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.341  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.341  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.342  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.343  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.344  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.345  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.346  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.347  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.348  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.349  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.350  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.351  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.351  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.352  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.353  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.354  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.355  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.356  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.357  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.358  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.359  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.360  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.361  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.362  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.362  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.363  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.364  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.365  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.366  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.367  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.368  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.369  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.369  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.370  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.371  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.372  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.373  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.374  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.375  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.376  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.377  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.378  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.378  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 02:46:32.379  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.375  1492  1492 W binder:1492_2: type=1400 audit(0.0:848717): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 02:46:32.380  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.380  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.381  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.382  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.383  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.384  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.385  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.386  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.387  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.387  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.388  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.389  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.390  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.391  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.392  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.393  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.394  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.395  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.396  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.396  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.397  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.398  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.399  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.400  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.401  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.402  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.403  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.404  1830  2340 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.439  1830  4014 W PackageManager: Missing required system package: com.castle.sefirah, but found with extended search.
+11-07 02:46:32.446  1830  4176 W PackageManager: Missing required system package: app.revanced.android.apps.youtube.music, but found with extended search.
+11-07 02:46:32.449  1830  4176 W PackageManager: Missing required system package: com.truecaller, but found with extended search.
+11-07 02:46:32.453  1830  4176 W PackageManager: Missing required system package: com.whereismytrain.android, but found with extended search.
+11-07 02:46:32.453  1830  4176 W PackageManager: Missing required system package: bitpit.launcher, but found with extended search.
+11-07 02:46:32.455  1830  4014 W PackageManager: Missing required system package: org.telegram.messenger, but found with extended search.
+11-07 02:46:32.456  1830  4176 W PackageManager: Missing required system package: com.google.android.apps.docs.editors.docs, but found with extended search.
+11-07 02:46:32.458  1830  4176 W PackageManager: Missing required system package: com.phonepe.app, but found with extended search.
+11-07 02:46:32.459  1830  4014 W PackageManager: Missing required system package: com.jacksoftw.webcam, but found with extended search.
+11-07 02:46:32.468  1830  4176 W PackageManager: Missing required system package: in.burgerfarm.app, but found with extended search.
+11-07 02:46:32.475  1830  4176 W PackageManager: Missing required system package: app.revanced.android.youtube, but found with extended search.
+11-07 02:46:32.479  2298  2298 D TileServices: Couldn't find tile for ComponentInfo{com.google.android.apps.wellbeing/com.google.android.apps.wellbeing.focusmode.quicksettings.FocusModeTileService}(0)
+11-07 02:46:32.480  1830  4176 W PackageManager: Missing required system package: com.whatsapp, but found with extended search.
+11-07 02:46:32.481  1830  4014 W PackageManager: Missing required system package: com.google.android.apps.docs.editors.sheets, but found with extended search.
+11-07 02:46:32.482  1830  4176 W PackageManager: Missing required system package: com.google.android.apps.docs.editors.slides, but found with extended search.
+11-07 02:46:32.484  1830  1872 W PackageManager: Missing required system package: ru.zdevs.zarchiver, but found with extended search.
+11-07 02:46:32.486  1830  1872 W PackageManager: Missing required system package: com.paypal.android.p2pmobile, but found with extended search.
+11-07 02:46:32.487  1830  1872 W PackageManager: Missing required system package: com.discord, but found with extended search.
+11-07 02:46:32.488  1830  1872 W PackageManager: Missing required system package: com.delhiveryConsigneeApp, but found with extended search.
+11-07 02:46:32.492  1830  4176 W PackageManager: Missing required system package: com.microsoft.office.excel, but found with extended search.
+11-07 02:46:32.492  1830  4176 W PackageManager: Missing required system package: in.amazon.mShop.android.shopping, but found with extended search.
+11-07 02:46:32.492  1830  4176 W PackageManager: Missing required system package: in.amazon.mShop.android.shopping, but found with extended search.
+11-07 02:46:32.494  1830  4176 W PackageManager: Missing required system package: com.github.android, but found with extended search.
+11-07 02:46:32.497  1830  4176 W PackageManager: Missing required system package: com.google.ar.lens, but found with extended search.
+11-07 02:46:32.497  1830  1872 W PackageManager: Missing required system package: org.zwanoo.android.speedtest, but found with extended search.
+11-07 02:46:32.504  1830  4176 W PackageManager: Missing required system package: com.reddit.frontpage, but found with extended search.
+11-07 02:46:32.530  1830  4176 W PackageManager: Missing required system package: ai.mistral.chat, but found with extended search.
+11-07 02:46:32.537  1830  4176 W PackageManager: Missing required system package: app.revanced.manager.flutter, but found with extended search.
+11-07 02:46:32.538  1830  4176 W PackageManager: Missing required system package: com.google.ai.edge.gallery, but found with extended search.
+11-07 02:46:32.540  1830  1872 W PackageManager: Missing required system package: com.pinterest, but found with extended search.
+11-07 02:46:32.551  1830  1872 W PackageManager: Missing required system package: com.olacabs.customer, but found with extended search.
+11-07 02:46:32.551  1830  4176 W PackageManager: Missing required system package: com.microsoft.office.outlook, but found with extended search.
+11-07 02:46:32.566  1830  4176 W PackageManager: Missing required system package: com.pittvandewitt.wavelet, but found with extended search.
+11-07 02:46:32.568  1492  1492 W HidlServiceManagement: Waited for hwservicemanager.ready for a second, waiting another...
+11-07 02:46:32.563  1492  1492 W binder:1492_2: type=1400 audit(0.0:848718): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 02:46:32.568  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 02:46:32.568  1830  4176 W PackageManager: Missing required system package: com.easybrain.arrow.puzzle.game, but found with extended search.
+11-07 02:46:32.569  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 02:46:32.563  1492  1492 W binder:1492_2: type=1400 audit(0.0:848719): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 02:46:32.569  1830  4176 W PackageManager: Missing required system package: ru.odauhsbx.xqdkkkmwh, but found with extended search.
+11-07 02:46:32.570  1830  4176 W PackageManager: Missing required system package: com.twitter.android, but found with extended search.
+11-07 02:46:32.571  1830  4176 W PackageManager: Missing required system package: net.sourceforge.opencamera, but found with extended search.
+11-07 02:46:32.571  1830  4176 W PackageManager: Missing required system package: com.csam.icici.bank.imobile, but found with extended search.
+11-07 02:46:32.572  1830  4176 W PackageManager: Missing required system package: com.google.android.apps.bard, but found with extended search.
+11-07 02:46:32.573  1830  4176 W PackageManager: Missing required system package: com.microsoft.office.word, but found with extended search.
+11-07 02:46:32.576  1830  4176 W PackageManager: Missing required system package: com.microsoft.office.powerpoint, but found with extended search.
+11-07 02:46:32.577  1527  1731 D ULogGuard: Monitoring: 10 threads, 0 requests, 0 time-bombs; 1 guards. ResetFlags = 0x7
+11-07 02:46:32.579  1830  4176 W PackageManager: Missing required system package: com.app.campusadda, but found with extended search.
+11-07 02:46:32.582  1830  4176 W PackageManager: Missing required system package: app.revanced.android.gms, but found with extended search.
+11-07 02:46:32.586  1830  4176 W PackageManager: Missing required system package: app.mihon, but found with extended search.
+11-07 02:46:32.590  1830  4176 W PackageManager: Missing required system package: org.videolan.vlc, but found with extended search.
+11-07 02:46:32.591  1830  4176 W PackageManager: Missing required system package: cris.org.in.prs.ima, but found with extended search.
+11-07 02:46:32.592  1830  4176 W PackageManager: Missing required system package: com.jio.myjio, but found with extended search.
+11-07 02:46:32.596  1830  4176 W PackageManager: Missing required system package: edu.manipal.jaipur.slcm_mobile, but found with extended search.
+11-07 02:46:32.603  1830  4176 W PackageManager: Missing required system package: idm.internet.download.manager.plus, but found with extended search.
+11-07 02:46:32.604  1830  4176 W PackageManager: Missing required system package: com.cloudflare.onedotonedotonedotone, but found with extended search.
+11-07 02:46:32.605  1830  4176 W PackageManager: Missing required system package: com.anchor.mine, but found with extended search.
+11-07 02:46:32.605  1830  4176 W PackageManager: Missing required system package: com.music.bitchord, but found with extended search.
+11-07 02:46:32.607  1830  4176 W PackageManager: Missing required system package: com.linkedin.android, but found with extended search.
+11-07 02:46:32.608  1830  4176 W PackageManager: Missing required system package: com.google.android.apps.nbu.paisa.user, but found with extended search.
+11-07 02:46:32.616  1830  4176 W PackageManager: Missing required system package: com.rapido.passenger, but found with extended search.
+11-07 02:46:32.616  1830  4176 W PackageManager: Missing required system package: com.digilocker.android, but found with extended search.
+11-07 02:46:32.618  1830  4176 W PackageManager: Missing required system package: com.app.spacebasic, but found with extended search.
+11-07 02:46:32.618  1830  4176 W PackageManager: Missing required system package: com.google.android.keep, but found with extended search.
+11-07 02:46:32.619  1830  4176 W PackageManager: Missing required system package: com.dubox.drive, but found with extended search.
+11-07 02:46:32.623  1830  4176 W PackageManager: Missing required system package: com.azure.authenticator, but found with extended search.
+11-07 02:46:32.627  1830  4176 W PackageManager: Missing required system package: com.heytap.headset, but found with extended search.
+11-07 02:46:32.630  1830  4176 W PackageManager: Missing required system package: com.google.android.play.games, but found with extended search.
+11-07 02:46:32.630  1830  4176 W PackageManager: Missing required system package: com.google.android.apps.adm, but found with extended search.
+11-07 02:46:32.631  1830  4176 W PackageManager: Missing required system package: io.github.forkmaintainers.iceraven, but found with extended search.
+11-07 02:46:32.632  1830  4176 W PackageManager: Missing required system package: cc.remote9.app, but found with extended search.
+11-07 02:46:32.634  1830  4176 W PackageManager: Missing required system package: com.microsoft.teams, but found with extended search.
+11-07 02:46:32.755  1167  1208 I libPerfCtl: xgfGetFPS pid:2298 fps:-1
+11-07 02:46:32.755  1167  1208 I libPerfCtl: xgfGetFPS pid:31477 fps:-1
+11-07 02:46:33.569  1492  1492 W HidlServiceManagement: Waited for hwservicemanager.ready for a second, waiting another...
+11-07 02:46:33.570  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 02:46:33.563  1492  1492 W binder:1492_2: type=1400 audit(0.0:848720): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 02:46:33.570  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 02:46:33.567  1492  1492 W binder:1492_2: type=1400 audit(0.0:848721): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 02:46:33.757  1167  1208 I libPerfCtl: xgfGetFPS pid:2298 fps:-1
+11-07 02:46:33.757  1167  1208 I libPerfCtl: xgfGetFPS pid:31477 fps:-1
+11-07 02:46:34.061  2298  2298 D CBR_SystemUI: CarrierLabel - : updateLabel cellMsg:  cellEnabled: true
+11-07 02:46:34.062  2298  2298 D CBR_SystemUI: CarrierLabel - : updateLabel mCellBroadcastMessage Visibility: 8
+11-07 02:46:34.062  2298  2298 D CBR_SystemUI: CarrierLabel - : updateLabel cellMsg:  cellEnabled: true
+11-07 02:46:34.063  2298  2298 D CBR_SystemUI: CarrierLabel - : updateLabel mCellBroadcastMessage Visibility: 8
+11-07 02:46:34.065  2298  2298 D StatusBarIconController: ignoring old pipeline callbacks, because the new mobile icons are enabled
+11-07 02:46:34.104  3844  3844 D WidgetApplication: updateExistWidget: android.intent.action.BATTERY_CHANGED
+11-07 02:46:34.105  3844  4161 D CmdCenter: - RowBase2: sPrevModStatus: 1, modStatus: 1
+11-07 02:46:34.105  3844  4161 D CmdCenter: - RowBase2: sPrevBatStatus: 1, status: 1
+11-07 02:46:34.105  3844  4161 D CmdCenter: - RowBase2: sPrevChargeRate = 3, new = 3
+11-07 02:46:34.105  3844  4161 D CmdCenter: - RowBase2: sPrevPlugType: 1 plugType: 1
+11-07 02:46:34.571  1492  1492 W HidlServiceManagement: Waited for hwservicemanager.ready for a second, waiting another...
+11-07 02:46:34.572  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 02:46:34.571  1492  1492 W binder:1492_2: type=1400 audit(0.0:848722): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 02:46:34.571  1492  1492 W binder:1492_2: type=1400 audit(0.0:848723): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 02:46:34.757  1167  1208 I libPerfCtl: xgfGetFPS pid:2298 fps:-1
+11-07 02:46:34.757  1167  1208 I libPerfCtl: xgfGetFPS pid:31477 fps:-1
+11-07 02:46:35.104  1830  2109 E WifiDataStall: Ignore this poll. newStats: null txLinkSpeedMbps: 6 rxLinkSpeedMbps: 6 rssi: -47 connectionCapabilities: com.android.server.wifi.WifiNative$ConnectionCapabilities@97eba
+11-07 02:46:35.107  1830  1830 D EnhancedConnectivityController: Wifi onCapabilitiesChanged
+11-07 02:46:35.108  1830  1830 D EnhancedConnectivityController: Default net onCapabilitiesChanged
+11-07 02:46:35.108  1830  1830 D EnhancedConnectivityController: updateDefaultNet:553
+11-07 02:46:35.108  1830  1830 D EnhancedConnectivityController: mayUpdateNotification: shouldShow=true,UidsBlocked=false, net info=net:553,ifName=wlan0,securityType=0,isDefault=true,ssid="iBUS@MUJ",notificationId=0
+11-07 02:46:35.108  1830  1830 D EnhancedConnectivityController: educative notification has been ignored
+11-07 02:46:35.112  3595  4114 I ModemStats: [DataStallDetectService] onCapabilitiesChanged networkCapabilities=[ Transports: WIFI Capabilities: NOT_METERED&INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VPN&VALIDATED&NOT_ROAMING&FOREGROUND&NOT_CONGESTED&NOT_SUSPENDED&NOT_VCN_MANAGED LinkUpBandwidth>=12000Kbps LinkDnBandwidth>=60000Kbps TransportInfo: <SSID: <unknown ssid>, BSSID: 02:00:00:00:00:00, MAC: 02:00:00:00:00:00, IP: /10.175.15.5, Security type: 0, Supplicant state: COMPLETED, Wi-Fi standard: 11ac, RSSI: -47, Link speed: 6Mbps, Tx Link speed: 6Mbps, Max Supported Tx Link speed: 433Mbps, Calculated Tx : 0Mbps, Rx Link speed: 6Mbps, Max Supported Rx Link speed: 433Mbps, Calculated Rx : 0Mbps, Frequency: 5745MHz, Net ID: -1, Metered hint: false, score: 100, isUsable: true, CarrierMerged: false, SubscriptionId: -1, IsPrimary: -1, Trusted: true, Restricted: false, Ephemeral: false, OEM paid: false, OEM private: false, OSU AP: false, FQDN: <none>, Provider friendly name: <none>, Requesting package name: <none><none>MLO Information: , Is TID-To-Link negotiation supported by the AP: false, AP MLD Address: <none>, AP MLO Link Id: <none>, AP MLO Affiliated links: <none>, Vendor Data: <none>> SignalStrength: -47 UnderlyingNetworks: Null]
+11-07 02:46:35.112  3595  4114 I ModemStats: [DataStallDetectService] onCapabilitiesChanged NET_CAPABILITY_VALIDATED=true
+11-07 02:46:35.112  3595  4114 I ModemStats: [DataStallDetectService] onCapabilitiesChanged mDataStallManager.mDataStallInstance=null
+11-07 02:46:35.112  3595  4114 I ModemStats: [DataStallDetectService] onCapabilitiesChanged mDataStallSmart5gManager.mDataStallInstance=null
+11-07 02:46:35.113  3785  4430 D OtaApp  : PollingManagerService:NetworkCallback:networkCapabilities=[ Transports: WIFI Capabilities: NOT_METERED&INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VPN&VALIDATED&NOT_ROAMING&FOREGROUND&NOT_CONGESTED&NOT_SUSPENDED&NOT_VCN_MANAGED LinkUpBandwidth>=12000Kbps LinkDnBandwidth>=60000Kbps TransportInfo: <SSID: <unknown ssid>, BSSID: 02:00:00:00:00:00, MAC: 02:00:00:00:00:00, IP: /10.175.15.5, Security type: 0, Supplicant state: COMPLETED, Wi-Fi standard: 11ac, RSSI: -47, Link speed: 6Mbps, Tx Link speed: 6Mbps, Max Supported Tx Link speed: 433Mbps, Calculated Tx : 0Mbps, Rx Link speed: 6Mbps, Max Supported Rx Link speed: 433Mbps, Calculated Rx : 0Mbps, Frequency: 5745MHz, Net ID: -1, Metered hint: false, score: 100, isUsable: true, CarrierMerged: false, SubscriptionId: -1, IsPrimary: -1, Trusted: true, Restricted: false, Ephemeral: false, OEM paid: false, OEM private: false, OSU AP: false, FQDN: <none>, Provider friendly name: <none>, Requesting package name: <none><none>MLO Information: , Is TID-To-Link negotiation supported by the AP: false, AP MLD Address: <none>, AP MLO Link Id: <none>, AP MLO Affiliated links: <none>, Vendor Data: <none>> SignalStrength: -47 UnderlyingNetworks: Null]
+11-07 02:46:35.116  1830  2229 D AgpsApn : mDefaultNetworkcallback onCapabilitiesChanged: network=553, nc=[ Transports: WIFI Capabilities: NOT_METERED&INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VPN&VALIDATED&NOT_ROAMING&FOREGROUND&NOT_CONGESTED&NOT_SUSPENDED&NOT_VCN_MANAGED LinkUpBandwidth>=12000Kbps LinkDnBandwidth>=60000Kbps TransportInfo: <SSID: <unknown ssid>, BSSID: 02:00:00:00:00:00, MAC: 02:00:00:00:00:00, IP: /10.175.15.5, Security type: 0, Supplicant state: COMPLETED, Wi-Fi standard: 11ac, RSSI: -47, Link speed: 6Mbps, Tx Link speed: 6Mbps, Max Supported Tx Link speed: 433Mbps, Calculated Tx : 0Mbps, Rx Link speed: 6Mbps, Max Supported Rx Link speed: 433Mbps, Calculated Rx : 0Mbps, Frequency: 5745MHz, Net ID: -1, Metered hint: false, score: 100, isUsable: true, CarrierMerged: false, SubscriptionId: -1, IsPrimary: 1, Trusted: true, Restricted: false, Ephemeral: false, OEM paid: false, OEM private: false, OSU AP: false, FQDN: <none>, Provider friendly name: <none>, Requesting package name: <none><none>MLO Information: , Is TID-To-Link negotiation supported by the AP: false, AP MLD Address: <none>, AP MLO Link Id: <none>, AP MLO Affiliated links: <none>, Vendor Data: <none>> SignalStrength: -47 AdminUids: [1000] SSID: "iBUS@MUJ" UnderlyingNetworks: Null]
+11-07 02:46:35.116  1830  2229 D AgpsApn : onCapabilitiesChanged: mDefaultNetHasInt=true
+11-07 02:46:35.118  2298  2298 D StatusBarIconController: ignoring old pipeline callback because the new wifi icon is enabled
+11-07 02:46:35.125   618   662 I dutj    : Connection state change: onCapabilitiesChanged, data connection: WIFI, manual connection eligibility: false, ntn roaming: false
+11-07 02:46:35.125   618   662 I dutj    : New default data network: wifi
+11-07 02:46:35.126   510   632 I emyt    : handleMessage processing message:[NOTIFY_UPTIME_IGNORE_STATE_CHANGED] with [non-null]:RcsEngineImpl reference [CONTEXT log_prefix="RcsEngineImpl:[4dd3b970-723f]>Handler" thread_id=261 ]
+11-07 02:46:35.126   510   584 I emyt    : Connected state: [1], networkType: [WIFI] [CONTEXT thread_id=255 ]
+11-07 02:46:35.129  1830  2116 D ConnectivityService: NetReassign [no changes] [c 1] [a 1] [i 2]
+11-07 02:46:35.131  3384 27056 I NearbyMediums: Wifi changed new SSID: <unknown ssid>
+11-07 02:46:35.131  3384 27056 I NearbyMediums: WifiLanConnectivityInfo is not changed, skip notify.
+11-07 02:46:35.214  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 02:46:35.207  1492  1492 W binder:1492_2: type=1400 audit(0.0:848724): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 02:46:35.215  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 02:46:35.211  1492  1492 W binder:1492_2: type=1400 audit(0.0:848725): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 02:46:35.264  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 02:46:35.259  1492  1492 W binder:1492_2: type=1400 audit(0.0:848726): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 02:46:35.268  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 02:46:35.263  1492  1492 W binder:1492_2: type=1400 audit(0.0:848727): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 02:46:35.269  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 02:46:35.263  1492  1492 W binder:1492_2: type=1400 audit(0.0:848728): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 02:46:35.319  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 02:46:35.315  1492  1492 W binder:1492_2: type=1400 audit(0.0:848729): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 02:46:35.574  1492  1492 W HidlServiceManagement: Waited for hwservicemanager.ready for a second, waiting another...
+11-07 02:46:35.575  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 02:46:35.575  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 02:46:35.578  1527  1731 D ULogGuard: Monitoring: 10 threads, 0 requests, 0 time-bombs; 1 guards. ResetFlags = 0x7
+11-07 02:46:35.629  3384 15911 I NearbySharing: Network state changed: NetworkState(isRestricted=false, isOnline=true, isCongested=false, isMetered=false, isWifiConnected=true)
+11-07 02:46:35.629  3384 27056 I NearbySharing: Network state changed: NetworkState(isRestricted=false, isOnline=true, isCongested=false, isMetered=false, isWifiConnected=true)
+11-07 02:46:35.759  1167  1208 I libPerfCtl: xgfGetFPS pid:2298 fps:-1
+11-07 02:46:35.759  1167  1208 I libPerfCtl: xgfGetFPS pid:31477 fps:-1
+11-07 02:46:36.007 16367 16399 D ProfileInstaller: Installing profile for com.anchor.mine
+11-07 02:46:36.008  1128 11395 D [BT]    : mtk_bt_op: BT_VND_OP_LPM_WAKE_SET_STATE
+11-07 02:46:36.035  1830  1872 D TelephonyManager: requestModemActivityInfo: Sending result to app: ModemActivityInfo{ mTimestamp=313001296 mSleepTimeMs=111900908 mIdleTimeMs=31794277 mActivityStatsTechSpecificInfo=[{mRat=UNKNOWN,mFrequencyRange=UNKNOWN,mTxTimeMs[]=[2613, 13345, 55445, 265104, 1417051],mRxTimeMs=17592667}]}
+11-07 02:46:36.577  1492  1492 W HidlServiceManagement: Waited for hwservicemanager.ready for a second, waiting another...
+11-07 02:46:36.579  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 02:46:36.575  1492  1492 W binder:1492_2: type=1400 audit(0.0:848732): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 02:46:36.579  1492  1492 W libc    : Access denied finding property "hwservicemanager.ready"
+11-07 02:46:36.575  1492  1492 W binder:1492_2: type=1400 audit(0.0:848733): avc:  denied  { read } for  name="u:object_r:hwservicemanager_prop:s0" dev="tmpfs" ino=226 scontext=u:r:lbs_dbg_ext:s0 tcontext=u:object_r:hwservicemanager_prop:s0 tclass=file permissive=0
+11-07 02:46:36.761  1167  1208 I libPerfCtl: xgfGetFPS pid:31477 fps:-1
+11-07 02:46:36.950  1830  2074 W PackageManager: Missing required system package: com.anchor.mine, but found with extended search.
+11-07 02:46:36.976  1830  2109 D WifiConfigStore: Writing to stores completed in 6 ms.
+11-07 02:46:37.002 16367 16389 I TestRunner: finished: testGentleReminderFires_SetsFlag(com.anchor.mine.alarms.AlarmSelfTest)

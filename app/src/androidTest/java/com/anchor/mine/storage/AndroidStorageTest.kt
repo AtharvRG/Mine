@@ -94,7 +94,7 @@ class AndroidStorageTest {
         assertEquals("COMPLETE", fetchedEvent?.opType)
         assertEquals("{}", fetchedEvent?.beforeJson)
 
-        assertTrue(storage.getActiveReminders().isEmpty())
+        assertTrue(storage.getActiveReminders(System.currentTimeMillis()).isEmpty())
     }
 
     @Test
@@ -996,6 +996,147 @@ class AndroidStorageTest {
         assertEquals("cancelled", undone!!.status)
     }
 
+    // T-01 / R-04 / D-01: the node UPDATE statements write a fixed column list that omits
+    // `title`, `type` and `local_only`, so a rename or retype is silently dropped on the real
+    // DB while SharedFakeStorage (whole-object replace) keeps it — every core test passes and
+    // the device does not. This asserts the real SQLite round-trip.
+    @Test
+    fun testT01_UpdateNodeAndCommit_PersistsTitleTypeAndLocalOnly(): Unit = runBlocking {
+        val now = System.currentTimeMillis()
+        val original = Node(
+            id = "n_rename",
+            type = "task",
+            title = "Original title",
+            status = "active",
+            createdAt = now,
+            updatedAt = now
+        )
+        storage.createNodeAndCommit(original, RawEvent("op_rename_create", "CREATE", "node", "n_rename"), reminder = null)
+
+        val renamed = original.copy(
+            type = "note",
+            title = "Renamed title",
+            localOnly = true,
+            updatedAt = now + 1000L
+        )
+        storage.updateNodeAndCommit(
+            renamed,
+            RawEvent("op_rename_update", "UPDATE", "node", "n_rename", beforeJson = "{}", afterJson = "{}"),
+            deleteReminderId = null,
+            upsertReminder = null,
+            consumeProposalId = null,
+            softDeleteEdgeIds = emptyList()
+        )
+
+        val fetched = storage.getNode("n_rename")
+        assertNotNull(fetched)
+        assertEquals("title must persist through updateNodeAndCommit", "Renamed title", fetched!!.title)
+        assertEquals("type must persist through updateNodeAndCommit", "note", fetched.type)
+        assertEquals("local_only must persist through updateNodeAndCommit", true, fetched.localOnly)
+    }
+
+    // T-02 / R-05 / D-02: undo restores the pre-change snapshot. A snapshot that carries a
+    // different title must roll the title back too, otherwise undo is partial.
+    @Test
+    fun testT02_UndoChangeAndCommit_RestoresTitle(): Unit = runBlocking {
+        val now = System.currentTimeMillis()
+        val original = Node(
+            id = "n_undo_title",
+            type = "task",
+            title = "Before rename",
+            status = "active",
+            createdAt = now,
+            updatedAt = now
+        )
+        storage.createNodeAndCommit(original, RawEvent("op_undo_create", "CREATE", "node", "n_undo_title"), reminder = null)
+
+        val renamed = original.copy(title = "After rename", updatedAt = now + 1000L)
+        storage.updateNodeAndCommit(
+            renamed,
+            RawEvent("op_undo_rename", "UPDATE", "node", "n_undo_title", beforeJson = "{}", afterJson = "{}"),
+            deleteReminderId = null,
+            upsertReminder = null,
+            consumeProposalId = null,
+            softDeleteEdgeIds = emptyList()
+        )
+
+        // The rename must actually have landed, otherwise "undo restored it" is vacuous: the row
+        // still holds the original title because the update was dropped, not because undo worked.
+        assertEquals("rename must land before undo can restore it", "After rename", storage.getNode("n_undo_title")!!.title)
+
+        storage.undoChangeAndCommit(
+            node = original,
+            event = RawEvent(
+                opId = "op_undo_title",
+                opType = "UNDO",
+                targetType = "node",
+                targetId = "n_undo_title",
+                beforeJson = "{}",
+                afterJson = null,
+                undoOf = "op_undo_rename",
+                tsUtc = now + 2000L
+            ),
+            restoreReminder = null
+        )
+
+        val undone = storage.getNode("n_undo_title")
+        assertNotNull(undone)
+        assertEquals("undo must restore the title", "Before rename", undone!!.title)
+    }
+
+    // D-03: getStaleNodes is the one query where SharedFakeStorage filters `!it.localOnly` and
+    // AndroidStorage does not. A local_only node is barred from every other recall path, so a
+    // stale sweep that includes it is a leak.
+    @Test
+    fun testD03_GetStaleNodes_ExcludesLocalOnly(): Unit = runBlocking {
+        val now = 1_800_000_000_000L
+        val old = now - 90L * 24 * 3600 * 1000L
+        storage.createNodeAndCommit(
+            Node(id = "n_stale_public", type = "task", title = "Public stale", status = "active",
+                createdAt = old, updatedAt = old),
+            RawEvent("op_stale_pub", "CREATE", "node", "n_stale_public"), reminder = null
+        )
+        storage.createNodeAndCommit(
+            Node(id = "n_stale_private", type = "task", title = "Private stale", status = "active",
+                createdAt = old, updatedAt = old, localOnly = true),
+            RawEvent("op_stale_priv", "CREATE", "node", "n_stale_private"), reminder = null
+        )
+
+        val stale = storage.getStaleNodes(now, 30L * 24 * 3600 * 1000L)
+        val ids = stale.map { it.id }
+        assertTrue("public stale node must be listed", ids.contains("n_stale_public"))
+        assertFalse("local_only node must not leak through getStaleNodes", ids.contains("n_stale_private"))
+    }
+
+    // R-05: an UPDATE that matches no row still wrote a raw_event, so the UI rendered a receipt
+    // ("Updated: ...") for a change that never happened. The event must not be written either.
+    @Test
+    fun testR05_UpdateNodeAndCommit_MissingRow_DoesNotWriteEvent(): Unit = runBlocking {
+        val ghost = Node(
+            id = "n_does_not_exist",
+            type = "task",
+            title = "Ghost",
+            status = "active",
+            createdAt = 1L,
+            updatedAt = 2L
+        )
+        var threw = false
+        try {
+            storage.updateNodeAndCommit(
+                ghost,
+                RawEvent("op_ghost_update", "UPDATE", "node", "n_does_not_exist", beforeJson = "{}", afterJson = "{}"),
+                deleteReminderId = null,
+                upsertReminder = null,
+                consumeProposalId = null,
+                softDeleteEdgeIds = emptyList()
+            )
+        } catch (e: IllegalStateException) {
+            threw = true
+        }
+        assertTrue("update of a missing node must fail rather than report success", threw)
+        assertNull("a no-op update must not leave a receipt event behind", storage.getEvent("op_ghost_update"))
+    }
+
     @Test
     fun testAndroidStorage_getRecentEvents_PreservesCauseMsgIdAndFiltersUndoOf(): Unit = runBlocking {
         val now = 1700000000000L
@@ -1380,5 +1521,191 @@ class AndroidStorageTest {
         )
         assertNull("Proposal with created_at = 0 is expired and must return null", storage.getProposal("p_zero_created"))
         assertEquals("getOpenProposals must not return expired proposals", 0, storage.getOpenProposals().filter { it.id == "p_zero_created" }.size)
+    }
+
+    /**
+     * R-23: `searchMemoryFts` used a bare `catch (_: Exception) {}`, so an FTS failure returned an
+     * empty list indistinguishable from a genuine no-match — the model then told the user "No
+     * results found." while the index was broken. The failure must be observable.
+     *
+     * A real failure is forced here: the search joins `msg_chunk_fts`, so dropping that table makes
+     * every query throw `SQLiteException: no such table`. The test asserts the failure is recorded
+     * in the diagnostics log rather than discarded.
+     */
+    @Test
+    fun testSearchMemoryFts_QueryFails_IsLoggedNotSilentlyEmpty(): Unit = runBlocking {
+        storage.insertRawMessage("msg_r23_1", "user", "Remember the R23 sentinel")
+
+        // Prove the index is healthy first, so the assertion below is about the failure path.
+        assertTrue(
+            "Precondition: the FTS index must find the sentinel before it is broken",
+            storage.searchMemoryFts("sentinel", 10).any { it.details.contains("sentinel") }
+        )
+
+        dbHelper.writableDatabase.execSQL("DROP TABLE msg_chunk_fts")
+
+        val results = storage.searchMemoryFts("sentinel", 10)
+        assertTrue("A broken index yields no rows, same as a genuine miss", results.isEmpty())
+
+        val logged = dbHelper.readableDatabase.query(
+            "SELECT tag, msg FROM diag_log WHERE tag = 'AndroidStorage' ORDER BY ts DESC"
+        ).use { c ->
+            buildList {
+                while (c.moveToNext()) add(c.getString(0) to c.getString(1))
+            }
+        }
+        assertTrue(
+            "R-23: an FTS failure must be recorded in diag_log, not swallowed. Got $logged",
+            logged.any { (_, msg) -> msg.contains("searchMemoryFts") }
+        )
+    }
+
+    /**
+     * R-24: `getProposal` / `getOpenProposals` called `IntentType.valueOf(...)` on a stored string.
+     * A proposal written by a newer build (or a hand-edited row) carrying an intent this build does
+     * not know threw IllegalArgumentException, so the whole read failed and the proposal vanished
+     * from the UI. Unknown intents must degrade, not crash.
+     */
+    @Test
+    fun testProposalRead_UnknownStoredIntent_DoesNotThrow(): Unit = runBlocking {
+        val now = System.currentTimeMillis()
+        dbHelper.writableDatabase.execSQL(
+            "INSERT INTO proposal (id, kind, intent, options, status, created_at) VALUES ('p_future', 'ambiguous', 'TELEPORT', '[]', 'open', ?)",
+            arrayOf<Any>(now)
+        )
+
+        val single = storage.getProposal("p_future")
+        assertNotNull("R-24: an unknown stored intent must not make the proposal unreadable", single)
+        assertEquals("p_future", single!!.id)
+        assertEquals(
+            "R-24: an unknown intent must degrade to a defined value, not kill the read",
+            IntentType.CREATE,
+            single.intent
+        )
+
+        val open = storage.getOpenProposals()
+        assertTrue(
+            "R-24: getOpenProposals must still return the row rather than throwing",
+            open.any { it.id == "p_future" }
+        )
+    }
+
+    /**
+     * R-25: `getActiveReminders` read `System.currentTimeMillis()` itself instead of taking the
+     * caller's clock, so it could not agree with the rest of the system (which computes against an
+     * injected `Clock`) and could not be tested at all.
+     *
+     * The reminder fires at a fixed instant and the two probes sit on either side of it. Under the
+     * old wall-clock implementation both calls would see the same `now`, so one of the two
+     * assertions must fail no matter when the test runs — the result has to follow the argument.
+     */
+    @Test
+    fun testR25_GetActiveReminders_UsesCallerClockNotWallClock(): Unit = runBlocking {
+        val fireAt = 1_700_000_000_000L
+        storage.saveReminder(Reminder("r_r25", "R25 boundary probe", fireAt, "n_r25", AlarmTier.ALARM))
+
+        val before = storage.getActiveReminders(fireAt - 1L)
+        assertTrue(
+            "R-25: a reminder 1ms in the caller's future is active. Got ${before.map { it.id }}",
+            before.any { it.id == "r_r25" }
+        )
+
+        val at = storage.getActiveReminders(fireAt)
+        assertFalse(
+            "R-25: a reminder at the caller's instant is no longer active. Got ${at.map { it.id }}",
+            at.any { it.id == "r_r25" }
+        )
+
+        val after = storage.getActiveReminders(fireAt + 1L)
+        assertFalse(
+            "R-25: a reminder 1ms in the caller's past is not active. Got ${after.map { it.id }}",
+            after.any { it.id == "r_r25" }
+        )
+    }
+
+    /**
+     * R-26: `getPendingReminders` read the whole reminder table, so the cost of every reconcile and
+     * sweep grew with reminder history. It is now `ORDER BY fire_at ASC LIMIT ?`.
+     *
+     * The page size is passed explicitly (5, not the 500 default) because the defect is the missing
+     * bound, not the constant: inserting 501 rows on a device would prove nothing the 6 rows here do
+     * not. The assertions pin all three properties of the bound — it is honoured, it is taken in
+     * fire order (so the discarded tail is the *latest* rows, and the reconciler's `limit + 1`
+     * sentinel still sees a real row), and the by-id lookup still reaches a row the page dropped.
+     */
+    @Test
+    fun testR26_GetPendingReminders_IsBoundedInFireOrder_AndByIdStillFindsTheTail(): Unit = runBlocking {
+        val base = 1_700_000_000_000L
+        // Inserted out of order on purpose: the bound must be defined by fire_at, not by rowid.
+        val fireOffsets = listOf(600L, 100L, 400L, 200L, 500L, 300L)
+        fireOffsets.forEachIndexed { i, offset ->
+            storage.saveReminder(Reminder("r_r26_$i", "R26 row $i", base + offset, "n_r26_$i", AlarmTier.ALARM))
+        }
+
+        val page = storage.getPendingReminders(limit = 5)
+        assertEquals("R-26: the page must be bounded to the requested size. Got ${page.map { it.id }}", 5, page.size)
+        assertEquals(
+            "R-26: the page must be the earliest rows by fire_at, in order. Got ${page.map { it.fireAtMillis - base }}",
+            listOf(100L, 200L, 300L, 400L, 500L),
+            page.map { it.fireAtMillis - base }
+        )
+        assertFalse(
+            "R-26: the latest row must be the one the page drops. Got ${page.map { it.id }}",
+            page.any { it.id == "r_r26_0" }
+        )
+
+        val sentinel = storage.getPendingReminders(limit = 6)
+        assertEquals(
+            "R-26: a limit above the row count returns every row, so the reconciler's limit+1 probe can detect truncation",
+            6,
+            sentinel.size
+        )
+
+        val tail = storage.getReminderById("r_r26_0")
+        assertNotNull("R-26: the by-id lookup must reach a row the page dropped", tail)
+        assertEquals("R26 row 0", tail!!.text)
+        assertEquals(base + 600L, tail.fireAtMillis)
+    }
+
+    /**
+     * R-26: the same missing ceiling on the two other reminder reads. `getActiveReminders` backs the
+     * Home list and had neither a bound nor an `ORDER BY`; `getRemindersBetween`/`getRemindersForDay`
+     * had the range predicate but no ceiling, so a wide range (a year, a corrupted day key) returned
+     * every row in it.
+     *
+     * Each assertion is the property the defect destroyed: the read stops at the requested size, the
+     * rows it keeps are the earliest by fire_at in fire order, and the rows it drops are the latest.
+     */
+    @Test
+    fun testR26_ActiveAndRangeReminderQueries_AreBoundedInFireOrder(): Unit = runBlocking {
+        val base = 1_700_000_000_000L
+        val fireOffsets = listOf(600L, 100L, 400L, 200L, 500L, 300L)
+        fireOffsets.forEachIndexed { i, offset ->
+            storage.saveReminder(Reminder("r_r26b_$i", "R26b row $i", base + offset, "n_r26b_$i", AlarmTier.ALARM))
+        }
+
+        val active = storage.getActiveReminders(now = base, limit = 4)
+        assertEquals("R-26: getActiveReminders must honour its bound. Got ${active.map { it.id }}", 4, active.size)
+        assertEquals(
+            "R-26: getActiveReminders must return the soonest reminders in fire order. Got ${active.map { it.fireAtMillis - base }}",
+            listOf(100L, 200L, 300L, 400L),
+            active.map { it.fireAtMillis - base }
+        )
+
+        val range = storage.getRemindersBetween(base, base + 1000L, limit = 3)
+        assertEquals("R-26: getRemindersBetween must honour its bound. Got ${range.map { it.id }}", 3, range.size)
+        assertEquals(
+            "R-26: getRemindersBetween must return the earliest rows in the range, in fire order. Got ${range.map { it.fireAtMillis - base }}",
+            listOf(100L, 200L, 300L),
+            range.map { it.fireAtMillis - base }
+        )
+
+        val day = storage.getRemindersForDay(base, base + 1000L, limit = 2)
+        assertEquals("R-26: getRemindersForDay must honour its bound. Got ${day.map { it.id }}", 2, day.size)
+        assertEquals(
+            "R-26: getRemindersForDay must return the earliest rows of the day, in fire order. Got ${day.map { it.fireAtMillis - base }}",
+            listOf(100L, 200L),
+            day.map { it.fireAtMillis - base }
+        )
     }
 }

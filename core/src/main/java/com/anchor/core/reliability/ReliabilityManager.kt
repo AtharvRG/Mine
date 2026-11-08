@@ -24,8 +24,12 @@ class ReliabilityManager(
         val toNotify = mutableListOf<com.anchor.core.models.Reminder>()
         
         for (reminder in missed) {
-            // SEC 10: Check if we already logged this fire to prevent duplicate sweeping
-            if (!storage.hasReminderFire(reminder.id, "missed")) {
+            // SEC 10: Check if we already logged this fire to prevent duplicate sweeping.
+            // H4: dedupe on the fire instance, not on (reminderId, "missed") alone. A reminder
+            // rescheduled on the same node keeps its id ("r_<nodeId>"), so the same id can miss
+            // twice at two different fire times; deduping on the id would swallow the second miss.
+            val lastMiss = storage.getReminderFire(reminder.id, "missed")
+            if (lastMiss == null || lastMiss.scheduledFor != reminder.fireAtMillis) {
                 val fire = com.anchor.core.models.ReminderFire(
                     id = "f_${java.util.UUID.randomUUID().toString().take(8)}",
                     reminderId = reminder.id,

@@ -41,24 +41,42 @@ object EnvelopeParser {
         }
     }
 
+    /**
+     * Placeholder noise the model emits instead of omitting an optional argument. "none" is
+     * deliberately absent: it is a plausible user-supplied name ("None" for a shopping list item).
+     */
+    private fun isPlaceholder(value: String): Boolean =
+        value.trim().lowercase() in listOf("null", "n/a", "")
+
     fun resolveArgs(call: ToolCall): Map<String, String> {
         val result = mutableMapOf<String, String>()
         call.args.forEach { (k, element) ->
             if (element is JsonNull) return@forEach
-            
+
             val strVal = if (element is JsonPrimitive) {
                 if (element.isString) element.content else element.contentOrNull
             } else {
                 element.toString()
             }
-            
-            if (strVal != null) {
-                val normalized = strVal.trim().lowercase()
-                if (normalized !in listOf("null", "none", "n/a", "")) {
-                    result[k] = strVal
-                }
+
+            if (strVal != null && !isPlaceholder(strVal)) {
+                result[k] = strVal
             }
         }
         return result
+    }
+
+    /**
+     * Stable identity of a call for duplicate detection within one envelope. Built from the
+     * *unresolved* arguments in a deterministic key order, not from [resolveArgs]: resolution drops
+     * placeholders, so `{"title":"n/a"}` and `{"title":null}` would otherwise collide and the
+     * second, legitimate call would be rejected as a duplicate.
+     */
+    fun dedupeKey(call: ToolCall): String {
+        val args = call.args.entries
+            .filter { it.value !is JsonNull }
+            .sortedBy { it.key }
+            .joinToString("&") { (k, v) -> "$k=$v" }
+        return "${call.tool}|$args"
     }
 }

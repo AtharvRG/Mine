@@ -56,6 +56,22 @@ open class SharedFakeStorage(var clock: Clock = SystemClock()) : Storage {
     override suspend fun getSetting(key: String): String? = settings[key]
     override suspend fun saveSetting(key: String, value: String) { settings[key] = value }
 
+    /** When set, [saveSettings] throws after writing this many entries (simulates a mid-write crash). */
+    var failSettingsWriteAfter: Int? = null
+    override suspend fun saveSettings(values: Map<String, String>) {
+        val snapshot = HashMap(settings)
+        try {
+            values.entries.forEachIndexed { i, (k, v) ->
+                failSettingsWriteAfter?.let { if (i >= it) throw IllegalStateException("simulated settings write failure") }
+                settings[k] = v
+            }
+        } catch (e: Exception) {
+            settings.clear()
+            settings.putAll(snapshot)
+            throw e
+        }
+    }
+
     override suspend fun getEffectiveDayRule(tsUtc: Long): DayRule {
         return dayRules.filter { it.effectiveFrom <= tsUtc }
             .maxByOrNull { it.effectiveFrom }
@@ -187,8 +203,17 @@ open class SharedFakeStorage(var clock: Clock = SystemClock()) : Storage {
         }
     }
 
-    override suspend fun getActiveReminders(): List<Reminder> = reminders.filter { it.fireAtMillis > (clock.now() - 1000) }
-    override suspend fun getPendingReminders(): List<Reminder> = reminders
+    // R-25: filters on the caller's clock, not the fake's own, so a test that moves time sees the
+    // same set the production path would.
+    // R-26: same fire-order page and bound as AndroidStorage — a fake that returns more than the
+    // device would makes every test above the bound pass for the wrong reason.
+    override suspend fun getActiveReminders(now: Long, limit: Int): List<Reminder> =
+        synchronized(reminders) {
+            reminders.filter { it.fireAtMillis > (now - 1000) }.sortedBy { it.fireAtMillis }.take(limit)
+        }
+    // R-26: same fire-order page as AndroidStorage, so a test can see the bound the device has.
+    override suspend fun getPendingReminders(limit: Int): List<Reminder> =
+        synchronized(reminders) { reminders.sortedBy { it.fireAtMillis }.take(limit) }
 
     val proposalCreatedAt = mutableMapOf<String, Long>()
 
@@ -330,6 +355,11 @@ open class SharedFakeStorage(var clock: Clock = SystemClock()) : Storage {
                 }
                 savedProposals[idx] = savedProposals[idx].copy(status = "consumed")
             }
+            // R-05 parity: AndroidStorage aborts a zero-row update; the fake must not pretend
+            // the node existed.
+            if (activeNodes.none { it.id == node.id }) {
+                throw IllegalStateException("updateNodeAndCommit: no row for node ${node.id}")
+            }
             activeNodes.removeAll { it.id == node.id }
             activeNodes.add(node)
             if (deleteReminderId != null) reminders.removeAll { it.id == deleteReminderId }
@@ -425,8 +455,11 @@ open class SharedFakeStorage(var clock: Clock = SystemClock()) : Storage {
     }
 
     override suspend fun getReminderByNodeId(nodeId: String): Reminder? = reminders.find { it.nodeId == nodeId }
+    override suspend fun getReminderById(id: String): Reminder? = reminders.find { it.id == id }
     override suspend fun clearAlarmRegistry() { registeredAlarms.clear() }
     override suspend fun hasReminderFire(reminderId: String, outcome: String): Boolean = reminderFires.any { it.reminderId == reminderId && it.outcome == outcome }
+    override suspend fun getReminderFire(reminderId: String, outcome: String): com.anchor.core.models.ReminderFire? =
+        reminderFires.filter { it.reminderId == reminderId && it.outcome == outcome }.maxByOrNull { it.firedAt }
 
     val edges = mutableListOf<Edge>()
 
@@ -484,12 +517,12 @@ open class SharedFakeStorage(var clock: Clock = SystemClock()) : Storage {
         return messages.filter { it.dayKey == dayKey }
     }
 
-    override suspend fun getRemindersBetween(startMs: Long, endMs: Long): List<Reminder> {
-        return reminders.filter { it.fireAtMillis in startMs..endMs }.sortedBy { it.fireAtMillis }
+    override suspend fun getRemindersBetween(startMs: Long, endMs: Long, limit: Int): List<Reminder> {
+        return reminders.filter { it.fireAtMillis in startMs..endMs }.sortedBy { it.fireAtMillis }.take(limit)
     }
 
-    override suspend fun getRemindersForDay(startOfDayMs: Long, endOfDayMs: Long): List<Reminder> {
-        return getRemindersBetween(startOfDayMs, endOfDayMs)
+    override suspend fun getRemindersForDay(startOfDayMs: Long, endOfDayMs: Long, limit: Int): List<Reminder> {
+        return getRemindersBetween(startOfDayMs, endOfDayMs, limit)
     }
 
     val quoteSlots = mutableMapOf<Pair<QuoteSlot, String>, Quote>()

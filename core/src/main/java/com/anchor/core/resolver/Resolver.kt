@@ -97,9 +97,6 @@ class Resolver {
 
         val top = scores[0]
 
-        // Strict baseline: Must have at least 30% word match
-        if (top.second.textMatch < 0.30) return Resolution.NotFound
-
         val isClosing = intent == IntentType.CANCEL || intent == IntentType.COMPLETE
         val autoCommitThreshold = if (isClosing) 0.80 else 0.70
         val requiredMargin = if (isClosing) 0.25 else 0.20
@@ -112,14 +109,21 @@ class Resolver {
             }
         }
 
-        // Single candidate: Must meet auto-commit threshold, otherwise show a chip
+        // Single candidate: Must meet auto-commit threshold, otherwise show a chip.
+        // H-14 (R-19): this runs before the 0.30 floor below, because with exactly one candidate
+        // there is nothing to disambiguate against — saying "not found" about the only item the
+        // user is looking at is worse than asking. A zero-overlap candidate still gets NotFound:
+        // an unrelated hint is not evidence for the item, so there is nothing to confirm.
         if (scores.size == 1) {
-            return if (top.second.textMatch >= autoCommitThreshold) {
-                Resolution.ClearWinner(top.first)
-            } else {
-                Resolution.Ambiguous(listOf(top.first))
+            return when {
+                top.second.textMatch >= autoCommitThreshold -> Resolution.ClearWinner(top.first)
+                top.second.textMatch > 0.0 -> Resolution.Ambiguous(listOf(top.first))
+                else -> Resolution.NotFound
             }
         }
+
+        // Strict baseline: Must have at least 30% word match (multi-candidate path only)
+        if (top.second.textMatch < 0.30) return Resolution.NotFound
 
         val second = scores[1]
         val textMargin = top.second.textMatch - second.second.textMatch
