@@ -380,3 +380,24 @@
   `powershell -NoProfile -Command "Get-CimInstance Win32_Process | ? { $_.CommandLine -match 'gradle|utp|am instrument|adb logcat' }"`
   before mutating a file for a probe, and restore from a saved copy (`cp file /tmp/file.bak` **before**
   editing) rather than from memory.
+
+### 2026-11-08 — row 20 (read-only Memory slice)
+
+- **The `core` module has no `compileDebugKotlin` task.** `./gradlew :core:compileDebugKotlin` fails
+  with *"Cannot locate tasks that match ':core:compileDebugKotlin'"* — `core` is a plain Kotlin/JVM
+  library, so the task is `:core:compileKotlin` (add `--offline`; it resolves fine from the cache).
+  Only `:app` has the `compileDebug*` variants.
+- **Append a new tab, never insert it.** `MainActivity`'s tab dispatch is a positional
+  `when (selectedTab)` and several connected tests click a tab by title and then assume the index.
+  Row 20's "Memory" went on the end (index 5) so `0..4` stayed put and no existing test needed editing.
+  If a future slice must reorder tabs per blueprint 51 §2, that renumbering is its own commit with
+  its own gate run — not a side effect of adding a screen.
+- **A one-shot `LaunchedEffect(selectedTab)` is not one-shot.** `UiState` is a fresh object on every
+  update, so a key on the tab alone re-fires on every state change. The guard is a state field
+  (`memoryLoaded`) that the load itself sets, and it must be *proven* load-bearing — dropping
+  `&& !state.memoryLoaded` failed exactly `memoryTab_FirstOpen_AsksForTheLoad_ExactlyOnce`, which is
+  the whole point of that test.
+- **Recount XML per directory, not by globbing every `test-results` tree.** A single python glob over
+  `app/build/test-results/**/*.xml` listed the same `testDebugUnitTest` directory twice and reported
+  26 app tests instead of 13. Sum per immediate child directory of `build/test-results/` and assert
+  one directory per suite.

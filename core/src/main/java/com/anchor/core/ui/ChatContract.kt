@@ -53,11 +53,18 @@ data class UiState(
     val activeThread: ActiveThread? = null,
     val homePriorityList: List<com.anchor.core.models.Node> = emptyList(),
     val recentlyClosed: List<RecentlyClosed> = emptyList(),
-    val chatItems: List<ChatItem> = emptyList()
+    val chatItems: List<ChatItem> = emptyList(),
+    // Row 20 (memory viewer, read-only slice): read straight from the node and soul_fact tables —
+    // blueprint 51 §3.1 rule 1, no model call. `memoryLoaded` is what makes the one-shot load
+    // one-shot: UiState is a fresh object on every update, so a LaunchedEffect keyed on the tab
+    // alone would re-fire on every state change.
+    val memoryNodes: List<com.anchor.core.models.Node> = emptyList(),
+    val memorySoulFacts: List<com.anchor.core.models.SoulFact> = emptyList(),
+    val memoryLoaded: Boolean = false
 ) {
     override fun toString(): String {
         val redactedKey = if (providerKey.isBlank()) "" else "***"
-        return "UiState(chatMessages=$chatMessages, receipts=$receipts, openProposals=$openProposals, proposedSoulFacts=$proposedSoulFacts, staleItems=$staleItems, inboxCount=$inboxCount, urgentItems=$urgentItems, isChatLoading=$isChatLoading, activeReminders=$activeReminders, selfTestStatus=$selfTestStatus, providerEndpoint=$providerEndpoint, providerKey=$redactedKey, providerModel=$providerModel, debugStats=$debugStats, composerDraft=$composerDraft, connectionError=$connectionError, globalError=$globalError, schedulingError=$schedulingError, schedulingFailedCount=$schedulingFailedCount, missedReminders=$missedReminders, showResetConfirm=$showResetConfirm, alarmDisclosureText=$alarmDisclosureText, selectedDayKey=$selectedDayKey, selectedDayMessages=$selectedDayMessages, selectedDayReminders=$selectedDayReminders, homeQuote=$homeQuote, atRisk=$atRisk, activeThread=$activeThread, homePriorityList=$homePriorityList, recentlyClosed=$recentlyClosed, chatItems=$chatItems)"
+        return "UiState(chatMessages=$chatMessages, receipts=$receipts, openProposals=$openProposals, proposedSoulFacts=$proposedSoulFacts, staleItems=$staleItems, inboxCount=$inboxCount, urgentItems=$urgentItems, isChatLoading=$isChatLoading, activeReminders=$activeReminders, selfTestStatus=$selfTestStatus, providerEndpoint=$providerEndpoint, providerKey=$redactedKey, providerModel=$providerModel, debugStats=$debugStats, composerDraft=$composerDraft, connectionError=$connectionError, globalError=$globalError, schedulingError=$schedulingError, schedulingFailedCount=$schedulingFailedCount, missedReminders=$missedReminders, showResetConfirm=$showResetConfirm, alarmDisclosureText=$alarmDisclosureText, selectedDayKey=$selectedDayKey, selectedDayMessages=$selectedDayMessages, selectedDayReminders=$selectedDayReminders, homeQuote=$homeQuote, atRisk=$atRisk, activeThread=$activeThread, homePriorityList=$homePriorityList, recentlyClosed=$recentlyClosed, chatItems=$chatItems, memoryNodes=$memoryNodes, memorySoulFacts=$memorySoulFacts, memoryLoaded=$memoryLoaded)"
     }
 }
 
@@ -83,4 +90,6 @@ sealed interface UiAction {
     data class RemoveFollowUp(val edgeId: String) : UiAction
     data class KeepStale(val nodeId: String) : UiAction
     data class CancelStale(val nodeId: String) : UiAction
+    /** Row 20: (re)read the Items and Soul lists from storage for the Memory tab. */
+    data object LoadMemory : UiAction
 }

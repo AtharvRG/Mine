@@ -129,7 +129,15 @@ fun MineAppUI(
     focusComposerRequests: androidx.compose.runtime.State<Int> = remember { mutableIntStateOf(0) }
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
-    val tabs = listOf("Chat", "Reminders", "Provider", "Backup", "Debug")
+    // "Memory" is appended, not inserted: the `when (selectedTab)` below and every existing test
+    // that clicks a tab by title depend on 0..4 staying put.
+    val tabs = listOf("Chat", "Reminders", "Provider", "Backup", "Debug", "Memory")
+
+    // Row 20: the viewer reads storage only when it is first opened. `memoryLoaded` is the guard —
+    // UiState is a new object on every update, so keying on the tab alone would re-read on each one.
+    LaunchedEffect(selectedTab, state.memoryLoaded) {
+        if (selectedTab == 5 && !state.memoryLoaded) onAction(UiAction.LoadMemory)
+    }
 
     // B5: the export backend is built asynchronously in MineApp.onCreate. Until it completes the
     // Backup tab says so rather than offering buttons that would do nothing.
@@ -191,6 +199,7 @@ fun MineAppUI(
                 2 -> ProviderScreen(state) { ep, k, m -> onAction(UiAction.SaveProvider(ep, k, m)) }
                 3 -> BackupScreen(exportManager)
                 4 -> DebugScreen(state, onAction)
+                5 -> MemoryScreen(state)
             }
         }
     }
@@ -404,6 +413,56 @@ fun ProviderScreen(state: UiState, onSave: (String, String, String) -> Unit) {
         OutlinedTextField(value = mod, onValueChange = { mod = it }, label = { Text("Model") }, modifier = Modifier.fillMaxWidth().testTag("providerModel"))
         Button(onClick = { onSave(ep, key, mod) }) {
             Text("Save")
+        }
+    }
+}
+
+/**
+ * Row 20, read-only slice of blueprint 51: Items and Soul straight from the tables (rule 1 — no
+ * model call), the Inbox count, and a lock on local-only rows (rule 6). Remove, Erase, Trash,
+ * editing and the other five areas are later slices; nothing here writes.
+ */
+@Composable
+fun MemoryScreen(state: UiState) {
+    Column(modifier = Modifier.testTag("memoryScreen")) {
+        Text("Memory", style = MaterialTheme.typography.titleMedium)
+        Spacer(modifier = Modifier.height(8.dp))
+        Text("Inbox: ${state.inboxCount} waiting", modifier = Modifier.testTag("memoryInboxCount"))
+
+        if (!state.memoryLoaded) {
+            Spacer(modifier = Modifier.height(16.dp))
+            Text("Loading…")
+            return@Column
+        }
+
+        LazyColumn {
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
+                Text("Items (${state.memoryNodes.size})", style = MaterialTheme.typography.titleSmall)
+            }
+            if (state.memoryNodes.isEmpty()) {
+                item { Text("Nothing here yet.", modifier = Modifier.testTag("memoryItemsEmpty")) }
+            }
+            items(state.memoryNodes) { node ->
+                Text(
+                    text = node.title + if (node.localOnly) "  🔒" else "",
+                    modifier = Modifier.fillMaxWidth().testTag("memoryNode-${node.id}")
+                )
+            }
+
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
+                Text("Soul (${state.memorySoulFacts.size})", style = MaterialTheme.typography.titleSmall)
+            }
+            if (state.memorySoulFacts.isEmpty()) {
+                item { Text("Nothing here yet.", modifier = Modifier.testTag("memorySoulEmpty")) }
+            }
+            items(state.memorySoulFacts) { fact ->
+                Text(
+                    text = fact.statement + if (fact.localOnly) "  🔒" else "",
+                    modifier = Modifier.fillMaxWidth().testTag("memoryFact-${fact.id}")
+                )
+            }
         }
     }
 }

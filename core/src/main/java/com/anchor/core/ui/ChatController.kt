@@ -431,6 +431,19 @@ class ChatController(
                 }
                 refreshUI()
             }
+            // Row 20, read-only slice: the viewer renders the real tables (blueprint 51 §3.1 rule 1).
+            // No model call, no gateway, no derived state — a plain read. A storage throw leaves the
+            // lists untouched and reports it; memoryLoaded stays false so the next open retries.
+            is UiAction.LoadMemory -> coroutineScope.launch(defaultDispatcher) {
+                try {
+                    val nodes = storage.getActiveNodes(MEMORY_VIEWER_PAGE)
+                    val facts = storage.getActiveSoulFacts()
+                    _state.update { it.copy(memoryNodes = nodes, memorySoulFacts = facts, memoryLoaded = true) }
+                } catch (e: Exception) {
+                    if (e is kotlinx.coroutines.CancellationException) throw e
+                    _state.update { it.copy(globalError = "Could not load memory: ${e.message ?: e.javaClass.simpleName}") }
+                }
+            }
             else -> {}
         }
     }
@@ -829,6 +842,13 @@ CRITICAL: Do NOT say "Done" or "Saved" unless you issue a tool call.
     }
 
     companion object {
+        /**
+         * Row 20: how many Items the read-only viewer loads. The list is a browse surface, not a
+         * report — a page this size is far past what one person scrolls, and the same cap the
+         * paged Home helper uses per page.
+         */
+        const val MEMORY_VIEWER_PAGE = 200
+
         // O-3: prose that reads as a completed action. A reply matching this with no envelope
         // performed nothing, so it must not be shown as a confirmation. Deliberately excludes
         // questions ("For what?") and offers ("Shall I set…"), which are honest non-actions.
