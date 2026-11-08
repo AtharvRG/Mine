@@ -79,10 +79,16 @@ interface Storage {
     suspend fun saveSoulFact(fact: SoulFact)
     suspend fun createSoulFactAndCommit(fact: SoulFact, event: RawEvent)
     /**
-     * Searches memory (nodes and soul facts) using SQLite FTS.
-     * Clarification: Does not yet query chat messages (raw_message), only node_fts and soul_fts.
+     * Searches memory (nodes, soul facts and conversation chunks) using SQLite FTS.
+     * Chat hits are returned with kind "chat" and [SearchResult.tsUtc] set.
      */
     suspend fun searchMemoryFts(query: String, limit: Int): List<SearchResult>
+
+    /**
+     * Blueprint 23 §5 `search_history`: the original messages themselves, newest first.
+     * Redacted messages are never returned.
+     */
+    suspend fun searchHistory(query: String, limit: Int): List<SearchResult>
 
     suspend fun getNode(id: String): Node?
     suspend fun getEvent(opId: String): RawEvent?

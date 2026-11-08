@@ -430,9 +430,18 @@ open class SharedFakeStorage(var clock: Clock = SystemClock()) : Storage {
             results.add(SearchResult(it.id, "soul_fact", it.category, it.statement))
         }
         messages.filter { it.role != "system" && it.content != null && it.content.contains(query, ignoreCase = true) }.forEach {
-            results.add(SearchResult("chunk_${it.id}", "chat", it.dayKey ?: "", it.content!!))
+            results.add(SearchResult("chunk_${it.id}", "chat", it.dayKey ?: "", it.content!!, it.tsUtc))
         }
         return results.take(limit.coerceAtLeast(0))
+    }
+
+    override suspend fun searchHistory(query: String, limit: Int): List<SearchResult> {
+        if (query.isBlank()) return emptyList()
+        return messages
+            .filter { it.role != "system" && it.content != null && it.content.contains(query, ignoreCase = true) }
+            .sortedByDescending { it.tsUtc }
+            .map { SearchResult(it.id, it.role, it.dayKey ?: "", it.content!!, it.tsUtc) }
+            .take(limit.coerceAtLeast(0))
     }
 
     private val registeredAlarms = mutableMapOf<String, com.anchor.core.models.RegisteredAlarm>()

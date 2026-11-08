@@ -1360,6 +1360,45 @@ class AndroidStorageTest {
         assertFalse("Redacted messages must be completely scrubbed from searchMemoryFts", scrubbedResults.any { it.details.contains("orchids") })
     }
 
+    /**
+     * Blueprint 23 §5 `search_history`: the messages themselves, newest first, with their
+     * timestamps. Redacted messages must never come back — the query re-checks `raw_message`
+     * rather than trusting the chunk deletion alone.
+     */
+    @Test
+    fun testSearchHistory_RealSqlite_NewestFirst_AndRedactionSafe(): Unit = runBlocking {
+        storage.insertRawMessage("msg_hist_1", "user", "I will file the quarterly taxes on Monday")
+        storage.insertRawMessage("msg_hist_2", "assistant", "Noted: quarterly taxes on Monday.")
+        storage.insertRawMessage("msg_hist_3", "user", "unrelated chatter about lunch")
+
+        val hits = storage.searchHistory("taxes", 10)
+        assertEquals("Both messages mentioning taxes are returned", 2, hits.size)
+        assertTrue("Newest first", hits[0].id == "msg_hist_2" && hits[1].id == "msg_hist_1")
+        assertEquals("assistant", hits[0].kind)
+        assertEquals("user", hits[1].kind)
+        assertTrue("Timestamp must be carried through from raw_message", hits[1].tsUtc!! > 0L)
+        assertTrue("Details carry the original wording", hits[1].details.contains("quarterly taxes"))
+
+        // System messages are not conversation history.
+        storage.insertRawMessage("msg_hist_sys", "system", "System: quarterly taxes policy")
+        assertFalse(storage.searchHistory("taxes", 10).any { it.id == "msg_hist_sys" })
+
+        // Redaction removes the message from history.
+        storage.redactMessage("msg_hist_1")
+        val afterRedact = storage.searchHistory("taxes", 10)
+        assertFalse("Redacted message must not be returned", afterRedact.any { it.id == "msg_hist_1" })
+
+        // Even if a stale chunk survived, the raw_message re-check must keep it out.
+        dbHelper.writableDatabase.execSQL(
+            "INSERT INTO msg_chunk (id, day_key, ts_start, ts_end, msg_ids, text, extractor_version) " +
+                "SELECT 'chunk_msg_hist_1', day_key, ts_utc, ts_utc, id, 'quarterly taxes', '1' FROM raw_message WHERE id = 'msg_hist_1'"
+        )
+        assertFalse(
+            "A stale chunk must not resurrect a redacted message",
+            storage.searchHistory("taxes", 10).any { it.id == "msg_hist_1" }
+        )
+    }
+
     @Test
     fun testConsumeProposalCas_RealSqlite(): Unit = runBlocking {
         val p = Proposal("p_cas_1", "time", IntentType.CREATE, listOf(ProposalOption("1", "Opt 1")), status = "open")

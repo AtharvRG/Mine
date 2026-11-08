@@ -155,5 +155,7 @@ data class SearchResult(
     val id: String,
     val kind: String,
     val title: String,
-    val details: String
+    val details: String,
+    /** Epoch ms of the underlying row, when the kind has a meaningful time (chat chunks). */
+    val tsUtc: Long? = null
 )

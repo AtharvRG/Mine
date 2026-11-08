@@ -36,10 +36,16 @@ class Gateway(
         return when (call.tool) {
             "search_memory" -> {
                 val query = args["query"] ?: ""
-                val limit = args["limit"]?.toIntOrNull() ?: 6
+                val limit = (args["limit"]?.toIntOrNull() ?: 6).coerceIn(1, 12)
                 val results = storage.searchMemoryFts(query, limit)
-                val text = if (results.isEmpty()) "No results found." else results.joinToString("\n") { "${it.id} | ${it.kind} | ${it.title} | ${it.details}" }
-                ToolResult.Data(text)
+                ToolResult.Data(formatSearchResults(results))
+            }
+            // Blueprint 23 §5: the original messages, for when exact earlier wording matters.
+            "search_history" -> {
+                val query = args["query"] ?: ""
+                if (query.isBlank()) return ToolResult.Error("Missing query")
+                val limit = (args["limit"]?.toIntOrNull() ?: 5).coerceIn(1, 10)
+                ToolResult.Data(formatSearchResults(storage.searchHistory(query, limit)))
             }
             "soul_propose" -> {
                 // B3: Cap statement length
@@ -1170,6 +1176,36 @@ class Gateway(
                     "Applied ${intent.name}: ${newNode.title}"
                 }
                 return ToolResult.Committed(intent.name, newNode.id, receiptText, uId)
+            }
+        }
+    }
+
+    /**
+     * Blueprint 23 §5 result format, one line per item:
+     * `n3 | task | active | due Fri 23 Oct 18:00 | Write the report`,
+     * `s2 | health | Is diabetic`, `m4 | Tue 14 Oct 21:10 | U: ... / A: ...`.
+     * Chat hits whose chunk holds more than one message keep the blueprint's `day_key` slot.
+     */
+    private fun formatSearchResults(results: List<SearchResult>): String {
+        if (results.isEmpty()) return "No results found."
+        return results.joinToString("\n") { r ->
+            when (r.kind) {
+                "soul_fact" -> "${r.id} | ${r.title} | ${r.details}"
+                "chat" -> {
+                    val whenText = r.tsUtc?.let { dateResolver.format(it) } ?: r.title
+                    "${r.id.removePrefix("chunk_")} | $whenText | ${r.details}"
+                }
+                "user", "assistant" -> {
+                    val who = if (r.kind == "user") "U" else "A"
+                    val whenText = r.tsUtc?.let { dateResolver.format(it) } ?: r.title
+                    "${r.id} | $whenText | $who: ${r.details}"
+                }
+                else -> {
+                    val status = Regex("Status: (\\S+)").find(r.details)?.groupValues?.get(1) ?: r.kind
+                    val due = Regex("Due: (\\d+)").find(r.details)?.groupValues?.get(1)?.toLongOrNull()
+                    val dueText = due?.let { " | due ${dateResolver.format(it)}" } ?: ""
+                    "${r.id} | ${r.kind} | $status$dueText | ${r.title}"
+                }
             }
         }
     }

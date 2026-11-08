@@ -745,11 +745,11 @@ class AndroidStorage(private val dbHelper: SupportSQLiteOpenHelper) : Storage {
                 }
             }
             dbHelper.readableDatabase.query(
-                "SELECT msg_chunk.id, msg_chunk.day_key, msg_chunk.text FROM msg_chunk JOIN msg_chunk_fts ON msg_chunk.rowid = msg_chunk_fts.rowid WHERE msg_chunk_fts MATCH ? ORDER BY msg_chunk_fts.rank LIMIT ?",
+                "SELECT msg_chunk.id, msg_chunk.day_key, msg_chunk.text, msg_chunk.ts_start FROM msg_chunk JOIN msg_chunk_fts ON msg_chunk.rowid = msg_chunk_fts.rowid WHERE msg_chunk_fts MATCH ? ORDER BY msg_chunk_fts.rank LIMIT ?",
                 arrayOf<Any>(matchQuery, safeLimit)
             ).use {
                 while (it.moveToNext()) {
-                    results.add(SearchResult(it.getString(0), "chat", it.getString(1), it.getString(2)))
+                    results.add(SearchResult(it.getString(0), "chat", it.getString(1), it.getString(2), it.getLong(3)))
                 }
             }
         } catch (e: Exception) {
@@ -758,6 +758,48 @@ class AndroidStorage(private val dbHelper: SupportSQLiteOpenHelper) : Storage {
             logDiagError("searchMemoryFts failed for query '$query': ${e.message}")
         }
         return@withContext results.take(safeLimit)
+    }
+
+    /**
+     * Blueprint 23 §5 `search_history`. msg_chunk holds one row per message, so the chunk FTS
+     * index is the message index; the chunk id is `chunk_<raw_message.id>`.
+     * Redacted rows are excluded twice over: redaction NULLs raw_message.content and deletes
+     * the chunk, and the join below re-checks raw_message so a stale chunk can never leak.
+     */
+    override suspend fun searchHistory(query: String, limit: Int): List<SearchResult> = withContext(ioDispatcher) {
+        val results = mutableListOf<SearchResult>()
+        if (query.isBlank()) return@withContext results
+        val safeLimit = limit.coerceIn(1, 10)
+
+        try {
+            val sanitized = query.replace(Regex("[^\\p{L}\\p{M}\\p{N}\\s]"), "").trim()
+            val tokens = sanitized.split(Regex("\\s+")).filter { it.isNotBlank() }
+            if (tokens.isEmpty()) return@withContext results
+            val matchQuery = tokens.joinToString(" AND ") { "\"$it\"*" }
+
+            // Join through msg_chunk explicitly. A correlated subquery on msg_chunk_fts.rowid
+            // returns NULL for a message with no chunk, and an external-content FTS5 table
+            // (content='msg_chunk') then resolves that NULL to the content row at the same
+            // position — which resurrects system messages that were never chunked. Joining
+            // msg_chunk -> raw_message by id keeps the match anchored to a real chunk.
+            dbHelper.readableDatabase.query(
+                "SELECT raw_message.id, raw_message.role, raw_message.content, raw_message.ts_utc, raw_message.day_key " +
+                    "FROM raw_message " +
+                    "JOIN msg_chunk ON msg_chunk.id = 'chunk_' || raw_message.id " +
+                    "JOIN msg_chunk_fts ON msg_chunk_fts.rowid = msg_chunk.rowid " +
+                    "WHERE msg_chunk_fts MATCH ? AND raw_message.content IS NOT NULL AND raw_message.redacted_at IS NULL " +
+                    "ORDER BY raw_message.ts_utc DESC LIMIT ?",
+                arrayOf<Any>(matchQuery, safeLimit)
+            ).use {
+                while (it.moveToNext()) {
+                    results.add(SearchResult(it.getString(0), it.getString(1), it.getString(4) ?: "", it.getString(2), it.getLong(3)))
+                }
+            }
+        } catch (e: Exception) {
+            // R-23: a broken index must not look like "no such conversation".
+            logDiagError("searchHistory failed for query '$query': ${e.message}")
+        }
+        return@withContext results
     }
 
     /**

@@ -654,7 +654,8 @@ Tools:
 - propose_change (intent: UPDATE, hint: target text identifying the existing item, new_title: optional new name, due_text: optional new time in the user's own words, priority: optional 0-3, severity: optional 0-3, pinned: optional "true"|"false", tier: optional "alarm"|"gentle"). Use when the user wants to modify an existing item (rename, change its time, pin it, change priority/severity/tier). Provide at least one change; hint alone is required to identify the item.
 - confirm_change (proposal: proposal id, choice: option id). ONLY use when an ambiguous proposal is open and the user's latest response explicitly chooses or confirms that option. Never guess or choose for the user.
 - undo (token: u_123456).
-- search_memory (query: string, limit: int).
+- search_memory (query: string, limit: int). Use to recall what you know: items, facts and past conversation.
+- search_history (query: string, limit: int). Use only when the user asks what was actually said before and the exact wording matters.
 - soul_propose (statement: string, category: string). Use to record facts or preferences. Do NOT use sensitive categories (health, medical, legal) unless the user explicitly commands it.
 
 Rules:
