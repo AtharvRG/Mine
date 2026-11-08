@@ -24,3 +24,12 @@ sealed interface StreamEvent {
 }
 
 class Http429Exception(val retryAfterSeconds: Int? = null) : Exception("Rate limited")
+
+/**
+ * Blueprint 41 §2 `no_network`: the request never reached a provider because this device has no
+ * usable connection. Distinct from every other transport failure on purpose — a 5xx is the
+ * provider's problem and the next target in the chain may still answer, but no target can answer
+ * without a network. The orchestrator rethrows this instead of falling through to the next target,
+ * and the controller queues the turn instead of reporting an error (audit §6 item 6).
+ */
+class OfflineException(message: String = "No network connection", cause: Throwable? = null) : Exception(message, cause)

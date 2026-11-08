@@ -75,11 +75,19 @@ data class UiState(
     // answers alike; the health answer carries the "keep this on this phone only" switch beside it.
     val onboardingAnswers: Map<String, String> = emptyMap(),
     val onboardingHealthLocalOnly: Boolean = false,
-    val onboardingError: String? = null
+    val onboardingError: String? = null,
+    // Blueprint 41 §2: user messages saved but not yet answered because the device had no network.
+    // Derived on every refresh from the `outbox` rows of type `chat_turn` — blueprint 11:83 forbids
+    // storing delivery state on `raw_message`, so this is a view of the queue, never a column.
+    val queuedChatIds: List<String> = emptyList()
 ) {
+    /** Blueprint 41 §2: the banner the user sees while messages wait. Null when nothing is queued. */
+    val offlineQueuedText: String?
+        get() = if (queuedChatIds.isEmpty()) null else "Offline: your messages are saved."
+
     override fun toString(): String {
         val redactedKey = if (providerKey.isBlank()) "" else "***"
-        return "UiState(chatMessages=$chatMessages, receipts=$receipts, openProposals=$openProposals, proposedSoulFacts=$proposedSoulFacts, staleItems=$staleItems, inboxCount=$inboxCount, urgentItems=$urgentItems, isChatLoading=$isChatLoading, activeReminders=$activeReminders, selfTestStatus=$selfTestStatus, providerEndpoint=$providerEndpoint, providerKey=$redactedKey, providerModel=$providerModel, debugStats=$debugStats, composerDraft=$composerDraft, connectionError=$connectionError, globalError=$globalError, schedulingError=$schedulingError, schedulingFailedCount=$schedulingFailedCount, missedReminders=$missedReminders, showResetConfirm=$showResetConfirm, alarmDisclosureText=$alarmDisclosureText, selectedDayKey=$selectedDayKey, selectedDayMessages=$selectedDayMessages, selectedDayReminders=$selectedDayReminders, homeQuote=$homeQuote, atRisk=$atRisk, activeThread=$activeThread, homePriorityList=$homePriorityList, recentlyClosed=$recentlyClosed, chatItems=$chatItems, memoryNodes=$memoryNodes, memorySoulFacts=$memorySoulFacts, memoryLoaded=$memoryLoaded, nudgeGate=$nudgeGate, onboardingDone=$onboardingDone, onboardingStep=$onboardingStep, onboardingAnswers=$onboardingAnswers, onboardingHealthLocalOnly=$onboardingHealthLocalOnly, onboardingError=$onboardingError)"
+        return "UiState(chatMessages=$chatMessages, receipts=$receipts, openProposals=$openProposals, proposedSoulFacts=$proposedSoulFacts, staleItems=$staleItems, inboxCount=$inboxCount, urgentItems=$urgentItems, isChatLoading=$isChatLoading, activeReminders=$activeReminders, selfTestStatus=$selfTestStatus, providerEndpoint=$providerEndpoint, providerKey=$redactedKey, providerModel=$providerModel, debugStats=$debugStats, composerDraft=$composerDraft, connectionError=$connectionError, globalError=$globalError, schedulingError=$schedulingError, schedulingFailedCount=$schedulingFailedCount, missedReminders=$missedReminders, showResetConfirm=$showResetConfirm, alarmDisclosureText=$alarmDisclosureText, selectedDayKey=$selectedDayKey, selectedDayMessages=$selectedDayMessages, selectedDayReminders=$selectedDayReminders, homeQuote=$homeQuote, atRisk=$atRisk, activeThread=$activeThread, homePriorityList=$homePriorityList, recentlyClosed=$recentlyClosed, chatItems=$chatItems, memoryNodes=$memoryNodes, memorySoulFacts=$memorySoulFacts, memoryLoaded=$memoryLoaded, nudgeGate=$nudgeGate, onboardingDone=$onboardingDone, onboardingStep=$onboardingStep, onboardingAnswers=$onboardingAnswers, onboardingHealthLocalOnly=$onboardingHealthLocalOnly, onboardingError=$onboardingError, queuedChatIds=$queuedChatIds)"
     }
 }
 
@@ -122,4 +130,10 @@ sealed interface UiAction {
     data class OnboardingConfirmDay(val startMinute: Int, val endMinute: Int) : UiAction
     /** Blueprint 52 §3.1: the last step — writes the seeded Soul facts, marks onboarding done. */
     data object OnboardingFinish : UiAction
+
+    /**
+     * Blueprint 41 §3.5: try to answer the queued offline messages now. Sent when the app opens;
+     * the retry timer and a live network callback are not wired in this slice (D-138).
+     */
+    data object DrainQueuedTurns : UiAction
 }

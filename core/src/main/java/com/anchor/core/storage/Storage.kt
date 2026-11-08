@@ -9,6 +9,7 @@ import com.anchor.core.models.DayRule
 import com.anchor.core.models.Edge
 import com.anchor.core.models.Node
 import com.anchor.core.models.NodeCounts
+import com.anchor.core.models.OutboxJob
 import com.anchor.core.models.Proposal
 import com.anchor.core.models.RawEvent
 import com.anchor.core.models.Reminder
@@ -158,6 +159,19 @@ interface Storage {
     suspend fun getQuoteSlot(slot: com.anchor.core.models.QuoteSlot, dayKey: String): com.anchor.core.models.Quote?
     suspend fun saveQuoteSlot(quote: com.anchor.core.models.Quote)
     suspend fun getCompletedTodayCount(startOfDayMs: Long, endOfDayMs: Long): Int
+
+    // Offline outbox (blueprint 41 §4, audit §6 item 6)
+    /**
+     * Records one unit of deferred work. [idemKey] is UNIQUE in the table, so enqueueing the same
+     * logical job twice is a no-op rather than a duplicate turn.
+     */
+    suspend fun enqueueOutbox(job: OutboxJob)
+    /** `pending` jobs of [jobType] whose `next_try_at` has passed, highest priority first, then oldest. */
+    suspend fun getDueOutbox(jobType: String, now: Long): List<OutboxJob>
+    /** Every `pending` job of [jobType], highest priority first — what the UI marks as queued. */
+    suspend fun getPendingOutbox(jobType: String): List<OutboxJob>
+    suspend fun markOutboxDone(id: String, now: Long)
+    suspend fun markOutboxFailed(id: String, now: Long, nextTryAt: Long, error: String)
 
     companion object {
         /** R-26: page size for [getPendingReminders]. Hitting it means "more rows exist". */

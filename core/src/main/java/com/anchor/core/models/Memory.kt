@@ -159,3 +159,31 @@ data class SearchResult(
     /** Epoch ms of the underlying row, when the kind has a meaningful time (chat chunks). */
     val tsUtc: Long? = null
 )
+
+/**
+ * One row of the `outbox` table (blueprint 41 §4). Deferred work that could not run at the moment
+ * it was requested — today only `chat_turn`, but the table is job-type agnostic by design.
+ */
+data class OutboxJob(
+    val id: String,
+    val jobType: String,
+    val priority: Int,
+    val payloadJson: String,
+    val idemKey: String,
+    val status: String = STATUS_PENDING,
+    val attempts: Int = 0,
+    val nextTryAt: Long,
+    val deadlineAt: Long? = null,
+    val createdAt: Long,
+    val updatedAt: Long,
+    val lastError: String? = null
+) {
+    companion object {
+        const val STATUS_PENDING = "pending"
+        const val STATUS_DONE = "done"
+        const val STATUS_FAILED = "failed"
+
+        /** Blueprint 41 §3.3: the user's own message waiting for a model reply. */
+        const val JOB_CHAT_TURN = "chat_turn"
+    }
+}

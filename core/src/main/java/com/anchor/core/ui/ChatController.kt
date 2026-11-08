@@ -14,6 +14,7 @@ import com.anchor.core.gateway.EnvelopeParser
 import com.anchor.core.gateway.Gateway
 import com.anchor.core.models.*
 import com.anchor.core.nudge.NudgeEngine
+import com.anchor.core.provider.OfflineException
 import com.anchor.core.provider.ProviderOrchestrator
 import com.anchor.core.provider.StreamEvent
 import com.anchor.core.provider.Target
@@ -44,7 +45,11 @@ class ChatController(
     private val quoteManager: com.anchor.core.quotes.QuoteManager = com.anchor.core.quotes.QuoteManager(storage, orchestrator, clock, coroutineScope = coroutineScope),
     // Blueprint 31: the proactive pipeline's gatekeeper. This is the production construction the
     // audit found missing — the engine existed and was tested, but nothing ever built or called it.
-    private val nudgeEngine: NudgeEngine = NudgeEngine(clock)
+    private val nudgeEngine: NudgeEngine = NudgeEngine(clock),
+    // Blueprint 41 §3.1: "network validated and the provider answers". Null means no oracle was
+    // installed (core unit tests), and every send is attempted — a wrong "online" costs one failed
+    // request, while a wrong "offline" would queue a message that could have been answered now.
+    private val networkCheck: (() -> Boolean)? = null
 ) {
     private val _state = MutableStateFlow(UiState())
     val state: StateFlow<UiState> = _state.asStateFlow()
@@ -125,6 +130,10 @@ class ChatController(
                     )
                 }
             }
+            // Blueprint 41 §3.4: "an immediate attempt … whenever the user opens the app". This is
+            // that attempt for a queue left behind by an offline session. It runs after the first
+            // frame is painted, so a slow or failing drain never delays the user's data appearing.
+            drainQueuedTurns()
         }
         coroutineScope.launch(defaultDispatcher) {
             alarmScheduler.lastFiredId.collect { firedId ->
@@ -193,7 +202,8 @@ class ChatController(
         recentlyClosed = recentlyClosed,
         // Blueprint 52 §3.1: a fresh install shows the flow, a finished one never does. Read here
         // rather than in the init block so the first painted frame already knows.
-        onboardingDone = storage.getSetting(ONBOARDING_DONE_KEY) == "1"
+        onboardingDone = storage.getSetting(ONBOARDING_DONE_KEY) == "1",
+        queuedChatIds = queuedChatIds()
     )}
     _state.update { it.copy(chatItems = ChatTimelineBuilder.build(it.chatMessages, it.receipts, it.openProposals)) }
     }
@@ -582,6 +592,16 @@ class ChatController(
                     _state.update { it.copy(globalError = "Could not run the proactive check: ${e.message ?: e.javaClass.simpleName}") }
                 }
             }
+            // Blueprint 41 §3.4: the "network available" event and the retry timer both land here.
+            // drainQueuedTurns is a no-op when nothing is due, so a spurious trigger costs a read.
+            is UiAction.DrainQueuedTurns -> coroutineScope.launch(defaultDispatcher) {
+                try {
+                    drainQueuedTurns()
+                } catch (e: Exception) {
+                    if (e is kotlinx.coroutines.CancellationException) throw e
+                    _state.update { it.copy(globalError = "Could not send your saved messages: ${e.message ?: e.javaClass.simpleName}") }
+                }
+            }
             else -> {}
         }
     }
@@ -663,19 +683,182 @@ class ChatController(
                     providerModel = storage.getSetting("mod") ?: "gpt-4o-mini"
                 )
             }
+            // Blueprint 41 §2/§3.3: a capture made with no network is kept and answered later.
+            // Deciding here rather than after a failed request is what makes an airplane-mode
+            // capture instant instead of a ten-second connect timeout followed by an error.
+            if (!networkAvailable()) {
+                // The flag was raised above for a turn that will not run. Left set, it would keep
+                // every later send waiting on a stream job that does not exist and make
+                // drainQueuedTurns return at its own isChatLoading guard.
+                _state.update { it.copy(isChatLoading = false) }
+                enqueueChatTurn(text, userMsgId)
+                return@launch
+            }
             handleSendMessage(text, userMsgId)
         }
     }
 
-    private fun handleSendMessage(text: String, existingUserMsgId: String? = null) {
+    /**
+     * Blueprint 41 §3.1 `no_network`: "Network validated and the provider answers". Null means the
+     * app layer has no connectivity oracle (core unit tests, and any caller that never installed
+     * one), and the send is attempted — a wrong "online" costs one failed request, while a wrong
+     * "offline" would queue a message that could have been answered now.
+     */
+    private fun networkAvailable(): Boolean = networkCheck?.invoke() ?: true
+
+    /**
+     * Blueprint 41 §3.3: records one `chat_turn` job for a user message. The payload holds the
+     * message id, never a copy of the text (blueprint 41 §4: "ids and parameters, never copies of
+     * private text beyond what the raw log holds"), and the idem key is the message id, so a
+     * capture queued twice — the receiver, then the startup drain — is one job.
+     */
+    private suspend fun enqueueChatTurn(text: String, userMsgId: String?) {
+        val id = userMsgId ?: "u_${UUID.randomUUID()}"
+        // sendText's contract: the caller stored the row. A composer-style send with no row is
+        // stored here, so a queued message is always readable back by its id at drain time.
+        if (userMsgId == null) storage.insertRawMessage(id, "user", text)
+        val now = clock.now()
+        try {
+            storage.enqueueOutbox(
+                OutboxJob(
+                    // Deterministic from the message id: the drain claims and completes the row by
+                    // this same id, and a second enqueue of the same capture is the same row.
+                    id = chatTurnJobId(id),
+                    jobType = OutboxJob.JOB_CHAT_TURN,
+                    priority = OUTBOX_PRIORITY_CHAT_TURN,
+                    payloadJson = """{"msg_id":"$id"}""",
+                    idemKey = id,
+                    nextTryAt = now,
+                    createdAt = now,
+                    updatedAt = now
+                )
+            )
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            // The message is stored either way; saying it is queued when the queue write failed
+            // would be a claim the next drain cannot keep.
+            _state.update { it.copy(connectionError = "Could not queue your message: ${e.message ?: e.javaClass.simpleName}") }
+            QuickCapture.notifyCaptureFailed(userMsgId)
+            return
+        }
+        _state.update { it.copy(connectionError = null) }
+        refreshUI()
+    }
+
+    /**
+     * Blueprint 41 §3.5: answers everything that was queued while offline in **one** turn, then
+     * clears the queue. Runs on start, on app open, and on the retry timer; there is no live
+     * network callback (see D-138).
+     *
+     * The queued messages are stored rows, so the turn's pack already carries them in the order
+     * the user wrote them; the instruction adds the thing the pack cannot say — that they were
+     * written earlier, and when. Claiming a job re-enqueues it a minute out rather than marking it
+     * `running`: the queued mark then survives a crash mid-turn, and a second drain in that minute
+     * finds nothing due instead of sending the same messages twice.
+     */
+    suspend fun drainQueuedTurns() {
+        if (_state.value.isChatLoading) return
+        if (!networkAvailable()) return
+        val key = storage.getSetting("key") ?: ""
+        if (key.isBlank()) return
+
+        val now = clock.now()
+        val due = storage.getDueOutbox(OutboxJob.JOB_CHAT_TURN, now)
+        if (due.isEmpty()) return
+        val ids = due.mapNotNull { queuedMsgId(it) }
+        if (ids.isEmpty()) return
+        for (job in due) {
+            storage.enqueueOutbox(job.copy(nextTryAt = now + QUEUE_CLAIM_MS, updatedAt = now))
+        }
+
+        // isChatLoading is not set here: handleSendMessage launches its turn, and refreshUI runs
+        // before that turn starts, so a flag set now would be cleared before the request is made
+        // and a second drain in that window would send the batch twice.
+        _state.update {
+            it.copy(
+                connectionError = null,
+                providerKey = key,
+                providerEndpoint = storage.getSetting("ep") ?: "https://api.openai.com/v1/chat/completions",
+                providerModel = storage.getSetting("mod") ?: "gpt-4o-mini"
+            )
+        }
+        // The turn is asynchronous (handleSendMessage launches it), so this call cannot see its
+        // outcome. It does not need to: the batch is marked done only once the assistant reply is
+        // stored, which is the one moment "answered" is a fact (see markBatchAnswered).
+        handleSendMessage(offlineBatchInstruction(ids, now), existingUserMsgId = null, queuedBatch = true)
+    }
+
+    /**
+     * Blueprint 41 §3.3/§3.5: the queued messages have been answered — clear their jobs. Called
+     * after the assistant reply for a queued batch is stored, never before: a turn that fails or
+     * is cancelled leaves every job pending, so the next drain sends the words again rather than
+     * dropping them.
+     */
+    private suspend fun markBatchAnswered(messageIds: List<String>) {
+        val doneAt = clock.now()
+        messageIds.forEach { storage.markOutboxDone(chatTurnJobId(it), doneAt) }
+    }
+
+    /**
+     * Blueprint 41 §3.5.2/§3.5.3: the text that turns the stored offline messages into one turn.
+     * The messages themselves are already in the pack (they are rows); this names them with their
+     * original times and asks for one reply, and says how stale the oldest is so a 12-hour backlog
+     * is acknowledged rather than answered as if it were fresh.
+     */
+    private suspend fun offlineBatchInstruction(ids: List<String>, now: Long): String {
+        // One read for the whole batch: the rows the turn answers were written in the past, so a
+        // "recent" window is the wrong way to find them — the oldest queued message of a long
+        // offline stretch is exactly the one that falls out of a short tail.
+        val history = storage.getRecentMessages(200)
+        val times = ids.mapNotNull { id ->
+            history.firstOrNull { it.id == id }?.tsUtc?.takeIf { it > 0 }
+        }
+        val stamps = times.joinToString(", ") { dateResolver.formatTimeOfDay(it) }
+        val oldest = times.minOrNull()
+        val staleHours = if (oldest != null) (now - oldest) / (3600L * 1000L) else 0L
+        val stale = if (staleHours >= OFFLINE_STALE_HOURS) {
+            " The oldest of these was written $staleHours hours ago, so begin by briefly acknowledging the delay."
+        } else ""
+        return "The user was offline and wrote ${ids.size} message(s) that could not be sent: sent offline, $stamps. " +
+            "Answer them together in one reply, in the order they were written.$stale"
+    }
+
+    private fun chatTurnJobId(messageId: String): String = "ob_$messageId"
+
+    /** The stored message id inside a `chat_turn` payload, or null when the row is unreadable. */
+    private fun queuedMsgId(job: OutboxJob): String? = try {
+        json.parseToJsonElement(job.payloadJson).let {
+            (it as? kotlinx.serialization.json.JsonObject)?.get("msg_id")?.let { v -> (v as? kotlinx.serialization.json.JsonPrimitive)?.content }
+        }
+    } catch (e: Exception) {
+        null
+    }
+
+    /**
+     * @param queuedBatch true when [text] is the instruction that answers messages already queued
+     *   in the outbox. The turn then stores no user row of its own (the queued rows are the user's
+     *   words), and on success it clears exactly those jobs.
+     */
+    private fun handleSendMessage(text: String, existingUserMsgId: String? = null, queuedBatch: Boolean = false) {
         currentStreamJob = coroutineScope.launch(defaultDispatcher) {
             try {
                 currentBotId = null
+                // Read before the turn starts: a capture queued while this turn is streaming must
+                // not be marked answered by a reply that was written without it.
+                val batchIds = if (queuedBatch) storage.getPendingOutbox(OutboxJob.JOB_CHAT_TURN).mapNotNull { queuedMsgId(it) } else emptyList()
                 val userMsgId = existingUserMsgId ?: "u_${UUID.randomUUID()}"
                 if (existingUserMsgId == null) storage.insertRawMessage(userMsgId, "user", text)
                 refreshUI()
 
                 var pack = contextBuilder.buildPack()
+                // Blueprint 41 §3.5: the queued messages are already rows in the pack. The
+                // instruction that names them is this turn's own text, which the pack was built
+                // before and so cannot carry; it goes last, after the newest history, as the turn.
+                // Storing it as a row would put a user-style line in the raw log that they never
+                // typed, and the next pack would read it back as something they said.
+                if (queuedBatch) {
+                    pack = pack + ChatMessage("u_${UUID.randomUUID()}", "user", text)
+                }
                 var turnComplete = false
                 var loops = 0
                 val executedCalls = mutableSetOf<String>()
@@ -784,6 +967,7 @@ class ChatController(
                             storage.insertRawMessage(botId, "assistant", finalAssistantText)
                             currentBotId = null
                             pack = pack + ChatMessage(botId, "assistant", finalAssistantText)
+                            if (batchIds.isNotEmpty()) markBatchAnswered(batchIds)
                         } else {
                             _state.update { it.copy(chatMessages = it.chatMessages.dropLast(1)) }
                             currentBotId = null
@@ -804,6 +988,7 @@ class ChatController(
                             _state.update { it.copy(chatMessages = it.chatMessages + ChatMessage(limitId, "assistant", limitMsg)) }
                             storage.insertRawMessage(limitId, "assistant", limitMsg)
                             currentBotId = null
+                            if (batchIds.isNotEmpty()) markBatchAnswered(batchIds)
                             turnComplete = true
                         }
                     } else {
@@ -831,6 +1016,7 @@ class ChatController(
                         updateLastMessage(botId, finalTxt)
                         storage.insertRawMessage(botId, "assistant", finalTxt)
                         currentBotId = null
+                        if (batchIds.isNotEmpty()) markBatchAnswered(batchIds)
                         turnComplete = true
                     }
                 }
@@ -862,11 +1048,24 @@ class ChatController(
                     }
                     throw e
                 }
+                // Blueprint 41 §2: a queued batch that is still offline is not an error — the
+                // messages stay queued and the banner already says so. Every job is left pending,
+                // so the next attempt (reconnect, retry timer, app open) answers them.
+                if (queuedBatch && e is OfflineException) {
+                    _state.update { it.copy(connectionError = null) }
+                    return@launch
+                }
                 // A10: Provider error refreshes UI properly below in finally
                 _state.update { it.copy(connectionError = "Error: ${e.message}") }
+                // Blueprint 41 §2: a live send that fails because the network dropped goes into the
+                // same queue a capture made offline uses. The user's row is already stored, so it is
+                // answered on reconnect instead of surfacing as a lost message.
+                if (!queuedBatch && e is OfflineException && existingUserMsgId != null) {
+                    enqueueChatTurn(text, existingUserMsgId)
+                }
                 // E-17: a capture whose turn never ran stays unanswered in the raw log, so the
                 // next start retries it. Tell the notification that showed "Sending..." now.
-                if (existingUserMsgId != null) {
+                if (existingUserMsgId != null && !(e is OfflineException)) {
                     QuickCapture.notifyCaptureFailed(existingUserMsgId)
                 }
                 val activeBotId = currentBotId
@@ -1007,10 +1206,19 @@ CRITICAL: Do NOT say "Done" or "Saved" unless you issue a tool call.
             atRisk = relState.score == "at_risk",
             activeThread = activeThread,
             homePriorityList = priorityList,
-            recentlyClosed = recentlyClosed
+            recentlyClosed = recentlyClosed,
+            queuedChatIds = queuedChatIds()
         ) }
         _state.update { it.copy(chatItems = ChatTimelineBuilder.build(it.chatMessages, it.receipts, it.openProposals)) }
     }
+
+    /**
+     * Blueprint 41 §2/§3.3: which stored user messages are still waiting in the `outbox`. Blueprint
+     * 11:83 forbids a delivery column on `raw_message`, so the queued mark is derived from the
+     * pending `chat_turn` rows on every refresh — the queue is the only truth.
+     */
+    private suspend fun queuedChatIds(): List<String> =
+        storage.getPendingOutbox(OutboxJob.JOB_CHAT_TURN).mapNotNull { queuedMsgId(it) }
 
     companion object {
         /**
@@ -1039,6 +1247,20 @@ CRITICAL: Do NOT say "Done" or "Saved" unless you issue a tool call.
          * anything the AI infers later, so they start above the model's default confidence.
          */
         const val ONBOARDING_FACT_CONFIDENCE = 0.9
+
+        // Blueprint 41 §3.3: `chat_turn` is P0 — the user's own words outrank every background job.
+        const val OUTBOX_PRIORITY_CHAT_TURN = 0
+
+        /**
+         * How far out a claimed job is re-enqueued while its turn is in flight. Claiming this way
+         * rather than flipping a `running` status keeps the queued mark true if the process dies
+         * mid-turn, and makes a second drain inside the window find nothing due instead of sending
+         * the same messages twice.
+         */
+        const val QUEUE_CLAIM_MS = 60_000L
+
+        /** Blueprint 41 §3.5.3: at or past this age a backlog is acknowledged before it is answered. */
+        const val OFFLINE_STALE_HOURS = 12L
 
         // O-3: prose that reads as a completed action. A reply matching this with no envelope
         // performed nothing, so it must not be shown as a confirmation. Deliberately excludes

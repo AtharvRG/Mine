@@ -544,4 +544,32 @@ open class SharedFakeStorage(var clock: Clock = SystemClock()) : Storage {
     override suspend fun getCompletedTodayCount(startOfDayMs: Long, endOfDayMs: Long): Int {
         return activeNodes.count { it.status == "done" && it.closedAt != null && it.closedAt >= startOfDayMs && it.closedAt < endOfDayMs }
     }
+
+    /** Ordered like the real table: priority ASC, then created_at ASC. */
+    val outbox = mutableListOf<OutboxJob>()
+
+    override suspend fun enqueueOutbox(job: OutboxJob) {
+        if (outbox.none { it.idemKey == job.idemKey }) outbox.add(job)
+    }
+
+    override suspend fun getDueOutbox(jobType: String, now: Long): List<OutboxJob> =
+        outbox.filter { it.jobType == jobType && it.status == OutboxJob.STATUS_PENDING && it.nextTryAt <= now }
+            .sortedWith(compareBy({ it.priority }, { it.createdAt }, { it.id }))
+
+    override suspend fun getPendingOutbox(jobType: String): List<OutboxJob> =
+        outbox.filter { it.jobType == jobType && it.status == OutboxJob.STATUS_PENDING }
+            .sortedWith(compareBy({ it.priority }, { it.createdAt }, { it.id }))
+
+    override suspend fun markOutboxDone(id: String, now: Long) {
+        val i = outbox.indexOfFirst { it.id == id }
+        if (i >= 0) outbox[i] = outbox[i].copy(status = OutboxJob.STATUS_DONE, updatedAt = now)
+    }
+
+    override suspend fun markOutboxFailed(id: String, now: Long, nextTryAt: Long, error: String) {
+        val i = outbox.indexOfFirst { it.id == id }
+        if (i >= 0) outbox[i] = outbox[i].copy(
+            status = OutboxJob.STATUS_PENDING, attempts = outbox[i].attempts + 1,
+            nextTryAt = nextTryAt, updatedAt = now, lastError = error
+        )
+    }
 }

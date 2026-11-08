@@ -110,6 +110,9 @@ class MainActivity : ComponentActivity() {
         // H-11 (R-15): the user may have toggled notifications in system settings while we were
         // stopped; nothing else observes that change.
         viewModel.refreshNotificationsBlocked()
+        // Blueprint 41 §3.4: "an immediate attempt … whenever the user opens the app". A queue
+        // left by an offline session is answered as soon as the user comes back to it.
+        viewModel.onAction(UiAction.DrainQueuedTurns)
     }
 }
 
@@ -275,15 +278,22 @@ fun ChatScreen(
         if (connErr != null) {
             Text(connErr, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(8.dp))
         }
+        // Blueprint 41 §2: the banner that tells the user their words are kept. Derived from the
+        // outbox rows, never stored on the message (blueprint 11:83).
+        val queuedText = state.offlineQueuedText
+        if (queuedText != null) {
+            Text(queuedText, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(8.dp))
+        }
         LazyColumn(modifier = Modifier.weight(1f), state = listState) {
             items(state.chatMessages) { msg ->
                 val isUser = msg.role == "user"
                 val align = if (isUser) Modifier.padding(start = 32.dp) else Modifier.padding(end = 32.dp)
                 val color = if (isUser) Color.Blue.copy(alpha = 0.1f) else Color.Gray.copy(alpha = 0.1f)
                 val textContent = msg.content ?: "[redacted]"
+                val queued = msg.id in state.queuedChatIds
 
                 Text(
-                    text = "${msg.role.uppercase()}: $textContent",
+                    text = if (queued) "${msg.role.uppercase()}: $textContent (queued)" else "${msg.role.uppercase()}: $textContent",
                     modifier = Modifier.fillMaxWidth().then(align).padding(4.dp).background(color).padding(8.dp)
                 )
             }

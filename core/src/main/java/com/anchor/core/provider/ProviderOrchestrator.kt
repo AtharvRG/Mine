@@ -46,6 +46,12 @@ class ProviderOrchestrator(
                 // vanish and restart. A failed attempt is not a correction of the previous one.
                 if (!emittedText) emit(StreamEvent.Clear)
                 continue // Try next fallback target
+            } catch (e: OfflineException) {
+                // Blueprint 41 §2 no_network: no target in the chain can answer without a network,
+                // so walking the rest of the chain would only multiply the timeout. Rethrow before
+                // the generic handler, which would otherwise re-wrap this into "All providers
+                // failed or in cooldown" and lose the offline signal the controller queues on.
+                throw e
             } catch (e: Exception) {
                 if (e is CancellationException) throw e // Never swallow coroutine cancellation
                 lastError = e

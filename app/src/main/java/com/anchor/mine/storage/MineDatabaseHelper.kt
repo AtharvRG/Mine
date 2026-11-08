@@ -9,8 +9,8 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.sqlite.db.SupportSQLiteOpenHelper
 import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
 
-// BUMPED to Version 5 (Task R1: D-110 proposal payload column)
-class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(5) {
+// BUMPED to Version 6 (audit §6 item 6: blueprint 41 §4 outbox table)
+class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(6) {
 
     override fun onConfigure(db: SupportSQLiteDatabase) {
         super.onConfigure(db)
@@ -44,6 +44,7 @@ class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(5) {
         db.execSQL("CREATE TABLE nudge_hold (node_id TEXT NOT NULL, trigger_type TEXT NOT NULL, until_ts INTEGER NOT NULL, PRIMARY KEY (node_id, trigger_type))")
         db.execSQL("CREATE TABLE checkin_state (kind TEXT NOT NULL, day_key TEXT NOT NULL, status TEXT NOT NULL, msg_id TEXT, scheduled_for INTEGER, delivered_at INTEGER, PRIMARY KEY (kind, day_key))")
         db.execSQL("CREATE TABLE quote_slot (slot TEXT NOT NULL, day_key TEXT NOT NULL, text TEXT NOT NULL, generated_at INTEGER NOT NULL, state_hash TEXT, source TEXT NOT NULL, regen_count INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (slot, day_key))")
+        db.execSQL(OUTBOX_DDL)
 
         createIndexes(db)
         createTriggers(db)
@@ -87,6 +88,9 @@ class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(5) {
                 db.execSQL("ALTER TABLE proposal ADD COLUMN payload TEXT")
             }
         }
+        if (oldVersion < 6) {
+            db.execSQL(OUTBOX_DDL)
+        }
         // T19: an upgraded device must end up with the same indexes and triggers as a fresh
         // install. Indexes were previously created in onCreate only, so a device upgraded from v1
         // never got idx_reminder_fire - the index that makes the R-26 `ORDER BY fire_at` cheap.
@@ -100,6 +104,17 @@ class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(5) {
     }
 
     companion object {
+        /**
+         * Blueprint 41 §4, verbatim. Shared by [onCreate] and the `oldVersion < 6` upgrade branch so
+         * a fresh install and an upgraded device cannot drift (T19).
+         */
+        private const val OUTBOX_DDL =
+            "CREATE TABLE IF NOT EXISTS outbox (id TEXT PRIMARY KEY, job_type TEXT NOT NULL, " +
+                "priority INTEGER NOT NULL, payload_json TEXT NOT NULL, idem_key TEXT NOT NULL UNIQUE, " +
+                "status TEXT NOT NULL DEFAULT 'pending', attempts INTEGER NOT NULL DEFAULT 0, " +
+                "next_try_at INTEGER NOT NULL, deadline_at INTEGER, created_at INTEGER NOT NULL, " +
+                "updated_at INTEGER NOT NULL, last_error TEXT)"
+
         private val INDEXES = listOf(
             "CREATE INDEX IF NOT EXISTS idx_node_status_due ON node(status, due_at)",
             "CREATE INDEX IF NOT EXISTS idx_raw_event_target ON raw_event(target_type, target_id)",
@@ -107,7 +122,8 @@ class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(5) {
             "CREATE INDEX IF NOT EXISTS idx_raw_message_day ON raw_message(day_key, ts_utc)",
             "CREATE INDEX IF NOT EXISTS idx_reminder_fire ON reminder(fire_at)",
             "CREATE INDEX IF NOT EXISTS idx_edge_src_type ON edge(src_id, type)",
-            "CREATE INDEX IF NOT EXISTS idx_edge_dst_type ON edge(dst_id, type)"
+            "CREATE INDEX IF NOT EXISTS idx_edge_dst_type ON edge(dst_id, type)",
+            "CREATE INDEX IF NOT EXISTS idx_outbox_due ON outbox(status, priority, next_try_at)"
         )
 
         /** Every trigger created by [createTriggers], in drop order. */

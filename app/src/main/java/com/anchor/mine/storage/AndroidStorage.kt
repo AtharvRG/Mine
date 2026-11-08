@@ -1229,4 +1229,79 @@ class AndroidStorage(private val dbHelper: SupportSQLiteOpenHelper) : Storage {
             if (it.moveToFirst()) it.getInt(0) else 0
         }
     }
+
+    // Offline outbox (blueprint 41 §4, audit §6 item 6)
+
+    override suspend fun enqueueOutbox(job: OutboxJob) = withContext(ioDispatcher) {
+        // idem_key is UNIQUE: re-enqueueing the same logical job must not create a second turn.
+        dbHelper.writableDatabase.execSQL(
+            "INSERT OR IGNORE INTO outbox (id, job_type, priority, payload_json, idem_key, status, attempts, " +
+                "next_try_at, deadline_at, created_at, updated_at, last_error) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+            arrayOf<Any>(
+                job.id, job.jobType, job.priority, job.payloadJson, job.idemKey, job.status, job.attempts,
+                job.nextTryAt, job.deadlineAt ?: "", job.createdAt, job.updatedAt, job.lastError ?: ""
+            )
+        )
+    }
+
+    override suspend fun getDueOutbox(jobType: String, now: Long): List<OutboxJob> = withContext(ioDispatcher) {
+        queryOutbox(
+            "SELECT $OUTBOX_COLUMNS FROM outbox WHERE job_type = ? AND status = ? AND next_try_at <= ? " +
+                "ORDER BY priority ASC, created_at ASC, id ASC",
+            arrayOf(jobType, OutboxJob.STATUS_PENDING, now.toString())
+        )
+    }
+
+    override suspend fun getPendingOutbox(jobType: String): List<OutboxJob> = withContext(ioDispatcher) {
+        queryOutbox(
+            "SELECT $OUTBOX_COLUMNS FROM outbox WHERE job_type = ? AND status = ? " +
+                "ORDER BY priority ASC, created_at ASC, id ASC",
+            arrayOf(jobType, OutboxJob.STATUS_PENDING)
+        )
+    }
+
+    override suspend fun markOutboxDone(id: String, now: Long) = withContext(ioDispatcher) {
+        dbHelper.writableDatabase.execSQL(
+            "UPDATE outbox SET status = ?, updated_at = ? WHERE id = ?",
+            arrayOf<Any>(OutboxJob.STATUS_DONE, now, id)
+        )
+    }
+
+    override suspend fun markOutboxFailed(id: String, now: Long, nextTryAt: Long, error: String) = withContext(ioDispatcher) {
+        // attempts counts how many times this job has been tried; next_try_at is the caller's
+        // backoff decision (blueprint 41 §3.4), not a constant here.
+        dbHelper.writableDatabase.execSQL(
+            "UPDATE outbox SET status = ?, attempts = attempts + 1, next_try_at = ?, updated_at = ?, " +
+                "last_error = ? WHERE id = ?",
+            arrayOf<Any>(OutboxJob.STATUS_PENDING, nextTryAt, now, error, id)
+        )
+    }
+
+    private fun queryOutbox(sql: String, args: Array<String>): List<OutboxJob> =
+        dbHelper.readableDatabase.query(sql, args).use { c ->
+            val out = ArrayList<OutboxJob>(c.count)
+            while (c.moveToNext()) out.add(c.toOutboxJob())
+            out
+        }
+
+    private fun android.database.Cursor.toOutboxJob() = OutboxJob(
+        id = getString(0),
+        jobType = getString(1),
+        priority = getInt(2),
+        payloadJson = getString(3),
+        idemKey = getString(4),
+        status = getString(5),
+        attempts = getInt(6),
+        nextTryAt = getLong(7),
+        deadlineAt = if (isNull(8)) null else getLong(8),
+        createdAt = getLong(9),
+        updatedAt = getLong(10),
+        lastError = if (isNull(11)) null else getString(11)
+    )
+
+    private companion object {
+        const val OUTBOX_COLUMNS =
+            "id, job_type, priority, payload_json, idem_key, status, attempts, next_try_at, deadline_at, " +
+                "created_at, updated_at, last_error"
+    }
 }

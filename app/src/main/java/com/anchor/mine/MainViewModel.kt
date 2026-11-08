@@ -55,11 +55,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 val checkinBuilder = com.anchor.core.nudge.CheckinBuilder(loadedStorage, clock, dateResolver)
                 val contextBuilder = ContextBuilder(loadedStorage, clock, dateResolver, checkinBuilder)
                 
+                // Blueprint 41 §3.1: the controller decides offline *before* a request, so an
+                // airplane-mode capture is instant instead of a ten-second connect timeout.
+                val connectivity = com.anchor.mine.provider.ConnectivityOracle(application)
                 controller = ChatController(
                     loadedStorage, orchestrator, contextBuilder,
                     gateway, AndroidAlarmScheduler(application),
                     viewModelScope, Dispatchers.Default, clock,
-                    dateResolver = dateResolver
+                    dateResolver = dateResolver,
+                    networkCheck = { connectivity.isOnline() }
                 )
                 // Blueprint 50 §3.14: the notification reply needs a controller when one exists.
                 app.captureController = controller
