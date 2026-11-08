@@ -13,6 +13,7 @@ import com.anchor.core.context.ContextBuilder
 import com.anchor.core.gateway.EnvelopeParser
 import com.anchor.core.gateway.Gateway
 import com.anchor.core.models.*
+import com.anchor.core.nudge.NudgeEngine
 import com.anchor.core.provider.ProviderOrchestrator
 import com.anchor.core.provider.StreamEvent
 import com.anchor.core.provider.Target
@@ -39,7 +40,10 @@ class ChatController(
     private val clock: Clock,
     private val reconciler: AlarmReconciler = AlarmReconciler(storage, alarmScheduler, clock),
     private val dateResolver: DateResolver = DateResolver(clock, is24HourFormat = { false }),
-    private val quoteManager: com.anchor.core.quotes.QuoteManager = com.anchor.core.quotes.QuoteManager(storage, orchestrator, clock, coroutineScope = coroutineScope)
+    private val quoteManager: com.anchor.core.quotes.QuoteManager = com.anchor.core.quotes.QuoteManager(storage, orchestrator, clock, coroutineScope = coroutineScope),
+    // Blueprint 31: the proactive pipeline's gatekeeper. This is the production construction the
+    // audit found missing — the engine existed and was tested, but nothing ever built or called it.
+    private val nudgeEngine: NudgeEngine = NudgeEngine(clock)
 ) {
     private val _state = MutableStateFlow(UiState())
     val state: StateFlow<UiState> = _state.asStateFlow()
@@ -444,9 +448,69 @@ class ChatController(
                     _state.update { it.copy(globalError = "Could not load memory: ${e.message ?: e.javaClass.simpleName}") }
                 }
             }
+            // Blueprint 31: one proactive pass. The engine decides; this only supplies the
+            // candidate, the persisted state and the delivery. Nothing here calls the model — the
+            // v1 slice delivers template text, which is what blueprint 31 §3.7 falls back to when
+            // a model turn is skipped, timed out or offline.
+            is UiAction.TickProactive -> coroutineScope.launch(defaultDispatcher) {
+                try {
+                    val now = clock.now()
+                    val state = storage.getProactiveState()
+                    // An ignored thread is closed by the engine after its 3-hour window; running
+                    // that first is what lets the next nudge out once the window has passed.
+                    val afterIgnore = nudgeEngine.processIgnore(state, now)
+                    if (afterIgnore != state) storage.saveProactiveState(afterIgnore)
+
+                    val picked = pickNudgeCandidate(afterIgnore)
+                    if (picked == null) {
+                        _state.update { it.copy(nudgeGate = "no_candidate") }
+                        return@launch
+                    }
+                    val (candidate, node) = picked
+                    when (val gate = nudgeEngine.evaluate(candidate, afterIgnore)) {
+                        is GateResult.Held -> _state.update { it.copy(nudgeGate = gate.reason) }
+                        is GateResult.Pass -> {
+                            val msgId = "n_${UUID.randomUUID()}"
+                            val text = nudgeText(node)
+                            // The message row is written before the state is advanced: a crash in
+                            // between leaves a nudge the user saw but the engine will re-send, which
+                            // is recoverable; the reverse loses it silently.
+                            storage.insertRawMessage(msgId, "assistant", text)
+                            storage.saveProactiveState(nudgeEngine.onNudgeSent(afterIgnore, msgId, now))
+                            _state.update { it.copy(nudgeGate = "sent") }
+                            refreshUI()
+                        }
+                    }
+                } catch (e: Exception) {
+                    if (e is kotlinx.coroutines.CancellationException) throw e
+                    _state.update { it.copy(globalError = "Could not run the proactive check: ${e.message ?: e.javaClass.simpleName}") }
+                }
+            }
             else -> {}
         }
     }
+
+    /**
+     * Blueprint 31 §3.2: the v1 slice has exactly one trigger — an open item whose due time has
+     * passed. Local-only items are skipped: they are invisible to the model and to chat (H2), and
+     * a nudge is a chat message. The oldest overdue item wins so the same item is not starved by
+     * a newer one, and a null due time is never overdue.
+     */
+    private suspend fun pickNudgeCandidate(state: ProactiveState): Pair<NudgeCandidate, Node>? {
+        val now = clock.now()
+        val overdue = storage.getActiveNodes(NUDGE_SCAN_PAGE)
+            .filter { !it.localOnly && it.dueAt != null && it.dueAt < now }
+            .minByOrNull { it.dueAt!! }
+            ?: return null
+        // Blueprint 31 §3.3: a candidate is worth sending only if it scores at or above the
+        // threshold, which falls as time passes since the last contact.
+        val candidate = NudgeCandidate("overdue_item", isCritical = false)
+        if (candidate.baseValue < nudgeEngine.calculateThreshold(state)) return null
+        return candidate to overdue
+    }
+
+    /** Blueprint 31 §3.7 template text: no model call, and the title is what the user wrote. */
+    private fun nudgeText(node: Node): String = "Still on your list: ${node.title.trim()}"
 
     /**
      * Blueprint 50 §3.14 / E-17: sends [text] on behalf of a path that has no composer — the
@@ -467,6 +531,17 @@ class ChatController(
     fun sendText(text: String, userMsgId: String? = null) {
         if (text.isBlank()) return
         coroutineScope.launch(defaultDispatcher) {
+            // Blueprint 31 §3.6: the user answering closes the open proactive thread and resets the
+            // backoff. Without this the first nudge would hold the thread forever and the engine's
+            // open_thread gate would block every later one.
+            try {
+                val before = storage.getProactiveState()
+                if (before.openThreadMsgId != null) {
+                    storage.saveProactiveState(nudgeEngine.processReply(before, clock.now()))
+                }
+            } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
+            }
             // Queued behind the in-flight turn, if any. The stream job is what clears
             // isChatLoading, so joining it is the wait; a turn started meanwhile is joined too.
             while (_state.value.isChatLoading) {
@@ -848,6 +923,13 @@ CRITICAL: Do NOT say "Done" or "Saved" unless you issue a tool call.
          * paged Home helper uses per page.
          */
         const val MEMORY_VIEWER_PAGE = 200
+
+        /**
+         * Blueprint 31: how many open items one proactive pass scans for an overdue candidate.
+         * Bounded so a tick is a fixed cost regardless of how much the user has stored; the scan
+         * is ordered by due time, so the oldest overdue item is inside the first page.
+         */
+        const val NUDGE_SCAN_PAGE = 200
 
         // O-3: prose that reads as a completed action. A reply matching this with no envelope
         // performed nothing, so it must not be shown as a confirmation. Deliberately excludes

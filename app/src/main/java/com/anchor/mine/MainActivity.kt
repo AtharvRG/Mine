@@ -139,6 +139,14 @@ fun MineAppUI(
         if (selectedTab == 5 && !state.memoryLoaded) onAction(UiAction.LoadMemory)
     }
 
+    // Blueprint 31: one proactive pass per foreground session. Keyed on Unit, not on state — a
+    // state-keyed effect would re-tick on every update and the engine would be asked to nudge
+    // continuously. The engine's own gates (min gap, open thread, daily fuse) are what limit how
+    // often a nudge actually goes out, not how often the tick runs.
+    LaunchedEffect(Unit) {
+        onAction(UiAction.TickProactive)
+    }
+
     // B5: the export backend is built asynchronously in MineApp.onCreate. Until it completes the
     // Backup tab says so rather than offering buttons that would do nothing.
     val app = androidx.compose.ui.platform.LocalContext.current.applicationContext as? MineApp

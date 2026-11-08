@@ -60,11 +60,15 @@ data class UiState(
     // alone would re-fire on every state change.
     val memoryNodes: List<com.anchor.core.models.Node> = emptyList(),
     val memorySoulFacts: List<com.anchor.core.models.SoulFact> = emptyList(),
-    val memoryLoaded: Boolean = false
+    val memoryLoaded: Boolean = false,
+    // Blueprint 31: the proactive tick's verdict for the last candidate it looked at, so the Debug
+    // tab can say why nothing was sent ("min_gap", "open_thread", …) instead of staying silent.
+    // Null until the first tick. Not a user-facing surface; it exists so a held nudge is observable.
+    val nudgeGate: String? = null
 ) {
     override fun toString(): String {
         val redactedKey = if (providerKey.isBlank()) "" else "***"
-        return "UiState(chatMessages=$chatMessages, receipts=$receipts, openProposals=$openProposals, proposedSoulFacts=$proposedSoulFacts, staleItems=$staleItems, inboxCount=$inboxCount, urgentItems=$urgentItems, isChatLoading=$isChatLoading, activeReminders=$activeReminders, selfTestStatus=$selfTestStatus, providerEndpoint=$providerEndpoint, providerKey=$redactedKey, providerModel=$providerModel, debugStats=$debugStats, composerDraft=$composerDraft, connectionError=$connectionError, globalError=$globalError, schedulingError=$schedulingError, schedulingFailedCount=$schedulingFailedCount, missedReminders=$missedReminders, showResetConfirm=$showResetConfirm, alarmDisclosureText=$alarmDisclosureText, selectedDayKey=$selectedDayKey, selectedDayMessages=$selectedDayMessages, selectedDayReminders=$selectedDayReminders, homeQuote=$homeQuote, atRisk=$atRisk, activeThread=$activeThread, homePriorityList=$homePriorityList, recentlyClosed=$recentlyClosed, chatItems=$chatItems, memoryNodes=$memoryNodes, memorySoulFacts=$memorySoulFacts, memoryLoaded=$memoryLoaded)"
+        return "UiState(chatMessages=$chatMessages, receipts=$receipts, openProposals=$openProposals, proposedSoulFacts=$proposedSoulFacts, staleItems=$staleItems, inboxCount=$inboxCount, urgentItems=$urgentItems, isChatLoading=$isChatLoading, activeReminders=$activeReminders, selfTestStatus=$selfTestStatus, providerEndpoint=$providerEndpoint, providerKey=$redactedKey, providerModel=$providerModel, debugStats=$debugStats, composerDraft=$composerDraft, connectionError=$connectionError, globalError=$globalError, schedulingError=$schedulingError, schedulingFailedCount=$schedulingFailedCount, missedReminders=$missedReminders, showResetConfirm=$showResetConfirm, alarmDisclosureText=$alarmDisclosureText, selectedDayKey=$selectedDayKey, selectedDayMessages=$selectedDayMessages, selectedDayReminders=$selectedDayReminders, homeQuote=$homeQuote, atRisk=$atRisk, activeThread=$activeThread, homePriorityList=$homePriorityList, recentlyClosed=$recentlyClosed, chatItems=$chatItems, memoryNodes=$memoryNodes, memorySoulFacts=$memorySoulFacts, memoryLoaded=$memoryLoaded, nudgeGate=$nudgeGate)"
     }
 }
 
@@ -92,4 +96,6 @@ sealed interface UiAction {
     data class CancelStale(val nodeId: String) : UiAction
     /** Row 20: (re)read the Items and Soul lists from storage for the Memory tab. */
     data object LoadMemory : UiAction
+    /** Blueprint 31: run one proactive pass — pick a candidate, score it, gate it, deliver or hold. */
+    data object TickProactive : UiAction
 }

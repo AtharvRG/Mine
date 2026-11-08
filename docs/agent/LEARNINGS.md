@@ -401,3 +401,21 @@
   `app/build/test-results/**/*.xml` listed the same `testDebugUnitTest` directory twice and reported
   26 app tests instead of 13. Sum per immediate child directory of `build/test-results/` and assert
   one directory per suite.
+- **Deliver through the surface the app actually renders, not the one the model was designed for.**
+  `ChatItem.Nudge` and `UiState.chatItems` exist and are computed on every update, but nothing in
+  `MainActivity` renders `chatItems` — the chat list draws `state.chatMessages`. A nudge written as a
+  `ChatItem` would have been invisible. Before picking a delivery surface, grep for where the state
+  is *read by the UI*, not just where it is produced. (D-136)
+- **A pipeline that is wired in one direction can be a dead end.** `NudgeEngine.onNudgeSent` was
+  reachable, but nothing called `processReply` or `processIgnore`, so the first thread it opened
+  would have stayed open forever and the engine's own `open_thread` gate would have blocked every
+  later nudge. When wiring a state machine into production, wire **every** transition it needs, not
+  just the one the task names — and prove each with a test that fails when its call is removed.
+- **A gate that can never fire is not a gate.** `calculateThreshold` tops out at 30.0 while every
+  `NudgeCandidate` starts at 35.0, so the threshold comparison in the proactive tick is currently
+  vacuous. It is wired and pinned at both ends of the formula, but it is not what holds a nudge — say
+  so in the test and the docs instead of letting the test name imply it is load-bearing.
+- **Two probes on one file: back up once, restore with `cmp`, not with a re-edit.** Probe A and probe
+  B both edited `ChatController.kt`; restoring from `/tmp/ChatController.kt.bak` and asserting `cmp`
+  is silent (plus zero `RED PROBE` markers) is what makes "the green run is on the real code"
+  a checkable claim rather than a promise.
