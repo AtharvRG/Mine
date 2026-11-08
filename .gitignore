@@ -69,3 +69,4 @@ captures/
 Thumbs.db
 
 .idea/deploymentTargetSelector.xml
+__pycache__/
