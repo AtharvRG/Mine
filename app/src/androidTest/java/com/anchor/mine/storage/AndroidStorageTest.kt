@@ -440,7 +440,7 @@ class AndroidStorageTest {
         val v3Storage = AndroidStorage(v3Helper)
 
         // Verify version bumped to 5
-        assertEquals(5, v3Helper.readableDatabase.version)
+        assertEquals(6, v3Helper.readableDatabase.version)
 
         // Verify column exists
         var hasTierColumn = false
@@ -531,7 +531,7 @@ class AndroidStorageTest {
 
         // 2. Open DB with MineDatabaseCallback (version 5)
         val v3Helper = DatabaseProvider.getHelper(context, key, migrationDbName)
-        assertEquals(5, v3Helper.readableDatabase.version)
+        assertEquals(6, v3Helper.readableDatabase.version)
 
         // 3. Verify indexes exist
         val foundIndexes = mutableListOf<String>()
@@ -765,7 +765,7 @@ class AndroidStorageTest {
 
         // 2. Open DB with MineDatabaseCallback (version 5)
         val v4Helper = DatabaseProvider.getHelper(context, key, migrationDbName)
-        assertEquals(5, v4Helper.readableDatabase.version)
+        assertEquals(6, v4Helper.readableDatabase.version)
 
         // 3. Verify quote_slot table exists
         var quoteSlotExists = false
@@ -856,7 +856,7 @@ class AndroidStorageTest {
 
         // 2. Open DB with MineDatabaseCallback (version 5)
         val v5Helper = DatabaseProvider.getHelper(context, key, migrationDbName)
-        assertEquals(5, v5Helper.readableDatabase.version)
+        assertEquals(6, v5Helper.readableDatabase.version)
 
         // 3. Verify payload column exists in proposal table
         var payloadColumnExists = false

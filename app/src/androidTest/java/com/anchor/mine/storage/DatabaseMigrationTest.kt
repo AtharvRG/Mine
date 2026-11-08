@@ -25,7 +25,7 @@ class DatabaseMigrationTest {
         val key = ByteArray(32) { 2 }
 
         val helper = DatabaseProvider.getHelper(context, key, "mine_smoke_test.db")
-        assertEquals(5, helper.readableDatabase.version)
+        assertEquals(6, helper.readableDatabase.version)
         val storage = AndroidStorage(helper)
 
         // 1. Immutable Messages
@@ -167,7 +167,7 @@ class DatabaseMigrationTest {
         )
         db.execSQL("DROP INDEX IF EXISTS idx_reminder_fire")
 
-        MineDatabaseCallback().onUpgrade(db, 1, 5)
+        MineDatabaseCallback().onUpgrade(db, 1, 6)
 
         // The index must exist again.
         var indexFound = false
