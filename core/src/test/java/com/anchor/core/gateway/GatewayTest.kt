@@ -13,6 +13,7 @@ import com.anchor.core.time.SystemClock
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonPrimitive
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -188,6 +189,94 @@ class GatewayTest {
         org.junit.Assert.assertTrue(proposeResult is com.anchor.core.models.ToolResult.Committed)
         org.junit.Assert.assertEquals(2, fakeStorage.soulFacts.size)
         org.junit.Assert.assertEquals("Likes oranges", fakeStorage.soulFacts[1].statement)
+    }
+
+    // Blueprint 23 §5: `search_history` returns the original messages, newest first, in the
+    // `m4 | Tue 14 Oct 21:10 | U: ...` line shape, with limit defaulting to 5 and capped at 10.
+    // Blueprint 23 §2.2: the leading token is a per-turn alias, never the real id.
+    @Test
+    fun testGateway_SearchHistory_ReturnsMessagesNewestFirst_InBlueprintFormat() = runBlocking {
+        val storage = SharedFakeStorage()
+        val gateway = Gateway(storage, Resolver(), dateResolver, clock)
+        val t0 = 1_700_000_000_000L
+        storage.insertRawMessageWithDay("m1", "user", "I'll start the report tomorrow evening", "2026-11-01", t0)
+        storage.insertRawMessageWithDay("m2", "assistant", "Want a reminder at 18:00?", "2026-11-01", t0 + 1000)
+        storage.insertRawMessageWithDay("m3", "user", "nothing about the report", "2026-11-02", t0 + 2000)
+
+        val result = gateway.executeTool(ToolCall("search_history", mapOf("query" to JsonPrimitive("report"))))
+
+        assertTrue(result is ToolResult.Data)
+        val lines = (result as ToolResult.Data).text.lines()
+        assertEquals(2, lines.size)
+        // Newest first: m3 (t0+2000) before m1 (t0).
+        assertTrue(lines[0].startsWith("m_"))
+        assertTrue(lines[0].endsWith(" | U: nothing about the report"))
+        assertTrue(lines[1].startsWith("m_"))
+        assertTrue(lines[1].endsWith(" | U: I'll start the report tomorrow evening"))
+        // The leading token is an issued alias, not the real id echoed back.
+        val alias0 = lines[0].substringBefore(" | ")
+        val alias1 = lines[1].substringBefore(" | ")
+        assertFalse(alias0 == "m3")
+        assertFalse(alias1 == "m1")
+    }
+
+    // Blueprint 23 §2.2/§4: an alias the gateway never issued is rejected with a readable
+    // reason, not silently treated as a real id.
+    @Test
+    fun testGateway_ScheduleReminder_UnknownAlias_IsUnknownRef() = runBlocking {
+        val storage = SharedFakeStorage().apply {
+            activeNodes = mutableListOf(Node("n1", "task", "Buy milk", "active"))
+        }
+        val gateway = Gateway(storage, Resolver(), dateResolver, clock)
+
+        val result = gateway.executeTool(
+            ToolCall("schedule_reminder", mapOf("target_ref" to JsonPrimitive("n_neverissued"), "when_text" to JsonPrimitive("tomorrow at 5pm")))
+        )
+
+        assertTrue(result is ToolResult.Error)
+        assertTrue((result as ToolResult.Error).reason.startsWith("unknown_ref"))
+        assertTrue((result as ToolResult.Error).reason.contains("n_neverissued"))
+        assertEquals(0, storage.reminders.size)
+    }
+
+    @Test
+    fun testGateway_ConfirmChange_UnknownAlias_IsUnknownRef() = runBlocking {
+        val storage = SharedFakeStorage()
+        val gateway = Gateway(storage, Resolver(), dateResolver, clock)
+
+        val result = gateway.executeTool(
+            ToolCall("confirm_change", mapOf("proposal" to JsonPrimitive("p_neverissued"), "choice" to JsonPrimitive("1")))
+        )
+
+        assertTrue(result is ToolResult.Error)
+        assertTrue((result as ToolResult.Error).reason.startsWith("unknown_ref"))
+        assertTrue((result as ToolResult.Error).reason.contains("p_neverissued"))
+    }
+
+    @Test
+    fun testGateway_SearchHistory_BlankQuery_IsAnError() = runBlocking {
+        val gateway = Gateway(SharedFakeStorage(), Resolver(), dateResolver, clock)
+        val result = gateway.executeTool(ToolCall("search_history", mapOf("query" to JsonPrimitive("  "))))
+        assertTrue(result is ToolResult.Error)
+    }
+
+    @Test
+    fun testGateway_SearchHistory_LimitDefaultsTo5_AndClampsTo10() = runBlocking {
+        val storage = SharedFakeStorage()
+        val gateway = Gateway(storage, Resolver(), dateResolver, clock)
+        val t0 = 1_700_000_000_000L
+        repeat(12) { i ->
+            storage.insertRawMessageWithDay("m$i", "user", "report number $i", "2026-11-01", t0 + i)
+        }
+
+        val defaulted = gateway.executeTool(ToolCall("search_history", mapOf("query" to JsonPrimitive("report"))))
+        assertEquals(5, (defaulted as ToolResult.Data).text.lines().size)
+
+        val capped = gateway.executeTool(ToolCall("search_history", mapOf("query" to JsonPrimitive("report"), "limit" to JsonPrimitive("50"))))
+        assertEquals(10, (capped as ToolResult.Data).text.lines().size)
+
+        val explicit = gateway.executeTool(ToolCall("search_history", mapOf("query" to JsonPrimitive("report"), "limit" to JsonPrimitive("3"))))
+        assertEquals(3, (explicit as ToolResult.Data).text.lines().size)
     }
 
     @Test

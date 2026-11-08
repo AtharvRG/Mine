@@ -312,9 +312,9 @@ class Gateway(
         tier: AlarmTier = AlarmTier.ALARM,
         causeMsgId: String? = null
     ): ToolResult {
-        val node = if (targetRef.isNotBlank()) storage.getNode(targetRef) else null
+        val node = if (targetRef.isNotBlank()) storage.getNode(resolveRef(targetRef, "n")) else null
         if (targetRef.isNotBlank() && node == null) {
-            return ToolResult.Error("Target node not found for reference '$targetRef'")
+            return ToolResult.Error("unknown_ref: Target node not found for reference '$targetRef'")
         }
 
         val dayRule = storage.getEffectiveDayRule(clock.now())
@@ -429,14 +429,14 @@ class Gateway(
     }
 
     private suspend fun handleScheduleReminderWithTime(targetRef: String, fireAt: Long, tier: AlarmTier = AlarmTier.ALARM, causeMsgId: String? = null, consumeProposalId: String? = null): ToolResult {
-        val node = if (targetRef.isNotBlank()) storage.getNode(targetRef) else null
+        val node = if (targetRef.isNotBlank()) storage.getNode(resolveRef(targetRef, "n")) else null
 
         // A8: Reject bad target refs silently making orphan "Reminder"s
         if (targetRef.isNotBlank() && node == null) {
             if (consumeProposalId != null) {
                 storage.consumeProposal(consumeProposalId)
             }
-            return ToolResult.Error("Target node not found for reference '$targetRef'")
+            return ToolResult.Error("unknown_ref: Target node not found for reference '$targetRef'")
         }
 
         val title = node?.title ?: "Reminder"
@@ -454,7 +454,9 @@ class Gateway(
     }
 
     private suspend fun handleConfirmChange(proposalId: String, choice: String, userMessage: String? = null): ToolResult {
-        val proposal = storage.getProposal(proposalId) ?: return ToolResult.Error("Proposal not found")
+        val resolvedProposalId = resolveRef(proposalId, "p")
+        val proposal = storage.getProposal(resolvedProposalId)
+            ?: return ToolResult.Error("unknown_ref: no proposal '$proposalId'")
         if (proposal.status != "open") return ToolResult.Error("Proposal already resolved")
 
         val chosenOption = proposal.options.find {
@@ -517,14 +519,14 @@ class Gateway(
                         val targetNodeId = if (choice != "update") choice else (payload?.targetId ?: return ToolResult.Error("Target node not found"))
                         val existingNode = storage.getNode(targetNodeId)
                         if (existingNode == null) {
-                            if (storage.getProposal(proposalId)?.status != "open") {
+                            if (storage.getProposal(resolvedProposalId)?.status != "open") {
                                 return ToolResult.Error("Proposal already resolved")
                             }
                             storage.consumeProposal(proposal.id)
                             return ToolResult.Error("Node not found")
                         }
                         if (existingNode.status !in listOf("active", "in_progress", "paused")) {
-                            if (storage.getProposal(proposalId)?.status != "open") {
+                            if (storage.getProposal(resolvedProposalId)?.status != "open") {
                                 return ToolResult.Error("Proposal already resolved")
                             }
                             storage.consumeProposal(proposal.id)
@@ -677,14 +679,14 @@ class Gateway(
         val nodeId = choice
         val node = storage.getNode(nodeId)
         if (node == null) {
-            if (storage.getProposal(proposalId)?.status != "open") {
+            if (storage.getProposal(resolvedProposalId)?.status != "open") {
                 return ToolResult.Error("Proposal already resolved")
             }
             storage.consumeProposal(proposal.id)
             return ToolResult.Error("Node not found")
         }
         if (node.status !in listOf("active", "in_progress", "paused")) {
-            if (storage.getProposal(proposalId)?.status != "open") {
+            if (storage.getProposal(resolvedProposalId)?.status != "open") {
                 return ToolResult.Error("Proposal already resolved")
             }
             storage.consumeProposal(proposal.id)
@@ -1181,6 +1183,31 @@ class Gateway(
     }
 
     /**
+     * Blueprint 23 §2.2/§4: results carry a short per-turn alias, never a real id, and the
+     * gateway maps the alias back. The map lives in this instance for the turn that produced
+     * the results (one Gateway per chat controller); a new turn replaces it.
+     */
+    private val aliasMap = java.util.concurrent.ConcurrentHashMap<String, String>()
+
+    private fun aliasFor(prefix: String, targetId: String): String {
+        val alias = "${prefix}_$targetId"
+        if (aliasMap.size >= MAX_ALIASES) aliasMap.clear()
+        aliasMap[alias] = targetId
+        return alias
+    }
+
+    /**
+     * Resolves a tool argument that may be an alias (`n_<id>`) or a real id.
+     * An alias-shaped ref the map never issued is passed through unchanged, because real ids
+     * share the alias prefixes (proposals are `p_<hex6>`, soul facts `s_<hex8>`); the caller
+     * answers `unknown_ref` when the subsequent storage lookup finds no such row.
+     */
+    private fun resolveRef(ref: String, prefix: String): String {
+        if (!ref.startsWith("${prefix}_")) return ref
+        return aliasMap[ref] ?: ref
+    }
+
+    /**
      * Blueprint 23 §5 result format, one line per item:
      * `n3 | task | active | due Fri 23 Oct 18:00 | Write the report`,
      * `s2 | health | Is diabetic`, `m4 | Tue 14 Oct 21:10 | U: ... / A: ...`.
@@ -1190,21 +1217,21 @@ class Gateway(
         if (results.isEmpty()) return "No results found."
         return results.joinToString("\n") { r ->
             when (r.kind) {
-                "soul_fact" -> "${r.id} | ${r.title} | ${r.details}"
+                "soul_fact" -> "${aliasFor("s", r.id)} | ${r.title} | ${r.details}"
                 "chat" -> {
                     val whenText = r.tsUtc?.let { dateResolver.format(it) } ?: r.title
-                    "${r.id.removePrefix("chunk_")} | $whenText | ${r.details}"
+                    "${aliasFor("m", r.id.removePrefix("chunk_"))} | $whenText | ${r.details}"
                 }
                 "user", "assistant" -> {
                     val who = if (r.kind == "user") "U" else "A"
                     val whenText = r.tsUtc?.let { dateResolver.format(it) } ?: r.title
-                    "${r.id} | $whenText | $who: ${r.details}"
+                    "${aliasFor("m", r.id)} | $whenText | $who: ${r.details}"
                 }
                 else -> {
                     val status = Regex("Status: (\\S+)").find(r.details)?.groupValues?.get(1) ?: r.kind
                     val due = Regex("Due: (\\d+)").find(r.details)?.groupValues?.get(1)?.toLongOrNull()
                     val dueText = due?.let { " | due ${dateResolver.format(it)}" } ?: ""
-                    "${r.id} | ${r.kind} | $status$dueText | ${r.title}"
+                    "${aliasFor("n", r.id)} | ${r.kind} | $status$dueText | ${r.title}"
                 }
             }
         }
@@ -1423,6 +1450,9 @@ class Gateway(
 
     companion object {
         const val DEDUPE_TIME_WINDOW_MS = 2 * 60 * 60 * 1000L // 2 hours
+
+        /** Upper bound on the per-turn alias map before it is dropped wholesale. */
+        private const val MAX_ALIASES = 500
 
         private val NEGATION_TOKENS = setOf(
             "no", "not", "never", "nor", "neither", "none", "without",
