@@ -96,7 +96,8 @@ AGP 9.4.0 exit-code defect (D-123), not a failure.
    (`78efc25`, D-130: in-memory aliases, no table);
    (b) which ABSENT row is the v1 blocker to take first — my recommendation is the **UI trio 19/20/21**,
    because v1 cannot be a daily driver without onboarding; **you accepted this**;
-   (c) is the debug-key release (`app/build.gradle.kts:61`) intentional for now? **Still open.**
+   (c) is the debug-key release (`app/build.gradle.kts:61`) intentional for now? **ANSWERED 2026-11-08** —
+   yes, deliberately, until the app is feature-complete toward v2. Recorded as D-131. Do not re-raise.
 3. **T19's trigger-drop-on-every-open cost.** Deliberate trade for correctness. If you'd rather pay
    it only on upgrade, say so and I'll gate the drop behind a version comparison.
 

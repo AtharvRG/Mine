@@ -217,5 +217,12 @@ Rejected: printing only the first line of the message (the diagnostic fields `Al
 - **Rejected:** a durable `alias_map` table (schema churn for per-turn state); rejecting unissued alias-shaped refs in `resolveRef` (breaks `p_<hex6>` proposal ids and `s_<hex8>` soul-fact ids); real ids in tool output (blueprint 23 §2.2 forbids it — the model must never see a row id).
 - **Accepted residual:** aliases do not survive a process restart mid-turn; a model that echoes an alias from a previous turn gets `unknown_ref` and must search again. That is the intended failure, not a bug.
 
-(Next free: D-131. Add: date, decision, reason, rejected.)
+## D-131 — Release builds stay signed with the debug keystore until v2 feature-complete (2026-11-08)
+- **Decision:** `app/build.gradle.kts` keeps `signingConfig = signingConfigs.getByName("debug")` on the `release` block. No upload keystore is generated now.
+- **Reason:** developer directive 2026-11-08 — the app is expected to stay in development until it is feature-complete toward v2 (memory, souls, and the remaining v1 scope). Neither cost applies yet: there is nothing to upload to Play, and there is no debug install to upgrade over on a user device. The debug keystore is public knowledge, so a release build signed with it carries no secret — this is a distribution/upgrade-integrity question, not a key-leak.
+- **Rejected:** generating an upload keystore now (a lost or rotated keystore is unrecoverable, and there is no benefit before submission); treating it as a v1 release blocker (it is not one until Play submission).
+- **Accepted residual:** a release APK cannot be uploaded to Play and cannot upgrade over a debug install without an uninstall. Revisit at the v2 / Play-submission boundary. Also closes audit question (c).
+- **Supersedes:** the v1 scope audit 2026-11-08 open question (c) and the `STATE.md` "debug key" open item.
+
+(Next free: D-132. Add: date, decision, reason, rejected.)
 

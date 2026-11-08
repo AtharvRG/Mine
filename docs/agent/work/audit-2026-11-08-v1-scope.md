@@ -15,7 +15,7 @@ Method: read every row, then grep/read the code for evidence. Status is one of
 | 4 | Soul with propose/approve, seeded in onboarding | PARTIAL | Propose/approve: `Storage.getProposedSoulFacts`, `updateSoulFactStatus*`, `ChatController`. **Onboarding seeding: absent** (no onboarding code, see row 21). |
 | 5 | Node/edge graph with status lifecycle | BUILT | `models/Memory.kt` (`Node`, `Edge`, `EdgeTypes`), `Storage` commit methods, `rankHomeNodes`. |
 | 6 | Resolver + Undo | BUILT | `core/.../resolver/Resolver.kt`, `Gateway.handleUndo`, `Storage.hasUndo`. |
-| 7 | Tool gateway, alias IDs, `search_history` | **BUILT (this session)** | Gateway dispatch in `core/.../gateway/Gateway.kt`; `search_history` added this session (`Storage.searchHistory`, `AndroidStorage.searchHistory`, `Gateway` branch, `formatSearchResults`, prompt line in `ChatController.kt`). **Alias IDs are not stored**: `grep -rn "alias" core/src/main app/src/main` → 0 hits; the formatter emits `n_<id>`/`s_<id>`/`m_<id>` on output but there is no `alias_map` and no `unknown_ref` handling. |
+| 7 | Tool gateway, alias IDs, `search_history` | **BUILT** | Gateway dispatch in `core/.../gateway/Gateway.kt`; `search_history` (`Storage.searchHistory`, `AndroidStorage.searchHistory`, `Gateway` branch, `formatSearchResults`, prompt line in `ChatController.kt`). **Alias IDs shipped** in `78efc25` (D-130): per-instance `ConcurrentHashMap` alias map, `aliasFor`/`resolveRef`, `MAX_ALIASES = 500`, `unknown_ref` at the three storage lookups. In-memory by decision, not an `alias_map` table. |
 | 8 | Fixed-budget context pack | BUILT | `core/.../context/ContextBuilder.kt` (`maxTokens = 700`, char budgets, newest-message guarantee). |
 | 9 | On-device EmbeddingGemma 2, hybrid retrieval, summaries | **ABSENT** | `grep -rE "EmbeddingGemma\|embedding\|Embedder\|hybrid" core/src/main app/src/main` → 0 hits. Retrieval is FTS5 only. |
 | 10 | Personas (presets and custom) | PARTIAL | Only a `persona_id` column in `MineDatabaseHelper.kt` and a `persona` mention in `ContextBuilder`/`QuoteManager`/`ChatController`. No preset list, no persona editor, no persona-scoped prompt. |
@@ -36,12 +36,17 @@ Method: read every row, then grep/read the code for evidence. Status is one of
 
 ## 2. Summary
 
-- **BUILT: 8** — rows 2, 3, 5, 6, 7 (now), 8, 12, 15.
+- **BUILT: 8** — rows 2, 3, 5, 6, 7, 8, 12, 15.
 - **PARTIAL: 8** — rows 1, 4, 10, 13, 14, 17, 18, 22.
 - **ABSENT: 6** — rows 9, 11, 16, 19, 20, 21.
 
-By area: Data 2/3 built; Memory 3/4 (row 7 closed this session; alias storage still missing);
+By area: Data 2/3 built; Memory 3/4 (row 7 fully closed — aliases shipped `78efc25`, D-130);
 Intelligence 1/4 (context pack only); Proactive 1/3; Platform 1/3; UI 0/4; Release 0/1.
+
+**Corrections after this audit was written (2026-11-08, later):** row 7 is BUILT (aliases +
+`unknown_ref`, D-130); the `search_history` device run is green (86/86, `full-suite-aliases.log`);
+row 22's debug-key half is accepted by D-131 (deliberate until v2 feature-complete), so X-09's
+signing objection is waived by decision, not fixed.
 
 ## 3. Highest-severity gaps (ordered)
 
@@ -51,10 +56,10 @@ Intelligence 1/4 (context pack only); Proactive 1/3; Platform 1/3; UI 0/4; Relea
    EmbeddingGemma explicitly.
 3. **Row 16 (offline queue / alarm-only mode) absent.** X-08 (airplane-mode day) cannot pass.
 4. **Row 13 (nudge engine) exists but is never called.** Dead code that looks like a feature.
-5. **Row 22 release is signed with the debug key** — X-09 cannot pass.
+5. **Row 22 release is signed with the debug key** — accepted by D-131 until v2 feature-complete;
+   no longer a blocker, still an X-09 waiver.
 6. **Row 1 app lock absent** — the "app lock as a UI gate" half of the row.
-7. **Row 7 alias IDs are output-only** — no `alias_map`, so a model echoing `n3` back in
-   `target_id` cannot be resolved; `unknown_ref` does not exist.
+7. ~~Row 7 alias IDs are output-only~~ — **closed** `78efc25` (D-130).
 
 ## 4. Tests that give false confidence
 
@@ -62,13 +67,15 @@ Intelligence 1/4 (context pack only); Proactive 1/3; Platform 1/3; UI 0/4; Relea
   nudges work; they do not run.
 - `ReliabilityManagerTest` covers the sweeper but nothing asserts a reliability *score*, because
   none is computed.
-- No test covers `search_history` end-to-end on device yet (added this session in
-  `AndroidStorageTest`, **not yet run** — device offline).
+- ~~No test covers `search_history` end-to-end on device yet~~ — **now covered and green**:
+  `AndroidStorageTest.testSearchHistory_RealSqlite_NewestFirst_AndRedactionSafe`, full suite
+  86/86 (`build/tmp/full-suite-aliases.log`). It caught a real duplicate-row bug the `:core`
+  fake could not (external-content FTS5 NULL-rowid resolution).
 
 ## 5. Blueprint contradictions
 
-- §3.1 row 7 says "alias IDs"; blueprint 23 §4 defines an `alias_map` table and `unknown_ref`
-  errors. Neither exists. Either the row shrinks to "output prefixes" or the table must be built.
+- §3.1 row 7 says "alias IDs"; blueprint 23 §4 defines an `alias_map` table. **Resolved by D-130**:
+  aliases and `unknown_ref` shipped, held in memory per `Gateway` instance rather than in a table.
 - §3.1 row 17 says "reliability score"; the column exists but §42's scoring rule has no
   implementation.
 
@@ -76,7 +83,7 @@ Intelligence 1/4 (context pack only); Proactive 1/3; Platform 1/3; UI 0/4; Relea
 
 | Order | Task | Proof |
 |---|---|---|
-| 1 | Alias map: store `n/s/m/p/r/u` aliases, resolve `target_id` through them, `unknown_ref` on miss | `GatewayTest` case: propose_change with `target_id = "n3"` resolves to the node aliased `n3`; unknown alias → `ToolResult.Error` containing `unknown_ref` |
+| 1 | ~~Alias map~~ — **DONE** `78efc25` (D-130) | `GatewayTest.testGateway_ScheduleReminder_UnknownAlias_IsUnknownRef`, `…ConfirmChange_UnknownAlias_IsUnknownRef` |
 | 2 | Wire `NudgeEngine` into the proactive path | `NudgeEngine` constructed in `MainViewModel`; integration test asserting a nudge is emitted after the threshold |
 | 3 | Onboarding + soul seeding (row 4/21, S-sized slice) | Instrumented test: fresh DB → onboarding completion writes the seeded soul facts |
 | 4 | Memory viewer read-only (row 20, S-sized slice) | Compose test: viewer lists nodes/soul facts |

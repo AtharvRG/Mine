@@ -270,3 +270,27 @@
   `String?` → `String` and three call sites kept `?: targetRef` / `?: return ToolResult.Error(…)`.
   They compile — the elvis is just unreachable — so the compiler will not find them; grep the call
   sites after any nullability change.
+- **A screenshot of the app is not a screenshot of the status bar.** The D-105 by-eye check was
+  answered with frames of `RemindersScreen` (`MainActivity.kt:283-321`) — the in-app list — while
+  the claim is about a ~25 px glyph in the *system* status bar. Before asking a human to eyeball
+  evidence, say which surface the artifact covers and give them a crop that shows only that surface.
+- **A 5 s alarm cannot be checked by eye.** `RunSelfTest` arms `fireAt = now + 5000L`; by the time
+  the user looks up, the icon is gone. Any by-eye task whose subject exists for seconds needs a
+  long-lived arm (the 120 s `d105GentleHoldMs` route) or a pre-taken crop, not a "set it and look".
+- **`slot='alarm_clock'` is app-agnostic, so you do not need the app installed to test it.** A
+  system `SET_ALARM` `setAlarmClock` from the deskclock exercises the same SystemUI path. The
+  limitation is the reverse: it proves "a setAlarmClock is pending → icon appears", never
+  "Mine did it".
+- **`am start -a android.intent.action.SET_ALARM --ei android.intent.extra.ALARM_MINUTES N` only
+  opens a time picker.** Nothing is armed until the picker's OK is tapped (dump the UI with
+  `uiautomator dump` first; the OK bounds were `[770,1733][930,1853]`).
+- **Git-Bash rewrites `/sdcard/...` in adb commands.** `adb shell "uiautomator dump /sdcard/x.xml"`
+  writes to `/Files/Git/sdcard/x.xml` and the following `cat` returns nothing. Prefix the command
+  with `MSYS_NO_PATHCONV=1`.
+- **A container-width delta is not a glyph.** Prove the glyph with a pixel differential: compare
+  bright-column runs between the two frames and require the *other* runs to be byte-identical. In
+  D-105x the armed frame had an extra run at `(89,234)` that ASCII-rendered as a clock face.
+- **The debug signing key is a deliberate v1 choice, not debt to fix.** User decision 2026-11-08: keep
+  `signingConfig = signingConfigs.getByName("debug")` (`app/build.gradle.kts:50-62`) until the app is
+  feature-complete toward v2 (memory, souls, and the rest). Do not re-raise it as a release blocker;
+  the only real cost is Play upload and upgrade-over-debug, neither of which applies yet.
