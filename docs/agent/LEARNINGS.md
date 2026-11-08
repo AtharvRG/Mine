@@ -419,3 +419,22 @@
   B both edited `ChatController.kt`; restoring from `/tmp/ChatController.kt.bak` and asserting `cmp`
   is silent (plus zero `RED PROBE` markers) is what makes "the green run is on the real code"
   a checkable claim rather than a promise.
+- **A test that asserts an absence passes vacuously when the write never happens.** `finish_WhenTheWriteFails_
+  LeavesTheFlowOpen` asserts `onboarding.done` is absent after a failed seed — which is equally true if the flag is
+  never written at all. Deleting the write reddened only 1 of 8 tests. The fix is a second test that pins the
+  *presence* (`finish_WritesTheDoneFlag_AsTheVeryLastWrite` asserts `soulFacts.size == 3` at the moment the key is
+  written), so the ordering claim has a witness. Whenever a RED probe reddens fewer tests than expected, the missing
+  red is a missing test, not a weak probe.
+- **`onAction` returning does not mean the write landed.** `AndroidStorage` wraps every method in
+  `withContext(Dispatchers.IO)`, and the controller's branches `launch(defaultDispatcher)`, so a connected test that
+  reads state or tables right after `onAction` races the write. All three `OnboardingSeedConnectedTest` cases were red
+  for this reason alone. Poll for the settled state (`awaitDone`) instead of reading blind — and when a test is red,
+  prove *which* side is wrong with a throwaway debug action before touching production code.
+- **`-Pandroid.testInstrumentationRunnerArguments.class=A,B` silently runs only A.** The comma-joined filter ran 6 of
+  9 tests while the task reported FAILED. Run classes separately.
+- **A `python` heredoc that fails mid-write truncates the target to 0 bytes.** `io.open(p,'w')` truncates before the
+  encode error fires; `docs/agent/STATE.md` was emptied this way (recovered with `git checkout --`, which is exact
+  because the file was unmodified at HEAD). Write the script to a file with the Write tool, run it, and assert on the
+  result — never edit a large tracked file through an inline heredoc. Also: `STATE.md`'s "Updated:" line is a single
+  7k-character line, so an edit that replaces it must carry the old tail forward verbatim or the session history in it
+  is lost.

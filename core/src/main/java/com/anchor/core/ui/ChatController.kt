@@ -20,6 +20,7 @@ import com.anchor.core.provider.Target
 import com.anchor.core.storage.Storage
 import com.anchor.core.time.Clock
 import com.anchor.core.time.DateResolver
+import com.anchor.core.time.DayRollover
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -64,11 +65,25 @@ class ChatController(
         }
     }
 
-    private fun currentTransientReceipts(): List<ReceiptState> {
-        val dayMs = 24L * 3600 * 1000L
+    private fun currentTransientReceipts(): List<ReceiptState> {        val dayMs = 24L * 3600 * 1000L
         synchronized(transientReceipts) {
             transientReceipts.removeAll { clock.now() - it.timestamp >= dayMs }
             return transientReceipts.toList()
+        }
+    }
+
+    /**
+     * Blueprint 52 §3.1: progress is saved after every step. A failed write reports itself and
+     * leaves the step where it was, so the user sees the same screen again rather than a flow that
+     * silently forgot where it was.
+     */
+    private suspend fun persistOnboardingStep(step: Int) {
+        try {
+            storage.saveSetting(ONBOARDING_STEP_KEY, step.toString())
+            _state.update { it.copy(onboardingStep = step, onboardingError = null) }
+        } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
+            _state.update { it.copy(onboardingError = "Could not save your progress: ${e.message ?: e.javaClass.simpleName}") }
         }
     }
 
@@ -175,7 +190,10 @@ class ChatController(
         atRisk = relState.score == "at_risk",
         activeThread = activeThread,
         homePriorityList = priorityList,
-        recentlyClosed = recentlyClosed
+        recentlyClosed = recentlyClosed,
+        // Blueprint 52 §3.1: a fresh install shows the flow, a finished one never does. Read here
+        // rather than in the init block so the first painted frame already knows.
+        onboardingDone = storage.getSetting(ONBOARDING_DONE_KEY) == "1"
     )}
     _state.update { it.copy(chatItems = ChatTimelineBuilder.build(it.chatMessages, it.receipts, it.openProposals)) }
     }
@@ -446,6 +464,84 @@ class ChatController(
                 } catch (e: Exception) {
                     if (e is kotlinx.coroutines.CancellationException) throw e
                     _state.update { it.copy(globalError = "Could not load memory: ${e.message ?: e.javaClass.simpleName}") }
+                }
+            }
+            // Blueprint 52 §3.1: step navigation. Progress is persisted after every step so a
+            // mid-way close resumes where it stopped; `done` is written only by OnboardingFinish,
+            // so a killed app never lands on the chat screen with an unseeded Soul.
+            is UiAction.OnboardingNext -> coroutineScope.launch(defaultDispatcher) {
+                val next = (_state.value.onboardingStep + 1).coerceAtMost(ONBOARDING_LAST_STEP)
+                persistOnboardingStep(next)
+            }
+            is UiAction.OnboardingBack -> coroutineScope.launch(defaultDispatcher) {
+                persistOnboardingStep((_state.value.onboardingStep - 1).coerceAtLeast(0))
+            }
+            is UiAction.OnboardingAnswer -> _state.update {
+                it.copy(onboardingAnswers = it.onboardingAnswers + (action.category to action.text))
+            }
+            is UiAction.OnboardingHealthLocalOnly -> _state.update {
+                it.copy(onboardingHealthLocalOnly = action.localOnly)
+            }
+            // Blueprint 52 §3.1 step 4: confirming the day is mandatory and writes the first
+            // `day_rule`. The window may cross midnight; `DayRollover.computeDayKey` already
+            // handles that, so the only check here is that the two ends are not the same minute.
+            is UiAction.OnboardingConfirmDay -> coroutineScope.launch(defaultDispatcher) {
+                if (action.startMinute == action.endMinute) {
+                    _state.update { it.copy(onboardingError = "Pick a day that is not zero hours long.") }
+                    return@launch
+                }
+                try {
+                    storage.saveDayRule(
+                        DayRollover.defaultRule(clock.now()).copy(
+                            startMinute = action.startMinute,
+                            endMinute = action.endMinute
+                        )
+                    )
+                    persistOnboardingStep(ONBOARDING_SOUL_STEP)
+                } catch (e: Exception) {
+                    if (e is kotlinx.coroutines.CancellationException) throw e
+                    _state.update { it.copy(onboardingError = "Could not save your day: ${e.message ?: e.javaClass.simpleName}") }
+                }
+            }
+            // Blueprint 52 §3.2: the answers become Soul facts with `source = onboarding`,
+            // `origin = approved`, status `active` — the user typed them, so there is no approval
+            // step (D-137). Skipped questions write nothing. `done` is written last, so a failure
+            // part-way leaves the flow open and retryable rather than half-seeded and finished.
+            is UiAction.OnboardingFinish -> coroutineScope.launch(defaultDispatcher) {
+                try {
+                    val now = clock.now()
+                    for ((category, text) in _state.value.onboardingAnswers) {
+                        if (text.isBlank()) continue
+                        val localOnly = category == "health" && _state.value.onboardingHealthLocalOnly
+                        val fact = SoulFact(
+                            id = "s_${UUID.randomUUID().toString().take(8)}",
+                            category = category,
+                            statement = text.trim(),
+                            confidence = ONBOARDING_FACT_CONFIDENCE,
+                            source = "onboarding",
+                            origin = "approved",
+                            status = "active",
+                            createdAt = now,
+                            localOnly = localOnly,
+                            sensitive = category == "health"
+                        )
+                        storage.createSoulFactAndCommit(
+                            fact,
+                            RawEvent(
+                                opId = "u_${UUID.randomUUID().toString().take(6)}",
+                                opType = "CREATE",
+                                targetType = "soul_fact",
+                                targetId = fact.id,
+                                afterJson = json.encodeToString(fact),
+                                tsUtc = now
+                            )
+                        )
+                    }
+                    storage.saveSetting(ONBOARDING_DONE_KEY, "1")
+                    _state.update { it.copy(onboardingDone = true, onboardingError = null) }
+                } catch (e: Exception) {
+                    if (e is kotlinx.coroutines.CancellationException) throw e
+                    _state.update { it.copy(onboardingError = "Could not save your answers: ${e.message ?: e.javaClass.simpleName}") }
                 }
             }
             // Blueprint 31: one proactive pass. The engine decides; this only supplies the
@@ -930,6 +1026,19 @@ CRITICAL: Do NOT say "Done" or "Saved" unless you issue a tool call.
          * is ordered by due time, so the oldest overdue item is inside the first page.
          */
         const val NUDGE_SCAN_PAGE = 200
+
+        // Blueprint 52 §3.1: onboarding progress lives in `setting` (blueprint 14 §3.8), not a new
+        // table — the flow is four steps and a flag, and a table would need a schema bump for it.
+        const val ONBOARDING_STEP_KEY = "onboarding.step"
+        const val ONBOARDING_DONE_KEY = "onboarding.done"
+        const val ONBOARDING_LAST_STEP = 3
+        const val ONBOARDING_SOUL_STEP = 3
+
+        /**
+         * Blueprint 52 §3.2: the user typed these answers in setup, which is stronger evidence than
+         * anything the AI infers later, so they start above the model's default confidence.
+         */
+        const val ONBOARDING_FACT_CONFIDENCE = 0.9
 
         // O-3: prose that reads as a completed action. A reply matching this with no envelope
         // performed nothing, so it must not be shown as a confirmation. Deliberately excludes

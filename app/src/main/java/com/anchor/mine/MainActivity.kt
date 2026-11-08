@@ -34,6 +34,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.anchor.core.models.AlarmTier
+import com.anchor.core.ui.ChatController
 import com.anchor.core.ui.UiAction
 import com.anchor.core.ui.UiState
 
@@ -177,6 +178,15 @@ fun MineAppUI(
                 }
             }
         }
+        return
+    }
+
+    // Blueprint 52 §3.1: the first-run flow owns the screen until it is finished. It sits after
+    // the global-error branch (a keystore failure must still be resettable) and before the tabs.
+    // `onboardingDone` is read from storage at controller start, so this is a real gate, not a
+    // first-composition guess — a finished install never renders the flow, not even for a frame.
+    if (!state.onboardingDone) {
+        OnboardingScreen(state, onAction)
         return
     }
 
@@ -474,6 +484,169 @@ fun MemoryScreen(state: UiState) {
         }
     }
 }
+
+/**
+ * Blueprint 52 §3.1, the v1 slice: four steps — Welcome, Privacy consent, Your day, Soul seed.
+ * The two mandatory ones are the consent and the day window; the Soul questions are all
+ * skippable and a skipped answer simply writes nothing (blueprint 52 §3.2).
+ *
+ * The consent text is blueprint 16 §3.3 verbatim, and it cannot be continued past without
+ * accepting — that is the one hard gate in the flow.
+ */
+@Composable
+fun OnboardingScreen(state: UiState, onAction: (UiAction) -> Unit) {
+    var consentAccepted by remember { mutableStateOf(false) }
+    var startHour by remember { mutableIntStateOf(4) }
+    var endHour by remember { mutableIntStateOf(22) }
+
+    Column(
+        modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars).padding(16.dp).testTag("onboardingScreen")
+    ) {
+        Text("Step ${state.onboardingStep + 1} of ${ChatController.ONBOARDING_LAST_STEP + 1}", style = MaterialTheme.typography.labelMedium)
+        Spacer(modifier = Modifier.height(12.dp))
+
+        state.onboardingError?.let {
+            Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("onboardingError"))
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+
+        Column(modifier = Modifier.weight(1f)) {
+            when (state.onboardingStep) {
+                0 -> {
+                    Text("Welcome to Mine", style = MaterialTheme.typography.headlineSmall)
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text("You own your data. Your chats and memories stay on this phone, encrypted.")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("The AI reads your words. When you chat, your message and the memories that matter go to the provider you choose.")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Backup is yours. There is no Mine account and no Mine server.")
+                }
+                1 -> {
+                    Text("Privacy", style = MaterialTheme.typography.headlineSmall)
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text("Your data stays on this phone.", style = MaterialTheme.typography.titleSmall)
+                    Text("Mine saves your chats, memories, and settings only on your device, encrypted. There is no Mine account and no Mine server.")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("But the AI has to read your words.", style = MaterialTheme.typography.titleSmall)
+                    Text("When you chat, Mine sends the current message and the parts of your memory that matter right now to the AI provider you set up. That provider's own rules decide how they handle it. Choose a provider you trust.")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("You are in control.", style = MaterialTheme.typography.titleSmall)
+                    Text("You can mark any memory \"keep local only\", and it will never be sent. You can erase things any time.")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Your backup is your job.", style = MaterialTheme.typography.titleSmall)
+                    Text("If you lose your phone and your export file or its passphrase, your data is gone. Nobody can recover it for you.")
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                        Checkbox(
+                            checked = consentAccepted,
+                            onCheckedChange = { consentAccepted = it },
+                            modifier = Modifier.testTag("consentCheckbox")
+                        )
+                        Text("I understand and accept")
+                    }
+                }
+                2 -> {
+                    Text("Your day", style = MaterialTheme.typography.headlineSmall)
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text("When does your day start and end? Mine keeps its check-ins and quiet time inside it. The window may cross midnight.")
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text("Day starts: %02d:00".format(startHour), modifier = Modifier.testTag("dayStartLabel"))
+                    Slider(
+                        value = startHour.toFloat(),
+                        onValueChange = { startHour = it.toInt() },
+                        valueRange = 0f..23f,
+                        steps = 22,
+                        modifier = Modifier.testTag("dayStartSlider")
+                    )
+                    Text("Day ends: %02d:00".format(endHour), modifier = Modifier.testTag("dayEndLabel"))
+                    Slider(
+                        value = endHour.toFloat(),
+                        onValueChange = { endHour = it.toInt() },
+                        valueRange = 0f..23f,
+                        steps = 22,
+                        modifier = Modifier.testTag("dayEndSlider")
+                    )
+                    val hours = ((endHour - startHour + 24) % 24)
+                    Text(
+                        when {
+                            hours == 0 -> "That is a zero-hour day; pick a longer window."
+                            hours < 10 -> "That is a short day. I will fit my check-ins in, but things may pile up. Your call."
+                            hours > 20 -> "That leaves me very little quiet time. Fine, but please sleep sometime."
+                            else -> "A $hours-hour day."
+                        },
+                        modifier = Modifier.testTag("dayLengthHint")
+                    )
+                }
+                else -> {
+                    Text("A little about you", style = MaterialTheme.typography.headlineSmall)
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text("These become things Mine remembers about you. Every one is optional.")
+                    Spacer(modifier = Modifier.height(12.dp))
+                    LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        items(SOUL_SEED_QUESTIONS) { q ->
+                            Column {
+                                Text(q.prompt, style = MaterialTheme.typography.titleSmall)
+                                OutlinedTextField(
+                                    value = state.onboardingAnswers[q.category] ?: "",
+                                    onValueChange = { onAction(UiAction.OnboardingAnswer(q.category, it)) },
+                                    modifier = Modifier.fillMaxWidth().testTag("soulAnswer-${q.category}"),
+                                    singleLine = true
+                                )
+                                if (q.category == "health") {
+                                    Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                                        Checkbox(
+                                            checked = state.onboardingHealthLocalOnly,
+                                            onCheckedChange = { onAction(UiAction.OnboardingHealthLocalOnly(it)) },
+                                            modifier = Modifier.testTag("healthLocalOnlySwitch")
+                                        )
+                                        Text("Keep this on this phone only")
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (state.onboardingStep > 0) {
+                OutlinedButton(onClick = { onAction(UiAction.OnboardingBack) }, modifier = Modifier.testTag("onboardingBack")) {
+                    Text("Back")
+                }
+            }
+            Spacer(modifier = Modifier.weight(1f))
+            when (state.onboardingStep) {
+                0 -> Button(onClick = { onAction(UiAction.OnboardingNext) }, modifier = Modifier.testTag("onboardingNext")) { Text("Get started") }
+                1 -> Button(
+                    onClick = { onAction(UiAction.OnboardingNext) },
+                    enabled = consentAccepted,
+                    modifier = Modifier.testTag("onboardingNext")
+                ) { Text("Continue") }
+                2 -> Button(
+                    onClick = { onAction(UiAction.OnboardingConfirmDay(startHour * 60, endHour * 60)) },
+                    modifier = Modifier.testTag("onboardingConfirmDay")
+                ) { Text("Confirm") }
+                else -> Button(onClick = { onAction(UiAction.OnboardingFinish) }, modifier = Modifier.testTag("onboardingFinish")) {
+                    Text("Finish")
+                }
+            }
+        }
+    }
+}
+
+/** Blueprint 52 §3.2: the six light questions, in the order the blueprint asks them. */
+data class SoulSeedQuestion(val category: String, val prompt: String)
+
+val SOUL_SEED_QUESTIONS = listOf(
+    SoulSeedQuestion("identity", "What do you do most days (study, work, both, something else)?"),
+    SoulSeedQuestion("habits_routines", "When do you usually wake up and go to sleep?"),
+    SoulSeedQuestion("health", "Anything about your health I should always keep in mind? (optional)"),
+    SoulSeedQuestion("communication_style", "How do you like replies: short, balanced, or detailed?"),
+    SoulSeedQuestion("dislikes", "Things you dislike or that annoy you?"),
+    SoulSeedQuestion("goals_longterm", "What do you most want Mine to help with?")
+)
 
 @Composable
 fun DebugScreen(state: UiState, onAction: (UiAction) -> Unit) {

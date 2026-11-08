@@ -1,124 +1,109 @@
-# HANDOFF (v1 audit §6 item 2 — `NudgeEngine` wired into the proactive path, unit + device verified, uncommitted)
+# HANDOFF (v1 audit §6 item 3 — onboarding + soul seeding, unit + device verified, uncommitted)
 
 Read this first. Facts only; every claim below has a command and an exit code behind it.
 
 ## 1. What changed
 
-**One logical change: audit §6 item 2, "Wire `NudgeEngine` into the proactive path"** (blueprint 31, D-136).
-Everything is **uncommitted**. Row 20 (D-135) from the previous session is also still uncommitted.
+**One logical change: audit §6 item 3, "Onboarding + soul seeding"** (blueprint 52 §3.1/§3.2, rows 4/21, D-137).
+Everything is **uncommitted**. Row 20 (D-135) is `8d00864` and item 2 (D-136) is `34181d3` — both
+already in `git log`, not part of this delta.
 
 | File | Status | What |
 |---|---|---|
-| `core/src/main/java/com/anchor/core/ui/ChatContract.kt` | modified | `UiState.nudgeGate: String?`; `toString()` extended; `UiAction.TickProactive` |
-| `core/src/main/java/com/anchor/core/ui/ChatController.kt` | modified | defaulted `nudgeEngine: NudgeEngine = NudgeEngine(clock)`; `TickProactive` branch (`processIgnore` → pick → `evaluate` → write `raw_message` → `onNudgeSent`); `pickNudgeCandidate`, `nudgeText`, `NUDGE_SCAN_PAGE = 200`; `sendText` calls `processReply` when a thread is open |
-| `app/src/main/java/com/anchor/mine/MainActivity.kt` | modified | `LaunchedEffect(Unit) { onAction(UiAction.TickProactive) }` — one tick per foreground session |
-| `core/src/test/java/com/anchor/core/ui/ProactiveTickTest.kt` | **new** | 7 cases, `NoTransport` throws if the proactive path ever calls the model |
+| `core/src/main/java/com/anchor/core/ui/ChatContract.kt` | modified | `UiState.onboardingDone` / `onboardingStep` / `onboardingAnswers` / `onboardingHealthLocalOnly` / `onboardingError`; `toString()` extended; six `UiAction`s (`OnboardingNext`, `OnboardingBack`, `OnboardingAnswer`, `OnboardingHealthLocalOnly`, `OnboardingConfirmDay`, `OnboardingFinish`) |
+| `core/src/main/java/com/anchor/core/ui/ChatController.kt` | modified | reads `onboarding.done` in `loadInitialState`; `persistOnboardingStep`; the six branches; `OnboardingFinish` seeds one `SoulFact` per non-blank answer then writes the done flag **last**; companion keys `onboarding.step` / `onboarding.done` |
+| `app/src/main/java/com/anchor/mine/MainActivity.kt` | modified | gate `if (!state.onboardingDone) { OnboardingScreen(state, onAction); return }` (after the global-error branch, before the tabs); `OnboardingScreen` (consent → day → soul → done) |
+| `app/src/androidTest/java/com/anchor/mine/ui/MemoryScreenTest.kt` | modified | passes `onboardingDone = true` |
+| `app/src/androidTest/java/com/anchor/mine/ui/NotificationsBlockedBannerTest.kt` | modified | passes `onboardingDone = true` |
+| `core/src/test/java/com/anchor/core/ui/OnboardingSeedTest.kt` | **new** | 9 cases |
+| `app/src/androidTest/java/com/anchor/mine/ui/OnboardingGateTest.kt` | **new** | 6 Compose cases |
+| `app/src/androidTest/java/com/anchor/mine/ui/OnboardingSeedConnectedTest.kt` | **new** | 3 cases on a real `AndroidStorage` (`mine_onboarding_test.db`) |
 
-**No storage change and no migration.** `proactive_state`, `nudge_log`, `nudge_pool`, `nudge_hold`
-already exist (`MineDatabaseHelper.kt:41-44`); `getProactiveState`/`saveProactiveState` are already
-implemented (`AndroidStorage.kt:831,849`).
+**No storage change and no migration — DB stays v5.** Progress is stored in `app_meta` settings keys, not
+blueprint 52's `onboarding_state` table (D-137).
 
-**Two deviations from the audit's wording, stated plainly:**
-- The engine is constructed in **`ChatController`, not `MainViewModel`**. Storage, the clock and
-  `UiState` all already live in the controller; the view model only forwards actions.
-- Delivery is a **`raw_message` row**, not a `ChatItem.Nudge`. The app renders `state.chatMessages`;
-  `ChatItem.Nudge` and `UiState.chatItems` are computed but rendered nowhere, so delivering through
-  them would have produced a nudge nobody can see.
+**Deviations, stated plainly:**
+- Progress/completion in `app_meta` keys instead of an `onboarding_state` table (D-137).
+- Answers are in-memory only: a process death mid-flow restores the *step* but not typed text.
 
-Docs updated this session: `DECISIONS.md` (D-136, next free D-137), `TASKS.md` (V1-G5), `STATE.md`
-(`Updated:` line + two new counts rows + a build-status bullet), `LEARNINGS.md` (4 entries).
+Docs updated this session: `DECISIONS.md` (D-137, next free D-138), `TASKS.md` (V1-G6), `STATE.md`
+(`Updated:` line + open question + two count rows), `LEARNINGS.md` (4 entries).
 
 ## 2. What is verified
 
 | Claim | Command | Result |
 |---|---|---|
-| Unit suites green | `./gradlew :core:test :app:testDebugUnitTest :app:compileDebugAndroidTestKotlin --offline` | `BUILD SUCCESSFUL in 20s`, **EXIT=0**; XML recount **core 326/0/0/0**, **app 13/0/0/0** |
-| New test actually ran | `core/build/test-results/test/TEST-com.anchor.core.ui.ProactiveTickTest.xml` | `tests="7" failures="0" errors="0" skipped="0"`, all seven names present |
-| State advance is load-bearing (probe A) | replace `storage.saveProactiveState(nudgeEngine.onNudgeSent(...))` with a comment, `:core:test --tests ProactiveTickTest` | `7 tests completed, 3 failed`, **EXIT=1**: `tick_OverdueItemAboveThreshold_EmitsANudgeAndOpensAThread` (`:88`), `tick_SecondTickWhileTheThreadIsOpen_HoldsInsteadOfNudgingAgain` (`:105`), `sendText_ClosesTheOpenThreadAndResetsTheBackoff` (`:178`) |
-| Reply handling is load-bearing (probe B) | `if (before.openThreadMsgId != null && false)` in `sendText` | `7 tests completed, 1 failed`, **EXIT=1**: exactly `sendText_ClosesTheOpenThreadAndResetsTheBackoff` (`:184`) |
-| Restore is clean | `cp /tmp/ChatController.kt.bak … && cmp …` | `BYTE-IDENTICAL`, zero `RED PROBE` markers |
-| Full connected suite green | `./gradlew :app:connectedDebugAndroidTest :app:connectedDebugAndroidTestVerify --continue` (no class filter), `moto g73 5G - 14` at `10.175.15.5:5555` | `CONNECTED GATE: PASS - 94 test(s), 0 failed, 0 skipped (source: xml)` (`build/tmp/item2-connected.log`); XML `tests="94" failures="0" errors="0" skipped="0"`, zero `<failure>` nodes |
-| Gate alone | `./gradlew :app:connectedDebugAndroidTestVerify` | `BUILD SUCCESSFUL in 6s`, **EXIT=0** |
+| Unit suites green | `./gradlew :core:test :app:testDebugUnitTest --offline` | `BUILD SUCCESSFUL in 17s`, **EXIT=0**; XML recount **core 335/0/0/0**, **app 13/0/0/0** |
+| Done flag is load-bearing (probe A) | delete `storage.saveSetting(ONBOARDING_DONE_KEY, "1")`, `:core:test --tests OnboardingSeedTest` | 2 cases red |
+| Done flag is written **last** (probe B) | move the done-flag write above the fact loop | the same 2 cases red |
+| UI gate is load-bearing (probe C) | `if (!state.onboardingDone)` → `if (false)`, `:app:connectedDebugAndroidTest -P…class=com.anchor.mine.ui.OnboardingGateTest` | `tests 6 failures 5 errors 0`; `finishedInstall_ShowsTheTabs_AndNoFlow` correctly stays green |
+| Restore is clean | `cp /tmp/MainActivity.kt.bak … && cmp …` | `RESTORED_IDENTICAL`, md5 `8db5af97c4b3cc249cd865181e6a7f60` |
+| Full connected suite green | `./gradlew :app:connectedDebugAndroidTest --offline` (no class filter), `moto g73 5G - 14` | XML `tests 103 failures 0 errors 0 skipped 0`; `:app:connectedDebugAndroidTestVerify` → `CONNECTED GATE: PASS - 103 test(s), 0 failed, 0 skipped (source: xml)`, `BUILD SUCCESSFUL in 7s` |
+| Exit code 1 is pre-existing | same connected task on the **stashed (pre-slice)** tree | `tests 94 failures 0 errors 0`, `test-result-exit-code.txt` = `1`, `EXIT=1` (`build/tmp/baseline-connected.log`) |
 
-326 = 319 (row 20) + `ProactiveTickTest` 7. Connected stays **94** — this slice adds no connected test.
-
-The AGP task printed `> Task :app:connectedDebugAndroidTest FAILED` and
-`test-result-exit-code.txt` = `1` on the fully green run — the documented **D-123** defect, not a test failure.
+335 = 326 (item 2) + `OnboardingSeedTest` 9. Connected 103 = 94 + `OnboardingGateTest` 6 +
+`OnboardingSeedConnectedTest` 3.
 
 ## 3. NOT Verified
 
-- **Nobody has seen a nudge on the phone.** No connected test drives `TickProactive` through the real
-  app, and no one has looked at the Debug tab's `nudgeGate` value. All proof is core-unit.
-- **The tick only runs when the app comes to the foreground.** `LaunchedEffect(Unit)` fires once per
-  `MainActivity` composition. There is no background trigger, no WorkManager, no alarm-driven tick in
-  this slice, so a user who never opens the app is never nudged.
-- **The threshold comparison is vacuous today.** `calculateThreshold` maxes at **30.0**
-  (`lastContactAt == now`) and `NudgeCandidate("overdue_item").baseValue` is **35.0**, so the
-  comparison in `pickNudgeCandidate` can never hold a nudge. It is wired and pinned at both ends of
-  the formula by `tick_ThresholdIsConsulted_NotJustTheGates`, but the gates that actually hold are
-  `open_thread`, `min_gap` and the daily fuse. Whether `baseValue` or the formula should move is a
-  product decision.
-- **`nudge_log`, `nudge_pool` and `nudge_hold` are still schema-only.** This slice writes
-  `proactive_state` and a `raw_message`; it does not log a nudge to `nudge_log`, use the pool, or
-  honour holds. The audit's "log-and-learn" stage is not implemented.
-- **`NudgeCandidate.isCritical` is always `false`** — no candidate is ever classified critical, so
-  any critical-specific path is unexercised.
-- **`ChatItem.Nudge` / `UiState.chatItems` remain dead on the app side** (D-121 structured timeline).
-- **`nudgeGate` is sticky, not live.** Every `_state.copy(...)` in `refreshUI`/`openHome` preserves
-  it, so after a `"sent"` tick the Debug tab still reads `"sent"` after the user has answered. It is
-  the last tick's verdict, not the engine's current hold reason. No test pins this either way.
-- **`sendText`'s `processReply` runs before the `isChatLoading` join**, so two concurrent sends can
-  set `lastContactAt` out of order; and its `catch` swallows without `globalError` (the thread then
-  stays open and `open_thread` holds the next nudge — visible on the Debug tab). Both accepted in
-  D-136, neither tested.
-- Carried over unchanged from row 20: **rule 6 for soul facts** (local-only facts are *hidden*, not
-  listed and locked); `MEMORY_VIEWER_PAGE = 200` is not exercised at its boundary; the Memory tab was
-  never checked by eye.
-- Carried over unchanged from E-17: the `rowid` tiebreak is still **not proven load-bearing** (D-134).
+- **Nobody has walked the flow on the phone by eye.** The gate and screen are proven by Compose tests
+  against a fake state; no one has tapped through consent → day → soul on the device.
+- **The seeded facts are not shown anywhere in the UI.** `OnboardingSeedConnectedTest` reads them back
+  through `getActiveSoulFacts()` and a raw query, but the Memory tab is never opened in a test.
+- **Rule 6 is still open and now bites the onboarding:** a local-only health seed is written with
+  `local_only = 1` and is **filtered out** by `getActiveSoulFacts`, so it is invisible in the Memory
+  tab rather than shown with a lock. Whether that is intended is the user's call (STATE.md open question).
+- **Answers are lost on process death mid-flow** (in-memory only); the step is restored, the text is not.
+- Carried over unchanged: threshold-vs-base-value is vacuous (D-136); `nudge_log`/`nudge_pool`/`nudge_hold`
+  are schema-only; `nudgeGate` is sticky; `ChatItem.Nudge` is dead; the E-17 `rowid` tiebreak is not
+  proven load-bearing (D-134); `MEMORY_VIEWER_PAGE = 200` is not exercised at its boundary.
 
 ## 4. Current failing tests
 
-None known. `:core:test` 326/0/0/0, `:app:testDebugUnitTest` 13/0/0/0, connected 94/0/0.
+None known. `:core:test` 335/0/0/0, `:app:testDebugUnitTest` 13/0/0/0, connected 103/0/0.
 
 ## 5. Open decisions needing you
 
-- **Commit now?** Two logical changes are sitting uncommitted: row 20 (D-135) and item 2 (D-136).
-  They touch overlapping files (`ChatContract.kt`, `ChatController.kt`, `MainActivity.kt`), so they
-  cannot be split cleanly by path. Proposed: one commit for both, or tell me to stage item 2's hunks
-  separately.
-  `feat(core,app): wire NudgeEngine into a foreground proactive tick (audit §6 item 2, D-136)`.
-- **Threshold vs base value (see §3).** Today the threshold can never hold a nudge. Do you want
-  `baseValue` raised/lowered, the formula changed, or is a vacuous threshold acceptable for v1?
-- **Next slice:** audit §6 item 3 (onboarding + soul seeding, rows 4/21) is the next open item;
-  proof is *"Instrumented test: fresh DB → onboarding completion writes the seeded soul facts"*.
-  Items 6 (offline queue, row 16) and 7 (release signing, row 22 — the release is signed with the
-  **debug key** at `app/build.gradle.kts:61`) are still open.
+- **Commit now?** One logical change is uncommitted (onboarding + soul seeding, D-137).
+  Proposed message: `feat(core,app): add first-run onboarding and soul seeding (audit §6 item 3, D-137)`.
+- **Rule 6 for soul facts.** A local-only fact is hidden, not listed-and-locked. Relax
+  `getActiveSoulFacts` to let local-only facts through with a lock, or accept "hidden" as the rule?
+- **Threshold vs base value (D-136).** The threshold can never hold a nudge today.
+- **Next slice:** audit §6 items 6 (offline queue, row 16) and 7 (release signing, row 22 — the release
+  is signed with the **debug key** at `app/build.gradle.kts:61`) are the remaining open items.
 - **D-105 by-eye verdict** is still yours (Gentle half captured; see `STATE.md`).
-- **Rule 6 for soul facts** (row 20 §3) is still undecided.
 
 ## 6. Traps for the next run
 
 - **A green connected run still prints `> Task :app:connectedDebugAndroidTest FAILED` /
   `BUILD FAILED`** with `test-result-exit-code.txt` = `1`. Read `CONNECTED GATE: …` and `TEST-*.xml`,
-  never the task's status (D-123).
+  never the task's status (D-123). This is now proven pre-existing on a pre-slice tree.
+- **The `CONNECTED GATE:` line comes from `:app:connectedDebugAndroidTestVerify`**, a separate task.
+  Run it after the suite; it reads the XML already on disk.
+- **`onAction` returning does not mean the write landed.** `AndroidStorage` writes on
+  `Dispatchers.IO`; connected tests must poll (`awaitDone`) rather than read state right after.
+- **`-Pandroid.testInstrumentationRunnerArguments.class=A,B` runs only A.** Run classes separately.
 - **Never start a RED probe while a background connected run may still be alive.** Check
   `powershell -NoProfile -Command "Get-CimInstance Win32_Process | ? { $_.CommandLine -match 'gradle|utp|am instrument|adb logcat' }"`
-  first — note that idle **Gradle and Kotlin daemons match `gradle`** and are harmless; look for
-  `utp`, `am instrument` or `adb logcat` specifically. `cp file /tmp/file.bak` **before** editing.
+  first — idle **Gradle and Kotlin daemons match `gradle`** and are harmless; look for `utp`,
+  `am instrument` or `adb logcat` specifically. `cp file /tmp/file.bak` **before** editing.
 - **After a probe, prove the restore with `cmp`**, not by eyeballing the diff.
+- **Do not edit large tracked docs with an inline `python` heredoc.** A mid-write encode error
+  truncates the file to 0 bytes (it happened to `STATE.md` this session; recovered with
+  `git checkout --`). Write the script with the Write tool, run it, assert on the result.
+- **`STATE.md`'s `Updated:` line is one ~7k-character line.** Replacing it must carry the old tail
+  forward verbatim or the session history in it is lost.
 - **`core` has no `compileDebugKotlin`.** Use `:core:compileKotlin --offline`.
 - **Append tabs, don't insert them.** `when (selectedTab)` is positional and connected tests click
   by title then assume the index.
 - **Recount XML per immediate child directory** of `build/test-results/`; a recursive glob
   double-counts the same suite. The connected recount must scope to `connected/debug/` —
   `connected/release/` holds a stale 6-test `ExportTest` XML.
-- **Deliver through what the UI renders.** `chatItems` is produced but never drawn; `chatMessages` is
-  what the chat list shows.
 
 ## 7. Exact next step
 
-Commit row 20 + item 2 (see §5), then start **audit §6 item 3** (onboarding + soul seeding, rows
-4/21) from `docs/agent/work/audit-2026-11-08-v1-scope.md` §6.
+Commit the onboarding slice (see §5), then start **audit §6 item 6** (offline queue, v1 row 16) from
+`docs/agent/work/audit-2026-11-08-v1-scope.md` §6.
 
 Optional, on an idle machine (no UTP/adb processes — see §6): the E-17 tiebreak RED probe.
 ```

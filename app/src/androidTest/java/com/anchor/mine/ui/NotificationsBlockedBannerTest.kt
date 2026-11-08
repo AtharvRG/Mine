@@ -31,7 +31,7 @@ class NotificationsBlockedBannerTest {
 
     @Test
     fun testDeniedPermission_ShowsBannerOnEveryTab() {
-        show(UiState(notificationsBlocked = true))
+        show(UiState(notificationsBlocked = true, onboardingDone = true))
 
         compose.onNodeWithTag("notificationsBlockedBanner").assertIsDisplayed()
 
@@ -44,7 +44,7 @@ class NotificationsBlockedBannerTest {
 
     @Test
     fun testAllowedNotifications_ShowsNoBanner() {
-        show(UiState(notificationsBlocked = false))
+        show(UiState(notificationsBlocked = false, onboardingDone = true))
 
         compose.onNodeWithTag("notificationsBlockedBanner").assertDoesNotExist()
     }

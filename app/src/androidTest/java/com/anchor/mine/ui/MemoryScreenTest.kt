@@ -89,7 +89,8 @@ class MemoryScreenTest {
     @Test
     fun memoryTab_FirstOpen_AsksForTheLoad_ExactlyOnce() {
         val actions = mutableListOf<UiAction>()
-        val state = mutableStateOf(UiState())
+        // A finished install: the onboarding gate (blueprint 52) would otherwise own the screen.
+        val state = mutableStateOf(UiState(onboardingDone = true))
 
         compose.setContent {
             MineAppUI(state.value, onAction = { actions.add(it) })
@@ -100,7 +101,7 @@ class MemoryScreenTest {
         assertTrue("the tab must request a load on first open: $actions", actions.contains(UiAction.LoadMemory))
 
         // The load lands; a later state change must not ask again.
-        state.value = UiState(memoryLoaded = true, memoryNodes = listOf(node("n1", "Pay the electricity bill")))
+        state.value = UiState(onboardingDone = true, memoryLoaded = true, memoryNodes = listOf(node("n1", "Pay the electricity bill")))
         compose.waitForIdle()
         compose.onNodeWithTag("memoryNode-n1").assertIsDisplayed()
         assertTrue(
