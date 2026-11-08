@@ -224,5 +224,17 @@ Rejected: printing only the first line of the message (the diagnostic fields `Al
 - **Accepted residual:** a release APK cannot be uploaded to Play and cannot upgrade over a debug install without an uninstall. Revisit at the v2 / Play-submission boundary. Also closes audit question (c).
 - **Supersedes:** the v1 scope audit 2026-11-08 open question (c) and the `STATE.md` "debug key" open item.
 
-(Next free: D-132. Add: date, decision, reason, rejected.)
+## D-132 — Quick capture: `q_` id prefix instead of a `raw_message.tags` column (2026-11-08)
+- **Decision:** a captured message is identified by its id prefix `q_<uuid4>` (`QuickCapture.newMessageId()`), not by a `quick_reply` tag stored in `raw_message`. `raw_message` is unchanged; no schema version bump.
+- **Reason:** blueprint 50 §4 assigns the tag `quick_reply`, but `raw_message` has no tags column and adding one is a migration for a value that is derivable from the id. The id is generated at the single write path (`QuickCapture.store`), so a `q_` prefix is as reliable as a stored tag and cannot drift from it. `pending()` therefore needs no join: `m.id.startsWith("q_")` plus "no assistant message after it" is the whole predicate.
+- **Rejected:** a `raw_message.tags` column (schema churn for a derivable value, immediately after the T19 repair); a separate `capture` table (a second write that can fail after the row was written, which is exactly the E-17 lost-sentence case).
+- **Accepted residual:** `TAG_QUICK_REPLY` exists as a constant but nothing writes it. A future export that must carry the tag has to derive it from the prefix. Real ids must never start with `q_` — `u_`/`a_`/`m` are the existing prefixes, so the namespace is free.
+
+## D-133 — The capture notification is gated off by default; the shortcut is gated on (2026-11-08)
+- **Decision:** `QuickCapture.isCaptureNotificationEnabled` returns true only when `capture.notification == "true"`; `isShortcutEnabled` returns true unless `capture.shortcut == "false"`. Both are read from `Storage` settings.
+- **Reason:** blueprint 50 §3.14 says the capture notification is optional and off by default, and blueprint 52 §12 says the shortcut is on by default. "Off by default" has to mean the absence of the key, not a stored `false` that a fresh install never writes — otherwise the default depends on whether some seeding path ran.
+- **Rejected:** storing `false` at first launch (a write that can fail, and a default that is then indistinguishable from a user's explicit choice); reading the setting inside `QuickCapture.store` (the store must never be conditional — E-17 requires the text to be written regardless of presentation settings).
+- **Accepted residual:** the launcher shortcut is declared in `shortcuts.xml`, which cannot be removed at runtime, so `capture.shortcut=false` is honoured in `MainActivity.handleShortcutIntent` (the app opens, the composer is not focused) rather than by unregistering the shortcut. The persistent capture notification itself is still **not posted** — only the switch that will gate it exists.
+
+(Next free: D-134. Add: date, decision, reason, rejected.)
 

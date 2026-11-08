@@ -61,6 +61,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     viewModelScope, Dispatchers.Default, clock,
                     dateResolver = dateResolver
                 )
+                // Blueprint 50 §3.14: the notification reply needs a controller when one exists.
+                app.captureController = controller
 
                 reliabilityManager.runSweeper().forEach { missedRem ->
                     val intent = android.content.Intent(getApplication(), com.anchor.mine.alarms.AlarmReceiver::class.java).apply {
@@ -71,6 +73,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         putExtra("EXTRA_SCHEDULED_FOR", missedRem.fireAtMillis)
                     }
                     getApplication<Application>().sendBroadcast(intent)
+                }
+
+                // E-17: a capture stored while the app was dead (or whose turn failed) is still
+                // unanswered in the raw log. Send each one now, oldest first. The captured row is
+                // the user turn, so nothing is duplicated; an answered capture is not in this list.
+                val pendingCaptures = com.anchor.core.capture.QuickCapture.pending(loadedStorage)
+                pendingCaptures.firstOrNull()?.let { firstId ->
+                    val firstText = loadedStorage.getRawMessage(firstId)
+                    if (!firstText.isNullOrBlank()) controller!!.sendText(firstText, firstId)
                 }
 
                 // H-11 (R-15): a denied POST_NOTIFICATIONS is not an error in the controller, so

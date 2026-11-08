@@ -27,8 +27,33 @@ class MineApp : Application() {
         ProviderOrchestrator(rateLimiter, AndroidHttpTransport())
     }
 
+    /**
+     * Blueprint 50 §3.14 / E-17: the chat controller the notification reply sends through.
+     *
+     * A process started by a reply has no activity, so no ViewModel, so no controller. The reply
+     * still stores its text; this field is how the receiver finds a controller when one exists,
+     * and how it knows there is none when the app is dead.
+     */
+    @Volatile
+    var captureController: com.anchor.core.ui.ChatController? = null
+
+    /**
+     * The notification each pending capture was written from, so a failed turn can update the
+     * notification that is actually waiting on it. Cleared when the capture is answered or fails.
+     */
+    val captureNotificationIds = java.util.concurrent.ConcurrentHashMap<String, Int>()
+
     override fun onCreate() {
         super.onCreate()
+        // The reply's "Sending…" must become "Saved" whether the turn fails now or the process
+        // dies first. Core cannot build a notification, so it calls back into here.
+        com.anchor.core.capture.QuickCapture.onCaptureFailed = { messageId ->
+            if (messageId != null) {
+                captureNotificationIds.remove(messageId)?.let {
+                    com.anchor.mine.capture.CaptureNotifications.showFailed(this, it)
+                }
+            }
+        }
         // Must exist before the first alarm fires: a notification posted to a channel that was
         // never created is dropped silently, and checkHealth() would call that state broken.
         com.anchor.mine.alarms.NotificationChannels.ensureCreated(this)

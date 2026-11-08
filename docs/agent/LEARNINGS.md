@@ -294,3 +294,44 @@
   `signingConfig = signingConfigs.getByName("debug")` (`app/build.gradle.kts:50-62`) until the app is
   feature-complete toward v2 (memory, souls, and the rest). Do not re-raise it as a release blocker;
   the only real cost is Play upload and upgrade-over-debug, neither of which applies yet.
+
+## 2026-11-08 — v1 row 19 (quick capture)
+
+- **`RemoteInput.getResultsFromIntent` only reads one exact `ClipData` shape.** On SDK ≥ 20 it
+  delegates to the platform class, which requires mime **`text/vnd.android.intent`** *and* label
+  **`android.remoteinput.results`**, holding an `Intent` whose extras carry the results bundle
+  (verified by `javap -p -c` on `androidx.core:core:1.16.0`). A `ClipData.newPlainText(...)` is
+  silently rejected → `null` → a receiver's `?: return` drops the reply with no log and no error.
+  **Never hand-build a reply intent in a test:** use
+  `RemoteInput.addResultsToIntent(arrayOf(RemoteInput.Builder(key).build()), intent, bundle)`, which
+  writes the platform's exact shape and cannot drift. The production receiver was correct all along;
+  the RED test was the test's fault.
+- **"Receiver never invoked" and "receiver dropped the payload" look identical from outside.** The
+  `reply_StoresTheText…` failure said *never stored within 10000ms*; the receiver had run and
+  returned at its null guard. Before blaming registration or dependencies, check what the receiver
+  does with an unreadable payload — `?: return` is a silent drop. (Two wrong hypotheses were burned
+  on this: manifest registration and a missing coroutines dependency; `./gradlew :app:dependencies
+  --configuration debugCompileClasspath` disproved the second in one command.)
+- **Kotlin extension functions need their own import.** `lifecycleScope` alone does not bring
+  `kotlinx.coroutines.launch` into scope; the error surfaces as *Unresolved reference 'launch'* plus
+  cascading *Suspend function … can only be called from a coroutine*. The dependency was already
+  transitive — adding `lifecycle-viewmodel-ktx` changed nothing and was reverted. Add
+  `import kotlinx.coroutines.launch`.
+- **`connectedDebugAndroidTest` uninstalls the test APK at the end**, so a follow-up
+  `adb shell am instrument` fails with "no instrumentation registered". Reinstall both APKs
+  (`adb install -r` app + `-t` androidTest) before any manual `am instrument` debugging.
+- **A package left `stopped=true` silently drops explicit broadcasts.** Force-stop (and some
+  teardown paths) set the stopped flag; `am broadcast -n <pkg>/<receiver>` then reaches nothing until
+  the activity is launched once. If a broadcast seems ignored, `adb shell dumpsys package <pkg> |
+  grep stopped` first.
+- **`ShortcutInfo.getIntents()` is nullable** (`Array<Intent!>?`) — a shortcut with no intents is
+  legal. Assert non-null in the test rather than `!!`-ing into an NPE that reads like a missing
+  shortcut.
+- **A `PendingIntent` request code of 0 is shared.** Two armed reminders both building a reply
+  `PendingIntent` with request code 0 are the *same* PendingIntent, so the second overwrites the
+  first's extras. Key the request code to the notification id
+  (`FLAG_UPDATE_CURRENT or FLAG_MUTABLE`).
+- **Declared constants that nothing reads are a doc claim with no code behind it.** All four
+  `QuickCapture` capture-setting constants were read by nothing (`grep` → 0 hits) while the docs
+  said "off by default". Adding the two readers + two unit tests + the one production call site is
+  what made the claim true — check that every documented setting has a reader before citing it.

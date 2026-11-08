@@ -19,14 +19,23 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:launchMode="singleTop"
             android:theme="@style/Theme.Mine">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- Blueprint 50 §3.14 / 52 §12: the launcher shortcut. singleTop + onNewIntent
+                 keeps an open chat in place instead of remounting it under the user. -->
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
         </activity>
 
         <receiver android:name=".alarms.AlarmReceiver" android:exported="false" />
+        <!-- Blueprint 50 §3.14: inline reply on a reminder notification. Not exported: the
+             PendingIntent that targets it is created by this app and is the only caller. -->
+        <receiver android:name=".capture.QuickCaptureReceiver" android:exported="false" />
         <receiver android:name=".quotes.QuoteAlarmReceiver" android:exported="false" />
         <receiver android:name=".alarms.BootReceiver" android:exported="true">
             <intent-filter>

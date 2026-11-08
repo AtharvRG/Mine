@@ -8,6 +8,7 @@ import com.anchor.core.alarms.AlarmReconciler
 import com.anchor.core.alarms.AlarmScheduler
 import com.anchor.core.alarms.ReliabilityIssue
 import com.anchor.core.alarms.ScheduleResult
+import com.anchor.core.capture.QuickCapture
 import com.anchor.core.context.ContextBuilder
 import com.anchor.core.gateway.EnvelopeParser
 import com.anchor.core.gateway.Gateway
@@ -434,12 +435,51 @@ class ChatController(
         }
     }
 
-    private fun handleSendMessage(text: String) {
+    /**
+     * Blueprint 50 §3.14 / E-17: sends [text] on behalf of a path that has no composer — the
+     * notification reply and the launcher shortcut. [userMsgId] is the row the caller already
+     * stored, so the capture that the user wrote is the user turn of this exchange and is never
+     * duplicated; when null a fresh `u_` row is written, exactly as the composer does.
+     *
+     * A blank message, or one while a turn is already streaming, is dropped. The caller keeps the
+     * stored row either way, so a dropped send is retried on the next start instead of lost.
+     *
+     * The provider config is read from storage on every call: a capture can be the first thing
+     * that runs after a cold start, before any state emission has hydrated the key, and a turn
+     * started with a blank key would fail on the wire instead of saying "connect a provider".
+     */
+    fun sendText(text: String, userMsgId: String? = null) {
+        if (_state.value.isChatLoading || text.isBlank()) return
+        _state.update { it.copy(isChatLoading = true, connectionError = null) }
+        coroutineScope.launch(defaultDispatcher) {
+            val key = storage.getSetting("key") ?: ""
+            if (key.isBlank()) {
+                _state.update {
+                    it.copy(
+                        isChatLoading = false,
+                        connectionError = "Connect an AI provider in Settings first."
+                    )
+                }
+                QuickCapture.notifyCaptureFailed(userMsgId)
+                return@launch
+            }
+            _state.update {
+                it.copy(
+                    providerKey = key,
+                    providerEndpoint = storage.getSetting("ep") ?: "https://api.openai.com/v1/chat/completions",
+                    providerModel = storage.getSetting("mod") ?: "gpt-4o-mini"
+                )
+            }
+            handleSendMessage(text, userMsgId)
+        }
+    }
+
+    private fun handleSendMessage(text: String, existingUserMsgId: String? = null) {
         currentStreamJob = coroutineScope.launch(defaultDispatcher) {
             try {
                 currentBotId = null
-                val userMsgId = "u_${UUID.randomUUID()}"
-                storage.insertRawMessage(userMsgId, "user", text)
+                val userMsgId = existingUserMsgId ?: "u_${UUID.randomUUID()}"
+                if (existingUserMsgId == null) storage.insertRawMessage(userMsgId, "user", text)
                 refreshUI()
 
                 var pack = contextBuilder.buildPack()
@@ -631,6 +671,11 @@ class ChatController(
                 }
                 // A10: Provider error refreshes UI properly below in finally
                 _state.update { it.copy(connectionError = "Error: ${e.message}") }
+                // E-17: a capture whose turn never ran stays unanswered in the raw log, so the
+                // next start retries it. Tell the notification that showed "Sending..." now.
+                if (existingUserMsgId != null) {
+                    QuickCapture.notifyCaptureFailed(existingUserMsgId)
+                }
                 val activeBotId = currentBotId
                 currentBotId = null
                 if (activeBotId != null) {

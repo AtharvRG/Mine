@@ -83,6 +83,9 @@ class AlarmReceiver : BroadcastReceiver() {
                     .setPriority(priority)
                     .setCategory(if (tier == AlarmTier.ALARM) NotificationCompat.CATEGORY_ALARM else NotificationCompat.CATEGORY_REMINDER)
                     .setContentIntent(pendingOpen)
+                    // Blueprint 50 §3.14: reply straight from the reminder. The action's request
+                    // code is this notification's id, so two armed reminders never share one.
+                    .addAction(com.anchor.mine.capture.CaptureNotifications.replyAction(context, id.hashCode()))
                     .setAutoCancel(true)
                     .build()
                 manager.notify(id.hashCode(), notification)
@@ -124,6 +127,11 @@ class AlarmReceiver : BroadcastReceiver() {
                     .setContentText(fallbackText)
                     .setPriority(priority)
                     .setCategory(if (fallbackTier == AlarmTier.ALARM) NotificationCompat.CATEGORY_ALARM else NotificationCompat.CATEGORY_REMINDER)
+                    // Blueprint 50 §3.14: the fallback is the notification a user is most likely
+                    // to see when storage is broken, so it must be able to capture too. The reply
+                    // path opens its own storage; if that also fails it reports "Saved" only when
+                    // the row was actually written.
+                    .addAction(com.anchor.mine.capture.CaptureNotifications.replyAction(context, id.hashCode()))
                     .setAutoCancel(true)
                     .build()
 

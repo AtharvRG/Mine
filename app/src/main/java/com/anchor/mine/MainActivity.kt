@@ -13,6 +13,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.lifecycle.lifecycleScope
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -23,7 +24,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -36,6 +40,41 @@ import com.anchor.core.ui.UiState
 class MainActivity : ComponentActivity() {
 
     private val viewModel: MainViewModel by viewModels()
+
+    /**
+     * Blueprint 50 §3.14 / 52 §12: incremented by the launcher shortcut so the already-composed
+     * chat screen focuses its composer. A counter, not a boolean: two shortcut taps in a row must
+     * both focus, and a boolean would only fire on the first one.
+     */
+    private val focusComposerRequests = androidx.compose.runtime.mutableIntStateOf(0)
+
+    /**
+     * The shortcut opens MainActivity with `ACTION_VIEW` and no data. The activity is
+     * `singleTop`, so an already-running chat receives it here instead of being recreated.
+     */
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleShortcutIntent(intent)
+    }
+
+    private fun handleShortcutIntent(intent: android.content.Intent?) {
+        if (intent?.action != android.content.Intent.ACTION_VIEW) return
+        // Blueprint 52 §12: the shortcut can be turned off. The manifest shortcut cannot be
+        // removed at runtime, so the switch is honoured here: the app still opens (the user
+        // tapped it), it just does not grab the composer.
+        val storage = (application as? MineApp)?.sharedStorage
+        if (storage == null) {
+            focusComposerRequests.intValue++
+            return
+        }
+        lifecycleScope.launch {
+            val enabled = runCatching {
+                com.anchor.core.capture.QuickCapture.isShortcutEnabled(storage.await())
+            }.getOrDefault(true)
+            if (enabled) focusComposerRequests.intValue++
+        }
+    }
 
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -55,9 +94,12 @@ class MainActivity : ComponentActivity() {
         }
         // SEC 9: Removed ACTION_REQUEST_SCHEDULE_EXACT_ALARM prompt entirely. setAlarmClock doesn't need it.
 
+        // A cold start from the shortcut arrives here, not in onNewIntent.
+        handleShortcutIntent(intent)
+
         setContent {
             com.anchor.mine.ui.theme.MineTheme {
-                MineAppUI(viewModel)
+                MineAppUI(viewModel, focusComposerRequests)
             }
         }
     }
@@ -71,14 +113,21 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun MineAppUI(viewModel: MainViewModel) {
+fun MineAppUI(
+    viewModel: MainViewModel,
+    focusComposerRequests: androidx.compose.runtime.State<Int> = remember { mutableIntStateOf(0) }
+) {
     val state by viewModel.state.collectAsState()
-    MineAppUI(state, viewModel::onAction)
+    MineAppUI(state, viewModel::onAction, focusComposerRequests)
 }
 
 /** Stateless body of [MineAppUI], so the shell (tabs, banners) can be tested without a ViewModel. */
 @Composable
-fun MineAppUI(state: UiState, onAction: (UiAction) -> Unit) {
+fun MineAppUI(
+    state: UiState,
+    onAction: (UiAction) -> Unit,
+    focusComposerRequests: androidx.compose.runtime.State<Int> = remember { mutableIntStateOf(0) }
+) {
     var selectedTab by remember { mutableIntStateOf(0) }
     val tabs = listOf("Chat", "Reminders", "Provider", "Backup", "Debug")
 
@@ -133,7 +182,7 @@ fun MineAppUI(state: UiState, onAction: (UiAction) -> Unit) {
 
         Box(modifier = Modifier.weight(1f).padding(16.dp)) {
             when (selectedTab) {
-                0 -> ChatScreen(state, onAction)
+                0 -> ChatScreen(state, onAction, focusComposerRequests = focusComposerRequests)
                 1 -> RemindersScreen(state, onAction)
                         // O-2: no key() here. The key remounted ProviderScreen on every config change,
                 // and a remount mid-edit re-seeded the fields from the old state, which is how a
@@ -151,7 +200,8 @@ fun MineAppUI(state: UiState, onAction: (UiAction) -> Unit) {
 fun ChatScreen(
     state: UiState,
     onAction: (UiAction) -> Unit,
-    listState: LazyListState = rememberLazyListState()
+    listState: LazyListState = rememberLazyListState(),
+    focusComposerRequests: androidx.compose.runtime.State<Int> = remember { mutableIntStateOf(0) }
 ) {
     val totalItems = state.chatMessages.size + state.receipts.size + state.openProposals.size + state.proposedSoulFacts.size + state.staleItems.size + (if (state.isChatLoading) 1 else 0)
     LaunchedEffect(totalItems) {
@@ -265,11 +315,18 @@ fun ChatScreen(
                 item { Text("Typing...", modifier = Modifier.padding(8.dp)) }
             }
         }
+        // Blueprint 50 §3.14 / 52 §12: the launcher shortcut opens "the composer focused". The
+        // request counter is read here so a tap while this screen is already composed still
+        // focuses; a first-composition-only effect would ignore the second tap.
+        val composerFocus = remember { androidx.compose.ui.focus.FocusRequester() }
+        LaunchedEffect(focusComposerRequests.value) {
+            if (focusComposerRequests.value > 0) composerFocus.requestFocus()
+        }
         Row(modifier = Modifier.fillMaxWidth()) {
             OutlinedTextField(
                 value = state.composerDraft,
                 onValueChange = { onAction(UiAction.UpdateDraft(it)) },
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f).focusRequester(composerFocus).testTag("composer")
             )
             if (state.isChatLoading) {
                 Button(onClick = { onAction(UiAction.Stop) }) { Text("Stop") }
