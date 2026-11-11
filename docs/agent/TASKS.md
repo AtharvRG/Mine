@@ -2,6 +2,10 @@
 Specs for R1-R10: docs/agent/work/session1-remediation-spec.md. Read the task's section before starting.
 
 ## Bulletproof & Invisible Recovery Audit #3 (2026-11-12)
+[x] Audit #3 Polish Seams (2026-11-12)
+    [x] Seam 1: CallStateReceiver Alarm Scheduling: Wrapped alarm scheduling in try/catch(SecurityException) and falls back to setAndAllowWhileIdle when exact alarm permission is absent. Verified via CallNudgeDeviceTest.
+    [x] Seam 2: MainViewModel Auto-Export Passphrase & SAF Storage: Removed hardcoded "MineBackup2026!"; reads passphrase from settings (skips if unset); copies to DocumentFile in picked SAF folder and prunes expired backups via AutoExportScheduler.findFilesToPrune; temp cache file deleted in finally.
+    [x] Seam 3: ContextSensingManager Gating & Motion STILL Transition: Gated sensor and network observer registration behind flag.sensing == "1" && sensing.enabled == "1"; emits MotionAxis.STILL when steps stop for >60 seconds. Verified via EmbedderAndSensingDeviceTest.
 [x] Layer 1: Zero Main-Thread Load
     [x] AndroidStorage constructor zero-I/O: `deviceId` moved to lazy thread-safe `getOrInitDeviceId()`, eliminating synchronous DB open on main thread / receivers.
     [x] MineDatabaseCallback.onOpen schema cache guard: `createIndexes` & `createTriggers` guarded by `triggerCount < 13` check, eliminating 32 schema catalog rewrites per DB open.

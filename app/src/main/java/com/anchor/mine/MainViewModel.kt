@@ -63,15 +63,49 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     loadedStorage, clock,
                     onAutoExportTriggered = {
                         val uriStr = loadedStorage.getSetting(com.anchor.core.export.AutoExportScheduler.KEY_FOLDER_URI)
-                        if (!uriStr.isNullOrBlank()) {
+                        val passphrase = loadedStorage.getSetting("export.passphrase") ?: loadedStorage.getSetting("backup.passphrase")
+                        if (!uriStr.isNullOrBlank() && !passphrase.isNullOrBlank()) {
+                            val tempFile = java.io.File(application.cacheDir, "auto_backup_${clock.now()}.minebackup")
                             try {
                                 val exportMgr = app.sharedExportManager.await()
-                                val backupFile = java.io.File(application.filesDir, "auto_backup_${clock.now()}.minebackup")
-                                exportMgr.exportTo(backupFile, "MineBackup2026!", includeApiKeys = false, includeEmbeddings = false)
-                                reliabilityManager.autoExportScheduler.recordExportSuccess(clock.now())
+                                exportMgr.exportTo(tempFile, passphrase, includeApiKeys = false, includeEmbeddings = false)
+
+                                val treeUri = android.net.Uri.parse(uriStr)
+                                val docFolder = androidx.documentfile.provider.DocumentFile.fromTreeUri(application, treeUri)
+                                if (docFolder != null && docFolder.canWrite()) {
+                                    val fileName = "mine_backup_${clock.now()}.minebackup"
+                                    val newDoc = docFolder.createFile("application/octet-stream", fileName)
+                                    if (newDoc != null) {
+                                        application.contentResolver.openOutputStream(newDoc.uri)?.use { outStream ->
+                                            tempFile.inputStream().use { inStream ->
+                                                inStream.copyTo(outStream)
+                                            }
+                                        }
+                                        reliabilityManager.autoExportScheduler.recordExportSuccess(clock.now())
+
+                                        // Prune expired backups in user's SAF folder
+                                        val existingBackups: List<Pair<androidx.documentfile.provider.DocumentFile, Long>> = docFolder.listFiles()
+                                            .filter { it.name?.endsWith(".minebackup") == true && it.isFile }
+                                            .mapNotNull { doc ->
+                                                val name = doc.name ?: return@mapNotNull null
+                                                val ts = name.removePrefix("mine_backup_").removeSuffix(".minebackup").toLongOrNull() ?: doc.lastModified()
+                                                Pair(doc, ts)
+                                            }
+                                        val retentionCount = loadedStorage.getSetting(com.anchor.core.export.AutoExportScheduler.KEY_RETENTION_COUNT)?.toIntOrNull()
+                                            ?: com.anchor.core.export.AutoExportScheduler.DEFAULT_RETENTION_COUNT
+                                        val toPrune = com.anchor.core.export.AutoExportScheduler.findFilesToPrune(existingBackups, retentionCount)
+                                        toPrune.forEach { (doc, _) ->
+                                            try { doc.delete() } catch (_: Throwable) {}
+                                        }
+                                    }
+                                }
                             } catch (e: Throwable) {
                                 android.util.Log.w("MainViewModel", "Auto-export failed: ${e.message}")
+                            } finally {
+                                try { tempFile.delete() } catch (_: Throwable) {}
                             }
+                        } else {
+                            android.util.Log.i("MainViewModel", "Auto-export skipped: missing SAF URI or passphrase")
                         }
                     }
                 )

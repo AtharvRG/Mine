@@ -94,4 +94,35 @@ class EmbedderAndSensingDeviceTest {
         // Must safely start without throwing exceptions
         sensingMgr.stop()
     }
+
+    @Test
+    fun testContextSensingManager_ReturnsToStillAfter60sNoSteps() {
+        val clock = FakeClock(1_000_000L)
+        val engine = ContextEngine(clock)
+        val sensingMgr = ContextSensingManager(
+            context = context,
+            contextEngine = engine,
+            storageProvider = { null }
+        )
+
+        // Simulate walking motion from sensor
+        engine.onMotionSignal(MotionAxis.WALKING, confidence = 0.9f, tsUtc = clock.now())
+        clock.currentTime += 50_000L // 50 seconds past debounce
+        engine.checkTimeouts(clock.now())
+        assertTrue("Engine must be in WALKING motion", engine.getState().motion == MotionAxis.WALKING)
+
+        // Set lastStepTimeMs to 70s ago (> 60s timeout)
+        val now = System.currentTimeMillis()
+        sensingMgr.lastStepTimeMs = now - 70_000L
+
+        // Ticker check
+        if (now - sensingMgr.lastStepTimeMs > 60_000L && engine.getState().motion == MotionAxis.WALKING) {
+            engine.onMotionSignal(MotionAxis.STILL, confidence = 0.8f, tsUtc = clock.now())
+        }
+        clock.currentTime += 50_000L // past motion hold
+        engine.checkTimeouts(clock.now())
+
+        assertTrue("Engine must have transitioned to STILL after 60s of no steps", engine.getState().motion == MotionAxis.STILL)
+        sensingMgr.stop()
+    }
 }

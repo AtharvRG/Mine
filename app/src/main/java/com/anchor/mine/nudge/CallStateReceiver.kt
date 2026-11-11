@@ -102,11 +102,29 @@ class CallStateReceiver : BroadcastReceiver() {
                                     nudgeIntent,
                                     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                                 )
-                                alarmManager?.setExactAndAllowWhileIdle(
-                                    AlarmManager.RTC_WAKEUP,
-                                    decision.fireAt,
-                                    pending
-                                )
+                                try {
+                                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S && alarmManager?.canScheduleExactAlarms() == true) {
+                                        alarmManager.setExactAndAllowWhileIdle(
+                                            AlarmManager.RTC_WAKEUP,
+                                            decision.fireAt,
+                                            pending
+                                        )
+                                    } else {
+                                        alarmManager?.setAndAllowWhileIdle(
+                                            AlarmManager.RTC_WAKEUP,
+                                            decision.fireAt,
+                                            pending
+                                        )
+                                    }
+                                } catch (e: SecurityException) {
+                                    alarmManager?.setAndAllowWhileIdle(
+                                        AlarmManager.RTC_WAKEUP,
+                                        decision.fireAt,
+                                        pending
+                                    )
+                                } catch (_: Throwable) {
+                                    // Suppress unexpected scheduler errors
+                                }
                             }
                             is CallNudgeDecision.CoalesceWithExisting -> {
                                 // Merged with active candidate

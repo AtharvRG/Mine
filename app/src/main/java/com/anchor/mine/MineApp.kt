@@ -68,14 +68,14 @@ class MineApp : Application() {
             storageProvider = { if (sharedStorage.isCompleted) sharedStorage.await() else null }
         )
         contextSensingManager = sensingMgr
-        sensingMgr.start()
         CoroutineScope(Dispatchers.IO).launch {
             // H-06 (R-11): catches Throwable, not Exception — an Error here used to leave both
             // deferreds unsettled, so every await() hung forever.
             val result = runSettlingStartup {
                 val key = DbKeyProvider(this@MineApp).getOrGenerateKey()
                 val db = DatabaseProvider.getHelper(this@MineApp, key, "mine_encrypted.db")
-                sharedStorage.complete(AndroidStorage(db))
+                val storage = AndroidStorage(db)
+                sharedStorage.complete(storage)
                 // B5: without a scheduler the post-import reconcile is skipped, and an import
                 // would swap the database while the OLD alarms stayed armed — reminders that
                 // fire for rows the user no longer has.
@@ -90,6 +90,13 @@ class MineApp : Application() {
                 // periodic trigger here too, so a device that neither reboots nor updates still
                 // reports a miss — and so a dropped registration is restored on the next start.
                 com.anchor.mine.alarms.BootReceiver.schedulePeriodicSweep(this@MineApp)
+
+                // Blueprint 43 §2: Gated context sensing (disabled by default)
+                val flagSensing = storage.getSetting("flag.sensing") == "1"
+                val sensingEnabled = storage.getSetting("sensing.enabled") == "1"
+                if (flagSensing && sensingEnabled) {
+                    sensingMgr.start()
+                }
             }
             result.exceptionOrNull()?.let { e ->
                 // completeExceptionally is a no-op once completed; the storage may already be

@@ -46,14 +46,42 @@ class ContextSensingManager(
     @Volatile
     private var isStarted = false
 
-    fun start() {
-        if (isStarted) return
-        isStarted = true
+    @Volatile
+    var lastStepTimeMs: Long = 0L
 
-        registerWifiObserver()
-        registerMotionObserver()
-        startTimeoutTicker()
-        Log.i(TAG, "ContextSensingManager started")
+    fun start(force: Boolean = false) {
+        if (isStarted) return
+        scope.launch {
+            if (!force) {
+                val storage = storageProvider()
+                if (storage != null) {
+                    val flagSensing = storage.getSetting("flag.sensing") == "1"
+                    val sensingEnabled = storage.getSetting("sensing.enabled") == "1"
+                    if (!flagSensing || !sensingEnabled) {
+                        Log.i(TAG, "Context sensing disabled in settings (flag.sensing=$flagSensing, sensing.enabled=$sensingEnabled); skipping sensor/network registration")
+                        return@launch
+                    }
+                }
+            }
+            isStarted = true
+            registerWifiObserver()
+            registerMotionObserver()
+            startTimeoutTicker()
+            Log.i(TAG, "ContextSensingManager started")
+        }
+    }
+
+    fun checkAndApplySettings() {
+        scope.launch {
+            val storage = storageProvider()
+            val flagSensing = storage?.getSetting("flag.sensing") == "1"
+            val sensingEnabled = storage?.getSetting("sensing.enabled") == "1"
+            if (flagSensing && sensingEnabled) {
+                if (!isStarted) start(force = true)
+            } else {
+                if (isStarted) stop()
+            }
+        }
     }
 
     fun stop() {
@@ -168,8 +196,6 @@ class ContextSensingManager(
 
             if (stepSensor != null) {
                 val listener = object : SensorEventListener {
-                    private var lastStepTimeMs = 0L
-
                     override fun onSensorChanged(event: SensorEvent?) {
                         val now = System.currentTimeMillis()
                         lastStepTimeMs = now
@@ -203,6 +229,11 @@ class ContextSensingManager(
             while (isActive) {
                 delay(30_000L) // Poll state machine debounce timeouts every 30s
                 try {
+                    val now = System.currentTimeMillis()
+                    // Return to STILL if no steps have been detected for > 60 seconds
+                    if (lastStepTimeMs > 0L && now - lastStepTimeMs > 60_000L && contextEngine.getState().motion == MotionAxis.WALKING) {
+                        contextEngine.onMotionSignal(MotionAxis.STILL, confidence = 0.8f)
+                    }
                     contextEngine.checkTimeouts()
                 } catch (e: Throwable) {
                     Log.w(TAG, "Error running contextEngine.checkTimeouts: ${e.message}")
