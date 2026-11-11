@@ -825,4 +825,59 @@ open class SharedFakeStorage(var clock: Clock = SystemClock()) : Storage {
                 .forEach { embeddings.remove(it) }
         }
     }
+
+    // Blueprint 43: Context Sensing (Places and Signals)
+    val places = mutableListOf<com.anchor.core.sensing.Place>()
+    val placeSignals = mutableMapOf<String, com.anchor.core.sensing.PlaceSignal>()
+    val sensingEvents = mutableListOf<com.anchor.core.sensing.SensingEvent>()
+
+    override suspend fun savePlace(place: com.anchor.core.sensing.Place, signal: com.anchor.core.sensing.PlaceSignal?) {
+        synchronized(this) {
+            val idx = places.indexOfFirst { it.id == place.id }
+            if (idx != -1) places[idx] = place else places.add(place)
+            if (signal != null) {
+                placeSignals[place.id] = signal
+            }
+        }
+    }
+
+    override suspend fun getPlaces(): List<com.anchor.core.sensing.Place> = synchronized(this) {
+        places.filter { it.deletedAt == null }
+    }
+
+    override suspend fun getPlace(id: String): com.anchor.core.sensing.Place? = synchronized(this) {
+        places.find { it.id == id && it.deletedAt == null }
+    }
+
+    override suspend fun getPlaceSignals(): List<Pair<com.anchor.core.sensing.Place, com.anchor.core.sensing.PlaceSignal>> = synchronized(this) {
+        places.filter { it.deletedAt == null }.mapNotNull { place ->
+            val sig = placeSignals[place.id]
+            if (sig != null) place to sig else null
+        }
+    }
+
+    override suspend fun deletePlace(id: String, deletedAt: Long) {
+        synchronized(this) {
+            val idx = places.indexOfFirst { it.id == id }
+            if (idx != -1) {
+                places[idx] = places[idx].copy(deletedAt = deletedAt)
+            }
+        }
+    }
+
+    override suspend fun recordSensingEvent(event: com.anchor.core.sensing.SensingEvent) {
+        synchronized(this) {
+            sensingEvents.add(event)
+        }
+    }
+
+    override suspend fun getRecentSensingEvents(limit: Int): List<com.anchor.core.sensing.SensingEvent> = synchronized(this) {
+        sensingEvents.sortedByDescending { it.tsUtc }.take(limit.coerceAtLeast(0))
+    }
+
+    override suspend fun pruneSensingEvents(olderThanUtc: Long): Int = synchronized(this) {
+        val initial = sensingEvents.size
+        sensingEvents.removeAll { it.tsUtc < olderThanUtc }
+        initial - sensingEvents.size
+    }
 }

@@ -227,6 +227,16 @@ interface Storage {
     suspend fun saveLearnedPref(pref: com.anchor.core.models.LearnedPref)
     suspend fun resetLearning(preserveLocked: Boolean = true)
 
+    /** Blueprint 43 §4 (v2 Context Sensing): Places and device-local sensing signals. */
+    suspend fun savePlace(place: com.anchor.core.sensing.Place, signal: com.anchor.core.sensing.PlaceSignal? = null)
+    suspend fun getPlaces(): List<com.anchor.core.sensing.Place>
+    suspend fun getPlace(id: String): com.anchor.core.sensing.Place?
+    suspend fun getPlaceSignals(): List<Pair<com.anchor.core.sensing.Place, com.anchor.core.sensing.PlaceSignal>>
+    suspend fun deletePlace(id: String, deletedAt: Long)
+    suspend fun recordSensingEvent(event: com.anchor.core.sensing.SensingEvent)
+    suspend fun getRecentSensingEvents(limit: Int = 100): List<com.anchor.core.sensing.SensingEvent>
+    suspend fun pruneSensingEvents(olderThanUtc: Long): Int
+
     companion object {
         /** R-26: page size for [getPendingReminders]. Hitting it means "more rows exist". */
         const val PENDING_REMINDER_PAGE_LIMIT = 500

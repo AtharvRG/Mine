@@ -52,6 +52,18 @@ object SettingsCatalog {
         SettingDef("nudge.min_gap_minutes", SettingSection.NUDGES, "60", SettingScope.SYNCED, validator = { it.matches(INT_REGEX) }),
         SettingDef("nudge.ignore_window_hours", SettingSection.NUDGES, "3", SettingScope.SYNCED, validator = { it.matches(INT_REGEX) }),
         SettingDef("nudge.max_per_day", SettingSection.NUDGES, "40", SettingScope.SYNCED, isAdvanced = true, validator = { it.matches(INT_REGEX) }),
+        // Blueprint 43 §5: Context Sensing
+        SettingDef("flag.sensing", SettingSection.NUDGES, "0", SettingScope.DEVICE_LOCAL, validator = { it.matches(BOOL_REGEX) }),
+        SettingDef("sensing.enabled", SettingSection.NUDGES, "0", SettingScope.DEVICE_LOCAL, validator = { it.matches(BOOL_REGEX) }),
+        SettingDef("sensing.use_wifi", SettingSection.NUDGES, "1", SettingScope.DEVICE_LOCAL, validator = { it.matches(BOOL_REGEX) }),
+        SettingDef("sensing.use_geofence", SettingSection.NUDGES, "0", SettingScope.DEVICE_LOCAL, validator = { it.matches(BOOL_REGEX) }),
+        SettingDef("sensing.away_confirm_min", SettingSection.NUDGES, "4", SettingScope.SYNCED, validator = { it.matches(INT_REGEX) }),
+        SettingDef("sensing.home_confirm_min", SettingSection.NUDGES, "2", SettingScope.SYNCED, validator = { it.matches(INT_REGEX) }),
+        SettingDef("sensing.motion_min_s", SettingSection.NUDGES, "45", SettingScope.SYNCED, validator = { it.matches(INT_REGEX) }),
+        SettingDef("sensing.context_nudges", SettingSection.NUDGES, "1", SettingScope.SYNCED, validator = { it.matches(BOOL_REGEX) }),
+        SettingDef("sensing.hold_while_vehicle", SettingSection.NUDGES, "1", SettingScope.SYNCED, validator = { it.matches(BOOL_REGEX) }),
+        SettingDef("sensing.show_chip", SettingSection.NUDGES, "0", SettingScope.SYNCED, validator = { it.matches(BOOL_REGEX) }),
+        SettingDef("sensing.keep_events_days", SettingSection.NUDGES, "30", SettingScope.SYNCED, validator = { it.matches(INT_REGEX) }),
 
         // Section 6: Reminders and alarms
         SettingDef("reminder.default_tier", SettingSection.REMINDERS_AND_ALARMS, "alarm", SettingScope.SYNCED, description = "Default reminder tier: alarm or gentle"),

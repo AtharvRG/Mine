@@ -538,4 +538,10 @@ Rejected: printing only the first line of the message (the diagnostic fields `Al
 - **Rejected:** Requiring an LLM call to synthesize daily/weekly reviews.
 - **Proof:** `DigestGeneratorTest` (4/4 PASS in `:core`).
 
-(Next free: D-177. Add: date, decision, reason, rejected.)
+## D-177 (2026-11-11) — v2 Context Sensing: Dual-Axis Engine, Flap Guard, Vehicle Hold & Schema V9.
+- **Decision:** Implemented pure-Kotlin `ContextEngine` in `core/src/main/java/com/anchor/core/sensing/` managing two independent axes: Place (`Home`, `Away`, `SavedPlace`, `Unknown`) and Motion (`STILL`, `WALKING`, `VEHICLE`, `UNKNOWN`). Implemented 15-minute flap guard when still, 90-second fast-path transition when walking without Wi-Fi, 45-second motion debounce, and 30-minute unknown timeout. Wired `isVehicle` vehicle hold into `NudgeEngine.evaluate()` and non-leaking context formatting `Context: at <Place>, <motion> (since HH:mm)` into `ContextBuilder`. Bumped database schema to Version 9 with `place`, `place_signal` (device-local, non-exported), and `sensing_event` (device-local, 30-day pruned).
+- **Reason:** Blueprint 43 requires rough contextual awareness in life terms rather than GPS location trails, with zero SSID or coordinate leakage to model prompts or backups, and zero conversational interruptions while driving.
+- **Rejected:** Background GPS location tracking; leaky prompt formatting; polling sensors continuously.
+- **Proof:** `ContextEngineTest` (8/8 PASS in `:core`), `NudgeEngineTest` (2/2 PASS in `:core`), `ContextBuilderTest` (10/10 PASS in `:core`), `SettingsCatalogTest` (5/5 PASS in `:core`).
+
+(Next free: D-178. Add: date, decision, reason, rejected.)

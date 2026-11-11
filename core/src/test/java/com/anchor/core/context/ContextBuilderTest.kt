@@ -411,4 +411,26 @@ class ContextBuilderTest {
         // Ensure not all 200 facts leaked in uncapped
         assertTrue("Must cap soul facts", !soulSection.contains("variety 200"))
     }
+
+    @Test
+    fun testContextBuilder_ContextLineInjection_FormatsCleanlyAfterNow() = runBlocking {
+        val now = 1_700_000_000_000L
+        val clock = FakeClock(now)
+        val dateResolver = DateResolver(clock)
+        val storage = SharedFakeStorage()
+        val checkinBuilder = com.anchor.core.nudge.CheckinBuilder(storage, clock, dateResolver)
+        val builder = ContextBuilder(storage, clock, dateResolver, checkinBuilder)
+
+        val contextLine = "Context: at Home, walking (since 14:05)"
+        val pack = builder.buildPack(contextLine = contextLine)
+
+        val sysMsg = pack.first { it.role == "system" }.content ?: ""
+        assertTrue(sysMsg.contains("Now: "))
+        assertTrue(sysMsg.contains(contextLine))
+
+        // Invariant: static active items precede dynamic context line
+        val activeItemsIndex = sysMsg.indexOf("Active Items:")
+        val contextIndex = sysMsg.indexOf(contextLine)
+        assertTrue(activeItemsIndex < contextIndex)
+    }
 }

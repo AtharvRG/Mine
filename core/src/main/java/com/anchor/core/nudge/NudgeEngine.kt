@@ -27,7 +27,19 @@ class NudgeEngine(private val clock: Clock) {
         return min(gap, 360.0).toLong()
     }
 
-    fun evaluate(candidate: NudgeCandidate, state: ProactiveState, isUserPresent: Boolean = false, isInDayWindow: Boolean = true, currentDayKey: String? = null): GateResult {
+    fun evaluate(
+        candidate: NudgeCandidate,
+        state: ProactiveState,
+        isUserPresent: Boolean = false,
+        isInDayWindow: Boolean = true,
+        currentDayKey: String? = null,
+        isVehicle: Boolean = false
+    ): GateResult {
+        // 0. Vehicle Hold (Blueprint 43 §3.5): Conversational candidates wait while in vehicle
+        if (isVehicle && !candidate.isCritical) {
+            return GateResult.Held("vehicle_hold")
+        }
+
         // 1. Paused
         if (state.pausedUntil != null && state.pausedUntil > clock.now()) {
             if (!candidate.isCritical) return GateResult.Held("paused")

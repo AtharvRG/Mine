@@ -20,7 +20,10 @@ class ContextBuilder(
     private val checkinBuilder: com.anchor.core.nudge.CheckinBuilder,
     private val personaEngine: PersonaEngine = PersonaEngine()
 ) {
-    suspend fun buildPack(compactMode: Boolean? = null): List<ChatMessage> = withContext(storage.ioDispatcher) {
+    suspend fun buildPack(
+        compactMode: Boolean? = null,
+        contextLine: String? = null
+    ): List<ChatMessage> = withContext(storage.ioDispatcher) {
         val pack = mutableListOf<ChatMessage>()
         val isCompact = compactMode ?: (storage.getSetting("ai.compact_mode") == "1")
 
@@ -118,7 +121,8 @@ class ContextBuilder(
         // D1 / Blueprint 32: Dynamic briefing facts based on time-of-day (morning / evening / weekly)
         val checkinFacts = checkinBuilder.buildCurrentFacts(now)
 
-        val fullSystemPrompt = "$TOOL_INSTRUCTIONS\n\n$systemRules\n\nSoul:\n$soulText\n\nActive Items:\n$nodesText\n\nNow: $nowStr\n\n$checkinFacts\n\nPending Clarifications:\n$proposalsText"
+        val contextPart = if (!contextLine.isNullOrBlank()) "\n$contextLine" else ""
+        val fullSystemPrompt = "$TOOL_INSTRUCTIONS\n\n$systemRules\n\nSoul:\n$soulText\n\nActive Items:\n$nodesText\n\nNow: $nowStr$contextPart\n\n$checkinFacts\n\nPending Clarifications:\n$proposalsText"
         pack.add(ChatMessage("sys", "system", fullSystemPrompt))
 
         // Blueprint 20 §3.1 & §3.7: 1500 tokens normal, 600 tokens compact

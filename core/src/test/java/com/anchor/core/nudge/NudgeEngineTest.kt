@@ -55,4 +55,20 @@ class NudgeEngineTest {
         state = engine.processReply(state, 90000000)
         assertEquals(0, state.backoffStep)
     }
+
+    @Test
+    fun testVehicleHold_BlocksConversationalNudges_PassesCriticalAlarms() {
+        val engine = NudgeEngine(FakeClock(1000))
+        val state = ProactiveState()
+
+        val conversational = NudgeCandidate("chat_nudge", isCritical = false)
+        val critical = NudgeCandidate("alarm_due", isCritical = true)
+
+        val resConversational = engine.evaluate(conversational, state, isVehicle = true)
+        assertTrue(resConversational is GateResult.Held)
+        assertEquals("vehicle_hold", (resConversational as GateResult.Held).reason)
+
+        val resCritical = engine.evaluate(critical, state, isVehicle = true)
+        assertTrue(resCritical is GateResult.Pass)
+    }
 }

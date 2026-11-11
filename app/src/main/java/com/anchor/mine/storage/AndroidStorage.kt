@@ -1665,4 +1665,158 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
             dbHelper.writableDatabase.execSQL("DELETE FROM learned_pref")
         }
     }
+
+    // Blueprint 43: Context Sensing (Places and Signals)
+    override suspend fun savePlace(place: com.anchor.core.sensing.Place, signal: com.anchor.core.sensing.PlaceSignal?) = withContext(ioDispatcher) {
+        val db = dbHelper.writableDatabase
+        db.beginTransaction()
+        try {
+            db.execSQL(
+                "INSERT OR REPLACE INTO place (id, node_id, kind, label, updated_at, deleted_at, hlc) VALUES (?,?,?,?,?,?,?)",
+                arrayOf<Any?>(place.id, place.nodeId, place.kind, place.label, place.updatedAt, place.deletedAt, place.hlc)
+            )
+            if (signal != null) {
+                db.execSQL(
+                    "INSERT OR REPLACE INTO place_signal (place_id, wifi_json, geo_lat, geo_lon, geo_radius_m) VALUES (?,?,?,?,?)",
+                    arrayOf<Any?>(signal.placeId, signal.wifiJson, signal.geoLat, signal.geoLon, signal.geoRadiusM)
+                )
+            }
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
+    }
+
+    override suspend fun getPlaces(): List<com.anchor.core.sensing.Place> = withContext(ioDispatcher) {
+        val list = mutableListOf<com.anchor.core.sensing.Place>()
+        dbHelper.readableDatabase.query(
+            "SELECT id, node_id, kind, label, updated_at, deleted_at, hlc FROM place WHERE deleted_at IS NULL ORDER BY updated_at DESC"
+        ).use { c ->
+            while (c.moveToNext()) {
+                list.add(
+                    com.anchor.core.sensing.Place(
+                        id = c.getString(0),
+                        nodeId = if (c.isNull(1)) null else c.getString(1),
+                        kind = c.getString(2),
+                        label = c.getString(3),
+                        updatedAt = c.getLong(4),
+                        deletedAt = if (c.isNull(5)) null else c.getLong(5),
+                        hlc = if (c.isNull(6)) null else c.getString(6)
+                    )
+                )
+            }
+        }
+        list
+    }
+
+    override suspend fun getPlace(id: String): com.anchor.core.sensing.Place? = withContext(ioDispatcher) {
+        dbHelper.readableDatabase.query(
+            "SELECT id, node_id, kind, label, updated_at, deleted_at, hlc FROM place WHERE id = ? AND deleted_at IS NULL",
+            arrayOf(id)
+        ).use { c ->
+            if (c.moveToFirst()) {
+                com.anchor.core.sensing.Place(
+                    id = c.getString(0),
+                    nodeId = if (c.isNull(1)) null else c.getString(1),
+                    kind = c.getString(2),
+                    label = c.getString(3),
+                    updatedAt = c.getLong(4),
+                    deletedAt = if (c.isNull(5)) null else c.getLong(5),
+                    hlc = if (c.isNull(6)) null else c.getString(6)
+                )
+            } else null
+        }
+    }
+
+    override suspend fun getPlaceSignals(): List<Pair<com.anchor.core.sensing.Place, com.anchor.core.sensing.PlaceSignal>> = withContext(ioDispatcher) {
+        val list = mutableListOf<Pair<com.anchor.core.sensing.Place, com.anchor.core.sensing.PlaceSignal>>()
+        dbHelper.readableDatabase.query(
+            "SELECT p.id, p.node_id, p.kind, p.label, p.updated_at, p.deleted_at, p.hlc, " +
+                "s.wifi_json, s.geo_lat, s.geo_lon, s.geo_radius_m " +
+                "FROM place p INNER JOIN place_signal s ON p.id = s.place_id " +
+                "WHERE p.deleted_at IS NULL"
+        ).use { c ->
+            while (c.moveToNext()) {
+                val place = com.anchor.core.sensing.Place(
+                    id = c.getString(0),
+                    nodeId = if (c.isNull(1)) null else c.getString(1),
+                    kind = c.getString(2),
+                    label = c.getString(3),
+                    updatedAt = c.getLong(4),
+                    deletedAt = if (c.isNull(5)) null else c.getLong(5),
+                    hlc = if (c.isNull(6)) null else c.getString(6)
+                )
+                val signal = com.anchor.core.sensing.PlaceSignal(
+                    placeId = place.id,
+                    wifiJson = if (c.isNull(7)) null else c.getString(7),
+                    geoLat = if (c.isNull(8)) null else c.getDouble(8),
+                    geoLon = if (c.isNull(9)) null else c.getDouble(9),
+                    geoRadiusM = if (c.isNull(10)) null else c.getInt(10)
+                )
+                list.add(place to signal)
+            }
+        }
+        list
+    }
+
+    override suspend fun deletePlace(id: String, deletedAt: Long) = withContext(ioDispatcher) {
+        dbHelper.writableDatabase.execSQL(
+            "UPDATE place SET deleted_at = ?, updated_at = ? WHERE id = ?",
+            arrayOf<Any>(deletedAt, deletedAt, id)
+        )
+    }
+
+    override suspend fun recordSensingEvent(event: com.anchor.core.sensing.SensingEvent) = withContext(ioDispatcher) {
+        dbHelper.writableDatabase.execSQL(
+            "INSERT INTO sensing_event (id, ts_utc, axis, from_state, to_state, place_id, confidence, source, attrs) VALUES (?,?,?,?,?,?,?,?,?)",
+            arrayOf<Any?>(
+                event.id,
+                event.tsUtc,
+                event.axis,
+                event.fromState,
+                event.toState,
+                event.placeId,
+                event.confidence,
+                event.source,
+                event.attrs
+            )
+        )
+    }
+
+    override suspend fun getRecentSensingEvents(limit: Int): List<com.anchor.core.sensing.SensingEvent> = withContext(ioDispatcher) {
+        val list = mutableListOf<com.anchor.core.sensing.SensingEvent>()
+        dbHelper.readableDatabase.query(
+            "SELECT id, ts_utc, axis, from_state, to_state, place_id, confidence, source, attrs FROM sensing_event ORDER BY ts_utc DESC LIMIT ?",
+            arrayOf(limit.coerceAtLeast(0).toString())
+        ).use { c ->
+            while (c.moveToNext()) {
+                list.add(
+                    com.anchor.core.sensing.SensingEvent(
+                        id = c.getString(0),
+                        tsUtc = c.getLong(1),
+                        axis = c.getString(2),
+                        fromState = if (c.isNull(3)) null else c.getString(3),
+                        toState = c.getString(4),
+                        placeId = if (c.isNull(5)) null else c.getString(5),
+                        confidence = if (c.isNull(6)) null else c.getFloat(6),
+                        source = if (c.isNull(7)) null else c.getString(7),
+                        attrs = if (c.isNull(8)) null else c.getString(8)
+                    )
+                )
+            }
+        }
+        list
+    }
+
+    override suspend fun pruneSensingEvents(olderThanUtc: Long): Int = withContext(ioDispatcher) {
+        val db = dbHelper.writableDatabase
+        var count = 0
+        db.query("SELECT COUNT(*) FROM sensing_event WHERE ts_utc < ?", arrayOf(olderThanUtc.toString())).use { c ->
+            if (c.moveToFirst()) count = c.getInt(0)
+        }
+        if (count > 0) {
+            db.execSQL("DELETE FROM sensing_event WHERE ts_utc < ?", arrayOf(olderThanUtc.toString()))
+        }
+        count
+    }
 }

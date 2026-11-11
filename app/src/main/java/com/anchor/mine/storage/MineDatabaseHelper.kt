@@ -45,6 +45,9 @@ class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(DATABASE_VERSION) 
         db.execSQL("CREATE TABLE quote_slot (slot TEXT NOT NULL, day_key TEXT NOT NULL, text TEXT NOT NULL, generated_at INTEGER NOT NULL, state_hash TEXT, source TEXT NOT NULL, regen_count INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (slot, day_key))")
         db.execSQL(OUTBOX_DDL)
         db.execSQL(EMBEDDING_DDL)
+        db.execSQL(PLACE_DDL)
+        db.execSQL(PLACE_SIGNAL_DDL)
+        db.execSQL(SENSING_EVENT_DDL)
 
         createIndexes(db)
         createTriggers(db)
@@ -129,6 +132,11 @@ class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(DATABASE_VERSION) 
         if (oldVersion < 8) {
             db.execSQL(EMBEDDING_DDL)
         }
+        if (oldVersion < 9) {
+            db.execSQL(PLACE_DDL)
+            db.execSQL(PLACE_SIGNAL_DDL)
+            db.execSQL(SENSING_EVENT_DDL)
+        }
         // T19: an upgraded device must end up with the same indexes and triggers as a fresh
         // install. Indexes were previously created in onCreate only, so a device upgraded from v1
         // never got idx_reminder_fire - the index that makes the R-26 `ORDER BY fire_at` cheap.
@@ -149,7 +157,7 @@ class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(DATABASE_VERSION) 
     }
 
     companion object {
-        const val DATABASE_VERSION = 8
+        const val DATABASE_VERSION = 9
 
         /**
          * Blueprint 41 §4, verbatim. Shared by [onCreate] and the `oldVersion < 6` upgrade branch so
@@ -176,6 +184,39 @@ class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(DATABASE_VERSION) 
                 "created_at INTEGER NOT NULL, " +
                 "PRIMARY KEY (owner_type, owner_id, model_version))"
 
+        /** Blueprint 43 §4: Context Sensing Places. */
+        private const val PLACE_DDL =
+            "CREATE TABLE IF NOT EXISTS place (" +
+                "id TEXT PRIMARY KEY, " +
+                "node_id TEXT, " +
+                "kind TEXT NOT NULL, " +
+                "label TEXT NOT NULL, " +
+                "updated_at INTEGER NOT NULL, " +
+                "deleted_at INTEGER, " +
+                "hlc TEXT)"
+
+        /** Blueprint 43 §4: Device-local Place Signals (never exported). */
+        private const val PLACE_SIGNAL_DDL =
+            "CREATE TABLE IF NOT EXISTS place_signal (" +
+                "place_id TEXT PRIMARY KEY, " +
+                "wifi_json TEXT, " +
+                "geo_lat REAL, " +
+                "geo_lon REAL, " +
+                "geo_radius_m INTEGER)"
+
+        /** Blueprint 43 §4: Device-local Sensing Event Log (pruned). */
+        private const val SENSING_EVENT_DDL =
+            "CREATE TABLE IF NOT EXISTS sensing_event (" +
+                "id TEXT PRIMARY KEY, " +
+                "ts_utc INTEGER NOT NULL, " +
+                "axis TEXT NOT NULL, " +
+                "from_state TEXT, " +
+                "to_state TEXT NOT NULL, " +
+                "place_id TEXT, " +
+                "confidence REAL, " +
+                "source TEXT, " +
+                "attrs TEXT)"
+
         private val INDEXES = listOf(
             "CREATE INDEX IF NOT EXISTS idx_node_status_due ON node(status, due_at)",
             "CREATE INDEX IF NOT EXISTS idx_node_habit ON node(type, streak_current)",
@@ -191,7 +232,9 @@ class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(DATABASE_VERSION) 
             "CREATE INDEX IF NOT EXISTS idx_soul_fact_status ON soul_fact(status)",
             "CREATE INDEX IF NOT EXISTS idx_signal_log_kind_ts ON signal_log(kind, ts_utc)",
             "CREATE INDEX IF NOT EXISTS idx_proposal_status_created ON proposal(status, created_at)",
-            "CREATE INDEX IF NOT EXISTS idx_embedding_owner ON embedding(owner_type, model_version)"
+            "CREATE INDEX IF NOT EXISTS idx_embedding_owner ON embedding(owner_type, model_version)",
+            "CREATE INDEX IF NOT EXISTS idx_sensing_event_ts ON sensing_event(ts_utc)",
+            "CREATE INDEX IF NOT EXISTS idx_place_kind ON place(kind)"
         )
 
         /** Every trigger created by [createTriggers], in drop order. */

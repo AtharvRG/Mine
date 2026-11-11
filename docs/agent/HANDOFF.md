@@ -1,25 +1,20 @@
-# HANDOFF (Mine v1.1 100% Completed & Verified)
+# HANDOFF (Mine v2 Context Sensing In Progress; v1.1 100% Completed)
 
-**Current Status**: 2026-11-11 16:35 IST
-- **v1.1 Roadmap 100% Completed & Verified**: All 12 roadmap items for v1.1 implemented and verified with TDD failing-first tests:
-  1. **Provider Setup Import & Export**: `ProviderConfigParser`, `ProviderScreen` import dialog, and `mine://provider` deep-link. Verified via `ProviderDeepLinkTest` (connected).
-  2. **Direct-Boot Alarm Safety Net (D-162, D-166)**: `DirectBootAlarmStore` in DE storage (`direct_boot_alarms.db`); `android:directBootAware="true"`; `LOCKED_BOOT_COMPLETED` handled; zero private text in DE storage; `DirectBootReconciler` in `:core` retiring pending reminders and logging delivered fires post-unlock. Verified via `DirectBootSafetyNetTest` (4/4 pass) and `DirectBootReconcilerTest` (2/2 pass).
-  3. **Recurring Reminders & Habits Schema Migration (D-163)**: Bumped `DATABASE_VERSION` 6 -> 7; additive migration adding `recurrence_rule`, `streak_current`, `streak_best`, `last_completed_at` to `node` and `rrule`, `iteration` to `reminder`; index `idx_node_habit`; pure Kotlin `RecurrenceEngine` in `:core`. Verified via `RecurrenceEngineTest` (9/9 pass) and `DatabaseMigrationTest` (connected).
-  4. **Readable Plain-Text Markdown Export (D-171)**: Pure Kotlin `ReadableMarkdownExporter` in `:core`; exposed on `ExportController` and `BackupScreen`. Includes prominent unencrypted warning header, habits with streaks, soul facts by category, and daily chat timeline. Verified via `ReadableMarkdownExportTest` (3/3 pass).
-  5. **Scheduled Auto-Export Controller**: Built `AutoExportScheduler` in `:core` managing interval, retention window, and SAF folder URI; keeps last K backups via `findFilesToPrune`. Verified via `AutoExportSchedulerTest` (3/3 pass).
-  6. **Rule-Based Offline Quick Add (D-174)**: Pure Kotlin `RuleBasedQuickAdd` extracting title, time expressions, and alarm tiers from natural language commands (`remind me at/in <time> to <task>`, `todo: <task>`, `set alarm at <time> for <task>`). Wired into `ChatController.kt` (`handleOfflineQuickAdd`) to immediately create node and arm Android exact alarm locally when offline. Verified via `RuleBasedQuickAddTest` (8/8 pass) and `OfflineQuickAddIntegrationTest` (3/3 pass).
-  7. **Share Target & Home Screen Widget Data Source (D-173)**: `ACTION_SEND` (`text/plain`) in `MainActivity`. Pure Kotlin `WidgetDataSource` in `:core` generating `WidgetSnapshot` of priority tasks, overdue flags, and pending alarms count. Verified via `WidgetDataSourceTest` in `:core`.
-  8. **Graph Neighborhood 1-2 Hop Traversal, Calendar Buckets & Board View Queries (D-172)**: `getCalendarBuckets(startMs, endMs)` grouping due tasks by dayKey; `getBoardViewNodes(limitPerColumn)` grouping by "todo", "in_progress", and "done"; `getGraphNeighborhood(nodeId, maxHops, cap)` BFS traversal with cycle detection. Verified via `GraphNeighborhoodAndCalendarTest` (4/4 pass).
-  9. **Template Language Packs & "What's New" Bundled Card (D-175)**: `TemplatePack`, `TemplatePackRegistry`, and localized `SpanishTemplatePack` covering all 8 triggers and 5 persona tones; `WhatsNewCatalog` defining v1.1 upgrade feature card (`CURRENT_VERSION = "1.1.0"`). Wired into `ChatController.loadInitialState()` to automatically display the v1.1 update card to existing users upon upgrading. Verified via `TemplateLanguagePacksTest` (5/5 pass) and `WhatsNewCardTest` (3/3 pass).
-  10. **On-Device Embedder Runtime & EmbeddingGemma 2 Staging (D-170)**: Staged `models/embeddinggemma-2-text-270m.litertlm` (157 MB); implemented `LiteRtEmbedder` in `:app` with Matryoshka 256-dimension truncation and signed int8 quantization; bumped DB schema to Version 8 with `embedding` table and `idx_embedding_owner` index. Verified via `LiteRtEmbedderTest` (3/3 pass) and `DatabaseMigrationTest` (connected).
-  11. **Hybrid Retrieval with RRF & Digest Generator (D-170, D-176)**: Pure Kotlin `HybridRetriever` in `:core` (int8 cosine similarity, Reciprocal Rank Fusion $k=60$, status & temporal boosts); pure Kotlin `DigestGenerator` in `:core` producing plain-code day, week, and month summaries. Verified via `HybridRetrieverTest` (5/5 pass) and `DigestGeneratorTest` (4/4 pass).
-  12. **Offline Voice Pipeline & Multi-Target Fallbacks (D-164, D-165)**: `SherpaVoiceEngine.kt` with Silero VAD, streaming Zipformer ASR, and Kokoro TTS in `:app`; dynamic fallback chain across primary and backup endpoints in `ChatController.kt`. Verified via `SherpaVoiceEngineTest` (5/5 pass), `SherpaVoiceEngineDeviceTest` (connected), and `ProviderFallbackChainTest` (2/2 pass).
+**Current Status**: 2026-11-11 19:45 IST
+- **v2 Item 1: Context Sensing (D-177, Blueprint 43)**:
+  - Implemented pure-Kotlin `ContextEngine` and `ContextModels` in `core/src/main/java/com/anchor/core/sensing/` managing dual independent axes: Place (`Home`, `Away`, `SavedPlace`, `Unknown`) and Motion (`STILL`, `WALKING`, `VEHICLE`, `UNKNOWN`).
+  - Implemented 15-minute flap guard when still, 90-second fast-path transition when walking without Wi-Fi, 45-second motion debounce, and 30-minute unknown timeout. Verified via `ContextEngineTest` (8/8 pass).
+  - Wired `isVehicle` vehicle hold into `NudgeEngine.evaluate()` holding conversational nudges while user is driving. Verified via `NudgeEngineTest` (2/2 pass).
+  - Wired non-leaking context formatting `Context: at <Place>, <motion> (since HH:mm)` into `ContextBuilder` Now block while preserving KV prompt cache prefix ordering. Verified via `ContextBuilderTest` (10/10 pass).
+  - Registered 11 sensing settings in `SettingsCatalog`. Verified via `SettingsCatalogTest` (5/5 pass).
+  - Bumped database schema to Version 9 with `place`, `place_signal` (device-local, non-exported), and `sensing_event` (device-local, 30-day pruned) in `MineDatabaseHelper` and `AndroidStorage`.
+  - Added `testDatabaseMigration_V8toV9_CreatesPlaceAndSensingTables` in `DatabaseMigrationTest.kt`.
 
 - **Unit test suite green**:
-  - `:core:test`: **525 / 525 PASS (0 failed, 0 errors, 0 skipped)** across 89 test files (`./gradlew :core:test`, EXIT=0).
-  - `:app:testDebugUnitTest`: **27 / 27 PASS (0 failed, 0 errors, 0 skipped)** across 7 test files (`./gradlew :app:test`, EXIT=0).
-  - Total offline unit suite: **552 / 552 PASS**.
-- **Physical device (`moto g73 5G - Android 14` via adb)**: Full connected suite **125 / 125 PASS (0 failed, 0 errors, 0 skipped)** per `gate.json`.
+  - `:core:test`: **527 / 527 PASS (0 failed, 0 errors, 0 skipped)**.
+  - `:app:testDebugUnitTest`: **27 / 27 PASS (0 failed, 0 errors, 0 skipped)**.
+  - Total offline unit suite: **554 / 554 PASS**.
+- **Physical device (`moto g73 5G - Android 14` via adb)**: Prior full suite **125 / 125 PASS**; device currently disconnected from Wi-Fi ADB (reconnect needed to run instrumented V8->V9 test).
 
 ---
 
@@ -27,12 +22,55 @@
 
 | File | Status | What |
 |---|---|---|
-| `core/src/main/java/com/anchor/core/gateway/EnvelopeParser.kt` | modified | Backward envelope scan to isolate clean JSON payload on failover |
-| `core/src/main/java/com/anchor/core/ui/ChatController.kt` | modified | Extract reply from last JSON match; set `isChatLoading = true` during outbox drain |
-| `core/src/main/java/com/anchor/core/alarms/DirectBootReconciler.kt` | added | Pure Kotlin reconciler retiring pending reminders and logging delivered fires |
-| `core/src/main/java/com/anchor/core/provider/RateLimiter.kt` | modified | Monotonic clock parameter for sliding window, 1h maximum cooldown ceiling |
-| `core/src/main/java/com/anchor/core/provider/RateLimitPersistence.kt` | modified | StorageRateLimitPersistence |
-| `core/src/main/java/com/anchor/core/context/ContextBuilder.kt` | modified | Reordered system prompt components (static rules/soul/nodes before dynamic now timestamp) |
+| `core/src/main/java/com/anchor/core/sensing/ContextModels.kt` | added | Pure-Kotlin models: PlaceAxis, MotionAxis, Place, PlaceSignal, SensingEvent, ContextTrigger |
+| `core/src/main/java/com/anchor/core/sensing/ContextEngine.kt` | added | Dual-axis state machine, flap guard, fast path, vehicle hold, and prompt formatting |
+| `core/src/main/java/com/anchor/core/storage/Storage.kt` | modified | Added Place and SensingEvent persistence interfaces |
+| `core/src/test/java/com/anchor/core/SharedFakeStorage.kt` | modified | In-memory implementations for places, signals, and sensing events |
+| `core/src/main/java/com/anchor/core/nudge/NudgeEngine.kt` | modified | Added `isVehicle` parameter to hold conversational nudges while driving |
+| `core/src/main/java/com/anchor/core/context/ContextBuilder.kt` | modified | Injected `contextLine` into Now block following static rules |
+| `core/src/main/java/com/anchor/core/settings/SettingsCatalog.kt` | modified | Added 11 sensing configuration and dark-ship settings |
+| `app/src/main/java/com/anchor/mine/storage/MineDatabaseHelper.kt` | modified | Bumped DATABASE_VERSION to 9; added place, place_signal, and sensing_event DDLs and indexes |
+| `app/src/main/java/com/anchor/mine/storage/AndroidStorage.kt` | modified | Implemented place and sensing event SQLite queries and 30-day pruning |
+| `core/src/test/java/com/anchor/core/sensing/ContextEngineTest.kt` | added | 8 unit tests verifying dual axes, flap guard, fast path, and prompt formatting |
+| `core/src/test/java/com/anchor/core/nudge/NudgeEngineTest.kt` | modified | Added unit test for vehicle hold |
+| `core/src/test/java/com/anchor/core/context/ContextBuilderTest.kt` | modified | Added unit test for contextLine formatting and prefix order |
+| `app/src/androidTest/java/com/anchor/mine/storage/DatabaseMigrationTest.kt` | modified | Added `testDatabaseMigration_V8toV9_CreatesPlaceAndSensingTables` |
+| `docs/agent/DECISIONS.md` | modified | Recorded D-177 |
+| `docs/agent/STATE.md` | modified | Updated state and test counts |
+| `docs/agent/TASKS.md` | modified | Updated v2 task list |
+| `docs/agent/work/v2-context-sensing.md` | added | Branching analysis document for v2 context sensing |
+
+---
+
+## 2. What is verified
+
+| Claim | Command | Result |
+|---|---|---|
+| ContextEngine dual-axis & flap guard | `./gradlew :core:test --tests "com.anchor.core.sensing.ContextEngineTest"` | 8/8 PASS |
+| NudgeEngine vehicle hold | `./gradlew :core:test --tests "com.anchor.core.nudge.NudgeEngineTest"` | 2/2 PASS |
+| ContextBuilder context formatting & prefix order | `./gradlew :core:test --tests "com.anchor.core.context.ContextBuilderTest"` | 10/10 PASS |
+| SettingsCatalog sensing definitions | `./gradlew :core:test --tests "com.anchor.core.settings.SettingsCatalogTest"` | 5/5 PASS |
+| App unit test suite | `./gradlew :app:testDebugUnitTest` | 27/27 PASS |
+| Total offline unit test suite | `./gradlew :core:test :app:testDebugUnitTest` | 554/554 PASS |
+
+---
+
+## 3. What is NOT verified
+
+- Real device connected verification for V8->V9 schema migration (phone disconnected from Wi-Fi ADB; needs reconnection).
+- Physical walking and router restart tests on device.
+
+---
+
+## 4. Current failing tests
+
+**None.** 0 failing tests in `:core:test` (527 passed) and 0 failing tests in `:app:test` (27 passed).
+
+---
+
+## 5. Next Step
+
+Reconnect physical device via ADB (`adb connect <device-ip>:5555`) to run the connected migration test `DatabaseMigrationTest.testDatabaseMigration_V8toV9_CreatesPlaceAndSensingTables`, then proceed to v2 Item 2 (Call Nudge).
 | `app/build.gradle.kts` | modified | Added `com.google.ai.edge.litertlm:litertlm-android:0.16.1` dependency |
 | `app/src/main/java/com/anchor/mine/alarms/DirectBootAlarmStore.kt` | modified | Added `direct_boot_fired` table, WAL mode, singleton helper, fired record persistence |
 | `app/src/main/java/com/anchor/mine/alarms/AlarmReceiver.kt` | modified | Record fired tombstone in DE store when firing under direct boot |

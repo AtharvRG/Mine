@@ -1,6 +1,17 @@
 # TASKS (one at a time, smallest first). Status: [ ] open, [~] in progress, [x] done+reviewed
 Specs for R1-R10: docs/agent/work/session1-remediation-spec.md. Read the task's section before starting.
 
+## v2 Implementation & Roadmap (2026-11-11)
+[~] Item 1: Context Sensing (Blueprint 43, D-177)
+    [x] Core Dual-Axis State Machine: PlaceAxis (Home, Away, SavedPlace, Unknown) and MotionAxis (STILL, WALKING, VEHICLE, UNKNOWN) in ContextEngine.kt (verified via ContextEngineTest 8/8 pass).
+    [x] Debounce, Flap Guard & Fast Path: 15-min flap guard when still, 90s fast path when walking/vehicle, 45s motion hold, 30m unknown timeout (verified via ContextEngineTest).
+    [x] Vehicle Hold: Conversational nudges suppressed while in vehicle; critical alarms pass through (verified via NudgeEngineTest 2/2 pass).
+    [x] Context Prompt Formatting: Now block gets Context: at <Place>, <motion> (since HH:mm) with zero SSID or coordinates leaked (verified via ContextBuilderTest).
+    [x] Settings Catalog: 11 sensing settings registered in SettingsCatalog (verified via SettingsCatalogTest 5/5 pass).
+    [~] Database Migration Version 9: place, place_signal (device-local), sensing_event (device-local, 30-day pruned) in MineDatabaseHelper and AndroidStorage (connected test pending).
+[ ] Item 2: Call Nudge & Telephony (Blueprint 44)
+[ ] Item 3: Full Ambient Listening & Audio Buffer Consent (Blueprint 60, 61)
+
 ## v1.1 Implementation & Roadmap (2026-11-11)
 [x] Item 1: Provider Setup Import & Export — `ProviderConfigParser`, `ProviderScreen` import dialog, and `mine://provider` deep-link (verified on device via `ProviderDeepLinkTest`).
 [x] Item 2: Direct-Boot Alarm Safety Net (Blueprint 42, D-162) — `DirectBootAlarmStore` in Device-Protected (DE) storage (`direct_boot_alarms.db`); `android:directBootAware="true"`; `LOCKED_BOOT_COMPLETED` handled; zero private text in DE storage (Invariant 1). Verified on device via `DirectBootSafetyNetTest` (4/4 pass).

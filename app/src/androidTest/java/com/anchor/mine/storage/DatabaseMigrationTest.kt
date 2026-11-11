@@ -218,7 +218,7 @@ class DatabaseMigrationTest {
         )
         db.execSQL("DROP INDEX IF EXISTS idx_reminder_fire")
 
-        MineDatabaseCallback().onUpgrade(db, 1, 7)
+        MineDatabaseCallback().onUpgrade(db, 1, MineDatabaseCallback.DATABASE_VERSION)
 
         // The index must exist again.
         var indexFound = false
@@ -467,6 +467,128 @@ class DatabaseMigrationTest {
             storage.deleteEmbedding("node", "n_embed_1")
             val emptyList = storage.getEmbeddings("node", "test-model-v1")
             assertTrue("Deleted embedding must not be returned", emptyList.isEmpty())
+
+            helper.close()
+            context.deleteDatabase(dbName)
+        }
+    }
+
+    /**
+     * v2 Item 1: V8 -> V9 migration test (Blueprint 43 §4).
+     * Simulates a v8 database without place, place_signal, and sensing_event tables,
+     * executes onUpgrade(db, 8, 9), asserts tables and indexes exist, and verifies
+     * AndroidStorage methods for places and sensing events work cleanly.
+     */
+    @Test
+    fun testDatabaseMigration_V8toV9_CreatesPlaceAndSensingTables() {
+        runBlocking {
+            val context = InstrumentationRegistry.getInstrumentation().targetContext
+            val dbName = "mine_v8_v9_test.db"
+            context.deleteDatabase(dbName)
+            val key = ByteArray(32) { 8 }
+
+            val helper = DatabaseProvider.getHelper(context, key, dbName)
+            val db = helper.writableDatabase
+
+            // Simulate V8 by dropping V9 tables and indexes
+            db.execSQL("DROP INDEX IF EXISTS idx_sensing_event_ts")
+            db.execSQL("DROP INDEX IF EXISTS idx_place_kind")
+            db.execSQL("DROP TABLE IF EXISTS sensing_event")
+            db.execSQL("DROP TABLE IF EXISTS place_signal")
+            db.execSQL("DROP TABLE IF EXISTS place")
+
+            // Run migration from 8 to 9
+            MineDatabaseCallback().onUpgrade(db, 8, 9)
+
+            // Verify place, place_signal, sensing_event tables exist
+            var placeFound = false
+            var placeSignalFound = false
+            var sensingEventFound = false
+            db.query("SELECT name FROM sqlite_master WHERE type='table'").use { c ->
+                while (c.moveToNext()) {
+                    val name = c.getString(0)
+                    if (name.equals("place", ignoreCase = true)) placeFound = true
+                    if (name.equals("place_signal", ignoreCase = true)) placeSignalFound = true
+                    if (name.equals("sensing_event", ignoreCase = true)) sensingEventFound = true
+                }
+            }
+            assertTrue("V9 migration must create place table", placeFound)
+            assertTrue("V9 migration must create place_signal table", placeSignalFound)
+            assertTrue("V9 migration must create sensing_event table", sensingEventFound)
+
+            // Verify indexes
+            var sensingIndexFound = false
+            var placeKindIndexFound = false
+            db.query("SELECT name FROM sqlite_master WHERE type='index'").use { c ->
+                while (c.moveToNext()) {
+                    val name = c.getString(0)
+                    if (name.equals("idx_sensing_event_ts", ignoreCase = true)) sensingIndexFound = true
+                    if (name.equals("idx_place_kind", ignoreCase = true)) placeKindIndexFound = true
+                }
+            }
+            assertTrue("V9 migration must create idx_sensing_event_ts", sensingIndexFound)
+            assertTrue("V9 migration must create idx_place_kind", placeKindIndexFound)
+
+            // Verify AndroidStorage operations for Place, Signal, and SensingEvent
+            val storage = AndroidStorage(helper)
+            val homePlace = com.anchor.core.sensing.Place(
+                id = "p_home_1",
+                nodeId = null,
+                kind = "home",
+                label = "Home",
+                updatedAt = 1700000000000L
+            )
+            val homeSignal = com.anchor.core.sensing.PlaceSignal(
+                placeId = "p_home_1",
+                wifiJson = """{"ssid":"HomeWifi","bssids":["aa:bb:cc:dd:ee:ff"]}""",
+                geoLat = 37.422,
+                geoLon = -122.084,
+                geoRadiusM = 150
+            )
+
+            storage.savePlace(homePlace, homeSignal)
+
+            val places = storage.getPlaces()
+            assertEquals(1, places.size)
+            assertEquals("p_home_1", places[0].id)
+            assertEquals("Home", places[0].label)
+
+            val signals = storage.getPlaceSignals()
+            assertEquals(1, signals.size)
+            assertEquals("p_home_1", signals[0].first.id)
+            assertEquals(150, signals[0].second.geoRadiusM)
+            assertTrue(signals[0].second.wifiJson!!.contains("HomeWifi"))
+
+            // Sensing event recording and pruning
+            val eventOld = com.anchor.core.sensing.SensingEvent(
+                id = "se_old",
+                tsUtc = 1000L,
+                axis = "place",
+                fromState = "Unknown",
+                toState = "Home",
+                source = "wifi"
+            )
+            val eventNew = com.anchor.core.sensing.SensingEvent(
+                id = "se_new",
+                tsUtc = 5000L,
+                axis = "motion",
+                fromState = "STILL",
+                toState = "WALKING",
+                source = "sensor"
+            )
+            storage.recordSensingEvent(eventOld)
+            storage.recordSensingEvent(eventNew)
+
+            val events = storage.getRecentSensingEvents(10)
+            assertEquals(2, events.size)
+            assertEquals("se_new", events[0].id) // DESC by tsUtc
+
+            // Prune events older than 3000L -> eventOld removed
+            val pruned = storage.pruneSensingEvents(3000L)
+            assertEquals(1, pruned)
+            val remaining = storage.getRecentSensingEvents(10)
+            assertEquals(1, remaining.size)
+            assertEquals("se_new", remaining[0].id)
 
             helper.close()
             context.deleteDatabase(dbName)
