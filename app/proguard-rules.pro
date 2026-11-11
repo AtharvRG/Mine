@@ -40,3 +40,7 @@
 -dontwarn kotlinx.coroutines.**
 -dontwarn com.google.errorprone.annotations.**
 
+# sherpa-onnx JNI and native speech runtime
+-keep class com.k2fsa.sherpa.onnx.** { *; }
+-dontwarn com.k2fsa.sherpa.onnx.**
+

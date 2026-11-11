@@ -21,12 +21,12 @@ class StorageTest {
     @Before
     fun setup() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
-        context.deleteDatabase("mine_encrypted.db") // Start fresh
+        context.deleteDatabase("mine_storage_test.db") // Start fresh
 
         val keyProvider = DbKeyProvider(context)
         val rawKey = keyProvider.getOrGenerateKey()
 
-        dbHelper = DatabaseProvider.getHelper(context, rawKey)
+        dbHelper = DatabaseProvider.getHelper(context, rawKey, "mine_storage_test.db")
     }
 
     @After

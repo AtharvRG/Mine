@@ -83,4 +83,32 @@ class ProviderScreenTest {
         )
         assertEquals(1, compose.onAllNodesWithText("Save").fetchSemanticsNodes().size)
     }
+
+    @Test
+    fun testProviderScreen_ImportButtonClicked_ShowsDialogAndDispatchesPayload() {
+        val initial = UiState(
+            providerEndpoint = "https://api.openai.com/v1",
+            providerKey = "sk-old",
+            providerModel = "gpt-4o"
+        )
+        var importedPayload: String? = null
+
+        compose.setContent {
+            ProviderScreen(
+                state = initial,
+                onImport = { importedPayload = it },
+                onSave = { _, _, _ -> }
+            )
+        }
+
+        compose.onNodeWithTag("importProviderBtn").performClick()
+        compose.waitForIdle()
+
+        val sampleJson = """{"endpoint": "https://api.groq.com/openai/v1", "model": "llama-3.3-70b"}"""
+        compose.onNodeWithTag("importPayloadInput").performTextReplacement(sampleJson)
+        compose.onNodeWithTag("confirmImportBtn").performClick()
+        compose.waitForIdle()
+
+        assertEquals(sampleJson, importedPayload)
+    }
 }

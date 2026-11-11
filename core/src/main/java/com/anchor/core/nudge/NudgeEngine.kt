@@ -27,7 +27,7 @@ class NudgeEngine(private val clock: Clock) {
         return min(gap, 360.0).toLong()
     }
 
-    fun evaluate(candidate: NudgeCandidate, state: ProactiveState, isUserPresent: Boolean = false, isInDayWindow: Boolean = true): GateResult {
+    fun evaluate(candidate: NudgeCandidate, state: ProactiveState, isUserPresent: Boolean = false, isInDayWindow: Boolean = true, currentDayKey: String? = null): GateResult {
         // 1. Paused
         if (state.pausedUntil != null && state.pausedUntil > clock.now()) {
             if (!candidate.isCritical) return GateResult.Held("paused")
@@ -49,18 +49,21 @@ class NudgeEngine(private val clock: Clock) {
             if (!candidate.isCritical) return GateResult.Held("min_gap")
         }
 
-        // 5. Hidden Fuse (e.g., max 40 per day)
-        if (state.sentToday >= 40) return GateResult.Held("fuse_tripped")
+        // 5. Hidden Fuse (e.g., max 40 per day, reset on day rollover)
+        val sentToday = if (currentDayKey != null && state.dayKey != null && state.dayKey != currentDayKey) 0 else state.sentToday
+        if (sentToday >= 40) return GateResult.Held("fuse_tripped")
 
         return GateResult.Pass
     }
 
-    fun onNudgeSent(state: ProactiveState, msgId: String, ts: Long): ProactiveState {
+    fun onNudgeSent(state: ProactiveState, msgId: String, ts: Long, dayKey: String? = null): ProactiveState {
+        val sentToday = if (dayKey != null && state.dayKey != null && state.dayKey != dayKey) 0 else state.sentToday
         return state.copy(
             openThreadMsgId = msgId,
             threadOpenedAt = ts,
             lastSentAt = ts,
-            sentToday = state.sentToday + 1
+            sentToday = sentToday + 1,
+            dayKey = dayKey ?: state.dayKey
         )
     }
 

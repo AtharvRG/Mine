@@ -9,6 +9,7 @@ import com.anchor.core.models.Reminder
 import com.anchor.core.time.FakeClock
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -100,5 +101,128 @@ class ReliabilityManagerTest {
         clock.currentTime += 5000L
         assertEquals("Same fire instance must not re-notify", 0, manager.runSweeper().size)
         assertEquals("Same fire instance must not re-log", 1, storage.reminderFires.size)
+    }
+
+    @Test
+    fun testEvaluateReliabilityScore_CleanState_ReturnsHealthy() = runBlocking {
+        val clock = FakeClock(100000L)
+        val storage = SharedFakeStorage(clock)
+        val manager = ReliabilityManager(storage, clock)
+
+        storage.saveReliabilityState(com.anchor.core.models.ReliabilityState(sweeperHeartbeat = 100000L))
+        val state = manager.evaluateReliabilityScore()
+        assertEquals("healthy", state.score)
+    }
+
+    @Test
+    fun testEvaluateReliabilityScore_HighLatency_ReturnsAtRisk() = runBlocking {
+        val clock = FakeClock(100000L)
+        val storage = SharedFakeStorage(clock)
+        val manager = ReliabilityManager(storage, clock)
+
+        storage.saveReliabilityState(com.anchor.core.models.ReliabilityState(sweeperHeartbeat = 100000L))
+        // Add 20 fires with 150s (150,000ms) latency > 2 min threshold
+        for (i in 1..20) {
+            storage.recordReminderFire(
+                com.anchor.core.models.ReminderFire(
+                    id = "f_$i",
+                    reminderId = "r_$i",
+                    firedAt = 100000L,
+                    scheduledFor = 100000L - 150000L,
+                    latencyMs = 150000,
+                    outcome = "fired"
+                )
+            )
+        }
+
+        val state = manager.evaluateReliabilityScore()
+        assertEquals("at_risk", state.score)
+        assertEquals(150000, state.p95LatencyMs)
+    }
+
+    @Test
+    fun testEvaluateReliabilityScore_MissedReminders_ReturnsDegraded() = runBlocking {
+        val clock = FakeClock(100000L)
+        val storage = SharedFakeStorage(clock)
+        val manager = ReliabilityManager(storage, clock)
+
+        storage.saveReliabilityState(com.anchor.core.models.ReliabilityState(sweeperHeartbeat = 100000L))
+        storage.recordReminderFire(
+            com.anchor.core.models.ReminderFire(
+                id = "f_miss",
+                reminderId = "r_1",
+                firedAt = 100000L,
+                scheduledFor = 50000L,
+                latencyMs = 50000,
+                outcome = "missed"
+            )
+        )
+
+        val state = manager.evaluateReliabilityScore()
+        assertEquals("degraded", state.score)
+    }
+
+    @Test
+    fun testComputeP95LatencyMs_Empty_ReturnsNull() = runBlocking {
+        val clock = FakeClock(100000L)
+        val storage = SharedFakeStorage(clock)
+        val manager = ReliabilityManager(storage, clock)
+
+        val p95 = manager.computeP95LatencyMs()
+        org.junit.Assert.assertNull(p95)
+    }
+
+    @Test
+    fun testComputeP95LatencyMs_ComputesPercentileCorrectly() = runBlocking {
+        val clock = FakeClock(100000L)
+        val storage = SharedFakeStorage(clock)
+        val manager = ReliabilityManager(storage, clock)
+
+        // Add 20 fires with latencies 1..20 seconds (1000..20000 ms)
+        for (i in 1..20) {
+            storage.recordReminderFire(
+                com.anchor.core.models.ReminderFire(
+                    id = "f_$i",
+                    reminderId = "r_$i",
+                    firedAt = 100000L,
+                    scheduledFor = 100000L - (i * 1000L),
+                    latencyMs = i * 1000,
+                    outcome = "delivered"
+                )
+            )
+        }
+
+        val p95 = manager.computeP95LatencyMs(20)
+        // 95th percentile of 20 items: index 19 (the 20th item) = 20000 ms
+        assertEquals(20000, p95)
+    }
+
+    @Test
+    fun testDetectStartupGap_StaleHeartbeatAndOverdueReminder_ReturnsTrue() = runBlocking {
+        val clock = FakeClock(100000L + 50 * 60_000L) // 50 mins after 100000L
+        val storage = SharedFakeStorage(clock)
+        val manager = ReliabilityManager(storage, clock)
+
+        // Heartbeat was at 100000L (50 mins ago > 45 mins)
+        storage.saveReliabilityState(com.anchor.core.models.ReliabilityState(sweeperHeartbeat = 100000L))
+        // Pending reminder was due at 100000L + 10 mins (40 mins ago, way overdue)
+        storage.saveReminder(Reminder("r_overdue", "Call mom", 100000L + 10 * 60_000L))
+
+        val gapDetected = manager.detectStartupGap()
+        assertTrue("Force stop gap must be detected when heartbeat is stale and reminder is overdue", gapDetected)
+    }
+
+    @Test
+    fun testDetectStartupGap_FreshHeartbeat_ReturnsFalse() = runBlocking {
+        val clock = FakeClock(100000L + 5 * 60_000L) // 5 mins after 100000L
+        val storage = SharedFakeStorage(clock)
+        val manager = ReliabilityManager(storage, clock)
+
+        // Heartbeat was at 100000L (only 5 mins ago)
+        storage.saveReliabilityState(com.anchor.core.models.ReliabilityState(sweeperHeartbeat = 100000L))
+        storage.saveReminder(Reminder("r_overdue", "Call mom", 100000L + 2 * 60_000L))
+
+        val gapDetected = manager.detectStartupGap()
+        assertFalse("No gap when heartbeat is fresh", gapDetected)
     }
 }

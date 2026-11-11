@@ -106,4 +106,98 @@ class ChunkedAesStreamTest {
         assertEquals(String(originalData), String(readData))
         assertTrue(inStream.isFinalSeen)
     }
+
+    @Test
+    fun testWrongDek_ThrowsSecurityException() {
+        val originalData = "Sensitive backup data".toByteArray(Charsets.UTF_8)
+        val outBytes = ByteArrayOutputStream()
+        ChunkedAesOutputStream(outBytes, dek, noncePrefix, headerHash, 64).use { it.write(originalData) }
+
+        val wrongDek = ByteArray(32) { 9 }
+        val inStream = ChunkedAesInputStream(
+            ByteArrayInputStream(outBytes.toByteArray()),
+            wrongDek,
+            noncePrefix,
+            headerHash,
+            chunkSize = 64
+        )
+        try {
+            inStream.readBytes()
+            fail("Expected SecurityException on wrong DEK")
+        } catch (e: SecurityException) {
+            assertTrue("Message should indicate chunk authentication failed: ${e.message}",
+                e.message!!.contains("authentication failed", ignoreCase = true))
+        }
+    }
+
+    @Test
+    fun testCorruptedTag_ThrowsSecurityException() {
+        val originalData = "Sensitive backup data".toByteArray(Charsets.UTF_8)
+        val outBytes = ByteArrayOutputStream()
+        ChunkedAesOutputStream(outBytes, dek, noncePrefix, headerHash, 64).use { it.write(originalData) }
+
+        val bytes = outBytes.toByteArray()
+        // Corrupt a byte in the encrypted chunk
+        bytes[bytes.size - 1] = (bytes[bytes.size - 1].toInt() xor 0xFF).toByte()
+
+        val inStream = ChunkedAesInputStream(
+            ByteArrayInputStream(bytes),
+            dek,
+            noncePrefix,
+            headerHash,
+            chunkSize = 64
+        )
+        try {
+            inStream.readBytes()
+            fail("Expected SecurityException on corrupted tag")
+        } catch (e: SecurityException) {
+            assertTrue("Message should indicate chunk authentication failed: ${e.message}",
+                e.message!!.contains("authentication failed", ignoreCase = true))
+        }
+    }
+
+    @Test
+    fun testTruncatedCiphertext_ThrowsSecurityException() {
+        val originalData = "Sensitive backup data".toByteArray(Charsets.UTF_8)
+        val outBytes = ByteArrayOutputStream()
+        ChunkedAesOutputStream(outBytes, dek, noncePrefix, headerHash, 64).use { it.write(originalData) }
+
+        val bytes = outBytes.toByteArray()
+        // Cut off the last 5 bytes of ciphertext
+        val truncated = bytes.copyOf(bytes.size - 5)
+
+        val inStream = ChunkedAesInputStream(
+            ByteArrayInputStream(truncated),
+            dek,
+            noncePrefix,
+            headerHash,
+            chunkSize = 64
+        )
+        try {
+            inStream.readBytes()
+            fail("Expected SecurityException on truncated ciphertext")
+        } catch (e: SecurityException) {
+            assertTrue("Message should indicate truncated ciphertext: ${e.message}",
+                e.message!!.contains("Truncated ciphertext", ignoreCase = true))
+        }
+    }
+
+    @Test
+    fun testTruncatedChunkLength_ThrowsSecurityException() {
+        // Stream only has 2 bytes of the 4-byte chunk length
+        val badStream = ByteArray(2) { 0 }
+        val inStream = ChunkedAesInputStream(
+            ByteArrayInputStream(badStream),
+            dek,
+            noncePrefix,
+            headerHash
+        )
+        try {
+            inStream.read()
+            fail("Expected SecurityException on truncated chunk length")
+        } catch (e: SecurityException) {
+            assertTrue("Message should indicate truncated: ${e.message}",
+                e.message!!.contains("Truncated", ignoreCase = true))
+        }
+    }
 }

@@ -18,6 +18,7 @@ object PromptSanitizer {
             .replace("\n", " ")
             .replace(Regex("\\s+"), " ")
             .replace("|", "-")
+            .replace(Regex("(?i)</?data>"), "")
             .trim()
             .take(maxLength)
     }

@@ -28,7 +28,7 @@ import kotlinx.serialization.json.*
 
 class AndroidExportManager(
     private val context: android.content.Context,
-    private val dbHelper: SupportSQLiteOpenHelper,
+    private var dbHelper: SupportSQLiteOpenHelper,
     private val dbKey: ByteArray,
     private val liveDbName: String = "mine_encrypted.db",
     private val scheduler: com.anchor.core.alarms.AlarmScheduler? = null,
@@ -164,6 +164,7 @@ class AndroidExportManager(
         verifyOrImportInternal(file, passphrase, isImport)
     }
 
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     private suspend fun verifyOrImportInternal(file: File, passphrase: String, isImport: Boolean): ExportStats {
         FileInputStream(file).use { fis ->
             val headerBytes = ByteArray(106)
@@ -342,6 +343,10 @@ class AndroidExportManager(
                         // derives day_key/ts_utc for rows that lack them, so a sparse export row
                         // cannot abort the import on msg_chunk's NOT NULL constraints.
                         rebuildMsgChunks()
+
+                        // TB-4: Rebind live database helper and MineApp.sharedStorage so the running
+                        // process never hits IllegalStateException: attempt to re-open an already-closed object
+                        rebindLiveDatabase()
                     } catch (e: Exception) {
                         // Roll back to the pre-import DB. If the restore itself fails there is
                         // nothing safer to do than surface both failures.
@@ -350,8 +355,15 @@ class AndroidExportManager(
                                 copyFile(bakFile, originalFile)
                                 context.getDatabasePath("$liveDbName-wal").delete()
                                 context.getDatabasePath("$liveDbName-shm").delete()
+                                rebindLiveDatabase()
                             } catch (restoreError: Exception) {
                                 e.addSuppressed(restoreError)
+                            }
+                        } else {
+                            try {
+                                rebindLiveDatabase()
+                            } catch (rebindError: Exception) {
+                                e.addSuppressed(rebindError)
                             }
                         }
                         throw e
@@ -364,13 +376,30 @@ class AndroidExportManager(
                     if (reconciler != null) {
                         reconciler.reconcile(force = true)
                     } else if (scheduler != null) {
-                        val postImportHelper = com.anchor.mine.storage.DatabaseProvider.getHelper(context, dbKey, liveDbName)
-                        try {
-                            val postImportStorage = com.anchor.mine.storage.AndroidStorage(postImportHelper)
+                        val postImportStorage = if (liveDbName == "mine_encrypted.db") {
+                            (context.applicationContext as? com.anchor.mine.MineApp)?.let { app ->
+                                if (app.sharedStorage.isCompleted) {
+                                    try {
+                                        app.sharedStorage.getCompleted()
+                                    } catch (_: Throwable) {
+                                        null
+                                    }
+                                } else null
+                            } ?: com.anchor.mine.storage.AndroidStorage(this.dbHelper)
+                        } else {
+                            val helper = com.anchor.mine.storage.DatabaseProvider.getHelper(context, dbKey, liveDbName)
+                            try {
+                                val storage = com.anchor.mine.storage.AndroidStorage(helper)
+                                val postReconciler = com.anchor.core.alarms.AlarmReconciler(storage, scheduler, clock)
+                                postReconciler.reconcile(force = true)
+                            } finally {
+                                helper.close()
+                            }
+                            null
+                        }
+                        if (postImportStorage != null) {
                             val postReconciler = com.anchor.core.alarms.AlarmReconciler(postImportStorage, scheduler, clock)
                             postReconciler.reconcile(force = true)
-                        } finally {
-                            postImportHelper.close()
                         }
                     }
                 }
@@ -417,6 +446,34 @@ class AndroidExportManager(
             }
         }
         return count
+    }
+
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    private fun rebindLiveDatabase() {
+        if (liveDbName != "mine_encrypted.db") {
+            // Isolated test database (e.g. ExportTest): do not touch or rebind MineApp.sharedStorage
+            return
+        }
+        val newHelper = com.anchor.mine.storage.DatabaseProvider.getHelper(context, dbKey, liveDbName)
+        this.dbHelper = newHelper
+        val app = context.applicationContext as? com.anchor.mine.MineApp
+        if (app != null) {
+            val existingStorage = if (app.sharedStorage.isCompleted) {
+                try {
+                    app.sharedStorage.getCompleted()
+                } catch (_: Throwable) {
+                    null
+                }
+            } else null
+            if (existingStorage is com.anchor.mine.storage.AndroidStorage) {
+                existingStorage.rebind(newHelper)
+            } else {
+                val newStorage = com.anchor.mine.storage.AndroidStorage(newHelper)
+                val newDef = kotlinx.coroutines.CompletableDeferred<com.anchor.core.storage.Storage>()
+                newDef.complete(newStorage)
+                app.sharedStorage = newDef
+            }
+        }
     }
 
     /**

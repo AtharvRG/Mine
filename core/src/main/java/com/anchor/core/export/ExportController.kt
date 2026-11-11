@@ -52,6 +52,17 @@ class ExportController(
         }
     }
 
+    /**
+     * Blueprint 15 §3.4: Readable plain-text Markdown export.
+     */
+    fun exportMarkdown(file: File, storage: com.anchor.core.storage.Storage) {
+        start {
+            val exporter = ReadableMarkdownExporter(storage)
+            exporter.exportToFile(file)
+            "Readable Markdown export written to ${file.name}. Warning: unencrypted plain text."
+        }
+    }
+
     fun import(file: File, passphrase: String) {
         validatePassphrase(passphrase)?.let { return finish(it, isError = true) }
         start {
@@ -78,6 +89,9 @@ class ExportController(
     suspend fun runExport(file: File, passphrase: String, includeApiKeys: Boolean): Boolean =
         run { export(file, passphrase, includeApiKeys) }
 
+    suspend fun runExportMarkdown(file: File, storage: com.anchor.core.storage.Storage): Boolean =
+        run { exportMarkdown(file, storage) }
+
     suspend fun runImport(file: File, passphrase: String): Boolean =
         run { import(file, passphrase) }
 
@@ -99,6 +113,8 @@ class ExportController(
         job = scope.launch {
             try {
                 finish(block(), isError = false)
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
             } catch (e: Exception) {
                 // A wrong passphrase surfaces as AEADBadTagException → SecurityException. The
                 // message is the only thing the user can act on, so show it verbatim.

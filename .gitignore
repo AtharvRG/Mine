@@ -45,6 +45,7 @@ render.experimental.xml
 *.apk
 *.ap_
 *.aab
+*.aar
 *.dex
 *.class
 output-metadata.json
@@ -70,3 +71,13 @@ Thumbs.db
 
 .idea/deploymentTargetSelector.xml
 __pycache__/
+/*.xml
+
+# Downloaded ML models and weights (never commit weights per Blueprint 94 and D-078)
+/models/
+/models_staging/
+*.onnx
+*.tflite
+*.litertlm
+*.tar.bz2
+

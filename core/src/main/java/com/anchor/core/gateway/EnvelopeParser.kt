@@ -28,17 +28,31 @@ object EnvelopeParser {
 
     fun parse(rawOutput: String): ToolEnvelope? {
         val clean = rawOutput.replace("```json", "").replace("```", "").trim()
-        val start = clean.indexOf("{")
         val end = clean.lastIndexOf("}")
-        if (start == -1 || end == -1) return null
+        if (end == -1) return null
 
-        return try {
-            val parsed = json.decodeFromString<ToolEnvelope>(clean.substring(start, end + 1))
-            // B8: Reject empty JSON objects like {"foo":1}
-            if (parsed.reply.isBlank() && parsed.calls.isEmpty()) null else parsed
-        } catch (_: Exception) {
-            null
+        // 1. Try standard envelope parse from the first '{'
+        val firstStart = clean.indexOf("{")
+        if (firstStart != -1 && firstStart < end) {
+            try {
+                val parsed = json.decodeFromString<ToolEnvelope>(clean.substring(firstStart, end + 1))
+                if (parsed.reply.isNotBlank() || parsed.calls.isNotEmpty()) return parsed
+            } catch (_: Exception) {}
         }
+
+        // 2. If failover concatenated a fresh JSON envelope after an interrupted one, search backwards for '{'
+        if (firstStart != -1) {
+            var candidateStart = clean.lastIndexOf("{", end - 1)
+            while (candidateStart > firstStart) {
+                try {
+                    val parsed = json.decodeFromString<ToolEnvelope>(clean.substring(candidateStart, end + 1))
+                    if (parsed.reply.isNotBlank() || parsed.calls.isNotEmpty()) return parsed
+                } catch (_: Exception) {}
+                candidateStart = clean.lastIndexOf("{", candidateStart - 1)
+            }
+        }
+
+        return null
     }
 
     /**

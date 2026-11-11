@@ -57,6 +57,34 @@ class ContextBuilderTest {
     }
 
     @Test
+    fun testPromptCacheOrdering_StaticBeforeDynamic() = runBlocking {
+        val storage = SharedFakeStorage().apply {
+            soulFacts = mutableListOf(SoulFact("sf1", "pref", "Likes green tea", 0.9, "user", "manual", "active", 1000L))
+            activeNodes = mutableListOf(Node("n1", "task", "Submit report", "active"))
+        }
+        val clock = FakeClock(1000L)
+        val dateResolver = DateResolver(clock)
+        val checkinBuilder = com.anchor.core.nudge.CheckinBuilder(storage, clock, dateResolver)
+        val builder = ContextBuilder(storage, clock, dateResolver, checkinBuilder)
+
+        val pack = builder.buildPack()
+        val sysContent = pack.first { it.role == "system" }.content!!
+
+        val soulIndex = sysContent.indexOf("\n\nSoul:\n")
+        val activeIndex = sysContent.indexOf("\n\nActive Items:\n")
+        val nowIndex = sysContent.indexOf("\n\nNow: ")
+
+        assertTrue("Soul must be present", soulIndex >= 0)
+        assertTrue("Active Items must be present", activeIndex >= 0)
+        assertTrue("Now: must be present", nowIndex >= 0)
+
+        // Blueprint 20 §3.2 (Prompt Cache optimization):
+        // Static components (Soul, Active Items) must precede volatile components (Now, Check-ins)
+        assertTrue("Soul facts must precede dynamic Now timestamp", soulIndex < nowIndex)
+        assertTrue("Active Items must precede dynamic Now timestamp", activeIndex < nowIndex)
+    }
+
+    @Test
     fun testContextBuilder_TruncatesChatToRespectBudget() = runBlocking {
         // Create 20 large messages, each about 100 tokens (350 chars)
         // Total history = 2000 tokens (Exceeds the 1500 token chat budget)

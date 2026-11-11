@@ -12,8 +12,9 @@ import com.anchor.core.models.AlarmTier
 import com.anchor.core.models.Reminder
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import org.junit.After
+import org.junit.Before
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -21,6 +22,15 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class StatusBarAlarmIconTest {
+
+    @Before
+    @After
+    fun cleanUpAll() = runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val scheduler = AndroidAlarmScheduler(context)
+        scheduler.cancel("d105_alarm_test")
+        scheduler.cancel("d105_gentle_test")
+    }
 
     @Test
     fun scheduleAlarmTierAndHold() = runBlocking {
@@ -40,8 +50,7 @@ class StatusBarAlarmIconTest {
         assertNotNull("nextAlarmClock must not be null for ALARM tier", nextClock)
         assertEquals(fireTime, nextClock!!.triggerTime)
 
-        // Hold for 20 seconds to allow verification and adb screenshot capture while armed
-        delay(20_000L)
+        delay(200L)
     }
 
     @Test
@@ -63,19 +72,11 @@ class StatusBarAlarmIconTest {
 
         // NextAlarmClock should NOT be set to this reminder's fireTime
         val nextClock = alarmManager.nextAlarmClock
-        if (nextClock != null) {
-            assertNotEquals("GENTLE tier reminder must NOT appear as nextAlarmClock triggerTime", fireTime, nextClock.triggerTime)
-        }
+        assertTrue(
+            "GENTLE tier reminder must NOT appear as nextAlarmClock triggerTime",
+            nextClock == null || nextClock.triggerTime != fireTime
+        )
 
-        // Hold for 20 seconds to allow verification and adb screenshot capture while armed
-        delay(20_000L)
-    }
-
-    @Test
-    fun cleanUpAll() = runBlocking {
-        val context = InstrumentationRegistry.getInstrumentation().targetContext
-        val scheduler = AndroidAlarmScheduler(context)
-        scheduler.cancel("d105_alarm_test")
-        scheduler.cancel("d105_gentle_test")
+        delay(200L)
     }
 }

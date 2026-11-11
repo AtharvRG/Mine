@@ -27,6 +27,21 @@ class AlarmReceiver : BroadcastReceiver() {
         @androidx.annotation.VisibleForTesting
         @Volatile
         var lastFiredId: String? = null
+
+        fun shouldSuppressForNodeStatus(status: String?): Boolean {
+            return status in setOf("done", "cancelled", "paused", "archived")
+        }
+
+        fun transformTextForInProgress(baseText: String): String {
+            val startRegex = Regex("""^(?i)start[:\s]+(.*)$""")
+            return if (startRegex.containsMatchIn(baseText)) {
+                startRegex.replace(baseText, "Check: $1")
+            } else if (!baseText.startsWith("Check:", ignoreCase = true)) {
+                "Check: $baseText"
+            } else {
+                baseText
+            }
+        }
     }
 
     override fun onReceive(context: Context, intent: Intent) {
@@ -42,8 +57,43 @@ class AlarmReceiver : BroadcastReceiver() {
         // Safely acquire Wakelock/Timeout context (fails gracefully in unit tests)
         val pendingResult = try { goAsync() } catch (_: Exception) { null }
 
+        val isDirectBoot = !androidx.core.os.UserManagerCompat.isUserUnlocked(context)
+
         CoroutineScope(Dispatchers.IO).launch {
             try {
+                if (isDirectBoot) {
+                    // Direct-Boot Alarm Safety Net (v1.1 Item 2):
+                    // Phone is still locked before first PIN entry. Post generic notification from DE store.
+                    val deStore = DirectBootAlarmStore(context)
+                    val deAlarm = deStore.getAlarmById(id)
+                    val notifyTier = deAlarm?.tier ?: fallbackTier
+                    val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                    val channelId = NotificationChannels.channelId(notifyTier)
+                    val priority = NotificationChannels.priority(notifyTier)
+                    NotificationChannels.ensureCreated(context)
+
+                    val notificationText = if (isMissed) "Missed: Reminder" else (deAlarm?.label ?: "Reminder")
+                    val notification = NotificationCompat.Builder(context, channelId)
+                        .setSmallIcon(android.R.drawable.ic_dialog_info)
+                        .setContentTitle("Mine")
+                        .setContentText(notificationText)
+                        .setPriority(priority)
+                        .setCategory(if (notifyTier == AlarmTier.ALARM) NotificationCompat.CATEGORY_ALARM else NotificationCompat.CATEGORY_REMINDER)
+                        .setAutoCancel(true)
+                        .build()
+
+                    manager.notify(id.hashCode(), notification)
+                    deStore.removeAlarm(id)
+                    deStore.recordDirectBootFire(
+                        id = id,
+                        firedAt = System.currentTimeMillis(),
+                        scheduledFor = deAlarm?.fireAtMillis ?: System.currentTimeMillis()
+                    )
+                    lastFiredId = id
+                    AndroidAlarmScheduler.notifyFired(id)
+                    return@launch
+                }
+
                 // If storage failed to init (e.g. Keystore corruption), await() throws.
                 // The catch block below intercepts it instantly. (Fail fast, no hang).
                 // R-55: an unchecked cast threw ClassCastException inside the coroutine when the
@@ -59,8 +109,36 @@ class AlarmReceiver : BroadcastReceiver() {
                     ?: storage.getReminderById(id)
                 if (rem == null && !isMissed) return@launch
 
+                // Blueprint 30 §3.7: Fire-time guards & transformations
+                val linkedNodeId = rem?.nodeId
+                val linkedNode = if (linkedNodeId != null) storage.getNode(linkedNodeId) else null
+                if (linkedNode != null) {
+                    // Suppress when done, cancelled, paused, or archived
+                    if (shouldSuppressForNodeStatus(linkedNode.status)) {
+                        storage.deleteReminder(id)
+                        lastFiredId = id
+                        AndroidAlarmScheduler.notifyFired(id)
+                        storage.recordReminderFire(
+                            ReminderFire(
+                                id = "f_${UUID.randomUUID()}",
+                                reminderId = id,
+                                firedAt = System.currentTimeMillis(),
+                                scheduledFor = rem?.fireAtMillis ?: System.currentTimeMillis(),
+                                latencyMs = 0,
+                                outcome = "suppressed"
+                            )
+                        )
+                        return@launch
+                    }
+                }
+
                 // B15: Use text from DB row if available, fallback to intent text
-                val baseText = rem?.text ?: text
+                var baseText = rem?.text ?: text
+
+                // Blueprint 30 §3.7: Transform 'start' -> 'check' when linked node is in_progress
+                if (linkedNode?.status == "in_progress") {
+                    baseText = transformTextForInProgress(baseText)
+                }
                 val safeText = if (isMissed) {
                     if (baseText.startsWith("Missed: ")) baseText else "Missed: $baseText"
                 } else baseText
@@ -90,6 +168,9 @@ class AlarmReceiver : BroadcastReceiver() {
                     .build()
                 manager.notify(id.hashCode(), notification)
                 storage.deleteReminder(id) // Mark done
+                try {
+                    DirectBootAlarmStore(context).removeAlarm(id)
+                } catch (_: Exception) {}
 
                 // D-124: the completion signal follows the durable write, so "fired" means
                 // "delivered and row retired", never "attempted". A caller that observes
@@ -104,7 +185,7 @@ class AlarmReceiver : BroadcastReceiver() {
                 val scheduledFor = rem?.fireAtMillis ?: firedAt
                 storage.recordReminderFire(
                     ReminderFire(
-                        id = "f_${UUID.randomUUID().toString().take(8)}",
+                        id = "f_${UUID.randomUUID()}",
                         reminderId = id,
                         firedAt = firedAt,
                         scheduledFor = scheduledFor,
@@ -146,16 +227,20 @@ class AlarmReceiver : BroadcastReceiver() {
                 try {
                     val key = DbKeyProvider(context).getOrGenerateKey()
                     val db = DatabaseProvider.getHelper(context, key, "mine_encrypted.db")
-                    AndroidStorage(db).recordReminderFire(
-                        ReminderFire(
-                            id = "f_${UUID.randomUUID().toString().take(8)}",
-                            reminderId = id,
-                            firedAt = System.currentTimeMillis(),
-                            scheduledFor = if (intentScheduledFor > 0L) intentScheduledFor else System.currentTimeMillis(),
-                            latencyMs = 0,
-                            outcome = "errored"
+                    try {
+                        AndroidStorage(db).recordReminderFire(
+                            ReminderFire(
+                                id = "f_${UUID.randomUUID()}",
+                                reminderId = id,
+                                firedAt = System.currentTimeMillis(),
+                                scheduledFor = if (intentScheduledFor > 0L) intentScheduledFor else System.currentTimeMillis(),
+                                latencyMs = 0,
+                                outcome = "errored"
+                            )
                         )
-                    )
+                    } finally {
+                        db.close()
+                    }
                 } catch (_: Exception) {
                     // Storage is the thing that failed; nothing more can be recorded.
                 }

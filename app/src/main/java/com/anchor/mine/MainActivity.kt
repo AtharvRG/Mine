@@ -23,6 +23,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -53,14 +54,17 @@ class MainActivity : ComponentActivity() {
      * The shortcut opens MainActivity with `ACTION_VIEW` and no data. The activity is
      * `singleTop`, so an already-running chat receives it here instead of being recreated.
      */
-    override fun onNewIntent(intent: android.content.Intent) {
+    public override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
         handleShortcutIntent(intent)
+        handleProviderImportIntent(intent)
+        handleShareIntent(intent)
     }
 
     private fun handleShortcutIntent(intent: android.content.Intent?) {
         if (intent?.action != android.content.Intent.ACTION_VIEW) return
+        if (intent.data?.scheme == "mine") return
         // Blueprint 52 §12: the shortcut can be turned off. The manifest shortcut cannot be
         // removed at runtime, so the switch is honoured here: the app still opens (the user
         // tapped it), it just does not grab the composer.
@@ -74,6 +78,26 @@ class MainActivity : ComponentActivity() {
                 com.anchor.core.capture.QuickCapture.isShortcutEnabled(storage.await())
             }.getOrDefault(true)
             if (enabled) focusComposerRequests.intValue++
+        }
+    }
+
+    private fun handleProviderImportIntent(intent: android.content.Intent?) {
+        val data = intent?.data ?: return
+        val schemeMatch = data.scheme?.equals("mine", ignoreCase = true) == true
+        val hostMatch = data.host?.equals("provider", ignoreCase = true) == true || data.authority?.equals("provider", ignoreCase = true) == true
+        if (schemeMatch && hostMatch) {
+            viewModel.onAction(UiAction.ImportProviderConfig(data.toString()))
+        }
+    }
+
+    private fun handleShareIntent(intent: android.content.Intent?) {
+        if (intent?.action != android.content.Intent.ACTION_SEND) return
+        if (intent.type != "text/plain") return
+        val text = intent.getStringExtra(android.content.Intent.EXTRA_TEXT)
+            ?: intent.getCharSequenceExtra(android.content.Intent.EXTRA_PROCESS_TEXT)?.toString()
+        if (!text.isNullOrBlank()) {
+            viewModel.onAction(UiAction.UpdateDraft(text))
+            focusComposerRequests.intValue++
         }
     }
 
@@ -97,12 +121,29 @@ class MainActivity : ComponentActivity() {
 
         // A cold start from the shortcut arrives here, not in onNewIntent.
         handleShortcutIntent(intent)
+        handleProviderImportIntent(intent)
+        handleShareIntent(intent)
 
         setContent {
             com.anchor.mine.ui.theme.MineTheme {
-                MineAppUI(viewModel, focusComposerRequests)
+                val state by viewModel.state.collectAsState()
+                LaunchedEffect(state.blockScreenshots) {
+                    if (state.blockScreenshots) {
+                        window.addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
+                    } else {
+                        window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
+                    }
+                }
+                MineAppUI(viewModel, focusComposerRequests, onUnlockRequested = { showBiometricPrompt() })
             }
         }
+    }
+
+    private var lastPauseTimestamp: Long = 0L
+
+    override fun onPause() {
+        super.onPause()
+        lastPauseTimestamp = System.currentTimeMillis()
     }
 
     override fun onResume() {
@@ -113,16 +154,59 @@ class MainActivity : ComponentActivity() {
         // Blueprint 41 §3.4: "an immediate attempt … whenever the user opens the app". A queue
         // left by an offline session is answered as soon as the user comes back to it.
         viewModel.onAction(UiAction.DrainQueuedTurns)
+
+        if (lastPauseTimestamp > 0L) {
+            val elapsedSec = (System.currentTimeMillis() - lastPauseTimestamp) / 1000L
+            lastPauseTimestamp = 0L
+            val state = viewModel.state.value
+            if (state.appLockEnabled && !state.isAppLocked && elapsedSec >= state.relockTimeoutSec) {
+                viewModel.onAction(UiAction.LockApp)
+            }
+        }
+    }
+
+    private fun showBiometricPrompt() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            try {
+                val prompt = android.hardware.biometrics.BiometricPrompt.Builder(this)
+                    .setTitle("Unlock Mine")
+                    .setDescription("Authenticate to access your chats and memories")
+                    .setAllowedAuthenticators(
+                        android.hardware.biometrics.BiometricManager.Authenticators.BIOMETRIC_STRONG or
+                        android.hardware.biometrics.BiometricManager.Authenticators.DEVICE_CREDENTIAL
+                    )
+                    .build()
+                val cancellationSignal = android.os.CancellationSignal()
+                prompt.authenticate(
+                    cancellationSignal,
+                    mainExecutor,
+                    object : android.hardware.biometrics.BiometricPrompt.AuthenticationCallback() {
+                        override fun onAuthenticationSucceeded(result: android.hardware.biometrics.BiometricPrompt.AuthenticationResult?) {
+                            super.onAuthenticationSucceeded(result)
+                            viewModel.onAction(UiAction.UnlockApp)
+                        }
+                        override fun onAuthenticationError(errorCode: Int, errString: CharSequence?) {
+                            super.onAuthenticationError(errorCode, errString)
+                        }
+                    }
+                )
+            } catch (e: Exception) {
+                viewModel.onAction(UiAction.UnlockApp)
+            }
+        } else {
+            viewModel.onAction(UiAction.UnlockApp)
+        }
     }
 }
 
 @Composable
 fun MineAppUI(
     viewModel: MainViewModel,
-    focusComposerRequests: androidx.compose.runtime.State<Int> = remember { mutableIntStateOf(0) }
+    focusComposerRequests: androidx.compose.runtime.State<Int> = remember { mutableIntStateOf(0) },
+    onUnlockRequested: () -> Unit = {}
 ) {
     val state by viewModel.state.collectAsState()
-    MineAppUI(state, viewModel::onAction, focusComposerRequests)
+    MineAppUI(state, viewModel::onAction, focusComposerRequests, onUnlockRequested)
 }
 
 /** Stateless body of [MineAppUI], so the shell (tabs, banners) can be tested without a ViewModel. */
@@ -130,7 +214,8 @@ fun MineAppUI(
 fun MineAppUI(
     state: UiState,
     onAction: (UiAction) -> Unit,
-    focusComposerRequests: androidx.compose.runtime.State<Int> = remember { mutableIntStateOf(0) }
+    focusComposerRequests: androidx.compose.runtime.State<Int> = remember { mutableIntStateOf(0) },
+    onUnlockRequested: () -> Unit = { onAction(UiAction.UnlockApp) }
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
     // "Memory" is appended, not inserted: the `when (selectedTab)` below and every existing test
@@ -155,8 +240,10 @@ fun MineAppUI(
     // Backup tab says so rather than offering buttons that would do nothing.
     val app = androidx.compose.ui.platform.LocalContext.current.applicationContext as? MineApp
     var exportManager by remember { mutableStateOf<com.anchor.core.export.ExportManager?>(null) }
+    var storage by remember { mutableStateOf<com.anchor.core.storage.Storage?>(null) }
     LaunchedEffect(app) {
         exportManager = app?.let { runCatching { it.sharedExportManager.await() }.getOrNull() }
+        storage = app?.let { runCatching { it.sharedStorage.await() }.getOrNull() }
     }
 
     if (state.globalError != null) {
@@ -193,6 +280,11 @@ fun MineAppUI(
         return
     }
 
+    if (state.appLockEnabled && state.isAppLocked) {
+        LockScreen(onUnlock = onUnlockRequested)
+        return
+    }
+
     Column(modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars)) {
         // H-11 (R-15): shown on every tab, because a reminder that cannot notify is a lost
         // reminder no matter which screen the user is on.
@@ -217,10 +309,10 @@ fun MineAppUI(
                 // and a remount mid-edit re-seeded the fields from the old state, which is how a
                 // save produced the old value concatenated with the new one. ProviderScreen
                 // already follows `state` through a LaunchedEffect.
-                2 -> ProviderScreen(state) { ep, k, m -> onAction(UiAction.SaveProvider(ep, k, m)) }
-                3 -> BackupScreen(exportManager)
+                2 -> ProviderScreen(state, onImport = { payload -> onAction(UiAction.ImportProviderConfig(payload)) }) { ep, k, m -> onAction(UiAction.SaveProvider(ep, k, m)) }
+                3 -> BackupScreen(exportManager, storage)
                 4 -> DebugScreen(state, onAction)
-                5 -> MemoryScreen(state)
+                5 -> MemoryScreen(state, onAction)
             }
         }
     }
@@ -415,10 +507,16 @@ fun RemindersScreen(state: UiState, onAction: (UiAction) -> Unit) {
 }
 
 @Composable
-fun ProviderScreen(state: UiState, onSave: (String, String, String) -> Unit) {
+fun ProviderScreen(
+    state: UiState,
+    onImport: (String) -> Unit = {},
+    onSave: (String, String, String) -> Unit
+) {
     var ep by remember { mutableStateOf(state.providerEndpoint) }
     var key by remember { mutableStateOf(state.providerKey) }
     var mod by remember { mutableStateOf(state.providerModel) }
+    var showImportDialog by remember { mutableStateOf(false) }
+    var importPayload by remember { mutableStateOf("") }
 
     // The controller loads settings asynchronously, so the first frame is empty. Re-seed the
     // fields whenever the persisted config changes: without this the screen keeps showing the
@@ -427,6 +525,42 @@ fun ProviderScreen(state: UiState, onSave: (String, String, String) -> Unit) {
         ep = state.providerEndpoint
         key = state.providerKey
         mod = state.providerModel
+    }
+
+    if (showImportDialog) {
+        AlertDialog(
+            onDismissRequest = { showImportDialog = false },
+            title = { Text("Import Provider Setup") },
+            text = {
+                Column {
+                    Text("Paste JSON setup or mine:// link from a friend or QR code:")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = importPayload,
+                        onValueChange = { importPayload = it },
+                        placeholder = { Text("{\"endpoint\": \"...\", \"model\": \"...\"}") },
+                        modifier = Modifier.fillMaxWidth().testTag("importPayloadInput")
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        onImport(importPayload)
+                        showImportDialog = false
+                        importPayload = ""
+                    },
+                    modifier = Modifier.testTag("confirmImportBtn")
+                ) {
+                    Text("Import")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showImportDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 
     Column {
@@ -439,8 +573,16 @@ fun ProviderScreen(state: UiState, onSave: (String, String, String) -> Unit) {
             modifier = Modifier.fillMaxWidth().testTag("providerKey")
         )
         OutlinedTextField(value = mod, onValueChange = { mod = it }, label = { Text("Model") }, modifier = Modifier.fillMaxWidth().testTag("providerModel"))
-        Button(onClick = { onSave(ep, key, mod) }) {
-            Text("Save")
+        Row(modifier = Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(onClick = { onSave(ep, key, mod) }) {
+                Text("Save")
+            }
+            OutlinedButton(
+                onClick = { showImportDialog = true },
+                modifier = Modifier.testTag("importProviderBtn")
+            ) {
+                Text("Import Setup")
+            }
         }
     }
 }
@@ -451,7 +593,7 @@ fun ProviderScreen(state: UiState, onSave: (String, String, String) -> Unit) {
  * editing and the other five areas are later slices; nothing here writes.
  */
 @Composable
-fun MemoryScreen(state: UiState) {
+fun MemoryScreen(state: UiState, onAction: (UiAction) -> Unit = {}) {
     Column(modifier = Modifier.testTag("memoryScreen")) {
         Text("Memory", style = MaterialTheme.typography.titleMedium)
         Spacer(modifier = Modifier.height(8.dp))
@@ -472,10 +614,30 @@ fun MemoryScreen(state: UiState) {
                 item { Text("Nothing here yet.", modifier = Modifier.testTag("memoryItemsEmpty")) }
             }
             items(state.memoryNodes) { node ->
-                Text(
-                    text = node.title + if (node.localOnly) "  🔒" else "",
-                    modifier = Modifier.fillMaxWidth().testTag("memoryNode-${node.id}")
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).testTag("memoryNode-${node.id}"),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = node.title + if (node.localOnly) "  🔒" else "",
+                        modifier = Modifier.weight(1f)
+                    )
+                    Row {
+                        TextButton(
+                            onClick = { onAction(UiAction.ArchiveNode(node.id)) },
+                            modifier = Modifier.testTag("archiveBtn-${node.id}")
+                        ) {
+                            Text("Archive")
+                        }
+                        TextButton(
+                            onClick = { onAction(UiAction.DeleteNode(node.id)) },
+                            modifier = Modifier.testTag("deleteBtn-${node.id}")
+                        ) {
+                            Text("Delete")
+                        }
+                    }
+                }
             }
 
             item {
@@ -486,10 +648,57 @@ fun MemoryScreen(state: UiState) {
                 item { Text("Nothing here yet.", modifier = Modifier.testTag("memorySoulEmpty")) }
             }
             items(state.memorySoulFacts) { fact ->
-                Text(
-                    text = fact.statement + if (fact.localOnly) "  🔒" else "",
-                    modifier = Modifier.fillMaxWidth().testTag("memoryFact-${fact.id}")
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).testTag("memoryFact-${fact.id}"),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = fact.statement + if (fact.localOnly) "  🔒" else "",
+                        modifier = Modifier.weight(1f)
+                    )
+                    TextButton(
+                        onClick = { onAction(UiAction.EraseSoulFact(fact.id)) },
+                        modifier = Modifier.testTag("eraseFactBtn-${fact.id}")
+                    ) {
+                        Text("Erase")
+                    }
+                }
+            }
+
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
+                Text("Trash (${state.trashNodes.size})", style = MaterialTheme.typography.titleSmall, modifier = Modifier.testTag("trashHeader"))
+            }
+            if (state.trashNodes.isEmpty()) {
+                item { Text("Trash is empty.", modifier = Modifier.testTag("memoryTrashEmpty")) }
+            }
+            items(state.trashNodes) { node ->
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).testTag("trashNode-${node.id}"),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = node.title + if (node.localOnly) "  🔒" else "",
+                        modifier = Modifier.weight(1f)
+                    )
+                    Row {
+                        TextButton(
+                            onClick = { onAction(UiAction.RestoreNode(node.id)) },
+                            modifier = Modifier.testTag("restoreBtn-${node.id}")
+                        ) {
+                            Text("Restore")
+                        }
+                        TextButton(
+                            onClick = { onAction(UiAction.EraseNode(node.id)) },
+                            modifier = Modifier.testTag("eraseBtn-${node.id}"),
+                            colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                        ) {
+                            Text("Erase")
+                        }
+                    }
+                }
             }
         }
     }
@@ -592,7 +801,7 @@ fun OnboardingScreen(state: UiState, onAction: (UiAction) -> Unit) {
                     Spacer(modifier = Modifier.height(12.dp))
                     Text("These become things Mine remembers about you. Every one is optional.")
                     Spacer(modifier = Modifier.height(12.dp))
-                    LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    LazyColumn(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         items(SOUL_SEED_QUESTIONS) { q ->
                             Column {
                                 Text(q.prompt, style = MaterialTheme.typography.titleSmall)
@@ -659,14 +868,183 @@ val SOUL_SEED_QUESTIONS = listOf(
 )
 
 @Composable
+fun LockScreen(onUnlock: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .testTag("appLockScreen"),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier.padding(24.dp)
+        ) {
+            Text(
+                text = "🔒",
+                style = MaterialTheme.typography.displayMedium
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = "Mine is Locked",
+                style = MaterialTheme.typography.headlineMedium,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "Authenticate to access your chats and memories.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(24.dp))
+            Button(
+                onClick = onUnlock,
+                modifier = Modifier.testTag("unlockAppButton")
+            ) {
+                Text("Unlock Mine")
+            }
+        }
+    }
+}
+
+@Composable
 fun DebugScreen(state: UiState, onAction: (UiAction) -> Unit) {
-    Column(modifier = Modifier.padding(8.dp)) {
-        Text("=== Storage Stats ===", style = MaterialTheme.typography.titleMedium)
-        Text(state.debugStats)
-        Spacer(modifier = Modifier.height(16.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = { onAction(UiAction.RefreshStats) }) { Text("Refresh Stats") }
-            // Export/Import live on their own tab (BackupScreen, B5).
+    val context = androidx.compose.ui.platform.LocalContext.current
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(8.dp)
+            .testTag("debugScreen"),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        // Section 9: Privacy and Security (Blueprint 16 §3.2 & Blueprint 52 §3.4)
+        item {
+            Text("=== Privacy & Security ===", style = MaterialTheme.typography.titleMedium)
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("App Lock", style = MaterialTheme.typography.titleSmall)
+                    Text("Require biometric or screen lock authentication", style = MaterialTheme.typography.bodySmall)
+                }
+                Switch(
+                    checked = state.appLockEnabled,
+                    onCheckedChange = { onAction(UiAction.SetAppLock(it)) },
+                    modifier = Modifier.testTag("appLockSwitch")
+                )
+            }
+        }
+
+        if (state.appLockEnabled) {
+            item {
+                Column {
+                    Text("Relock Timeout", style = MaterialTheme.typography.titleSmall)
+                    Text("Time in background before Mine relocks", style = MaterialTheme.typography.bodySmall)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.testTag("relockTimeoutSelector")
+                    ) {
+                        val timeouts = listOf(
+                            0 to "Immediately",
+                            60 to "1 min",
+                            300 to "5 min",
+                            1800 to "30 min"
+                        )
+                        timeouts.forEach { (sec, label) ->
+                            FilterChip(
+                                selected = state.relockTimeoutSec == sec,
+                                onClick = { onAction(UiAction.SetRelockTimeout(sec)) },
+                                label = { Text(label) },
+                                modifier = Modifier.testTag("relockTimeout-$sec")
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Block Screenshots & Recents", style = MaterialTheme.typography.titleSmall)
+                    Text("Protect content from screenshots and task switcher preview", style = MaterialTheme.typography.bodySmall)
+                }
+                Switch(
+                    checked = state.blockScreenshots,
+                    onCheckedChange = { onAction(UiAction.SetBlockScreenshots(it)) },
+                    modifier = Modifier.testTag("blockScreenshotsSwitch")
+                )
+            }
+        }
+
+        // Section 2: AI and Compact Mode (Blueprint 20 §3.4 & Blueprint 52 §3.4)
+        item {
+            Text("=== AI & Performance ===", style = MaterialTheme.typography.titleMedium)
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Compact Context Mode", style = MaterialTheme.typography.titleSmall)
+                    Text("Reduces token budget for lower memory and smaller models", style = MaterialTheme.typography.bodySmall)
+                }
+                Switch(
+                    checked = state.compactMode,
+                    onCheckedChange = { onAction(UiAction.SetCompactMode(it)) },
+                    modifier = Modifier.testTag("compactModeSwitch")
+                )
+            }
+        }
+
+        // Section 12: About Mine (Blueprint 92 §2 & Blueprint 94)
+        item {
+            Text("=== About Mine ===", style = MaterialTheme.typography.titleMedium)
+            Spacer(modifier = Modifier.height(8.dp))
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("Version: ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})", modifier = Modifier.testTag("aboutVersion"))
+                Text("Database Schema: ${com.anchor.mine.storage.MineDatabaseCallback.DATABASE_VERSION}", modifier = Modifier.testTag("aboutSchemaVersion"))
+                Text("Export Format Version: 1", modifier = Modifier.testTag("aboutExportVersion"))
+                Text("License: GPL-3.0-or-later", modifier = Modifier.testTag("aboutLicense"))
+                Spacer(modifier = Modifier.height(8.dp))
+                Button(
+                    onClick = {
+                        val intent = android.content.Intent(
+                            android.content.Intent.ACTION_VIEW,
+                            android.net.Uri.parse("https://github.com/anchormind/mine/releases")
+                        ).apply {
+                            addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        context.startActivity(intent)
+                    },
+                    modifier = Modifier.testTag("checkForUpdatesButton")
+                ) {
+                    Text("Check for Updates")
+                }
+            }
+        }
+
+        // Storage Stats
+        item {
+            Text("=== Storage Stats ===", style = MaterialTheme.typography.titleMedium)
+            Text(state.debugStats, modifier = Modifier.testTag("storageStatsText"))
+            Spacer(modifier = Modifier.height(8.dp))
+            Button(
+                onClick = { onAction(UiAction.RefreshStats) },
+                modifier = Modifier.testTag("refreshStatsButton")
+            ) {
+                Text("Refresh Stats")
+            }
         }
     }
 }

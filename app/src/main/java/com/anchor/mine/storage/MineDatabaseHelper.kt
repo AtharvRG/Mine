@@ -9,12 +9,11 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.sqlite.db.SupportSQLiteOpenHelper
 import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
 
-// BUMPED to Version 6 (audit §6 item 6: blueprint 41 §4 outbox table)
-class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(6) {
+// BUMPED to Version 7 (v1.1 Item 3: recurrence rules and habit streaks)
+class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(DATABASE_VERSION) {
 
     override fun onConfigure(db: SupportSQLiteDatabase) {
         super.onConfigure(db)
-        db.enableWriteAheadLogging()
         if (!db.isReadOnly) db.setForeignKeyConstraintsEnabled(true)
         db.query("PRAGMA secure_delete = ON").close()
     }
@@ -23,11 +22,11 @@ class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(6) {
         db.execSQL("CREATE TABLE app_meta (\"key\" TEXT PRIMARY KEY, value TEXT NOT NULL)")
         db.execSQL("CREATE TABLE raw_message (id TEXT PRIMARY KEY, device_id TEXT, ts_utc INTEGER, tz_offset_min INTEGER, day_key TEXT, role TEXT, content TEXT, redacted_at INTEGER, reasoning TEXT, tags TEXT, persona_id TEXT, model_ref TEXT, tokens_in INTEGER, tokens_out INTEGER, client_msg_id TEXT, attrs TEXT)")
         db.execSQL("CREATE TABLE raw_event (op_id TEXT PRIMARY KEY, ts_utc INTEGER, device_id TEXT, actor TEXT, op_type TEXT, target_type TEXT, target_id TEXT, before_json TEXT, after_json TEXT, cause_msg_id TEXT, undo_of TEXT, attrs TEXT)")
-        db.execSQL("CREATE TABLE node (id TEXT PRIMARY KEY, device_id TEXT, type TEXT, title TEXT, body TEXT, status TEXT, priority INTEGER, severity INTEGER, start_at INTEGER, due_at INTEGER, time_precision TEXT, flexible INTEGER, lane TEXT, expires_at INTEGER, source TEXT, origin TEXT, source_msg_ids TEXT, extractor_version TEXT, attrs TEXT, local_only INTEGER, hlc TEXT, created_at INTEGER, updated_at INTEGER, closed_at INTEGER, deleted_at INTEGER)")
+        db.execSQL("CREATE TABLE node (id TEXT PRIMARY KEY, device_id TEXT, type TEXT, title TEXT, body TEXT, status TEXT, priority INTEGER, severity INTEGER, start_at INTEGER, due_at INTEGER, time_precision TEXT, flexible INTEGER, lane TEXT, expires_at INTEGER, source TEXT, origin TEXT, source_msg_ids TEXT, extractor_version TEXT, attrs TEXT, local_only INTEGER, hlc TEXT, created_at INTEGER, updated_at INTEGER, closed_at INTEGER, deleted_at INTEGER, recurrence_rule TEXT, streak_current INTEGER NOT NULL DEFAULT 0, streak_best INTEGER NOT NULL DEFAULT 0, last_completed_at INTEGER)")
         db.execSQL("CREATE TABLE edge (id TEXT PRIMARY KEY, device_id TEXT, src_id TEXT, dst_id TEXT, dst_kind TEXT, type TEXT, weight REAL, source TEXT, origin TEXT, source_msg_ids TEXT, attrs TEXT, hlc TEXT, created_at INTEGER, updated_at INTEGER, deleted_at INTEGER)")
         db.execSQL("CREATE TABLE soul_fact (id TEXT PRIMARY KEY, device_id TEXT NOT NULL, category TEXT NOT NULL, statement TEXT NOT NULL, attrs TEXT, confidence REAL NOT NULL DEFAULT 0.7, source TEXT NOT NULL, origin TEXT NOT NULL, status TEXT NOT NULL, pinned_core INTEGER NOT NULL DEFAULT 0, sensitive INTEGER NOT NULL DEFAULT 0, local_only INTEGER NOT NULL DEFAULT 0, hlc TEXT NOT NULL, valid_from INTEGER, valid_to INTEGER, supersedes TEXT, source_msg_ids TEXT, extractor_version TEXT, last_confirmed_at INTEGER, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, deleted_at INTEGER)")
         db.execSQL("CREATE TABLE msg_chunk (id TEXT PRIMARY KEY, day_key TEXT NOT NULL, ts_start INTEGER NOT NULL, ts_end INTEGER NOT NULL, msg_ids TEXT NOT NULL, text TEXT NOT NULL, extractor_version TEXT NOT NULL)")
-        db.execSQL("CREATE TABLE reminder (id TEXT PRIMARY KEY, node_id TEXT, text TEXT NOT NULL, fire_at INTEGER NOT NULL, tier TEXT NOT NULL DEFAULT 'alarm')")
+        db.execSQL("CREATE TABLE reminder (id TEXT PRIMARY KEY, node_id TEXT, text TEXT NOT NULL, fire_at INTEGER NOT NULL, tier TEXT NOT NULL DEFAULT 'alarm', rrule TEXT, iteration INTEGER NOT NULL DEFAULT 0)")
         db.execSQL("CREATE TABLE proposal (id TEXT PRIMARY KEY, kind TEXT NOT NULL, intent TEXT NOT NULL, options TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'open', created_at INTEGER NOT NULL, payload TEXT)")
         db.execSQL("CREATE TABLE day_rule (id TEXT PRIMARY KEY, effective_from INTEGER NOT NULL, start_minute INTEGER NOT NULL, end_minute INTEGER NOT NULL, tz_id TEXT NOT NULL, created_at INTEGER NOT NULL)")
         db.execSQL("CREATE TABLE day_block (day_key TEXT NOT NULL, idx INTEGER NOT NULL, start_msg_id TEXT NOT NULL, start_ts INTEGER NOT NULL, end_ts INTEGER NOT NULL, msg_count INTEGER NOT NULL, part_of_day TEXT, PRIMARY KEY (day_key, idx))")
@@ -45,6 +44,7 @@ class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(6) {
         db.execSQL("CREATE TABLE checkin_state (kind TEXT NOT NULL, day_key TEXT NOT NULL, status TEXT NOT NULL, msg_id TEXT, scheduled_for INTEGER, delivered_at INTEGER, PRIMARY KEY (kind, day_key))")
         db.execSQL("CREATE TABLE quote_slot (slot TEXT NOT NULL, day_key TEXT NOT NULL, text TEXT NOT NULL, generated_at INTEGER NOT NULL, state_hash TEXT, source TEXT NOT NULL, regen_count INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (slot, day_key))")
         db.execSQL(OUTBOX_DDL)
+        db.execSQL(EMBEDDING_DDL)
 
         createIndexes(db)
         createTriggers(db)
@@ -91,19 +91,66 @@ class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(6) {
         if (oldVersion < 6) {
             db.execSQL(OUTBOX_DDL)
         }
+        if (oldVersion < 7) {
+            val nodeCols = mutableSetOf<String>()
+            db.query("PRAGMA table_info(node)").use { cursor ->
+                val nameIdx = cursor.getColumnIndex("name")
+                while (cursor.moveToNext()) {
+                    if (nameIdx != -1) nodeCols.add(cursor.getString(nameIdx).lowercase())
+                }
+            }
+            if ("recurrence_rule" !in nodeCols) {
+                db.execSQL("ALTER TABLE node ADD COLUMN recurrence_rule TEXT")
+            }
+            if ("streak_current" !in nodeCols) {
+                db.execSQL("ALTER TABLE node ADD COLUMN streak_current INTEGER NOT NULL DEFAULT 0")
+            }
+            if ("streak_best" !in nodeCols) {
+                db.execSQL("ALTER TABLE node ADD COLUMN streak_best INTEGER NOT NULL DEFAULT 0")
+            }
+            if ("last_completed_at" !in nodeCols) {
+                db.execSQL("ALTER TABLE node ADD COLUMN last_completed_at INTEGER")
+            }
+
+            val remCols = mutableSetOf<String>()
+            db.query("PRAGMA table_info(reminder)").use { cursor ->
+                val nameIdx = cursor.getColumnIndex("name")
+                while (cursor.moveToNext()) {
+                    if (nameIdx != -1) remCols.add(cursor.getString(nameIdx).lowercase())
+                }
+            }
+            if ("rrule" !in remCols) {
+                db.execSQL("ALTER TABLE reminder ADD COLUMN rrule TEXT")
+            }
+            if ("iteration" !in remCols) {
+                db.execSQL("ALTER TABLE reminder ADD COLUMN iteration INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+        if (oldVersion < 8) {
+            db.execSQL(EMBEDDING_DDL)
+        }
         // T19: an upgraded device must end up with the same indexes and triggers as a fresh
         // install. Indexes were previously created in onCreate only, so a device upgraded from v1
         // never got idx_reminder_fire - the index that makes the R-26 `ORDER BY fire_at` cheap.
         createIndexes(db)
         createTriggers(db)
+        // B3-13: Rebuild FTS tables on upgrade to ensure integrity
+        runCatching {
+            db.execSQL("INSERT INTO node_fts(node_fts) VALUES('rebuild')")
+            db.execSQL("INSERT INTO soul_fts(soul_fts) VALUES('rebuild')")
+            db.execSQL("INSERT INTO msg_chunk_fts(msg_chunk_fts) VALUES('rebuild')")
+        }
     }
 
     override fun onOpen(db: SupportSQLiteDatabase) {
         super.onOpen(db)
+        createIndexes(db)
         createTriggers(db)
     }
 
     companion object {
+        const val DATABASE_VERSION = 8
+
         /**
          * Blueprint 41 §4, verbatim. Shared by [onCreate] and the `oldVersion < 6` upgrade branch so
          * a fresh install and an upgraded device cannot drift (T19).
@@ -115,15 +162,36 @@ class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(6) {
                 "next_try_at INTEGER NOT NULL, deadline_at INTEGER, created_at INTEGER NOT NULL, " +
                 "updated_at INTEGER NOT NULL, last_error TEXT)"
 
+        /**
+         * Blueprint 21 §3.3: Quantized vector embeddings table.
+         */
+        private const val EMBEDDING_DDL =
+            "CREATE TABLE IF NOT EXISTS embedding (" +
+                "owner_type TEXT NOT NULL, " +
+                "owner_id TEXT NOT NULL, " +
+                "model_version TEXT NOT NULL, " +
+                "dim INTEGER NOT NULL, " +
+                "scale REAL NOT NULL, " +
+                "vec BLOB NOT NULL, " +
+                "created_at INTEGER NOT NULL, " +
+                "PRIMARY KEY (owner_type, owner_id, model_version))"
+
         private val INDEXES = listOf(
             "CREATE INDEX IF NOT EXISTS idx_node_status_due ON node(status, due_at)",
+            "CREATE INDEX IF NOT EXISTS idx_node_habit ON node(type, streak_current)",
             "CREATE INDEX IF NOT EXISTS idx_raw_event_target ON raw_event(target_type, target_id)",
             "CREATE INDEX IF NOT EXISTS idx_raw_message_ts ON raw_message(ts_utc)",
             "CREATE INDEX IF NOT EXISTS idx_raw_message_day ON raw_message(day_key, ts_utc)",
             "CREATE INDEX IF NOT EXISTS idx_reminder_fire ON reminder(fire_at)",
             "CREATE INDEX IF NOT EXISTS idx_edge_src_type ON edge(src_id, type)",
             "CREATE INDEX IF NOT EXISTS idx_edge_dst_type ON edge(dst_id, type)",
-            "CREATE INDEX IF NOT EXISTS idx_outbox_due ON outbox(status, priority, next_try_at)"
+            "CREATE INDEX IF NOT EXISTS idx_outbox_due ON outbox(status, priority, next_try_at)",
+            "CREATE INDEX IF NOT EXISTS idx_reminder_node_id ON reminder(node_id)",
+            "CREATE INDEX IF NOT EXISTS idx_node_status_closed ON node(status, closed_at)",
+            "CREATE INDEX IF NOT EXISTS idx_soul_fact_status ON soul_fact(status)",
+            "CREATE INDEX IF NOT EXISTS idx_signal_log_kind_ts ON signal_log(kind, ts_utc)",
+            "CREATE INDEX IF NOT EXISTS idx_proposal_status_created ON proposal(status, created_at)",
+            "CREATE INDEX IF NOT EXISTS idx_embedding_owner ON embedding(owner_type, model_version)"
         )
 
         /** Every trigger created by [createTriggers], in drop order. */
@@ -208,7 +276,7 @@ class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(6) {
 object DatabaseProvider {
     fun getHelper(context: Context, password: ByteArray, dbName: String = "mine_encrypted.db"): SupportSQLiteOpenHelper {
         System.loadLibrary("sqlcipher")
-        val factory = SupportOpenHelperFactory(password)
+        val factory = SupportOpenHelperFactory(password, null, true)
         val configuration = SupportSQLiteOpenHelper.Configuration.builder(context)
             .name(dbName)
             .callback(MineDatabaseCallback())

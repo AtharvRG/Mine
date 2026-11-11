@@ -1,4 +1,10 @@
 import json, sys, os, subprocess, glob
+
+repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+try:
+    os.chdir(repo_root)
+except Exception:
+    pass
 d = json.load(sys.stdin)
 if d.get("stop_hook_active"):          # prevent infinite loops
     sys.exit(0)

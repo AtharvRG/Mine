@@ -34,4 +34,55 @@ class RateLimiterTest {
         clock += (2 * 60 * 1000L)  // 16 mins
         assertTrue("Should recover after 15m", limiter.canRequest("key2", 20))
     }
+
+    @Test
+    fun testLimiter_ClockJumpBackwards_DoesNotBlockRequestsBeyondSlidingWindow() = runBlocking {
+        var wallClock = 1_000_000L
+        var monoClock = 50_000L
+
+        val limiter = RateLimiter(
+            clock = { wallClock },
+            persistence = null,
+            monotonicClock = { monoClock }
+        )
+
+        // Exhaust quota (50 requests)
+        for (i in 1..50) {
+            assertTrue(limiter.canRequest("keyA", 50))
+            limiter.recordRequest("keyA")
+        }
+        assertFalse(limiter.canRequest("keyA", 50))
+
+        // Wall clock jumps BACKWARDS by 10 minutes, but real elapsed time advances 61 seconds
+        wallClock -= 600_000L
+        monoClock += 61_000L
+
+        // Monotonic sliding window must evict old stamps and allow requests
+        assertTrue(
+            "Limiter must allow requests when monotonic window passes even if wall clock jumps backwards",
+            limiter.canRequest("keyA", 50)
+        )
+    }
+
+    @Test
+    fun testLimiter_SanitizesUnreasonableFutureCooldown() = runBlocking {
+        var wallClock = 1_000_000L
+        val storage = com.anchor.core.SharedFakeStorage()
+        val persistence = StorageRateLimitPersistence(storage)
+
+        // Simulate corrupted or clock-skewed timestamp 1 year in the future
+        val runawayFuture = wallClock + 365L * 24 * 3600 * 1000L
+        storage.saveSetting("rate_cooldown_${ "key_skew".hashCode() }", runawayFuture.toString())
+
+        val limiter = RateLimiter(
+            clock = { wallClock },
+            persistence = persistence
+        )
+
+        assertTrue(
+            "Limiter must allow request when persisted cooldown is absurdly far in the future",
+            limiter.canRequest("key_skew", 20)
+        )
+        org.junit.Assert.assertNull(limiter.getCooldownExpiry("key_skew"))
+    }
 }

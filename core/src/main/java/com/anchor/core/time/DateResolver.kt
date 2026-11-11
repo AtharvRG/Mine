@@ -121,7 +121,7 @@ class DateResolver(
         severity: Int? = null
     ): DateResolution {
         if (dueText == null) return DateResolution.Failed
-        val normalized = normalizeDigits(dueText).lowercase(Locale.getDefault()).trim()
+        val normalized = normalizeDigits(dueText).lowercase(Locale.ROOT).trim()
         if (normalized.isBlank()) return DateResolution.Failed
 
         val effectiveTz = timeZone ?: this.timeZone

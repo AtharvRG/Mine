@@ -135,4 +135,22 @@ class QuickCaptureTest {
         storage.saveSetting(QuickCapture.SETTING_CAPTURE_SHORTCUT, "false")
         assertFalse(QuickCapture.isShortcutEnabled(storage))
     }
+
+    @Test
+    fun isUnanswered_AndPending_VerifyChronologicalSequenceWithPriorHistory() = runBlocking {
+        val storage = SharedFakeStorage()
+        // Prior conversation history (older messages)
+        storage.insertRawMessage("old_u1", "user", "Hello there")
+        storage.insertRawMessage("old_a1", "assistant", "Hi, how can I help?")
+
+        // Quick capture occurs
+        val captureId = QuickCapture.store(storage, "buy groceries")!!
+        assertTrue("Capture must be unanswered initially despite prior assistant messages", QuickCapture.isUnanswered(storage, captureId))
+        assertEquals("Pending must contain unanswered capture", listOf(captureId), QuickCapture.pending(storage))
+
+        // Newer assistant reply is added
+        storage.insertRawMessage("new_a1", "assistant", "Added groceries to your list.")
+        assertFalse("Capture must be considered answered once subsequent assistant message exists", QuickCapture.isUnanswered(storage, captureId))
+        assertTrue("Pending must now be empty", QuickCapture.pending(storage).isEmpty())
+    }
 }

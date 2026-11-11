@@ -36,8 +36,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val state: StateFlow<UiState> = _state.asStateFlow()
 
     private var controller: ChatController? = null
+    private val pendingActions = java.util.concurrent.ConcurrentLinkedQueue<UiAction>()
     private lateinit var reliabilityManager: ReliabilityManager
-    private var storage: Storage? = null
+    var storage: Storage? = null
+        private set
 
     init {
         viewModelScope.launch {
@@ -45,7 +47,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 val app = application as MineApp
                 val loadedStorage = app.sharedStorage.await() // Can throw if keys/DB corrupt
                 storage = loadedStorage
-                val orchestrator = app.orchestrator
+                val rateLimiter = com.anchor.core.provider.RateLimiter(
+                    clock = { System.currentTimeMillis() },
+                    persistence = com.anchor.core.provider.StorageRateLimitPersistence(loadedStorage),
+                    monotonicClock = { android.os.SystemClock.elapsedRealtime() }
+                )
+                val orchestrator = com.anchor.core.provider.ProviderOrchestrator(rateLimiter, com.anchor.mine.provider.AndroidHttpTransport())
                 val clock = SystemClock()
                 val is24HourFormat = { android.text.format.DateFormat.is24HourFormat(application) }
                 val dateResolver = DateResolver(clock, is24HourFormat)
@@ -67,6 +74,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 )
                 // Blueprint 50 §3.14: the notification reply needs a controller when one exists.
                 app.captureController = controller
+
+                // Drain any actions that arrived before the controller was initialized (e.g. cold-start intents)
+                while (true) {
+                    val pending = pendingActions.poll() ?: break
+                    controller?.onAction(pending)
+                }
 
                 reliabilityManager.runSweeper().forEach { missedRem ->
                     val intent = android.content.Intent(getApplication(), com.anchor.mine.alarms.AlarmReceiver::class.java).apply {
@@ -148,6 +161,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
             return
         }
-        controller?.onAction(action)
+        val c = controller
+        if (c != null) {
+            c.onAction(action)
+        } else {
+            pendingActions.add(action)
+        }
     }
 }

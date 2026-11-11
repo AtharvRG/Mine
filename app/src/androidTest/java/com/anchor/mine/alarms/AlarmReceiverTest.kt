@@ -7,6 +7,7 @@ package com.anchor.mine.alarms
 import android.content.Intent
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.anchor.core.models.Node
 import com.anchor.core.models.Reminder
 import com.anchor.mine.MineApp
 import kotlinx.coroutines.runBlocking
@@ -194,5 +195,83 @@ class AlarmReceiverTest {
             app.sharedStorage = originalDeferred
             realStorage.deleteReminder(rId)
         }
+    }
+
+    @Test
+    fun testAlarmReceiver_LinkedNodeDone_SuppressesAndRecordsSuppressedFire() = runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val storage = (context.applicationContext as MineApp).sharedStorage.await()
+
+        val nodeId = "n_done_${System.currentTimeMillis()}"
+        val eDone = com.anchor.core.models.RawEvent("e_done_${System.currentTimeMillis()}", "CREATE", "node", nodeId)
+        storage.createNodeAndCommit(Node(id = nodeId, type = "task", title = "Completed Task", status = "done"), eDone, null)
+
+        val rId = "r_linked_done_${System.currentTimeMillis()}"
+        val scheduledFor = System.currentTimeMillis() - 1000
+        storage.saveReminder(Reminder(rId, "Do Task", scheduledFor, nodeId = nodeId))
+
+        val receiver = AlarmReceiver()
+        val intent = Intent().apply { putExtra("EXTRA_ID", rId) }
+        receiver.onReceive(context, intent)
+
+        var elapsed = 0
+        while (AlarmReceiver.lastFiredId != rId && elapsed < 5000) {
+            kotlinx.coroutines.delay(250)
+            elapsed += 250
+        }
+
+        assertEquals(rId, AlarmReceiver.lastFiredId)
+        assertNull("Row must be deleted when suppressed", storage.getPendingReminders().find { it.id == rId })
+
+        val fire = storage.getReminderFire(rId, "suppressed")
+        assertNotNull("Suppressed reminder must record a 'suppressed' reminder_fire row", fire)
+
+        // Ensure notification was NOT posted
+        val notificationManager = context.getSystemService(android.content.Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+        val active = notificationManager.activeNotifications.find { it.id == rId.hashCode() }
+        assertNull("Notification must not be posted for suppressed reminder", active)
+    }
+
+    @Test
+    fun testAlarmReceiver_LinkedNodeInProgress_TransformsStartToCheck() = runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val storage = (context.applicationContext as MineApp).sharedStorage.await()
+
+        val nodeId = "n_prog_${System.currentTimeMillis()}"
+        val eProg = com.anchor.core.models.RawEvent("e_prog_${System.currentTimeMillis()}", "CREATE", "node", nodeId)
+        storage.createNodeAndCommit(Node(id = nodeId, type = "task", title = "In Progress Task", status = "in_progress"), eProg, null)
+
+        val rId = "r_linked_prog_${System.currentTimeMillis()}"
+        val scheduledFor = System.currentTimeMillis() - 1000
+        storage.saveReminder(Reminder(rId, "start writing report", scheduledFor, nodeId = nodeId))
+
+        val receiver = AlarmReceiver()
+        val intent = Intent().apply { putExtra("EXTRA_ID", rId) }
+        receiver.onReceive(context, intent)
+
+        var elapsed = 0
+        while (AlarmReceiver.lastFiredId != rId && elapsed < 5000) {
+            kotlinx.coroutines.delay(250)
+            elapsed += 250
+        }
+
+        assertEquals(rId, AlarmReceiver.lastFiredId)
+
+        val notificationManager = context.getSystemService(android.content.Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+        var active: android.service.notification.StatusBarNotification? = null
+        var notifElapsed = 0
+        while (active == null && notifElapsed < 3000) {
+            active = notificationManager.activeNotifications.find { it.id == rId.hashCode() }
+            if (active == null) {
+                kotlinx.coroutines.delay(100)
+                notifElapsed += 100
+            }
+        }
+
+        assertNotNull("Notification must be posted", active)
+        val text = active!!.notification.extras.getCharSequence(android.app.Notification.EXTRA_TEXT)?.toString()
+        assertEquals("Check: writing report", text)
+
+        notificationManager.cancel(rId.hashCode())
     }
 }

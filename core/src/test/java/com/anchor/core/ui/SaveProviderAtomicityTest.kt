@@ -29,6 +29,8 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 /**
@@ -104,8 +106,12 @@ class SaveProviderAtomicityTest {
             "https://old.example.com/v1",
             controller.state.value.providerEndpoint
         )
-        assertNotNull(
-            "A failed save must tell the user, not fail silently",
+        assertTrue(
+            "A failed save must tell the user via receipt, not fail silently",
+            controller.state.value.receipts.any { it.isError && it.message.contains("Could not save provider settings") }
+        )
+        org.junit.Assert.assertNull(
+            "B1-03: A failed save must not set globalError and brick the UI",
             controller.state.value.globalError
         )
     }

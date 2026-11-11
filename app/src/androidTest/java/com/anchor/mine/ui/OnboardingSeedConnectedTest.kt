@@ -54,6 +54,7 @@ class OnboardingSeedConnectedTest {
     private lateinit var storage: AndroidStorage
     private lateinit var dbHelper: androidx.sqlite.db.SupportSQLiteOpenHelper
     private val clock = FakeClock(1_700_000_000_000L)
+    private var testJob = kotlinx.coroutines.SupervisorJob()
 
     /** Onboarding must never reach the model; a call here is a bug, not a slow test. */
     private class NoTransport : HttpTransport {
@@ -64,6 +65,7 @@ class OnboardingSeedConnectedTest {
 
     @Before
     fun setup() {
+        testJob = kotlinx.coroutines.SupervisorJob()
         com.anchor.mine.alarms.AlarmReceiver.lastFiredId = null
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         context.deleteDatabase("mine_onboarding_test.db")
@@ -73,10 +75,11 @@ class OnboardingSeedConnectedTest {
 
     @After
     fun teardown() {
+        testJob.cancel()
         dbHelper.close()
     }
 
-    private fun controller(): ChatController {
+    private fun controller(scope: CoroutineScope = CoroutineScope(Dispatchers.Unconfined + kotlinx.coroutines.SupervisorJob(testJob))): ChatController {
         val dateResolver = DateResolver(clock)
         return ChatController(
             storage,
@@ -88,7 +91,7 @@ class OnboardingSeedConnectedTest {
                 override fun schedule(reminder: Reminder) = ScheduleResult.Armed
                 override fun cancel(reminderId: String) {}
             },
-            CoroutineScope(Dispatchers.Unconfined), Dispatchers.Unconfined, clock
+            scope, Dispatchers.Unconfined, clock
         )
     }
 
@@ -133,14 +136,17 @@ class OnboardingSeedConnectedTest {
 
     @Test
     fun relaunch_AfterFinishing_DoesNotShowTheFlowAgain() = runBlocking {
-        val first = controller()
+        val firstJob = kotlinx.coroutines.SupervisorJob(testJob)
+        val first = controller(CoroutineScope(Dispatchers.Unconfined + firstJob))
         first.onAction(UiAction.OnboardingAnswer("identity", "I am a night-shift nurse"))
         first.onAction(UiAction.OnboardingFinish)
         awaitDone(first)
+        firstJob.cancel()
 
         // A second controller over the same database is what a relaunch looks like. Its first load
         // is async too, so wait for it to paint rather than reading the default UiState.
-        val relaunched = controller()
+        val relaunchJob = kotlinx.coroutines.SupervisorJob(testJob)
+        val relaunched = controller(CoroutineScope(Dispatchers.Unconfined + relaunchJob))
         val deadline = System.currentTimeMillis() + 10_000
         while (!relaunched.state.value.onboardingDone && relaunched.state.value.globalError == null &&
             System.currentTimeMillis() < deadline

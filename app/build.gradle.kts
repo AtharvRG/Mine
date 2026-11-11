@@ -70,6 +70,11 @@ android {
         compose = true
         buildConfig = true
     }
+    packaging {
+        resources {
+            pickFirsts += listOf("com/k2fsa/sherpa/onnx/BuildConfig.class")
+        }
+    }
 }
 
 // D-123: `connectedDebugAndroidTest`'s own exit code is not trustworthy on AGP 9.4.0 / UTP 32.4.0
@@ -181,6 +186,12 @@ dependencies {
 
     // Bouncy Castle for Argon2id Export Encryption
     implementation("org.bouncycastle:bcprov-jdk18on:1.78.1")
+
+    // Sherpa-ONNX for Offline Speech (VAD + Zipformer STT + Kokoro TTS)
+    implementation(files("libs/sherpa-onnx-2.0.1.aar"))
+
+    // LiteRT-LM for On-Device EmbeddingGemma 2
+    implementation("com.google.ai.edge.litertlm:litertlm-android:0.16.1")
 
     // Testing
     testImplementation("junit:junit:4.13.2")

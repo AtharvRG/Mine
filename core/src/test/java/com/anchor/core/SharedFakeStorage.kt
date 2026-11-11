@@ -34,9 +34,44 @@ open class SharedFakeStorage(var clock: Clock = SystemClock()) : Storage {
     override suspend fun saveReliabilityState(state: com.anchor.core.models.ReliabilityState) { reliabilityState = state }
     override suspend fun recordReminderFire(fire: com.anchor.core.models.ReminderFire) { reminderFires.add(fire) }
 
+    private val currentDayKeyOverride = ThreadLocal<String?>()
+
     open override suspend fun insertRawMessage(id: String, role: String, content: String) {
-        val dayKey = com.anchor.core.time.DayRollover.computeDayKey(clock.now(), getEffectiveDayRule(clock.now()))
-        messages.add(ChatMessage(id, role, content, dayKey, clock.now()))
+        val resolvedDayKey = currentDayKeyOverride.get() ?: run {
+            val rule = getEffectiveDayRule(clock.now())
+            var k = com.anchor.core.time.DayRollover.computeDayKey(clock.now(), rule)
+            val lastDayKey = messages.lastOrNull { it.dayKey != null }?.dayKey
+            if (lastDayKey != null && k < lastDayKey) k = lastDayKey
+            k
+        }
+        messages.add(ChatMessage(id, role, content, resolvedDayKey, clock.now()))
+    }
+
+    open override suspend fun insertRawMessage(
+        id: String,
+        role: String,
+        content: String,
+        causeMsgId: String?,
+        dayKey: String?
+    ) {
+        var resolvedDayKey = dayKey
+        if (resolvedDayKey == null && causeMsgId != null) {
+            resolvedDayKey = messages.find { it.id == causeMsgId }?.dayKey
+        }
+        if (resolvedDayKey == null) {
+            val rule = getEffectiveDayRule(clock.now())
+            resolvedDayKey = com.anchor.core.time.DayRollover.computeDayKey(clock.now(), rule)
+            val lastDayKey = messages.lastOrNull { it.dayKey != null }?.dayKey
+            if (lastDayKey != null && resolvedDayKey < lastDayKey) {
+                resolvedDayKey = lastDayKey
+            }
+        }
+        currentDayKeyOverride.set(resolvedDayKey)
+        try {
+            insertRawMessage(id, role, content)
+        } finally {
+            currentDayKeyOverride.remove()
+        }
     }
 
     override suspend fun redactMessage(id: String) {
@@ -83,7 +118,7 @@ open class SharedFakeStorage(var clock: Clock = SystemClock()) : Storage {
         dayRules.add(rule)
     }
 
-    override suspend fun getActiveNodes(limit: Int, cursor: String?): List<Node> {
+    override suspend fun getActiveNodes(limit: Int, cursor: String?): List<Node> = synchronized(this) {
         val openNodes = activeNodes.filter { it.status == "active" || it.status == "in_progress" || it.status == "paused" }
         val sorted = openNodes.sortedWith(
             compareBy<Node> { it.dueAt == null }
@@ -112,7 +147,7 @@ open class SharedFakeStorage(var clock: Clock = SystemClock()) : Storage {
                 node.dueAt == null && node.id > cursorId
             }
         }
-        return filtered.take(limit)
+        filtered.take(limit)
     }
 
     override suspend fun findActiveNodeByTitle(title: String): Node? {
@@ -184,7 +219,7 @@ open class SharedFakeStorage(var clock: Clock = SystemClock()) : Storage {
         return union.values.toList()
     }
 
-    override suspend fun getActiveNodeCounts(now: Long, staleCutoffMs: Long): NodeCounts {
+    override suspend fun getActiveNodeCounts(now: Long, staleCutoffMs: Long): NodeCounts = synchronized(this) {
         val nonStaleOpen = activeNodes.filter {
             (it.status == "active" || it.status == "in_progress" || it.status == "paused") &&
             !it.localOnly &&
@@ -192,15 +227,39 @@ open class SharedFakeStorage(var clock: Clock = SystemClock()) : Storage {
         }
         val totalOpen = nonStaleOpen.size
         val overdue = nonStaleOpen.count { it.dueAt != null && it.dueAt < now }
-        return NodeCounts(totalOpen, overdue)
+        NodeCounts(totalOpen, overdue)
     }
 
-    override suspend fun getStaleNodes(now: Long, cutoffMs: Long): List<Node> {
-        return activeNodes.filter {
+    override suspend fun getStaleNodes(now: Long, cutoffMs: Long): List<Node> = synchronized(this) {
+        activeNodes.filter {
             (it.status == "active" || it.status == "in_progress" || it.status == "paused") &&
+            !it.localOnly &&
             (maxOf(it.updatedAt, it.createdAt) > 0L && (now - maxOf(it.updatedAt, it.createdAt) > cutoffMs)) &&
             (it.dueAt == null || it.dueAt <= now)
-        }
+        }.sortedByDescending { it.createdAt }
+    }
+
+    override suspend fun getTrashNodes(now: Long, limit: Int): List<Node> = synchronized(this) {
+        val thirtyDaysAgo = now - (30L * 24 * 3600 * 1000L)
+        activeNodes.filter { it.status == "cancelled" && ((it.closedAt ?: it.updatedAt) >= thirtyDaysAgo) }
+            .sortedByDescending { it.closedAt ?: it.updatedAt }
+            .take(limit)
+    }
+
+    override suspend fun eraseNode(nodeId: String): Unit = synchronized(this) {
+        activeNodes.removeAll { it.id == nodeId }
+        reminders.removeAll { it.nodeId == nodeId }
+        edges.removeAll { it.srcId == nodeId || it.dstId == nodeId }
+        loggedEvents.removeAll { it.targetId == nodeId }
+    }
+
+    override suspend fun eraseSoulFact(factId: String): Unit = synchronized(this) {
+        soulFacts.removeAll { it.id == factId }
+        loggedEvents.removeAll { it.targetId == factId }
+    }
+
+    override suspend fun isSoulFactSuppressed(statement: String): Boolean = synchronized(this) {
+        soulFacts.any { it.status == "rejected" && it.statement.trim().equals(statement.trim(), ignoreCase = true) }
     }
 
     // R-25: filters on the caller's clock, not the fake's own, so a test that moves time sees the
@@ -276,7 +335,13 @@ open class SharedFakeStorage(var clock: Clock = SystemClock()) : Storage {
         reminders.add(reminder)
     }
     override suspend fun deleteReminder(id: String) { reminders.removeAll { it.id == id } }
-    override suspend fun getDebugStats(): Map<String, String> = emptyMap()
+    override suspend fun getDebugStats(): Map<String, String> = mapOf(
+        "Rows in raw_message" to messages.size.toString(),
+        "Rows in raw_event" to loggedEvents.size.toString(),
+        "Rows in node" to activeNodes.size.toString(),
+        "Rows in edge" to edges.size.toString(),
+        "Rows in reminder" to reminders.size.toString()
+    )
 
     override suspend fun getNode(id: String): Node? = activeNodes.find { it.id == id }
     override suspend fun getEvent(opId: String): RawEvent? = loggedEvents.find { it.opId == opId }
@@ -343,8 +408,8 @@ open class SharedFakeStorage(var clock: Clock = SystemClock()) : Storage {
             it.status == "open" && it.id.isNotBlank() && (proposalCreatedAt[it.id] ?: 0L) > expiryThreshold
         }
     }
-    override suspend fun getUrgentNodes(): List<Node> = activeNodes.filter { it.status == "active" || it.status == "in_progress" }.sortedWith(compareBy<Node> { it.dueAt == null }.thenBy { it.dueAt }).take(3)
-    override suspend fun getActiveSoulFacts(): List<SoulFact> = soulFacts.filter { (it.status == "active" || it.status == "pinned") && !it.localOnly }
+    override suspend fun getUrgentNodes(): List<Node> = activeNodes.filter { (it.status == "active" || it.status == "in_progress") && !it.localOnly }.sortedWith(compareBy<Node> { it.dueAt == null }.thenBy { it.dueAt }).take(3)
+    override suspend fun getActiveSoulFacts(includeLocalOnly: Boolean): List<SoulFact> = soulFacts.filter { (it.status == "active" || it.status == "pinned") && (includeLocalOnly || !it.localOnly) }
 
     override suspend fun updateNodeAndCommit(node: Node, event: RawEvent, deleteReminderId: String?, upsertReminder: Reminder?, consumeProposalId: String?, softDeleteEdgeIds: List<String>) {
         synchronized(this) {
@@ -419,26 +484,49 @@ open class SharedFakeStorage(var clock: Clock = SystemClock()) : Storage {
         soulFacts.add(fact)
         loggedEvents.add(event)
     }
-    override suspend fun searchMemoryFts(query: String, limit: Int): List<SearchResult> {
+    override suspend fun searchMemoryFts(query: String, limit: Int): List<SearchResult> = synchronized(this) {
         val results = mutableListOf<SearchResult>()
         if (query.isBlank()) return results
+        val sanitized = query.replace(Regex("[^\\p{L}\\p{M}\\p{N}\\s]"), "").trim()
+        val tokens = sanitized.split(Regex("\\s+")).filter { it.isNotBlank() }
+        if (tokens.isEmpty()) return results
 
-        activeNodes.filter { it.status !in listOf("archived", "cancelled", "done") && !it.localOnly && it.title.contains(query, ignoreCase = true) }.forEach {
+        activeNodes.filter { node ->
+            node.status !in listOf("archived", "cancelled", "done") &&
+                !node.localOnly &&
+                tokens.all { token -> node.title.contains(token, ignoreCase = true) }
+        }.forEach {
             results.add(SearchResult(it.id, it.type, it.title, ""))
         }
-        soulFacts.filter { (it.status == "active" || it.status == "pinned") && !it.localOnly && it.statement.contains(query, ignoreCase = true) }.forEach {
+        soulFacts.filter { fact ->
+            (fact.status == "active" || fact.status == "pinned") &&
+                !fact.localOnly &&
+                tokens.all { token -> fact.statement.contains(token, ignoreCase = true) || fact.category.contains(token, ignoreCase = true) }
+        }.forEach {
             results.add(SearchResult(it.id, "soul_fact", it.category, it.statement))
         }
-        messages.filter { it.role != "system" && it.content != null && it.content.contains(query, ignoreCase = true) }.forEach {
+        messages.filter { msg ->
+            msg.role != "system" &&
+                msg.content != null &&
+                tokens.all { token -> msg.content.contains(token, ignoreCase = true) }
+        }.forEach {
             results.add(SearchResult("chunk_${it.id}", "chat", it.dayKey ?: "", it.content!!, it.tsUtc))
         }
         return results.take(limit.coerceAtLeast(0))
     }
 
-    override suspend fun searchHistory(query: String, limit: Int): List<SearchResult> {
+    override suspend fun searchHistory(query: String, limit: Int): List<SearchResult> = synchronized(this) {
         if (query.isBlank()) return emptyList()
+        val sanitized = query.replace(Regex("[^\\p{L}\\p{M}\\p{N}\\s]"), "").trim()
+        val tokens = sanitized.split(Regex("\\s+")).filter { it.isNotBlank() }
+        if (tokens.isEmpty()) return emptyList()
+
         return messages
-            .filter { it.role != "system" && it.content != null && it.content.contains(query, ignoreCase = true) }
+            .filter { msg ->
+                msg.role != "system" &&
+                    msg.content != null &&
+                    tokens.all { token -> msg.content.contains(token, ignoreCase = true) }
+            }
             .sortedByDescending { it.tsUtc }
             .map { SearchResult(it.id, it.role, it.dayKey ?: "", it.content!!, it.tsUtc) }
             .take(limit.coerceAtLeast(0))
@@ -469,6 +557,11 @@ open class SharedFakeStorage(var clock: Clock = SystemClock()) : Storage {
     override suspend fun hasReminderFire(reminderId: String, outcome: String): Boolean = reminderFires.any { it.reminderId == reminderId && it.outcome == outcome }
     override suspend fun getReminderFire(reminderId: String, outcome: String): com.anchor.core.models.ReminderFire? =
         reminderFires.filter { it.reminderId == reminderId && it.outcome == outcome }.maxByOrNull { it.firedAt }
+
+    override suspend fun getRecentReminderFires(limit: Int): List<com.anchor.core.models.ReminderFire> =
+        synchronized(this) {
+            reminderFires.sortedByDescending { it.firedAt }.take(limit.coerceAtLeast(0))
+        }
 
     val edges = mutableListOf<Edge>()
 
@@ -502,6 +595,62 @@ open class SharedFakeStorage(var clock: Clock = SystemClock()) : Storage {
     override suspend fun deleteEdgeAndCommit(edgeId: String, event: RawEvent) {
         deleteEdge(edgeId)
         loggedEvents.add(event)
+    }
+
+    override suspend fun getGraphNeighborhood(nodeId: String, maxHops: Int, cap: Int): List<Node> = synchronized(this) {
+        val visitedNodeIds = mutableSetOf<String>()
+        var currentFrontier = setOf(nodeId)
+        val resultNodes = mutableListOf<Node>()
+
+        visitedNodeIds.add(nodeId)
+
+        for (hop in 1..maxHops) {
+            val nextFrontier = mutableSetOf<String>()
+            for (currId in currentFrontier) {
+                val outgoing = edges.filter { it.srcId == currId && it.deletedAt == null }.map { it.dstId }
+                val incoming = edges.filter { it.dstId == currId && it.deletedAt == null }.map { it.srcId }
+                for (neighborId in outgoing + incoming) {
+                    if (neighborId !in visitedNodeIds) {
+                        visitedNodeIds.add(neighborId)
+                        nextFrontier.add(neighborId)
+                        val node = activeNodes.find { it.id == neighborId }
+                        if (node != null && node.status != "archived" && node.status != "cancelled") {
+                            resultNodes.add(node)
+                            if (resultNodes.size >= cap) return@synchronized resultNodes
+                        }
+                    }
+                }
+            }
+            currentFrontier = nextFrontier
+            if (currentFrontier.isEmpty()) break
+        }
+        resultNodes
+    }
+
+    override suspend fun getCalendarBuckets(startMs: Long, endMs: Long): Map<String, List<Node>> {
+        val rule = getEffectiveDayRule(startMs)
+        return synchronized(this) {
+            val matchingNodes = activeNodes.filter {
+                it.dueAt != null && it.dueAt in startMs..endMs &&
+                it.status != "archived" && it.status != "cancelled"
+            }
+            matchingNodes.groupBy {
+                com.anchor.core.time.DayRollover.computeDayKey(it.dueAt!!, rule)
+            }
+        }
+    }
+
+    override suspend fun getBoardViewNodes(limitPerColumn: Int): Map<String, List<Node>> = synchronized(this) {
+        val nonArchived = activeNodes.filter { it.status != "archived" && it.status != "cancelled" }
+        val todo = nonArchived.filter { it.status == "active" || it.status == "paused" }.take(limitPerColumn)
+        val inProgress = nonArchived.filter { it.status == "in_progress" }.take(limitPerColumn)
+        val done = nonArchived.filter { it.status == "done" || it.status == "closed" }.take(limitPerColumn)
+
+        mapOf(
+            "todo" to todo,
+            "in_progress" to inProgress,
+            "done" to done
+        )
     }
 
     fun insertRawMessageWithDay(id: String, role: String, content: String, dayKey: String, tsUtc: Long = clock.now()) {
@@ -552,6 +701,14 @@ open class SharedFakeStorage(var clock: Clock = SystemClock()) : Storage {
         if (outbox.none { it.idemKey == job.idemKey }) outbox.add(job)
     }
 
+    override suspend fun claimOutbox(id: String, nextTryAt: Long, now: Long) {
+        val idx = outbox.indexOfFirst { it.id == id }
+        if (idx != -1) {
+            val job = outbox[idx]
+            outbox[idx] = job.copy(nextTryAt = nextTryAt, updatedAt = now)
+        }
+    }
+
     override suspend fun getDueOutbox(jobType: String, now: Long): List<OutboxJob> =
         outbox.filter { it.jobType == jobType && it.status == OutboxJob.STATUS_PENDING && it.nextTryAt <= now }
             .sortedWith(compareBy({ it.priority }, { it.createdAt }, { it.id }))
@@ -571,5 +728,101 @@ open class SharedFakeStorage(var clock: Clock = SystemClock()) : Storage {
             status = OutboxJob.STATUS_PENDING, attempts = outbox[i].attempts + 1,
             nextTryAt = nextTryAt, updatedAt = now, lastError = error
         )
+    }
+
+    override suspend fun dropStaleOutbox(now: Long): Int = synchronized(this) {
+        var count = 0
+        for (i in outbox.indices) {
+            val job = outbox[i]
+            if (job.status == OutboxJob.STATUS_PENDING && job.deadlineAt != null && job.deadlineAt < now) {
+                outbox[i] = job.copy(status = OutboxJob.STATUS_DROPPED, updatedAt = now)
+                count++
+            }
+        }
+        count
+    }
+
+    val signals = mutableListOf<com.anchor.core.models.SignalLog>()
+    val learnedPrefs = mutableListOf<com.anchor.core.models.LearnedPref>()
+
+    override suspend fun recordSignal(signal: com.anchor.core.models.SignalLog) {
+        synchronized(this) {
+            signals.add(signal)
+        }
+    }
+
+    override suspend fun getSignals(kind: String?, sinceUtc: Long, limit: Int): List<com.anchor.core.models.SignalLog> =
+        synchronized(this) {
+            signals.filter { (kind == null || it.kind == kind) && it.tsUtc >= sinceUtc }
+                .sortedBy { it.tsUtc }
+                .take(limit.coerceAtLeast(0))
+        }
+
+    override suspend fun getLearnedPref(key: String, scope: String): com.anchor.core.models.LearnedPref? =
+        synchronized(this) {
+            learnedPrefs.find { it.key == key && it.scope == scope }
+        }
+
+    override suspend fun getAllLearnedPrefs(): List<com.anchor.core.models.LearnedPref> =
+        synchronized(this) {
+            learnedPrefs.toList()
+        }
+
+    override suspend fun saveLearnedPref(pref: com.anchor.core.models.LearnedPref) {
+        synchronized(this) {
+            val idx = learnedPrefs.indexOfFirst { it.key == pref.key && it.scope == pref.scope }
+            if (idx >= 0) {
+                learnedPrefs[idx] = pref
+            } else {
+                learnedPrefs.add(pref)
+            }
+        }
+    }
+
+    override suspend fun resetLearning(preserveLocked: Boolean) {
+        synchronized(this) {
+            if (preserveLocked) {
+                learnedPrefs.removeAll { !it.locked }
+            } else {
+                learnedPrefs.clear()
+            }
+        }
+    }
+
+    fun saveNode(node: Node) {
+        synchronized(this) {
+            activeNodes.removeAll { it.id == node.id }
+            activeNodes.add(node)
+        }
+    }
+
+    val embeddings = mutableMapOf<Triple<String, String, String>, com.anchor.core.retrieval.QuantVector>()
+
+    override suspend fun saveEmbedding(
+        ownerType: String,
+        ownerId: String,
+        modelVersion: String,
+        vector: com.anchor.core.retrieval.QuantVector
+    ) {
+        synchronized(this) {
+            embeddings[Triple(ownerType, ownerId, modelVersion)] = vector
+        }
+    }
+
+    override suspend fun getEmbeddings(
+        ownerType: String,
+        modelVersion: String
+    ): List<Pair<String, com.anchor.core.retrieval.QuantVector>> = synchronized(this) {
+        embeddings.entries
+            .filter { it.key.first == ownerType && it.key.third == modelVersion }
+            .map { it.key.second to it.value }
+    }
+
+    override suspend fun deleteEmbedding(ownerType: String, ownerId: String) {
+        synchronized(this) {
+            embeddings.keys.filter { it.first == ownerType && it.second == ownerId }
+                .toList()
+                .forEach { embeddings.remove(it) }
+        }
     }
 }

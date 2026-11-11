@@ -109,7 +109,7 @@ object DayRollover {
             targetStartMinute = newStartMinute
         )
         return DayRule(
-            id = "rule_${UUID.randomUUID().toString().take(8)}",
+            id = "rule_${UUID.randomUUID()}",
             effectiveFrom = nextRollover,
             startMinute = newStartMinute,
             endMinute = newEndMinute,

@@ -107,6 +107,7 @@ class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val action = intent.action ?: return
         val validActions = listOf(
+            Intent.ACTION_LOCKED_BOOT_COMPLETED,
             Intent.ACTION_BOOT_COMPLETED,
             Intent.ACTION_MY_PACKAGE_REPLACED,
             Intent.ACTION_TIME_CHANGED,
@@ -116,18 +117,50 @@ class BootReceiver : BroadcastReceiver() {
         )
         if (action !in validActions) return
 
+        val isDirectBoot = (action == Intent.ACTION_LOCKED_BOOT_COMPLETED) ||
+            (!androidx.core.os.UserManagerCompat.isUserUnlocked(context))
+
         // Fix: goAsync() throws IllegalStateException in manual instrumented tests
         val pendingResult = try { goAsync() } catch (e: Exception) { null }
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
+                if (isDirectBoot) {
+                    // Direct-boot safety net (Blueprint 42 & Roadmap P1.1 Item 2):
+                    // CE storage is locked. Re-arm upcoming alarms from DE storage without Keystore.
+                    val deStore = DirectBootAlarmStore(context)
+                    val scheduler = AndroidAlarmScheduler(context)
+                    val upcoming = deStore.getUpcomingAlarms(System.currentTimeMillis())
+                    for (alarm in upcoming) {
+                        scheduler.scheduleDirectBoot(alarm)
+                    }
+                    return@launch
+                }
+
                 val storage = (context.applicationContext as MineApp).sharedStorage.await()
                 val scheduler = AndroidAlarmScheduler(context)
                 val clock = SystemClock()
 
+                // 0. Reconcile alarms that fired in Direct Boot before user unlock (prevent duplicate missed alert)
+                try {
+                    val deStore = DirectBootAlarmStore(context)
+                    val firedAlarms = deStore.getFiredAlarms()
+                    if (firedAlarms.isNotEmpty()) {
+                        com.anchor.core.alarms.DirectBootReconciler.reconcileFiredAlarms(storage, firedAlarms)
+                        deStore.clearFiredAlarms()
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.w("BootReceiver", "Failed to reconcile direct boot fires: ${e.message}")
+                }
+
                 // 1. Reconcile alarms using unified core reconciler (force = true on boot / time change)
                 val reconciler = AlarmReconciler(storage, scheduler, clock)
                 reconciler.reconcile(force = true)
+
+                // Sync DE safety-net table with CE reminders
+                try {
+                    DirectBootAlarmStore(context).syncFromReminders(storage.getPendingReminders())
+                } catch (_: Exception) {}
 
                 // 2. Run Sweeper for alarms missed while the device was off (older than 60s)
                 val reliabilityManager = com.anchor.core.reliability.ReliabilityManager(storage, clock)
@@ -172,16 +205,20 @@ class BootReceiver : BroadcastReceiver() {
         try {
             val key = com.anchor.mine.storage.DbKeyProvider(context).getOrGenerateKey()
             val db = com.anchor.mine.storage.DatabaseProvider.getHelper(context, key, "mine_encrypted.db")
-            val storage = com.anchor.mine.storage.AndroidStorage(db)
-            val current = storage.getReliabilityState()
-            val existing = AlarmReconciler.parseIssues(current.issuesJson)
-            val reason = "Storage unavailable at boot: ${e.message}"
-            val updated = (existing.filter { it.error != reason } + ReliabilityIssue(reason, System.currentTimeMillis()))
-                .sortedByDescending { it.time }
-                .take(5)
-            storage.saveReliabilityState(
-                current.copy(score = "at_risk", issuesJson = AlarmReconciler.encodeIssues(updated))
-            )
+            try {
+                val storage = com.anchor.mine.storage.AndroidStorage(db)
+                val current = storage.getReliabilityState()
+                val existing = AlarmReconciler.parseIssues(current.issuesJson)
+                val reason = "Storage unavailable at boot: ${e.message}"
+                val updated = (existing.filter { it.error != reason } + ReliabilityIssue(reason, System.currentTimeMillis()))
+                    .sortedByDescending { it.time }
+                    .take(5)
+                storage.saveReliabilityState(
+                    current.copy(score = "at_risk", issuesJson = AlarmReconciler.encodeIssues(updated))
+                )
+            } finally {
+                db.close()
+            }
         } catch (_: Exception) {
         }
     }

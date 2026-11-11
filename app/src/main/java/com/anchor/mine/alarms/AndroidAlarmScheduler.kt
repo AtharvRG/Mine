@@ -54,6 +54,10 @@ class AndroidAlarmScheduler(private val context: Context) : AlarmScheduler {
                     alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, reminder.fireAtMillis, pendingIntent)
                 }
             }
+            // v1.1 Item 2: Sync to Device Protected storage safety net (NO private text)
+            try {
+                DirectBootAlarmStore(context).saveAlarm(reminder.id, reminder.fireAtMillis, reminder.tier, "Reminder")
+            } catch (_: Exception) {}
             ScheduleResult.Armed
         } catch (e: SecurityException) {
             ScheduleResult.Failed("SecurityException: ${e.message ?: "permission denied or exact alarm policy disallow"}")
@@ -70,6 +74,49 @@ class AndroidAlarmScheduler(private val context: Context) : AlarmScheduler {
         if (pendingIntent != null) {
             alarmManager.cancel(pendingIntent)
             pendingIntent.cancel()
+        }
+        try {
+            DirectBootAlarmStore(context).removeAlarm(reminderId)
+        } catch (_: Exception) {}
+    }
+
+    /**
+     * Schedules an alarm from a Direct Boot safety-net record when running
+     * before first user unlock (CE storage unavailable).
+     */
+    fun scheduleDirectBoot(alarm: DirectBootAlarm): ScheduleResult {
+        val intent = Intent(context, AlarmReceiver::class.java).apply {
+            putExtra("EXTRA_ID", alarm.id)
+            putExtra("EXTRA_TEXT", alarm.label)
+            putExtra("EXTRA_TIER", alarm.tier.name)
+            putExtra("EXTRA_SCHEDULED_FOR", alarm.fireAtMillis)
+            putExtra("EXTRA_DIRECT_BOOT", true)
+        }
+        val pendingIntent = PendingIntent.getBroadcast(
+            context,
+            alarm.id.hashCode(),
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        return try {
+            when (alarm.tier) {
+                AlarmTier.ALARM -> {
+                    val showIntent = Intent(context, com.anchor.mine.MainActivity::class.java)
+                    val pendingShow = PendingIntent.getActivity(
+                        context,
+                        alarm.id.hashCode(),
+                        showIntent,
+                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                    )
+                    alarmManager.setAlarmClock(AlarmManager.AlarmClockInfo(alarm.fireAtMillis, pendingShow), pendingIntent)
+                }
+                AlarmTier.GENTLE -> {
+                    alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, alarm.fireAtMillis, pendingIntent)
+                }
+            }
+            ScheduleResult.Armed
+        } catch (e: Exception) {
+            ScheduleResult.Failed(e.message ?: e.javaClass.simpleName)
         }
     }
 

@@ -125,9 +125,16 @@ class ChatControllerEdgeCaseTest {
             Gateway(storage, Resolver(), DateResolver(clock), clock), scheduler, kotlinx.coroutines.CoroutineScope(UnconfinedTestDispatcher()), UnconfinedTestDispatcher(), clock
         )
 
-        // 3. Change time in DB to 9000 (Simulating a RESCHEDULE)
+        // Controller init completed initial reconcile. Clear tracking to isolate RefreshStats effect.
+        scheduledIds.clear()
+        canceledIds.clear()
+
+        // 3. Post-init drift:
+        // - Time changed in DB to 9000 (Simulating a RESCHEDULE while registry has 5000)
         storage.reminders.clear()
         storage.reminders.add(Reminder("r1", "Task", 9000L))
+        // - Orphan in OS registry (alarm exists in registry but no reminder in DB)
+        storage.saveRegisteredAlarm("r2_orphan", 2, 8000L)
 
         // Trigger reconcile via RefreshStats
         controller.onAction(UiAction.RefreshStats)
@@ -215,7 +222,8 @@ class ChatControllerEdgeCaseTest {
         assertEquals(1, storage.reminders.size)
         
         val undoCall = com.anchor.core.gateway.ToolCall("undo", mapOf("token" to kotlinx.serialization.json.JsonPrimitive(result.undoToken)))
-        gateway.executeTool(undoCall)
+        val undoResult = gateway.executeTool(undoCall)
+        assertTrue("Undo tool call must be committed", undoResult is com.anchor.core.models.ToolResult.Committed)
         
         // Assert Reminder WAS destroyed because the old state had no reminder
         assertEquals(0, storage.reminders.size)

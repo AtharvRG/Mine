@@ -54,7 +54,10 @@ import java.io.File
  * that. The cache copy is deleted in every path, including failure.
  */
 @Composable
-fun BackupScreen(exportManager: ExportManager?) {
+fun BackupScreen(
+    exportManager: ExportManager?,
+    storage: com.anchor.core.storage.Storage? = null
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val maybeController = remember(exportManager) {
@@ -67,12 +70,23 @@ fun BackupScreen(exportManager: ExportManager?) {
     // A SAF URI the user picked for import/verify. The passphrase is asked for after the pick,
     // so the dialog knows which file it is unlocking.
     var pendingUri by remember { mutableStateOf<Uri?>(null) }
+    var pendingMarkdownUri by remember { mutableStateOf<Uri?>(null) }
+    var showMarkdownWarning by remember { mutableStateOf(false) }
 
     val exportLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/octet-stream")
     ) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
         pending = PendingBackup.Export(uri)
+    }
+
+    val exportMarkdownLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("text/markdown")
+    ) { uri ->
+        if (uri != null) {
+            pendingMarkdownUri = uri
+            showMarkdownWarning = true
+        }
     }
 
     val openLauncher = rememberLauncherForActivityResult(
@@ -116,6 +130,13 @@ fun BackupScreen(exportManager: ExportManager?) {
                 enabled = !state.isBusy,
                 modifier = Modifier.testTag("backupImport")
             ) { Text("Import") }
+            if (storage != null) {
+                OutlinedButton(
+                    onClick = { exportMarkdownLauncher.launch("mine-export.md") },
+                    enabled = !state.isBusy,
+                    modifier = Modifier.testTag("backupExportMarkdown")
+                ) { Text("Export Markdown") }
+            }
         }
 
         if (state.isBusy) {
@@ -142,6 +163,54 @@ fun BackupScreen(exportManager: ExportManager?) {
                 modifier = Modifier.padding(top = 8.dp).testTag("backupRestart")
             )
         }
+    }
+
+    if (showMarkdownWarning && pendingMarkdownUri != null && storage != null) {
+        val targetUri = pendingMarkdownUri!!
+        AlertDialog(
+            onDismissRequest = {
+                showMarkdownWarning = false
+                pendingMarkdownUri = null
+            },
+            title = { Text("Export Unencrypted Markdown?") },
+            text = {
+                Text(
+                    "⚠️ WARNING: This will export all your notes, habits, soul facts, and chat history as plain, readable text WITHOUT encryption. Anyone with access to this file will be able to read it.\n\nThis export cannot be re-imported into Mine.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showMarkdownWarning = false
+                        pendingMarkdownUri = null
+                        scope.launch {
+                            withTempFile(context, ".md") { tmp ->
+                                if (!controller.runExportMarkdown(tmp, storage)) return@withTempFile
+                                try {
+                                    copyToUri(context, tmp, targetUri)
+                                } catch (e: Exception) {
+                                    controller.reportFailure(
+                                        "Could not write Markdown file: " + (e.message ?: e::class.java.simpleName)
+                                    )
+                                }
+                            }
+                        }
+                    },
+                    modifier = Modifier.testTag("backupConfirmMarkdown")
+                ) {
+                    Text("Export Plain Text", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showMarkdownWarning = false
+                    pendingMarkdownUri = null
+                }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 
     // Passphrase dialog, requested after a file is chosen.

@@ -104,4 +104,72 @@ class MemoryViewerLoadTest {
         assertTrue(state.memoryNodes.isEmpty())
         assertTrue(state.memorySoulFacts.isEmpty())
     }
+
+    @Test
+    fun loadMemory_IncludesLocalOnlySoulFacts_WithLockMarkerForViewer() {
+        val storage = SharedFakeStorage()
+        val clock = FakeClock(1000L)
+        storage.soulFacts = mutableListOf(
+            SoulFact("s1", "Preferences", "Prefers tea", 0.9, "chat", "inferred", "active", 100L, localOnly = false),
+            SoulFact("s2", "health", "Migraines", 0.9, "onboarding", "approved", "active", 100L, localOnly = true, sensitive = true)
+        )
+
+        val controller = controller(storage, clock)
+        controller.onAction(UiAction.LoadMemory)
+
+        val state = controller.state.value
+        assertEquals("both public and local-only facts are loaded for the viewer", listOf("s1", "s2"), state.memorySoulFacts.map { it.id })
+        val healthFact = state.memorySoulFacts.single { it.id == "s2" }
+        assertTrue("localOnly is preserved so the UI draws the lock", healthFact.localOnly)
+    }
+
+    @Test
+    fun archiveNode_ArchivesItem_RefreshesMemory_AndCanBeUndone() = runBlocking {
+        val storage = SharedFakeStorage()
+        val clock = FakeClock(1000L)
+        val n1 = Node("n1", "task", "Pay electricity bill", "active", 5000L)
+        storage.activeNodes.add(n1)
+
+        val controller = controller(storage, clock)
+        controller.onAction(UiAction.LoadMemory)
+        assertEquals(listOf("n1"), controller.state.value.memoryNodes.map { it.id })
+
+        controller.onAction(UiAction.ArchiveNode("n1"))
+
+        assertEquals("Archived item must disappear from active memoryNodes", emptyList<String>(), controller.state.value.memoryNodes.map { it.id })
+        assertEquals("archived", storage.getNode("n1")?.status)
+
+        val receipt = controller.state.value.receipts.firstOrNull { it.message.contains("Archived") }
+        assertTrue("Must emit receipt for Archive", receipt != null)
+        assertTrue("Receipt must carry undo token", receipt?.undoToken != null)
+
+        // Undo the archive
+        controller.onAction(UiAction.Undo(receipt!!.undoToken!!))
+        assertEquals("active", storage.getNode("n1")?.status)
+    }
+
+    @Test
+    fun deleteNode_CancelsItem_RefreshesMemory_AndCanBeUndone() = runBlocking {
+        val storage = SharedFakeStorage()
+        val clock = FakeClock(1000L)
+        val n1 = Node("n1", "task", "Pay electricity bill", "active", 5000L)
+        storage.activeNodes.add(n1)
+
+        val controller = controller(storage, clock)
+        controller.onAction(UiAction.LoadMemory)
+        assertEquals(listOf("n1"), controller.state.value.memoryNodes.map { it.id })
+
+        controller.onAction(UiAction.DeleteNode("n1"))
+
+        assertEquals("Deleted item must disappear from active memoryNodes", emptyList<String>(), controller.state.value.memoryNodes.map { it.id })
+        assertEquals("cancelled", storage.getNode("n1")?.status)
+
+        val receipt = controller.state.value.receipts.firstOrNull { it.message.contains("Deleted") }
+        assertTrue("Must emit receipt for Delete", receipt != null)
+        assertTrue("Receipt must carry undo token", receipt?.undoToken != null)
+
+        // Undo the delete
+        controller.onAction(UiAction.Undo(receipt!!.undoToken!!))
+        assertEquals("active", storage.getNode("n1")?.status)
+    }
 }

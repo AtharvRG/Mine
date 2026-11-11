@@ -254,3 +254,288 @@ Rejected: printing only the first line of the message (the diagnostic fields `Al
 
 - **D-138 (2026-11-09) — Offline queue: `chat_turn` rows in `outbox`, a claim-by-re-enqueue window, and a drain triggered on start and app open only.** Decision: a message composed with no network is written to `raw_message` by the caller as always, then `ChatController.enqueueChatTurn` records one `outbox` row (`job_type = chat_turn`, id `ob_<msgId>`, `idem_key = <msgId>`, payload `{"msg_id": …}`). `drainQueuedTurns()` answers every due row in **one** turn whose instruction is injected into the pack as the turn's own message (never stored), and marks the rows done only after the assistant reply is stored. A claimed job is re-enqueued with `next_try_at = now + 60 s` instead of getting a `running` status. The queued mark and the banner are derived on every `refreshUI()` from the pending rows (`UiState.queuedChatIds` / `offlineQueuedText`). The drain runs from `ChatController.init` (after the first frame) and from `MainActivity.onResume`; there is no `ConnectivityManager` callback and no retry timer. Reason: blueprint 41 §3.3 requires jobs to be idempotent with a deterministic key — the message id is that key, so the notification receiver and the startup drain queueing the same capture are one row. The claim-by-re-enqueue keeps the queued mark true across a crash mid-turn and makes a second drain inside the window a no-op, without a `running` state the schema does not have. Injecting the instruction rather than storing it keeps the raw log to words the user actually typed. Deriving the mark satisfies blueprint 11:83 ("delivery state is never a column on `raw_message`"). Rejected: a `running` status (schema churn and a lease timeout to get wrong); storing the batch instruction as a `system` row (it would be read back into every later pack as history); a live network callback (it cannot be unregistered while the process lives, it fires on every Wi-Fi↔mobile handover, and `onResume` already covers every moment the user can see the queue); a stored `queued` flag on the message.
 - **Accepted residual (D-138):** the queue is answered **when the app is opened**, not the instant the network returns — a user who reconnects and never reopens the app keeps the messages queued until they do, and there is no WorkManager job or retry timer yet (blueprint 41 §3.4 names both). The banner says "Offline: your messages are saved." even when the device is online again but the provider is down, because it is derived from the queue, not from the connectivity state. `isChatLoading` is deliberately **not** set by `drainQueuedTurns` (the turn clears it before the request is made, which would let a second drain double-send). A `chat_turn` batch that ends in the loop-limit path is marked answered; one whose reply is blank is not, so it is retried. Proof: `OfflineQueueTest` (6 core cases: queue-without-request, one-turn reconnect, still-offline drain, claim window, 14-hour backlog, duplicate enqueue). RED-probed by replacing the offline branch in `sendText` with `if (false)` — 5 of 6 cases red (requests attempted while offline; 4 bodies for one backlog; `bodies.single()` throwing). The claim re-enqueue is **not** red-probed and cannot be with this harness: `OfflineQueueTest` runs the controller on an unconfined dispatcher, so the first drain's turn completes and `markBatchAnswered` settles `ob_<msgId>` inside that same drain (traced: `outbox=[ob_q_1/…/done]` after one drain), leaving a second drain nothing due whether or not the claim exists. The claim is defence-in-depth for the window a test cannot reach — the process stopped after claiming but before the reply is stored — and the claim-window case documents that reasoning rather than proving it. **Not proven on device** — the airplane-mode round trip is blueprint 41 §8 test 1 and has not been run.
+
+(Next free: D-139. Add: date, decision, reason, rejected.)
+
+- **D-139 (2026-11-09) — WAL mode enabled at factory construction (`SupportOpenHelperFactory`), removed from `onConfigure`; test coroutines bound to test supervisor jobs.** Decision: `DatabaseProvider.getHelper` passes `enableWriteAheadLogging = true` directly to `SupportOpenHelperFactory(password, null, true)`, and `db.enableWriteAheadLogging()` is removed from `MineDatabaseCallback.onConfigure`. `OnboardingSeedConnectedTest` scopes controllers to a test `SupervisorJob` cancelled in `@After teardown()`, and `relaunch_AfterFinishing_DoesNotShowTheFlowAgain` explicitly cancels `first`'s job before creating `relaunched`. Reason: calling `enableWriteAheadLogging()` inside `onConfigure` causes SQLCipher to start in DELETE mode and attempt dynamic pool reconfiguration while connection initialization is in-flight, which blocks and logs `PRAGMA journal_mode=delete` lock failures under concurrent access. Furthermore, untracked test coroutines outlived test methods, accessing database files while `@Before setup()` unlinked them, leading to SQLCipher page 1 HMAC check failures (`SQLiteDiskIOException (code 522)`). Pre-enabling WAL on the open helper ensures the initial connection flags carry `ENABLE_WRITE_AHEAD_LOGGING` before the database opens. Rejected: disabling WAL (violates blueprints 10 & 14 for SQLCipher concurrency); leaving coroutine scopes unbounded in connected tests. Proof: device-verified on `moto g73 5G - 14`, full connected suite `CONNECTED GATE: PASS - 103 test(s), 0 failed, 0 skipped (source: xml)`.
+- **D-140 (2026-11-09) — Rule 6 for local-only soul facts: `getActiveSoulFacts(includeLocalOnly: Boolean = false)` exposes facts to the Memory viewer with a `🔒` mark, keeping model context builders strictly filtered.** Decision: `Storage.getActiveSoulFacts`, `AndroidStorage.getActiveSoulFacts`, and `SharedFakeStorage.getActiveSoulFacts` gain default parameter `includeLocalOnly: Boolean = false`. Model context builders (`ContextBuilder`, `CheckinBuilder`) use the default `false` (or explicit `false`) to ensure local-only facts are never sent off-device in model prompts. `ChatController.LoadMemory` passes `includeLocalOnly = true`, and `MemoryScreen` renders `🔒` next to any fact where `fact.localOnly == true`, satisfying Blueprint 51 §3.1 Rule 6. Reason: Closes the gap where local-only soul facts (such as sensitive health facts seeded during onboarding or learned locally) were completely hidden from the user in the Memory viewer. Blueprint 51 Rule 6 dictates that local-only items are visible to the user on-device with an explicit lock marker while strictly forbidden from egressing to external LLM providers. Rejected: Exposing local facts in model prompts (violates privacy protocol and Rule 6); keeping local facts hidden from the user in the Memory viewer (violates user transparency and inspection of on-device soul facts). Proof: `MemoryViewerLoadTest.loadMemory_IncludesLocalOnlySoulFacts_WithLockMarkerForViewer` (RED-probed then GREEN), `:core:test` 342/0/0/0, `:app:testDebugUnitTest` 13/0/0/0.
+- **D-141 (2026-11-09) — Evening and weekly check-in reflection facts in `CheckinBuilder` (Blueprint 32 §3.4/§3.5, Row 14, P1-E 25).** Decision: `CheckinBuilder` gains `buildEveningFacts()` and `buildWeeklyFacts()`. `buildEveningFacts()` gathers completed items for the logical day via `storage.getRecentlyClosed(now)`, still open backlog and overdue counts via `storage.getActiveNodeCounts(logicalTodayStart)`, top remaining priority items via `storage.getHomePriorityList(now)`, and tomorrow preview via `storage.getNodesDueBetween(logicalTodayEnd, logicalTomorrowEnd)`. `buildWeeklyFacts()` gathers recent completions and open backlog. All methods strictly filter out `localOnly` items, adhering to Rule 6 and privacy protocols. Reason: Fulfills Blueprint 32 requirements for evening briefings ("Done today", "Still open", "Tomorrow preview") and weekly reviews, providing factual agenda context while preventing external model hallucination of tasks or dates. Rejected: Relying on the model to calculate completion counts or remember past tasks; leaking local-only nodes into briefings. Proof: `CheckinBuilderTest` 4 core unit cases (`buildMorningFacts`, `buildEveningFacts`, local-only exclusion, and `buildWeeklyFacts` — all verified RED then GREEN).
+- **D-142 (2026-11-09) — FTS5 multi-token AND matching in `SharedFakeStorage` & `Embedder` core contract (Blueprint 21 §3.1, P1-E 23).** Decision: `SharedFakeStorage.searchMemoryFts` and `searchHistory` tokenize queries via `Regex("\\s+")` after non-alphanumeric sanitization and require `tokens.all { ... }` across nodes, soul facts, and message content, matching `AndroidStorage`'s SQLite FTS5 `AND` semantics. Defined `Embedder` and `QuantVector` core interfaces in `com.anchor.core.retrieval` without platform dependencies. Reason: Eliminates discrepancy where `SharedFakeStorage` previously only matched exact contiguous substrings, causing multi-token or out-of-order queries to fail on the test fake while succeeding on device SQLite. Preserves core module purity while establishing the contract for on-device embeddings. Rejected: Bringing in LiteRT/TFLite dependencies into `:core` (violates core purity); keeping substring-only matching in `SharedFakeStorage`. Proof: `SearchFtsParityTest` 3/3 cases (RED then GREEN), `:core:test` 349/0/0/0, `:app:testDebugUnitTest` 13/0/0/0.
+
+## D-143 (2026-11-10) — Monotonic day_key, reply day_key inheritance from cause message, and Gradle test stability (Blueprint 50 §3.13, P1-E 21).
+- **Decision:**
+  1. `Storage.insertRawMessage` gains `causeMsgId: String? = null` and `dayKey: String? = null` parameters (with backward-compatible 3-arg overload).
+  2. In `AndroidStorage` and `SharedFakeStorage`, when `causeMsgId` is provided (e.g. streaming assistant reply), `day_key` is inherited directly from the cause message (`raw_message.day_key`), guaranteeing that a reply streaming across midnight / rollover stays anchored to the day the user spoke.
+  3. Monotonicity: when computing a new `day_key`, `day_key` is bounded to be >= the previous message's `day_key`, preventing clock regression or timezone shifts from moving chat history backward in the timeline.
+  4. Test interception parity: `SharedFakeStorage` routes 5-parameter insertions through its 3-parameter `insertRawMessage(id, role, content)` via `currentDayKeyOverride`, ensuring anonymous test subclass hooks (such as `R12ConcurrencyLifecycleTest`) are triggered reliably without latch hangs.
+  5. Build stability: pinned `org.gradle.java.home` to JDK 17 in `gradle.properties` and added `testLogging` in `core/build.gradle.kts` to eliminate Java 25 daemon IPC mismatch.
+- **Reason:** Blueprint 50 §3.13 explicitly specifies: "Day rollover while a reply is streaming: The reply belongs to the day of the message that triggered it (day_key is copied from the cause message)" and "day_key is monotonic: a new message's day_key is never earlier than the previous message's. This protects against clock changes and travel."
+- **Rejected:** Recomputing day_key at stream completion time (causes assistant reply to land in the next day's bucket when streaming across midnight); relying on external clock stability without monotonic enforcement.
+- **Proof:** `DayKeyMonotonicityTest` (3/3 core unit cases: clock regression non-regression, cause message day_key inheritance across rollover, explicit day_key honoring; RED-first then GREEN). Full `:core:test` 352/0/0/0, `:app:testDebugUnitTest` 13/0/0/0, BUILD SUCCESSFUL in 30s.
+
+## D-144 (2026-11-10) — CheckinBuilder dynamic time-of-day dispatch, offline narration template, and ContextBuilder integration (Blueprint 32 §3.1-§3.5, P1-E 25).
+- **Decision:**
+  1. `CheckinBuilder` gains `buildCurrentFacts(now: Long = clock.now())` routing dynamically to `buildEveningFacts()` when `currentMin >= dayRule.endMinute - 90 min` (or pre-rollover night hours), `buildWeeklyFacts() + buildEveningFacts()` on Sunday evenings before Monday rollover, or `buildMorningFacts()` during morning/daytime hours.
+  2. `CheckinBuilder` gains `buildTemplateNarration(facts: String)` providing deterministic, offline conversational text summaries of fact blocks with persona phrasing per Blueprint 32 §3.2.
+  3. `ContextBuilder.kt` line 105 calls `checkinBuilder.buildCurrentFacts(now)` instead of hardcoded `buildMorningFacts()`.
+- **Reason:** Fulfills Blueprint 32 briefing lifecycle requirements and eliminates prompt-context hallucinations caused by morning agenda facts injected during late-night sessions.
+- **Rejected:** Separate independent morning/evening builder classes (adds boilerplate for tightly-coupled briefing queries); model-only narration without deterministic offline fallback.
+- **Proof:** `CheckinBuilderTest` (8/8 core unit tests passed: morning, evening, Sunday evening weekly review, local-only exclusion, and offline persona narration; RED-first then GREEN).
+
+## D-145 (2026-11-10) — ReliabilityManager systematic score evaluation, p95 latency telemetry, sweeper heartbeat staleness, and startup gap detection (Blueprint 42 §3.4/§3.6/§3.8, P1-E 27).
+- **Decision:**
+  1. Reliability score standardized as "healthy" | "at_risk" | "degraded" (preserving `UiState.atRisk` compatibility while supporting BP 42's 3 tiers).
+  2. `Storage`, `AndroidStorage`, and `SharedFakeStorage` gain `getRecentReminderFires(limit: Int = 20)`.
+  3. `ReliabilityManager` gains `computeP95LatencyMs(sampleSize: Int = 20)` calculated from `reminder_fire.latency_ms`.
+  4. `ReliabilityManager` gains `evaluateReliabilityScore()` which sets "degraded" on missed fires, "at_risk" if p95 latency > 2 min (120,000ms), sweeper heartbeat is stale (> 45 min), or active scheduling errors exist, and "healthy" otherwise.
+  5. `ReliabilityManager` gains `detectStartupGap()` which detects force-stop gaps when sweeper heartbeat is stale (> 45 min) and pending reminders are overdue.
+- **Reason:** Makes reliability metrics truthfully measured and observable rather than relying on ad-hoc reconcile exception catches.
+- **Rejected:** Color string codes "green"|"amber"|"red" in database (breaks existing D-114/D-121 code contracts expecting "at_risk"); unbounded latency calculation across entire database history.
+- **Proof:** `ReliabilityManagerTest` (11/11 core unit tests passed: p95 latency calculation, degraded score on missed reminders, at_risk on latency/heartbeat staleness, healthy on clean pass, force stop startup gap detection; RED-first then GREEN).
+
+## D-146 (2026-11-10) — Memory Viewer soft-delete and archive actions with undo receipts (Blueprint 51 §3.1/§3.3, P1-E 30).
+- **Decision:**
+  1. `ChatContract.kt` gains `UiAction.ArchiveNode(nodeId)` and `UiAction.DeleteNode(nodeId)`.
+  2. `Gateway` implements `handleArchiveNode(nodeId)` (sets status "archived", cancels reminders, logs RawEvent "ARCHIVE_NODE") and `handleDeleteNode(nodeId)` (sets status "cancelled", cancels reminders, logs RawEvent "DELETE_NODE") with before/after state snapshots.
+  3. `ChatController` handles both actions by invoking Gateway, adding an undoable transient `ReceiptState`, and refreshing memory items.
+  4. `MainActivity.kt` `MemoryScreen` provides "Archive" and "Delete" actions on each memory node item with backward-compatible default onAction parameter.
+- **Reason:** Blueprint 51 §3.1 requires that all memory viewer mutations flow through the gateway with full undoability, without calling external models.
+- **Rejected:** Hard-deleting rows (violates D-002 and Blueprint 51 Rule 4); direct database updates bypassing Gateway and RawEvent operation log.
+- **Proof:** `MemoryViewerLoadTest` (5/5 core unit tests passed: archiving removes item from viewer with undo receipt, undo restores to active; deleting cancels item with undo receipt, undo restores to active; local-only facts preserved with lock; RED-first then GREEN).
+
+## D-147 (2026-11-10) — Behavioral learning engine, signal_log, learned_pref, decay, exploration, and reset (Blueprint 25 §1-§5, P1-E 26).
+- **Decision:**
+  1. `SignalLog` and `LearnedPref` models created in `:core`; `Storage`, `AndroidStorage`, and `SharedFakeStorage` implement `recordSignal`, `getSignals`, `getLearnedPref`, `getAllLearnedPrefs`, `saveLearnedPref`, and `resetLearning`.
+  2. `LearningEngine` implemented in `:core` (`com.anchor.core.learning`):
+     - Binary response rates (e.g. nudge reply vs. ignore) modeled via Beta distribution ($\alpha, \beta$) with Laplace prior ($\alpha_0=1, \beta_0=1$).
+     - Exponential decay applied with default 60-day half-life ($w_i = 2^{-\Delta t / T_{1/2}}$) clamped to $\Delta t \ge 0$ against clock skew.
+     - Minimum samples threshold ($N = 8$) enforced: under 8 samples, confidence = 0.0 and defaults apply.
+     - Exploration rate ($10\%$) implemented via `shouldExplore()` to prevent echo chambers and local minima.
+     - User-locked preferences (`locked = true`) preserved across recompute and reset.
+     - Reset epoch recorded in `app_meta` (`learning_reset_epoch`) to prevent resurrection of cleared preferences on subsequent recompute.
+     - Plain-English explainability (`explainPreference`, `explainWhy`) formatting response rates, snooze habits, and trigger rationales.
+  3. `ChatController` wired: records `SIGNAL_NUDGE_IGNORED` when backoff increments in `TickProactive`; records `SIGNAL_NUDGE_REPLY` when user answers an open thread in `sendText`; handles `UiAction.WhyNudge`, `LockLearnedPref`, and `ResetLearning`; surfaces `learnedPrefs` and `whyNudgeText` in `UiState`.
+- **Reason:** Fulfills Blueprint 25 §1 ("all learning is visible, explainable, bounded and resettable", "plain statistics in code, no LLM") and provides a concrete feedback loop from user responses into proactive timing.
+- **Rejected:** LLM calls for behavioral learning (violates Blueprint 25 §1); unbounded learning weights without decay; silent preference mutations without user explainability.
+- **Proof:** `LearningEngineTest` (13/13 passed) and `ProactiveLearningIntegrationTest` (4/4 passed). Full unit suite: 382 core, 13 app tests passing in 6s.
+
+## D-148 (2026-11-10) — Rebuild jobs skeleton, anchor preservation, and layer validation (Blueprint 11 §4-§5, P1-E 22).
+- **Decision:**
+  1. `RebuildContracts.kt` defines `RebuildTarget` (`DERIVED_NODES`, `DERIVED_EDGES`, `EMBEDDINGS`, `FTS`, `FULL`), `RebuildStatus` (`IDLE`, `PLANNING`, `RUNNING`, `VALIDATING`, `COMPLETED`, `FAILED`, `PAUSED`), `RebuildPlan`, `RebuildProgress`, and `RebuildValidationResult`.
+  2. `RebuildManager` implemented in `:core` (`com.anchor.core.rebuild`):
+     - `planRebuild`: calculates raw message count and identifies anchor rows where `origin == "approved" || origin == "user_edit"`.
+     - `validateAnchors`: strictly verifies that approved and user-edited nodes are preserved intact across any rebuild candidate (enforcing D-028 and Blueprint 11 §4 Rule 4: a rebuild NEVER overwrites anchors).
+     - `validateIntegrity`: detects orphan edges (edges whose endpoints do not exist) and blank titles before allowing atomic swap.
+     - Progress tracked in `app_meta` keys (`rebuild.status`, `rebuild.target`, `rebuild.processed`, `rebuild.total`, `rebuild.last_error`) ensuring resumability across process death.
+     - `resumeOrDiscard`: automatically pauses an interrupted rebuild on app restart so the user or background job can cleanly resume or discard without corrupting derived state.
+  3. `Node` data class in `Memory.kt` gains `val origin: String = "user_edit"` with default value preserving 100% backward compatibility for all existing call sites.
+- **Reason:** Separates the append-only raw layer from derived projections and guarantees that user edits and approved AI extractions are never wiped out during background re-extractions or model upgrades.
+- **Rejected:** Overwriting user edits during re-extraction (violates D-028 and core trust principle); in-memory progress tracking that loses rebuild position on process kill.
+- **Proof:** `RebuildManagerTest` (4/4 passed: plan generation, anchor corruption detection, orphan edge integrity validation, and progress persistence across simulated process death). Full unit suite: 386 core, 13 app tests passing in 7s.
+
+## D-149 (2026-11-10) — Personas, Core Rules Layering & Tone Safety (Blueprint 24, P1-E 29) and Offline Outbox & Template Engine (Blueprint 41, P1-E 28).
+- **Decision:**
+  1. `Persona.kt` and `PersonaPresets.kt` define 5 standard presets (`COMPANION`, `COFOUNDER`, `COACH`, `CHILL_FRIEND`, `MINIMAL`) with `findById(id, customJson)` support.
+  2. `PersonaEngine.kt` implements prompt layering: Layer 1 Core Rules (privacy, safety, deterministic tool use), Layer 2 Persona style & tone rules, Layer 3 Soul facts communication style injection. Added `detectDistress(text)` tone safety override: distress/crisis automatically disables persona banter/coaching and forces calm, direct, supportive demeanor.
+  3. `TemplateEngine.kt` created in `:core/persona` supporting all 8 triggers (`REMINDER_START`, `REMINDER_CHECK`, `REMINDER_DEADLINE`, `NUDGE_OVERDUE`, `NUDGE_STALE`, `CHECKIN_MORNING`, `CHECKIN_EVENING`, `CHECKIN_WEEKLY`), 5 persona tones, slot interpolation, and `Math.floorMod` index rotation.
+  4. `OutboxJob` extended with dropped status and priority classes. `Storage.dropStaleOutbox(now)` implemented across `SharedFakeStorage` and `AndroidStorage`.
+- **Reason:** Blueprint 24 §1 requires clean separation of invariant safety rules from persona variations, and Blueprint 41 requires reliable offline communication without remote LLMs.
+- **Rejected:** Hardcoding persona prompts into the chat envelope; allowing personas to override core security or tone rules during distress; discarding outbox jobs silently without a dedicated dropped status.
+- **Proof:** `PersonaEngineTest` (5/5), `PersonaIntegrationTest` (4/4), `TemplateEngineTest` (6/6), `OutboxStaleTest` (1/1) all passed.
+
+## D-150 (2026-11-10) — Settings Catalog Backend (Blueprint 52 §3.4, P1-E 31) and Context Pack Compact Mode Budgeting (Blueprint 20 §3.4, P1-E 32).
+- **Decision:**
+  1. `SettingSection.kt`, `SettingDef.kt`, `SettingsCatalog.kt`, and `SettingsManager.kt` created in `:core/settings`. Authoritative definitions, types, defaults, and validators for all 12 Blueprint 52 sections. Section reset (`resetSectionToDefaults`) strictly restricted to sections 4-8 per Blueprint 52 §3.4.
+  2. `ContextBuilder.kt` gains `compactMode` parameter (budget reduction: Active nodes 700 -> 300 tokens, Soul facts 1250 -> 625 chars, Recent chat 1500 -> 600 tokens). Minimum 6-message preservation guarantee for non-oversized messages, while preserving the H3 invariant that oversized messages do not crowd out normal messages.
+- **Reason:** Centralizes app configuration truth in code with type-safe validation, and ensures tight prompt budgeting under memory or network constraints.
+- **Rejected:** Unbounded settings keys; allowing section resets on destructive categories (e.g. data or cloud sync) without explicit safeguards.
+- **Proof:** `SettingsCatalogTest` (5/5) and `ContextBuilderBudgetTest` (3/3) passed.
+
+## D-151 (2026-11-10) — Resolver Scoring Scale & Unicode Normalization (Blueprint 22 §3.3/§3.4, P1-E 33).
+- **Decision:**
+  1. Candidate scoring in `Resolver.kt` normalized to a strict 0.0..1.0 scale with weights aligned to Blueprint 22 §3.4 (Text 0.35, Time 0.25, Recency 0.20, Status fit 0.10, Type fit 0.10). Active signals are dynamically normalized so scores accurately reflect confidence across missing features.
+  2. Candidate pool filters open/active nodes first for closing intents (`CANCEL`, `COMPLETE`) per Blueprint 22 §3.3.
+  3. Added `recentlyDiscussedNodeIds: List<String> = emptyList()` default parameter for coreference tie-breaking.
+  4. Standardized tokenization on `Locale.ROOT` and expanded command word and stopword filtering while preserving the exact title match fast-path and H-14 single-candidate chip guarantee.
+- **Reason:** Blueprint 22 §3.4 defines unambiguous code-level disambiguation preventing accidental auto-cancellations or model-hallucinated similarity edits.
+- **Rejected:** Unbounded integer score boosts; locale-dependent `Locale.getDefault()` lowercasing.
+- **Proof:** `ResolverScaleAndUnicodeTest` (5/5), `WhichDinnerTest` (12/12), `ResolverSingleLowMatchChipTest` (2/2) all passed.
+
+## D-152 (2026-11-10) — Automated Security & Privacy Scenarios E-15/E-16 Audit Harness (Blueprint 93 §3.2, P1-E 34).
+- **Decision:**
+  1. `PromptInjectionE15Test.kt` created covering Scenario E-15: direct injection prompts, notification quick-reply injection, delimiter escape attempts (`</data><data>`), and non-destructive execution.
+  2. `PrivacyAuditE16Test.kt` created covering Scenario E-16: multi-turn capturing proxy intercepting all wire requests, validating zero API key leaks, zero `local_only` leaks, proper delimiter enclosure (`<data>...</data>`), and alias mapping enforcement.
+- **Reason:** Satisfies release gate X-01 end-to-end automation requirements for privacy and injection safety.
+- **Rejected:** Manual-only audit tests; relying on LLM self-reporting for privacy boundaries.
+- **Proof:** `PromptInjectionE15Test` (3/3), `PrivacyAuditE16Test` (1/1), `PrivacyAndInjectionTest` (5/5) all passed in `:core:test`.
+
+## D-153 (2026-11-10) — App Lock UI Gate, Security Controls, About & Updates (Blueprint 16 §3.2, Blueprint 52 §3.4, Blueprint 90 Row 1 & 22, P1-E 35).
+- **Decision:**
+  1. `UiState` and `UiAction` in `:core` extended with:
+     - `appLockEnabled`, `isAppLocked`, `relockTimeoutSec`, `blockScreenshots`, `compactMode`.
+     - `UnlockApp`, `LockApp`, `SetAppLock`, `SetRelockTimeout`, `SetBlockScreenshots`, `SetCompactMode`.
+  2. `ChatController` handles state transitions and setting persistence (`privacy.app_lock`, `privacy.relock_timeout_sec`, `privacy.block_screenshots`, `ai.compact_mode`). On cold start, if `privacy.app_lock == "1"`, the app initializes in the locked state (`isAppLocked = true`).
+  3. App lock enforces D-030 invariant: it is strictly a UI gate and does NOT bind SQLCipher database key encryption to user authentication. Background alarms, sweepers, boot reconciler, and notifications continue uninterrupted while the UI is locked.
+  4. `MainActivity` integrates native `android.hardware.biometrics.BiometricPrompt` with `BIOMETRIC_STRONG or DEVICE_CREDENTIAL` (API 34 native, zero new external dependencies), observes `blockScreenshots` to toggle `WindowManager.LayoutParams.FLAG_SECURE` (protecting screenshots and task switcher recents preview), and checks background duration on `onResume` against `relockTimeoutSec`.
+  5. `LockScreen` composable prevents access to all tabs and private data when locked.
+  6. `DebugScreen` expanded to expose Privacy & Security controls (App lock toggle, relock timeout chips [0s, 60s, 300s, 1800s], screenshot blocking toggle), AI & Performance (Compact mode toggle), About Mine metadata (app version, build code, schema 6, export format 1, GPL-3.0-or-later license, and "Check for updates" button), and storage stats.
+- **Reason:** Satisfies Blueprint 90 Row 1 (App lock UI gate) and Row 22 (About & updates) requirements while guaranteeing privacy and physical device safety.
+- **Rejected:** Tying database encryption to biometric auth (would break background alarms and boot reconciliation); adding `androidx.biometric:biometric` dependency (redundant since `minSdk = 34`).
+- **Proof:** `AppLockStateTest` (8/8 in `:core:test`), `AppLockGateTest` and `DebugScreenTest` (in `:app` androidTest), `:app:compileDebugAndroidTestKotlin` and `:app:testDebugUnitTest` green.
+
+## D-154 (2026-11-10) — Outbox Deadline Null Preservation (Batch 1 Hardening, B1-01).
+- **Decision:** In `AndroidStorage.kt` `insertOutboxJob`, pass `job.deadlineAt` directly as `null` or epoch timestamp via `arrayOf<Any?>`, instead of coercing `null` to `""`. In `toOutboxJob()`, parse empty or null column 8 as `null`.
+- **Reason:** Writing `""` to an INTEGER column caused SQLite / type converters to coerce empty strings to `0L` (epoch 1970), causing `dropStaleOutbox` to erroneously drop jobs with indefinite deadlines immediately.
+- **Rejected:** Treating `0L` as indefinite deadline (conflicts with Blueprint 41 outbox contract where `deadline_at IS NULL` represents non-expiring jobs).
+- **Proof:** `AndroidStorageTest.testOutboxDeadlineAt_NullPreservedThroughStorage` passing.
+
+## D-155 (2026-11-10) — GlobalError Boundary & Transient Receipt Isolation (Batch 1 Hardening, B1-03, B1-05).
+- **Decision:** Reserve `UiState.globalError` strictly for unrecoverable startup/database open failures. Background ticks (`TickProactive`, `DrainQueuedTurns`, `SaveProvider`, `LoadMemory`) and all UI actions in `ChatController.kt` catch non-fatal exceptions, emit structured `Receipt(kind = "error", ...)` into `transientReceipts`, and refresh UI without setting `globalError`. In `loadInitialState()`, wrap `queuedChatIds()` in `runCatching` so an outbox query failure cannot brick initial startup.
+- **Reason:** Previously, any transient network, LLM, or outbox error during background ticks painted the entire app in full-screen red error state, locking the user out of all 7 tabs.
+- **Rejected:** Silent swallow of errors; full app bricking for non-startup failures.
+- **Proof:** `TitaniumBatch1Test.testBackgroundFailure_DoesNotSetGlobalError` and `testUiAction_StorageException_EmitsErrorReceiptWithoutCrash` passing.
+
+## D-156 (2026-11-10) — Composer Send Offline Enqueue Boundary (Batch 1 Hardening, B1-04).
+- **Decision:** In `ChatController.kt:1348`, when an `OfflineException` occurs mid-flight or at the start of sending a composer message, check `activeUserMsgId != null` instead of `existingUserMsgId != null` when determining whether to write an outbox turn.
+- **Reason:** A newly typed message in the composer has `existingUserMsgId == null`. If connectivity dropped during stream initiation, the previous code skipped enqueueing it to the outbox, dropping the user's message silently.
+- **Rejected:** Forcing the user to manually retype or copy-paste their message when connectivity fluctuates.
+- **Proof:** `TitaniumBatch1Test.testComposerSend_DropsOfflineMidStream_EnqueuesToOutbox` passing.
+
+## D-157 (2026-11-10) — NudgeEngine Day Rollover & Locale Parsing Hardening (Batch 2 Hardening, B2-06, B2-07).
+- **Decision:**
+  1. `NudgeEngine.evaluate` and `onNudgeSent` accept `currentDayKey: String? = null`. When `currentDayKey != state.dayKey`, `sentToday` is reset to 0 before evaluating limits.
+  2. `DateResolver.kt` duration parsing lowercases candidate text using `Locale.ROOT` instead of `Locale.getDefault()`.
+- **Reason:** Without day rollover reset, `sentToday` accumulated monotonically until hitting the 40-nudge hard fuse, permanently disabling proactive nudges forever. In Turkish (`tr-TR`) and Azerbaijani (`az-AZ`) locales, `Locale.getDefault().lowercase()` turns `I` into dotless `ı`, breaking `"minutes"` / `"mınutes"` parsing.
+- **Rejected:** System clock-dependent day checks without explicit `dayKey`; relying on default device locale for internal keywords.
+- **Proof:** `TitaniumBatch2Test.testNudgeEngine_DayRollover_ResetsSentToday` and `testDateResolver_TurkishLocale_ParsesRelativeDurations` passing.
+
+## D-158 (2026-11-10) — High-Frequency SQLite Indexes & FTS Migration Rebuild (Batch 3 Hardening, B3-12, B3-13).
+- **Decision:**
+  1. Add 5 performance indexes to `MineDatabaseHelper.kt`: `idx_reminder_node_id ON reminder(node_id)`, `idx_node_status_closed ON node(status, closed_at)`, `idx_soul_fact_status ON soul_fact(status)`, `idx_signal_log_kind_ts ON signal_log(kind, ts_utc)`, and `idx_proposal_status_created ON proposal(status, created_at)`.
+  2. In `MineDatabaseHelper.kt:onUpgrade`, execute `INSERT INTO <fts>(<fts>) VALUES('rebuild')` for all external-content FTS tables (`node_fts`, `msg_chunk_fts`, `soul_fact_fts`).
+- **Reason:** Queries filtering active nodes, soul facts, reminder lookup by node ID, and signal logs perform full table scans without indexes. External FTS content tables can lose synchronization across table rebuilds during schema migrations.
+- **Rejected:** Unindexed foreign key lookups; skipping FTS index rebuilds during migration.
+- **Proof:** `DatabaseMigrationTest.testDatabaseMigration_V5toV6_CreatesOutboxTableAndIndex` passing.
+
+## D-159 (2026-11-11) — Titanium Punch-List Time-Bombs Remediation (TB-1 through TB-6).
+- **Decision:**
+  1. **Full UUID Entropy (TB-1):** Removed all `.take(6)` and `.take(8)` truncations on `UUID.randomUUID()` across `Gateway.kt`, `ChatController.kt`, `AlarmReceiver.kt`, `ReliabilityManager.kt`, and `DayRollover.kt`.
+  2. **Atomic Outbox Claim (TB-2):** Added `Storage.claimOutbox(id, nextTryAt, now)` executing `UPDATE outbox SET next_try_at = ?, updated_at = ? WHERE id = ?`. Replaced buggy `enqueueOutbox` (which used `INSERT OR IGNORE` and silently dropped claims).
+  3. **Outbox Tool-Only Reply Drain (TB-3):** In `ChatController.kt`, call `markBatchAnswered(batchIds)` when `hasCommitted && batchIds.isNotEmpty()` even when generic assistant replies like `"Done!"` are suppressed.
+  4. **Live DB Rebind on Backup Import (TB-4):** In `AndroidExportManager.kt` and `AndroidStorage.kt`, rebind `MineApp.sharedStorage` and `AndroidStorage.rebind(newHelper)` after file swap or rollback, preventing `attempt to re-open an already-closed object`.
+  5. **Single Unified System Prompt (TB-5):** Consolidated static tool instructions, temporal authority, and `PersonaEngine` system prompt into `ContextBuilder`'s single system message. Read `provider.rpm_default` setting in `ChatController.kt`.
+  6. **Safe Fallback DB Helper Close (TB-6):** Enclosed fallback database helpers in `AlarmReceiver.kt` and `BootReceiver.kt` within `try ... finally { db.close() }` blocks.
+- **Reason:** Eliminates silent time bombs: 16-bit Birthday paradox ID collisions, double-send outbox drain race conditions, outbox amnesia loops on tool calls, SQLite closed-handle app bricking, and native file descriptor leaks.
+- **Rejected:** Suppressing exceptions on closed DB; keeping two separate system messages per turn.
+- **Proof:** `TitaniumPunchListTest` (6/6 in `:core:test`), `AlarmReceiverGuardTest` in `:app:testDebugUnitTest`.
+
+## D-160 (2026-11-11) — Memory Erase & 30-Day Trash Lifecycle (Feature Gap 2, Gate E-12).
+- **Decision:** Added `getTrashNodes(now, limit)` and `eraseNode(nodeId)` to `Storage`, `AndroidStorage`, and `SharedFakeStorage`. Added `handleRestoreNode` and `handleEraseNode` to `Gateway`. Added `UiAction.RestoreNode` and `UiAction.EraseNode` to `ChatContract`, and exposed `trashNodes` in `UiState`.
+- **Reason:** Blueprint 51 §3.2 and Gate `E-12` require soft-deleted items to remain recoverable for 30 days (`archived_at >= now - 30 days`), and permanent `Erase` to scrub content and edges from SQLite, FTS, and memory.
+- **Rejected:** Permanent deletion on first archive action without trash recovery period.
+- **Proof:** `TitaniumPunchListTest.testFeatureGap2_TrashAndErase` passing.
+
+## D-161 (2026-11-11) — RateLimiter Cooldown Persistence Across Process Death (Feature Gap 3, Gate X-07).
+- **Decision:** Created `RateLimitPersistence` and `StorageRateLimitPersistence(storage)` storing 429 backoff timestamps in `app_meta` under keys `ratelimit.cooldown.<targetKey>`. Wired into `RateLimiter` secondary constructor and initialized in `MainViewModel`.
+- **Reason:** Gate `X-07` requires 429 cooldowns to survive process termination, preventing immediate API hammering on app restart.
+- **Rejected:** In-memory-only maps without durable storage.
+- **Proof:** `TitaniumPunchListTest.testFeatureGap3_RateLimiter429SurvivesProcessDeath` passing.
+
+## D-162 (2026-11-11) — Direct-Boot Alarm Safety Net (Roadmap P1.1 Item 2, Blueprint 42).
+- **Decision:** Implemented `DirectBootAlarmStore` in Device-Protected (DE) storage (`direct_boot_alarms.db`). Registered `AlarmReceiver` and `BootReceiver` with `android:directBootAware="true"` and `Intent.ACTION_LOCKED_BOOT_COMPLETED`.
+- **Reason:** Blueprint 42 requires scheduled alarms to ring even if the device restarts before the user enters their PIN or passcode (Direct-Boot locked state).
+- **Constraint (Invariant 1):** DE database stores ZERO private text (only generic `"Reminder"` label, `fire_at` timestamp, `tier`). Full decrypted reminders remain protected inside Credential-Encrypted (CE) SQLCipher.
+- **Proof:** `DirectBootSafetyNetTest` passing on physical device moto g73 5G.
+
+## D-163 (2026-11-11) — Recurrence Rules & Habit Streaks Schema Migration (V6 -> V7, v1.1 Item 3).
+- **Decision:** Bumped `DATABASE_VERSION` from 6 to 7. Idempotently migrated `node` table to add `recurrence_rule` (TEXT), `streak_current` (INTEGER NOT NULL DEFAULT 0), `streak_best` (INTEGER NOT NULL DEFAULT 0), and `last_completed_at` (INTEGER). Migrated `reminder` table to add `rrule` (TEXT) and `iteration` (INTEGER NOT NULL DEFAULT 0). Created index `idx_node_habit ON node(type, streak_current)`. Implemented pure-Kotlin `RecurrenceEngine` in `:core` and wired habit completion in `Gateway`.
+- **Reason:** Blueprint 13 & 90 require habits and recurring reminders to be first-class citizens. Completing a habit calculates the next occurrence (> `now`), advances the streak (with 36h grace window for daily habits), and keeps the habit active instead of terminating it.
+- **Rejected:** Keeping recurrence solely inside serialized JSON `attrs`, which prevented indexing and efficient streak queries.
+- **Proof:** `RecurrenceEngineTest` (9/9 pass in `:core`), `DatabaseMigrationTest.testDatabaseMigration_V6toV7_AddsRecurrenceAndStreakColumns` passing on device.
+
+## D-164 (2026-11-11) — Offline Speech Pipeline Integration (Roadmap v1.1 Item 4, Blueprint 60).
+- **Decision:** Integrated on-device speech processing runtime (`com.k2fsa.sherpa.onnx:sherpa-onnx:2.0.1` AAR) in `:app/src/main/java/com/anchor/mine/voice/`:
+  1. `SherpaVoiceEngine` encapsulating Silero VAD (`Vad`), streaming Zipformer transducer ASR (`OnlineRecognizer`), and Kokoro TTS (`OfflineTts`).
+  2. Fixed sherpa-onnx v2.0 Kokoro tokenization by providing `lexicon-us-en.txt` for grapheme-to-phoneme mapping.
+  3. `SherpaVoiceEngine.cleanTextForSpeech` strips code fences, markdown, and XML delimiters before synthesis per Blueprint 60 §3.3.
+  4. Audio playback via Android `AudioTrack` with `AudioFormat.ENCODING_PCM_FLOAT` at 24000 Hz.
+  5. Kept `:core` strictly pure Kotlin (no Android audio or JNI framework dependencies). Added `RECORD_AUDIO` to `AndroidManifest.xml`.
+- **Reason:** Blueprint 60 requires offline, on-device voice transcription and speech output without network dependencies.
+- **Rejected:** Runtime compilation of sherpa-onnx from C++ source (AAR provides pre-compiled arm64/x86 JNI binaries); committing model weights or AAR binaries to git (`*.aar` and `models/` git-ignored).
+- **Proof:** `SherpaVoiceEngineTest` (5/5 unit tests pass), `SherpaVoiceEngineDeviceTest` passing on physical device `moto g73 5G - Android 14`.
+
+## D-165 (2026-11-11) — Multi-Target Fallback Chain in ChatController (Roadmap v1.1 Item 5, Blueprint 40).
+- **Decision:** In `ChatController.kt` (line 1288), replaced hardcoded single-element `listOf(target)` with a dynamic fallback chain:
+  `chain = [Primary Target, Fallback Target(s)]` configured from settings (`ep`, `key`, `provider.rpm_default`, and `provider.fallback.endpoint`, `provider.fallback.key`, `provider.fallback.rpm`).
+  Registered fallback settings in `SettingsCatalog.kt`.
+- **Reason:** Blueprint 40 §3 requires slots to have ordered fallback chains. When the primary provider encounters a 429 rate-limit, 5xx error, or connection failure, `ProviderOrchestrator` automatically retries across the secondary fallback targets in the chain rather than failing the turn or dropping queued messages.
+- **Rejected:** Hardcoding a single target list; looping manually in the UI layer (orchestrator handles chain navigation and buffer clears).
+- **Proof:** `ProviderFallbackChainTest` (1/1 pass in `:core:test`), verified transparent fallback to secondary endpoint on 429.
+
+## D-166 (2026-11-11) — Direct-Boot Post-Unlock Reconciliation & DE Store WAL Singleton.
+- **Decision:** Added `direct_boot_fired` table to DE storage (`direct_boot_alarms.db`) to record alarms fired while device was locked. Created `DirectBootReconciler` in `:core` to retire pending reminders and record `ReminderFire` (`delivered`) in decrypted CE SQLCipher upon user unlock, preventing duplicate missed alerts from `ReliabilityManager.runSweeper()`. Configured `DirectBootAlarmStore` with WAL mode and singleton open helper.
+- **Reason:** Reminders fired in direct boot could not write to CE storage while encrypted. On first unlock, sweeper treated overdue reminders as missed, emitting duplicate "Missed: Reminder" notifications.
+- **Rejected:** Skipping sweeper on unlock (sweeper must still catch reminders missed while the device was completely powered off).
+- **Proof:** `DirectBootReconcilerTest` (2/2 pass in `:core`), `DirectBootSafetyNetTest` in `app/src/androidTest`.
+
+## D-167 (2026-11-11) — RateLimiter Monotonic Clock Isolation & Cooldown Sanity.
+- **Decision:** Decoupled sliding-window RPM rate-limiting from wall-clock shifts using monotonic clock (`SystemClock.elapsedRealtime()`). Implemented a 1-hour maximum ceiling (`MAX_COOLDOWN_MS = 3600_000L`) on persisted 429 cooldowns, automatically discarding corrupted or clock-skewed timestamps that would otherwise lock out the user.
+- **Reason:** System wall-clock jumps backwards (NTP sync/timezone) caused sliding window stamps to freeze for minutes; forward clock jumps persisted multi-year bans in `app_meta`.
+- **Rejected:** Storing monotonic clock timestamps across process reboots (elapsedRealtime resets on device reboot; cooldown persistence requires wall-clock with sanity clamping).
+- **Proof:** `RateLimiterTest` (3/3 pass in `:core`).
+
+## D-168 (2026-11-11) — Non-Destructive Column Updates in AndroidStorage.
+- **Decision:** Replaced `INSERT OR REPLACE INTO soul_fact` and `INSERT OR REPLACE INTO reliability_state` with parameterized `UPDATE ... WHERE id = ?` and fallback `INSERT`.
+- **Reason:** SQLite `INSERT OR REPLACE` deletes and recreates rows, resetting omitted schema columns (`attrs`, `pinned_core`, `valid_from`, `valid_to`, `last_force_stop_detected`) to NULL/defaults on every update.
+- **Rejected:** Adding dummy values to `INSERT OR REPLACE` (would still overwrite existing DB attributes with blank defaults).
+- **Proof:** `AndroidStorageTest.testSaveSoulFact_PreservesMetadataColumns_AttrsAndPinnedCore` and `testSaveReliabilityState_PreservesLastForceStopDetected`.
+
+## D-169 (2026-11-11) — Prompt-Cache Prefix Ordering Alignment & On-Device Embedder Wiring.
+- **Decision:** In `ContextBuilder.kt`, positioned static prompt sections (`TOOL_INSTRUCTIONS`, `systemRules`, `Soul:`, `Active Items:`) ahead of volatile dynamic timestamps (`Now: $nowStr`, checkins, proposals). Staged `EmbeddingGemma 2 Text 270M` `.litertlm` (157 MB) and implemented `LiteRtEmbedder` in `:app` with Matryoshka 256-dimension truncation and int8 quantization.
+- **Reason:** Blueprint 20 §3.2 requires static-to-dynamic prefix order to maximize LLM KV prompt cache hit rate across turns. Blueprint 21 §3.1 requires on-device embedding support via LiteRT.
+- **Rejected:** Placing `Now:` at the top of the prompt; full 768-dim unquantized embeddings (wasted storage and computation).
+- **Proof:** `ContextBuilderTest.testPromptCacheOrdering_StaticBeforeDynamic` (9/9 pass in `:core`), `LiteRtEmbedderTest` (3/3 pass in `:app`).
+
+## D-170 (2026-11-11) — Hybrid Retrieval with Reciprocal Rank Fusion (RRF, k=60) & DB Schema V8.
+- **Decision:** Implemented `HybridRetriever` in `:core/src/main/java/com/anchor/core/retrieval/HybridRetriever.kt` fusing SQLite FTS5 BM25 keyword search and on-device quantized embeddings using Reciprocal Rank Fusion ($k = 60$). Added sub-microsecond int8 cosine similarity calculation where float scale factors cancel out: $\text{sim} = \sum b_1 b_2 / (\sqrt{\sum b_1^2} \sqrt{\sum b_2^2})$. Applied status multipliers (active 1.0, closed 0.8, paused 0.9) and temporal boosts ($1.5\times$ for query date windows). Bumped database version to 8, adding `embedding` table and `idx_embedding_owner` index.
+- **Reason:** Blueprint 21 §3.5 requires hybrid search so exact keyword matches (codes, order numbers, proper nouns) survive semantic blur, while semantic embeddings catch synonyms and conceptual matches without score calibration across modalities.
+- **Rejected:** Linear score interpolation (requires fragile calibration between BM25 log-odds and vector cosine distance).
+- **Proof:** `HybridRetrieverTest` (5/5 PASS in `:core`), `DatabaseMigrationTest.testDatabaseMigration_V7toV8_CreatesEmbeddingTableAndPerformsVectorOps` (PASS in `:app`).
+
+## D-171 (2026-11-11) — Readable Markdown Export (Blueprint 15 §3.4 / Roadmap v1.1 Item 4).
+- **Decision:** Built `ReadableMarkdownExporter` in `:core` and exposed `exportMarkdown` / `runExportMarkdown` on `ExportController` and `BackupScreen`. Includes loud top-level plain-text security warning: `> ⚠️ WARNING: UNENCRYPTED PLAIN TEXT EXPORT ... cannot be re-imported into Mine.` Groups notes and habits with streaks, soul facts by category, and chat messages grouped by day under `## Day: YYYY-MM-DD`, with redacted messages clearly marked `[Redacted]`.
+- **Reason:** Blueprint 15 §3.4 requires a human-readable plain text export for archiving that is explicitly one-way and cannot be re-imported.
+- **Rejected:** Making readable markdown importable (schema drift and lack of cryptographic AEAD integrity checks).
+- **Proof:** `ReadableMarkdownExportTest` (3/3 PASS in `:core`), `ExportControllerTest.testExportMarkdown_Success_WritesReadableFile` (PASS).
+
+## D-172 (2026-11-11) — Graph Neighborhood 1-2 Hop Traversal, Calendar Buckets & Board View Queries.
+- **Decision:** Implemented `getGraphNeighborhood(nodeId, maxHops, cap = 150)` in `Storage.kt`, `SharedFakeStorage.kt`, and `AndroidStorage.kt` using BFS traversal along both incoming and outgoing edges with cycle detection and node capping. Implemented `getCalendarBuckets(startMs, endMs)` grouping due items by dayKey, and `getBoardViewNodes(limitPerColumn)` grouping by "todo", "in_progress", and "done" columns.
+- **Reason:** Blueprint 13 §3.7 and Blueprint 51 §50/§199 require bounded 1-2 hop neighborhood expansion around top nodes and structured grouping for calendar grid and Kanban board views.
+- **Rejected:** Unbounded recursive graph traversal (would exhaust memory and context pack budget on dense graphs).
+- **Proof:** `GraphNeighborhoodAndCalendarTest` (4/4 PASS in `:core`).
+
+## D-173 (2026-11-11) — Android Share Target (`ACTION_SEND`) & Pure-Kotlin Widget Data Source.
+- **Decision:** Added `android.intent.action.SEND` (`text/plain`) intent filter to `MainActivity` in `AndroidManifest.xml`. In `MainActivity.handleShareIntent()`, routed shared text to composer draft and requested composer focus. Built `WidgetDataSource` in `:core/src/main/java/com/anchor/core/widget/WidgetDataSource.kt` producing `WidgetSnapshot` of prioritized open tasks, overdue status, and upcoming alarm counts with zero Android framework imports.
+- **Reason:** Blueprint 50 §241 and Roadmap v1.1 Item 7 require zero-friction "Share to Mine" system integration and widget data feeds while maintaining pure Kotlin core domain logic.
+- **Rejected:** Placing widget data source logic in `:app` with Android-specific RemoteViews coupling (decouples data snapshot calculation from Android widget rendering).
+- **Proof:** `WidgetDataSourceTest` (PASS in `:core`), `app/src/main/AndroidManifest.xml` verified.
+
+## D-174 (2026-11-11) — Rule-Based Offline Quick Add with Immediate Alarm Scheduling.
+- **Decision:** Implemented deterministic pure-Kotlin parser `RuleBasedQuickAdd` in `core/src/main/java/com/anchor/core/capture/` extracting title, time expressions, and alarm tiers from natural language commands (`remind me at/in <time> to <task>`, `todo: <task>`, `set alarm at <time> for <task>`). Wired into `ChatController.kt` (`handleOfflineQuickAdd`): when offline or unconfigured, bypasses the LLM outbox queue, immediately creates the task node and reminder in encrypted storage, schedules the exact Android alarm via `alarmScheduler.schedule(...)`, records an assistant reply, and emits an undoable receipt.
+- **Reason:** Blueprint 41 §3.6 and Roadmap P1.1 Item 6 require that reminders requested while offline do not wait in `outbox` for network restoration; otherwise, alarms scheduled for near-future timestamps would be missed if the user remains offline past the due time.
+- **Rejected:** Leaving quick adds as pending outbox chat turns; regex guessing arbitrary sentences without unambiguous command prefixes.
+- **Proof:** `RuleBasedQuickAddTest` (8/8 PASS in `:core`), `OfflineQuickAddIntegrationTest` (3/3 PASS in `:core`).
+
+## D-175 (2026-11-11) — Template Language Packs & "What's New in v1.1" Upgrade Notification.
+- **Decision:** Implemented `TemplatePack`, `TemplatePackRegistry`, and localized `SpanishTemplatePack` in `core/src/main/java/com/anchor/core/persona/TemplateLanguagePacks.kt` covering all 8 triggers and 5 persona tones with automatic fallback to English. Built `WhatsNewCatalog` in `core/src/main/java/com/anchor/core/ui/WhatsNewCatalog.kt` (`CURRENT_VERSION = "1.1.0"`) and wired `ChatController.loadInitialState()` to check `storage.getSetting("app.version_notified")` and present the v1.1 feature upgrade card exactly once upon initial launch after upgrading.
+- **Reason:** Blueprint 41 §3.7 and Blueprint 90 §3.3 Item 9 require offline localized persona responses and seamless version upgrade disclosure to existing users without showing it to fresh uncompleted onboarding runs.
+- **Rejected:** Hardcoding strings into `TemplateEngine`; showing update cards repeatedly on every launch.
+- **Proof:** `TemplateLanguagePacksTest` (5/5 PASS in `:core`), `WhatsNewCardTest` (3/3 PASS in `:core`).
+
+## D-176 (2026-11-11) — Plain-Code Digest Generator for Timeline Summaries.
+- **Decision:** Implemented `DigestGenerator` in `core/src/main/java/com/anchor/core/retrieval/DigestGenerator.kt` producing deterministic plain-code day, week, and month summaries of completed tasks, open loops, and timeline highlights without invoking a remote LLM.
+- **Reason:** Blueprint 21 §3.7 requires local deterministic summaries that can run entirely offline with zero latency and zero token cost.
+- **Rejected:** Requiring an LLM call to synthesize daily/weekly reviews.
+- **Proof:** `DigestGeneratorTest` (4/4 PASS in `:core`).
+
+(Next free: D-177. Add: date, decision, reason, rejected.)

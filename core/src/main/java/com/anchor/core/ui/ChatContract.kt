@@ -60,6 +60,7 @@ data class UiState(
     // alone would re-fire on every state change.
     val memoryNodes: List<com.anchor.core.models.Node> = emptyList(),
     val memorySoulFacts: List<com.anchor.core.models.SoulFact> = emptyList(),
+    val trashNodes: List<com.anchor.core.models.Node> = emptyList(),
     val memoryLoaded: Boolean = false,
     // Blueprint 31: the proactive tick's verdict for the last candidate it looked at, so the Debug
     // tab can say why nothing was sent ("min_gap", "open_thread", …) instead of staying silent.
@@ -79,7 +80,19 @@ data class UiState(
     // Blueprint 41 §2: user messages saved but not yet answered because the device had no network.
     // Derived on every refresh from the `outbox` rows of type `chat_turn` — blueprint 11:83 forbids
     // storing delivery state on `raw_message`, so this is a view of the queue, never a column.
-    val queuedChatIds: List<String> = emptyList()
+    val queuedChatIds: List<String> = emptyList(),
+    // Blueprint 25 §1 & §2: behavioral learning state visible to user
+    val learnedPrefs: List<com.anchor.core.models.LearnedPref> = emptyList(),
+    val whyNudgeText: String? = null,
+    // Blueprint 24 §5: active persona
+    val activePersonaId: String = "companion",
+    val activePersonaName: String = "Companion",
+    // Blueprint 16 §3.2 & Blueprint 52 §3.4: App lock and privacy UI gating
+    val appLockEnabled: Boolean = false,
+    val isAppLocked: Boolean = false,
+    val relockTimeoutSec: Int = 60,
+    val blockScreenshots: Boolean = false,
+    val compactMode: Boolean = false
 ) {
     /** Blueprint 41 §2: the banner the user sees while messages wait. Null when nothing is queued. */
     val offlineQueuedText: String?
@@ -105,6 +118,7 @@ sealed interface UiAction {
     data class ShowDayReminders(val dayKey: String, val startOfDayMs: Long, val endOfDayMs: Long) : UiAction
     data object ClearDaySelection : UiAction
     data class SaveProvider(val endpoint: String, val key: String, val model: String) : UiAction
+    data class ImportProviderConfig(val payload: String) : UiAction
     data object RunSelfTest : UiAction
     data object RefreshStats : UiAction
     data object PromptResetDatabase : UiAction
@@ -115,6 +129,16 @@ sealed interface UiAction {
     data class CancelStale(val nodeId: String) : UiAction
     /** Row 20: (re)read the Items and Soul lists from storage for the Memory tab. */
     data object LoadMemory : UiAction
+    /** Blueprint 51 §3.1 / §3.3: Memory viewer action - archive an item (soft delete). */
+    data class ArchiveNode(val nodeId: String) : UiAction
+    /** Blueprint 51 §3.1 / §3.3: Memory viewer action - delete an item (cancel/remove). */
+    data class DeleteNode(val nodeId: String) : UiAction
+    /** Blueprint 51 §3.1 / §3.9: Memory viewer action - restore an item from trash. */
+    data class RestoreNode(val nodeId: String) : UiAction
+    /** Blueprint 51 §3.1 / §3.9: Memory viewer action - permanently erase/scrub an item. */
+    data class EraseNode(val nodeId: String) : UiAction
+    /** Blueprint 51 §3.1 / §3.9: Memory viewer action - permanently erase/scrub a soul fact. */
+    data class EraseSoulFact(val factId: String) : UiAction
     /** Blueprint 31: run one proactive pass — pick a candidate, score it, gate it, deliver or hold. */
     data object TickProactive : UiAction
 
@@ -136,4 +160,20 @@ sealed interface UiAction {
      * the retry timer and a live network callback are not wired in this slice (D-138).
      */
     data object DrainQueuedTurns : UiAction
+
+    // Blueprint 25 §2: Behavioral learning actions
+    data class WhyNudge(val msgId: String? = null) : UiAction
+    data class LockLearnedPref(val key: String, val scope: String, val locked: Boolean) : UiAction
+    data class ResetLearning(val preserveLocked: Boolean = true) : UiAction
+
+    // Blueprint 24 §5: Persona selection
+    data class SetPersona(val personaId: String) : UiAction
+
+    // Blueprint 16 §3.2 & Blueprint 52 §3.4: App lock & privacy actions
+    data object UnlockApp : UiAction
+    data object LockApp : UiAction
+    data class SetAppLock(val enabled: Boolean) : UiAction
+    data class SetRelockTimeout(val seconds: Int) : UiAction
+    data class SetBlockScreenshots(val enabled: Boolean) : UiAction
+    data class SetCompactMode(val enabled: Boolean) : UiAction
 }

@@ -20,7 +20,12 @@ data class Node(
     val severity: Int = 0,
     val pinned: Boolean = false,
     val localOnly: Boolean = false,
-    val sensitive: Boolean = false
+    val sensitive: Boolean = false,
+    val origin: String = "user_edit",
+    val recurrenceRule: String? = null,
+    val streakCurrent: Int = 0,
+    val streakBest: Int = 0,
+    val lastCompletedAt: Long? = null
 )
 
 @Serializable
@@ -41,7 +46,9 @@ data class Reminder(
     val text: String,
     val fireAtMillis: Long,
     val nodeId: String? = null, // D5: Explicit relational tie to the Node
-    val tier: AlarmTier = AlarmTier.ALARM
+    val tier: AlarmTier = AlarmTier.ALARM,
+    val rrule: String? = null,
+    val iteration: Int = 0
 )
 
 @Serializable
@@ -182,8 +189,18 @@ data class OutboxJob(
         const val STATUS_PENDING = "pending"
         const val STATUS_DONE = "done"
         const val STATUS_FAILED = "failed"
+        const val STATUS_DROPPED = "dropped"
 
         /** Blueprint 41 §3.3: the user's own message waiting for a model reply. */
         const val JOB_CHAT_TURN = "chat_turn"
+        const val JOB_OPENER_TEXT = "opener_text"
+        const val JOB_WORKER_BATCH = "worker_batch"
+        const val JOB_SUMMARY = "summary"
+        const val JOB_REBUILD = "rebuild"
+
+        const val PRIORITY_P0 = 0
+        const val PRIORITY_P1 = 1
+        const val PRIORITY_P2 = 2
+        const val PRIORITY_P3 = 3
     }
 }

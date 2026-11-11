@@ -11,17 +11,30 @@ import java.util.Locale
 
 class Resolver {
     companion object {
+        // Blueprint 22 §3.4 weights
+        private const val WEIGHT_TEXT = 0.35
+        private const val WEIGHT_TIME = 0.25
+        private const val WEIGHT_RECENCY = 0.20
+        private const val WEIGHT_STATUS = 0.10
+        private const val WEIGHT_TYPE = 0.10
+
         private val STOPWORDS = setOf(
+            // Prepositions, articles, conjunctions, pronouns
             "with", "the", "and", "for", "to", "at", "my", "a", "an", "of", "on", "in",
+            "about", "by", "from", "or", "as", "is", "it", "this", "that",
+            // Relative time stopwords
             "tomorrow", "today", "yesterday", "tonight", "am", "pm",
+            // Command words & conversational filler
             "cancel", "delete", "remove", "complete", "finish", "done",
-            "update", "rename", "change", "edit", "mark"
+            "update", "rename", "change", "edit", "mark", "reschedule", "postpone", "move", "drop", "clear",
+            "please", "can", "could", "would", "i", "you", "me", "want", "need"
         )
     }
 
     private fun tokenize(text: String): List<String> {
-        val normalized = text.lowercase(Locale.getDefault())
+        val normalized = text.lowercase(Locale.ROOT)
             .replace("’", "'")
+            .replace("‘", "'")
             .replace(Regex("'s\\b"), "") // Remove simple possessives
 
         val tokens = mutableListOf<String>()
@@ -36,8 +49,9 @@ class Resolver {
     }
 
     private fun normalizeTitle(text: String): String {
-        return text.lowercase(Locale.getDefault())
+        return text.lowercase(Locale.ROOT)
             .replace("’", "'")
+            .replace("‘", "'")
             .replace(Regex("'s\\b"), "")
             .replace(Regex("[^\\p{L}\\p{M}\\p{N}\\s]+"), " ")
             .trim()
@@ -49,8 +63,11 @@ class Resolver {
         val normHint = normalizeTitle(hint)
         if (normTitle.isNotBlank() && normTitle == normHint) return true
 
-        // Strip common leading intent action words from hint: cancel, complete, delete, remove, finish, done, reschedule, update, rename
-        val strippedHint = hint.replace(Regex("^(cancel|complete|delete|remove|finish|done|reschedule|update|rename)\\s+", RegexOption.IGNORE_CASE), "")
+        // Strip common leading intent action words from hint
+        val strippedHint = hint.replace(
+            Regex("^(cancel|complete|delete|remove|finish|done|reschedule|update|rename|postpone|move|mark)\\s+", RegexOption.IGNORE_CASE),
+            ""
+        )
         val normStripped = normalizeTitle(strippedHint)
         if (normTitle.isNotBlank() && normTitle == normStripped) return true
 
@@ -61,15 +78,30 @@ class Resolver {
         return false
     }
 
-    fun resolve(intent: IntentType, hint: String, targetTimeMillis: Long?, candidates: List<Node>): Resolution {
+    fun resolve(
+        intent: IntentType,
+        hint: String,
+        targetTimeMillis: Long?,
+        candidates: List<Node>,
+        recentlyDiscussedNodeIds: List<String> = emptyList()
+    ): Resolution {
         if (candidates.isEmpty()) return Resolution.NotFound
 
+        val isClosing = intent == IntentType.CANCEL || intent == IntentType.COMPLETE || intent == IntentType.RESCHEDULE
+
+        // Blueprint 22 §3.3: Closing and updating intents look at open states first.
+        val candidatePool = if (isClosing) {
+            val openCandidates = candidates.filter { it.status == "active" || it.status == "open" }
+            if (openCandidates.isNotEmpty()) openCandidates else candidates
+        } else {
+            candidates
+        }
+
         val hintTokens = tokenize(hint)
-        if (hintTokens.isEmpty()) return Resolution.NotFound
 
         // Prefer exact normalised title match: if two items both contain the hint (e.g. "Dinner" vs "Dinner with Alice" for hint "dinner"),
         // the exact title match wins without ambiguity.
-        val exactMatches = candidates.filter { isExactMatch(it.title, hint, hintTokens) }
+        val exactMatches = candidatePool.filter { isExactMatch(it.title, hint, hintTokens) }
         if (exactMatches.isNotEmpty()) {
             if (exactMatches.size == 1) {
                 if (targetTimeMillis == null) {
@@ -92,18 +124,22 @@ class Resolver {
             }
         }
 
-        val scores = candidates.map { node -> node to calculateScore(node, hint, targetTimeMillis) }
-            .sortedByDescending { it.second.total }
+        if (hintTokens.isEmpty()) return Resolution.NotFound
+
+        val scores = candidatePool.map { node ->
+            node to calculateScore(node, hintTokens, intent, targetTimeMillis, recentlyDiscussedNodeIds)
+        }.sortedByDescending { it.second.total }
 
         val top = scores[0]
 
-        val isClosing = intent == IntentType.CANCEL || intent == IntentType.COMPLETE
         val autoCommitThreshold = if (isClosing) 0.80 else 0.70
         val requiredMargin = if (isClosing) 0.25 else 0.20
 
-        // Time Override: If target time is specified, prefer candidate matching the time if text matches threshold
+        // Time Override per Blueprint 22 §3.4: If target time is specified, prefer candidate matching the time if text matches threshold
         if (targetTimeMillis != null) {
-            val timeMatches = scores.filter { (node, _) -> node.dueAt != null && Math.abs(node.dueAt - targetTimeMillis) < (1000L * 60 * 60 * 24) }
+            val timeMatches = scores.filter { (node, _) ->
+                node.dueAt != null && Math.abs(node.dueAt - targetTimeMillis) < (1000L * 60 * 60 * 24)
+            }
             if (timeMatches.size == 1 && timeMatches[0].second.textMatch >= autoCommitThreshold) {
                 return Resolution.ClearWinner(timeMatches[0].first)
             }
@@ -111,9 +147,7 @@ class Resolver {
 
         // Single candidate: Must meet auto-commit threshold, otherwise show a chip.
         // H-14 (R-19): this runs before the 0.30 floor below, because with exactly one candidate
-        // there is nothing to disambiguate against — saying "not found" about the only item the
-        // user is looking at is worse than asking. A zero-overlap candidate still gets NotFound:
-        // an unrelated hint is not evidence for the item, so there is nothing to confirm.
+        // there is nothing to disambiguate against. A zero-overlap candidate still gets NotFound.
         if (scores.size == 1) {
             return when {
                 top.second.textMatch >= autoCommitThreshold -> Resolution.ClearWinner(top.first)
@@ -141,26 +175,83 @@ class Resolver {
         return Resolution.Ambiguous(ambiguousOptions)
     }
 
-    data class ScoreBreakdown(val textMatch: Double, val total: Double)
+    data class ScoreBreakdown(
+        val textMatch: Double,
+        val timeMatch: Double?,
+        val recencyMatch: Double?,
+        val statusMatch: Double,
+        val typeMatch: Double,
+        val total: Double
+    )
 
-    private fun calculateScore(node: Node, hint: String, targetTimeMillis: Long?): ScoreBreakdown {
-        val hintTokens = tokenize(hint)
+    private fun calculateScore(
+        node: Node,
+        hintTokens: List<String>,
+        intent: IntentType,
+        targetTimeMillis: Long?,
+        recentlyDiscussedNodeIds: List<String>
+    ): ScoreBreakdown {
         val titleTokens = tokenize(node.title)
 
         val textScore = if (hintTokens.isNotEmpty()) {
             hintTokens.count { hw -> titleTokens.contains(hw) }.toDouble() / hintTokens.size
         } else {
-            return ScoreBreakdown(0.0, 0.0)
+            0.0
         }
 
-        var total = textScore
-        
-        // Time Bonus: Massive boost for same-day match
-        if (targetTimeMillis != null && node.dueAt != null) {
-            val diffDays = Math.abs(node.dueAt - targetTimeMillis) / (1000 * 60 * 60 * 24).toDouble()
-            if (diffDays < 1.0) total += 0.5 
+        // Time match
+        val timeScore: Double? = if (targetTimeMillis != null) {
+            if (node.dueAt != null) {
+                val diffDays = Math.abs(node.dueAt - targetTimeMillis) / (1000.0 * 60 * 60 * 24)
+                if (diffDays < 1.0) 1.0 else Math.max(0.0, 1.0 - diffDays / 7.0)
+            } else {
+                0.0
+            }
+        } else {
+            null
         }
-        
-        return ScoreBreakdown(textScore, total)
+
+        // Recency match
+        val recencyScore: Double? = if (recentlyDiscussedNodeIds.isNotEmpty()) {
+            if (node.id in recentlyDiscussedNodeIds) 1.0 else 0.0
+        } else {
+            null
+        }
+
+        // Status fit
+        val isClosing = intent == IntentType.CANCEL || intent == IntentType.COMPLETE || intent == IntentType.RESCHEDULE
+        val statusScore = if (isClosing) {
+            if (node.status == "active" || node.status == "open") 1.0 else 0.0
+        } else {
+            1.0
+        }
+
+        // Type fit
+        val typeScore = 1.0
+
+        // Normalise weights over active signals
+        val activeTextWeight = WEIGHT_TEXT
+        val activeStatusWeight = WEIGHT_STATUS
+        val activeTypeWeight = WEIGHT_TYPE
+        val activeTimeWeight = if (timeScore != null) WEIGHT_TIME else 0.0
+        val activeRecencyWeight = if (recencyScore != null) WEIGHT_RECENCY else 0.0
+
+        val totalWeight = activeTextWeight + activeStatusWeight + activeTypeWeight + activeTimeWeight + activeRecencyWeight
+        val weightedSum = (textScore * activeTextWeight) +
+            (statusScore * activeStatusWeight) +
+            (typeScore * activeTypeWeight) +
+            ((timeScore ?: 0.0) * activeTimeWeight) +
+            ((recencyScore ?: 0.0) * activeRecencyWeight)
+
+        val normalizedTotal = if (totalWeight > 0.0) weightedSum / totalWeight else textScore
+
+        return ScoreBreakdown(
+            textMatch = textScore,
+            timeMatch = timeScore,
+            recencyMatch = recencyScore,
+            statusMatch = statusScore,
+            typeMatch = typeScore,
+            total = normalizedTotal
+        )
     }
 }

@@ -21,6 +21,14 @@ interface Storage {
     val ioDispatcher: CoroutineDispatcher
 
     suspend fun insertRawMessage(id: String, role: String, content: String)
+
+    suspend fun insertRawMessage(
+        id: String,
+        role: String,
+        content: String,
+        causeMsgId: String?,
+        dayKey: String? = null
+    )
     suspend fun redactMessage(id: String)
     suspend fun getRawMessage(id: String): String?
     suspend fun hasRawMessage(id: String): Boolean
@@ -50,6 +58,14 @@ interface Storage {
     suspend fun getRankedCandidates(now: Long, staleCutoffMs: Long, perTierLimit: Int = 25): List<Node>
     suspend fun getActiveNodeCounts(now: Long, staleCutoffMs: Long = 30L * 24 * 3600 * 1000L): NodeCounts
     suspend fun getStaleNodes(now: Long, cutoffMs: Long = 30L * 24 * 3600 * 1000L): List<Node>
+    /** Blueprint 51 §3.1 / §3.9 (Gate E-12): Returns cancelled nodes from the last 30 days. */
+    suspend fun getTrashNodes(now: Long, limit: Int = 100): List<Node>
+    /** Blueprint 51 §3.1 / §3.9 (Gate E-12): Permanently scrubs and erases a node, its reminder, edges, and event tombstones. */
+    suspend fun eraseNode(nodeId: String)
+    /** Blueprint 51 §3.9 (Gate E-12): Permanently scrubs and erases a soul fact and its raw events. */
+    suspend fun eraseSoulFact(factId: String)
+    /** Blueprint 12: Returns true if a soul fact with this statement was previously rejected. */
+    suspend fun isSoulFactSuppressed(statement: String): Boolean
     /**
      * Reminders whose fire instant is still ahead of [now]. R-25: the caller's clock is passed in
      * rather than read from the storage layer, so a test (or a device whose wall clock was moved)
@@ -87,6 +103,13 @@ interface Storage {
     suspend fun searchMemoryFts(query: String, limit: Int): List<SearchResult>
 
     /**
+     * Blueprint 21 §3.3: On-device quantized vector embeddings for semantic search.
+     */
+    suspend fun saveEmbedding(ownerType: String, ownerId: String, modelVersion: String, vector: com.anchor.core.retrieval.QuantVector) {}
+    suspend fun getEmbeddings(ownerType: String, modelVersion: String): List<Pair<String, com.anchor.core.retrieval.QuantVector>> = emptyList()
+    suspend fun deleteEmbedding(ownerType: String, ownerId: String) {}
+
+    /**
      * Blueprint 23 §5 `search_history`: the original messages themselves, newest first.
      * Redacted messages are never returned.
      */
@@ -111,7 +134,7 @@ interface Storage {
     suspend fun getHomePriorityList(now: Long, limit: Int = 5): List<Node>
     suspend fun getRecentlyClosed(now: Long, limit: Int = 10): List<Node>
     suspend fun getLatestEventForTarget(targetType: String, targetId: String): RawEvent?
-    suspend fun getActiveSoulFacts(): List<SoulFact>
+    suspend fun getActiveSoulFacts(includeLocalOnly: Boolean = false): List<SoulFact>
     suspend fun getProposedSoulFacts(): List<SoulFact>
     suspend fun updateSoulFactStatus(id: String, status: String)
     suspend fun updateSoulFactStatusAndCommit(id: String, status: String, event: RawEvent)
@@ -121,6 +144,7 @@ interface Storage {
     suspend fun clearAlarmRegistry()
     suspend fun hasReminderFire(reminderId: String, outcome: String): Boolean
     suspend fun getReminderFire(reminderId: String, outcome: String): com.anchor.core.models.ReminderFire?
+    suspend fun getRecentReminderFires(limit: Int = 20): List<com.anchor.core.models.ReminderFire>
 
     // Purely Transactional Gateways
     suspend fun createNodeAndCommit(node: Node, event: RawEvent, reminder: Reminder?, edge: Edge? = null, edgeEvent: RawEvent? = null, consumeProposalId: String? = null)
@@ -136,6 +160,24 @@ interface Storage {
     suspend fun deleteEdge(id: String)
     suspend fun createEdgeAndCommit(edge: Edge, event: RawEvent)
     suspend fun deleteEdgeAndCommit(edgeId: String, event: RawEvent)
+
+    /**
+     * Blueprint 13 §3.7 / Roadmap v1.1 Item 9:
+     * Graph traversal up to [maxHops] (1-2 hops) around [nodeId], capped at [cap] (default 150).
+     */
+    suspend fun getGraphNeighborhood(nodeId: String, maxHops: Int = 1, cap: Int = 150): List<Node> = emptyList()
+
+    /**
+     * Blueprint 51 §50 / Roadmap v1.1 Item 8:
+     * Groups nodes due between [startMs] and [endMs] into day buckets (dayKey -> List<Node>).
+     */
+    suspend fun getCalendarBuckets(startMs: Long, endMs: Long): Map<String, List<Node>> = emptyMap()
+
+    /**
+     * Blueprint 51 §199 / Roadmap v1.1 Item 8:
+     * Groups nodes into board columns ("todo", "in_progress", "done") capped per column.
+     */
+    suspend fun getBoardViewNodes(limitPerColumn: Int = 50): Map<String, List<Node>> = emptyMap()
 
     suspend fun getRegisteredAlarms(): List<Pair<String, Long>>
     suspend fun getRegisteredAlarmRecords(): List<com.anchor.core.models.RegisteredAlarm> = getRegisteredAlarms().map { com.anchor.core.models.RegisteredAlarm(it.first, it.second, "alarm_clock") }
@@ -166,12 +208,24 @@ interface Storage {
      * logical job twice is a no-op rather than a duplicate turn.
      */
     suspend fun enqueueOutbox(job: OutboxJob)
+    /** TB-2: Claim a job by advancing nextTryAt using UPDATE outbox instead of INSERT OR IGNORE. */
+    suspend fun claimOutbox(id: String, nextTryAt: Long, now: Long)
     /** `pending` jobs of [jobType] whose `next_try_at` has passed, highest priority first, then oldest. */
     suspend fun getDueOutbox(jobType: String, now: Long): List<OutboxJob>
     /** Every `pending` job of [jobType], highest priority first — what the UI marks as queued. */
     suspend fun getPendingOutbox(jobType: String): List<OutboxJob>
     suspend fun markOutboxDone(id: String, now: Long)
     suspend fun markOutboxFailed(id: String, now: Long, nextTryAt: Long, error: String)
+    /** Blueprint 41 §3.3 / §3.5: Marks pending outbox jobs past their deadline as dropped. Returns count. */
+    suspend fun dropStaleOutbox(now: Long): Int
+
+    // Learning & Behavioral Preferences (Blueprint 25)
+    suspend fun recordSignal(signal: com.anchor.core.models.SignalLog)
+    suspend fun getSignals(kind: String? = null, sinceUtc: Long = 0L, limit: Int = 1000): List<com.anchor.core.models.SignalLog>
+    suspend fun getLearnedPref(key: String, scope: String): com.anchor.core.models.LearnedPref?
+    suspend fun getAllLearnedPrefs(): List<com.anchor.core.models.LearnedPref>
+    suspend fun saveLearnedPref(pref: com.anchor.core.models.LearnedPref)
+    suspend fun resetLearning(preserveLocked: Boolean = true)
 
     companion object {
         /** R-26: page size for [getPendingReminders]. Hitting it means "more rows exist". */

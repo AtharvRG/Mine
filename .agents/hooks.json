@@ -1,0 +1,39 @@
+{
+  "safety-guard": {
+    "PreToolUse": [
+      {
+        "matcher": "run_command",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python ./hooks/guard_bash.py",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  },
+  "spdx-and-imports": {
+    "PostToolUse": [
+      {
+        "matcher": "write_file|edit_file",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python ./hooks/after_edit.py",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  },
+  "stop-gate": {
+    "Stop": [
+      {
+        "type": "command",
+        "command": "python ./hooks/stop_gate.py",
+        "timeout": 900
+      }
+    ]
+  }
+}

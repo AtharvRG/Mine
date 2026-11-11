@@ -243,4 +243,54 @@ class OfflineQueueTest {
         assertEquals(1, h.storage.getPendingOutbox(OutboxJob.JOB_CHAT_TURN).size)
         assertFalse(h.controller.state.value.queuedChatIds.isEmpty())
     }
+
+    @Test
+    fun drainQueuedTurnsSetsChatLoadingDuringStreamAndClearsWhenComplete() = runTest {
+        val network = AtomicBoolean(false)
+        val transport = object : HttpTransport {
+            var loadingDuringStream = false
+            var checked = false
+            lateinit var controllerSupplier: () -> ChatController
+
+            override suspend fun postStream(target: Target, body: String): Flow<String> = flow {
+                loadingDuringStream = controllerSupplier().state.value.isChatLoading
+                checked = true
+                emit("""data: {"choices":[{"delta":{"content":"{\"reply\":\"Done\",\"calls\":[]}"}}]}""")
+                emit("data: [DONE]")
+            }
+        }
+        val storage = SharedFakeStorage()
+        storage.settings["key"] = "test-key"
+        val clock = FakeClock(1_000_000L)
+        val orchestrator = ProviderOrchestrator(RateLimiter { clock.now() }, transport)
+        val dateResolver = DateResolver(clock)
+        val checkinBuilder = com.anchor.core.nudge.CheckinBuilder(storage, clock, dateResolver)
+        val contextBuilder = ContextBuilder(storage, clock, dateResolver, checkinBuilder)
+        val scope = CoroutineScope(UnconfinedTestDispatcher())
+        val controller = ChatController(
+            storage, orchestrator, contextBuilder,
+            Gateway(storage, Resolver(), dateResolver, clock),
+            FakeScheduler(), scope, UnconfinedTestDispatcher(), clock,
+            dateResolver = dateResolver,
+            networkCheck = { network.get() }
+        )
+        transport.controllerSupplier = { controller }
+
+        // Queue an offline message
+        network.set(false)
+        storage.insertRawMessage("q_1", "user", "buy milk")
+        val sendJob = scope.launch(start = CoroutineStart.LAZY) { controller.sendText("buy milk", "q_1") }
+        sendJob.start()
+        runBlocking { sendJob.join() }
+
+        // Connect and drain
+        network.set(true)
+        val drainJob = scope.launch(start = CoroutineStart.LAZY) { controller.drainQueuedTurns() }
+        drainJob.start()
+        runBlocking { drainJob.join() }
+
+        assertTrue("Must have checked loading state during stream execution", transport.checked)
+        assertTrue("isChatLoading must be true during outbox drain stream", transport.loadingDuringStream)
+        assertFalse("isChatLoading must be false after outbox drain completes", controller.state.value.isChatLoading)
+    }
 }

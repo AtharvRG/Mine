@@ -222,12 +222,10 @@ class AndroidStorageTest {
         // 2. Insert a normal message via AndroidStorage (clock is now back to reality)
         storage.insertRawMessage("msg_present", "user", "Present")
 
-        // 3. Verify the runaway defense prevented inheriting 2099-12-31, bounding to current day key
+        // 3. BP 11 & 50 §3.13: Verify new message inherits future day_key to maintain monotonicity
         dbHelper.readableDatabase.query("SELECT day_key FROM raw_message WHERE id = 'msg_present'").use {
             org.junit.Assert.assertTrue(it.moveToFirst())
-            val presentDayKey = it.getString(0)
-            org.junit.Assert.assertNotEquals("Runaway future day_key must not be inherited", "2099-12-31", presentDayKey)
-            org.junit.Assert.assertTrue("Day key must be bounded by current date/maxDayKey", presentDayKey < "2099-12-31")
+            org.junit.Assert.assertEquals("2099-12-31", it.getString(0))
         }
     }
 
@@ -439,8 +437,8 @@ class AndroidStorageTest {
         val v3Helper = DatabaseProvider.getHelper(context, key, migrationDbName)
         val v3Storage = AndroidStorage(v3Helper)
 
-        // Verify version bumped to 5
-        assertEquals(6, v3Helper.readableDatabase.version)
+        // Verify version bumped to current
+        assertEquals(MineDatabaseCallback.DATABASE_VERSION, v3Helper.readableDatabase.version)
 
         // Verify column exists
         var hasTierColumn = false
@@ -531,7 +529,7 @@ class AndroidStorageTest {
 
         // 2. Open DB with MineDatabaseCallback (version 5)
         val v3Helper = DatabaseProvider.getHelper(context, key, migrationDbName)
-        assertEquals(6, v3Helper.readableDatabase.version)
+        assertEquals(MineDatabaseCallback.DATABASE_VERSION, v3Helper.readableDatabase.version)
 
         // 3. Verify indexes exist
         val foundIndexes = mutableListOf<String>()
@@ -765,7 +763,7 @@ class AndroidStorageTest {
 
         // 2. Open DB with MineDatabaseCallback (version 5)
         val v4Helper = DatabaseProvider.getHelper(context, key, migrationDbName)
-        assertEquals(6, v4Helper.readableDatabase.version)
+        assertEquals(MineDatabaseCallback.DATABASE_VERSION, v4Helper.readableDatabase.version)
 
         // 3. Verify quote_slot table exists
         var quoteSlotExists = false
@@ -856,7 +854,7 @@ class AndroidStorageTest {
 
         // 2. Open DB with MineDatabaseCallback (version 5)
         val v5Helper = DatabaseProvider.getHelper(context, key, migrationDbName)
-        assertEquals(6, v5Helper.readableDatabase.version)
+        assertEquals(MineDatabaseCallback.DATABASE_VERSION, v5Helper.readableDatabase.version)
 
         // 3. Verify payload column exists in proposal table
         var payloadColumnExists = false
@@ -1160,6 +1158,30 @@ class AndroidStorageTest {
         val ids = stale.map { it.id }
         assertTrue("public stale node must be listed", ids.contains("n_stale_public"))
         assertFalse("local_only node must not leak through getStaleNodes", ids.contains("n_stale_private"))
+    }
+
+    // D-13: saveSoulFact must persist to SQLite, not be a silent no-op stub
+    @Test
+    fun testD13_SaveSoulFact_PersistsFactToDatabase(): Unit = runBlocking {
+        val fact = SoulFact(
+            id = "sf_test_d13",
+            category = "preference",
+            statement = "User prefers tea over coffee",
+            confidence = 0.95,
+            source = "chat",
+            origin = "explicit",
+            status = "active",
+            createdAt = 1700000000000L,
+            sensitive = false,
+            localOnly = false
+        )
+        storage.saveSoulFact(fact)
+
+        val active = storage.getActiveSoulFacts(includeLocalOnly = false)
+        val found = active.find { it.id == "sf_test_d13" }
+        assertNotNull("SoulFact saved via saveSoulFact must be persisted to database", found)
+        assertEquals("User prefers tea over coffee", found!!.statement)
+        assertEquals(0.95, found.confidence, 0.001)
     }
 
     // R-05: an UPDATE that matches no row still wrote a raw_event, so the UI rendered a receipt
@@ -1800,5 +1822,113 @@ class AndroidStorageTest {
             listOf(100L, 200L),
             day.map { it.fireAtMillis - base }
         )
+    }
+
+    /**
+     * B1-01: Null deadlineAt in OutboxJob must be preserved as SQL NULL in SQLite.
+     * Previously, arrayOf<Any> with deadlineAt ?: "" bound empty string into INTEGER column,
+     * which caused toOutboxJob() to return 0L (epoch 1970) and dropStaleOutbox to drop it.
+     */
+    @Test
+    fun testOutboxDeadlineAt_NullPreservedThroughStorage(): Unit = runBlocking {
+        val now = 100_000L
+        val nullDeadlineJob = OutboxJob(
+            id = "ob_null_deadline",
+            jobType = OutboxJob.JOB_CHAT_TURN,
+            priority = OutboxJob.PRIORITY_P0,
+            payloadJson = "{\"msg\":\"hi\"}",
+            idemKey = "idem_null_deadline",
+            status = OutboxJob.STATUS_PENDING,
+            attempts = 0,
+            nextTryAt = now - 1000L,
+            deadlineAt = null,
+            createdAt = now - 5000L,
+            updatedAt = now - 5000L,
+            lastError = null
+        )
+        storage.enqueueOutbox(nullDeadlineJob)
+
+        val retrieved = storage.getPendingOutbox(OutboxJob.JOB_CHAT_TURN).find { it.id == "ob_null_deadline" }
+        assertNotNull("Enqueued outbox job must exist", retrieved)
+        assertNull("B1-01: deadlineAt must remain null, not converted to 0L", retrieved!!.deadlineAt)
+        assertNull("B1-01: lastError must remain null, not converted to empty string", retrieved.lastError)
+
+        // Drop stale jobs: deadlineAt=null must NOT be dropped
+        val dropped = storage.dropStaleOutbox(now)
+        assertEquals("B1-01: null deadline job must not be dropped by dropStaleOutbox", 0, dropped)
+
+        val afterDrop = storage.getPendingOutbox(OutboxJob.JOB_CHAT_TURN).find { it.id == "ob_null_deadline" }
+        assertNotNull("Job with null deadline must still be pending after dropStaleOutbox", afterDrop)
+        assertEquals(OutboxJob.STATUS_PENDING, afterDrop!!.status)
+    }
+
+    @Test
+    fun testSaveSoulFact_PreservesMetadataColumns_AttrsAndPinnedCore() = runBlocking {
+        val db = dbHelper.writableDatabase
+        val factId = "fact_meta_test"
+        // Seed a soul fact with extended metadata columns
+        db.execSQL(
+            "INSERT INTO soul_fact (id, device_id, category, statement, attrs, confidence, source, origin, status, pinned_core, sensitive, local_only, hlc, valid_from, valid_to, created_at, updated_at) VALUES (?, 'dev_1', 'pref', 'Original statement', '{\"custom_attr\":\"val\"}', 0.8, 'user', 'manual', 'active', 1, 0, 0, 'hlc_1', 12345, 67890, 1000, 1000)",
+            arrayOf<Any>(factId)
+        )
+
+        // Now save updated fact via storage.saveSoulFact
+        val updatedFact = SoulFact(
+            id = factId,
+            category = "pref",
+            statement = "Updated statement",
+            confidence = 0.95,
+            source = "ai",
+            origin = "chat",
+            status = "pinned",
+            createdAt = 1000L,
+            localOnly = false,
+            sensitive = false
+        )
+        storage.saveSoulFact(updatedFact)
+
+        // Read back raw columns
+        dbHelper.readableDatabase.query(
+            "SELECT statement, attrs, pinned_core, valid_from, valid_to, confidence FROM soul_fact WHERE id = ?",
+            arrayOf(factId)
+        ).use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals("Updated statement", cursor.getString(0))
+            assertEquals("attrs must NOT be wiped by saveSoulFact", "{\"custom_attr\":\"val\"}", cursor.getString(1))
+            assertEquals("pinned_core must NOT be reset by saveSoulFact", 1, cursor.getInt(2))
+            assertEquals("valid_from must NOT be wiped by saveSoulFact", 12345L, cursor.getLong(3))
+            assertEquals("valid_to must NOT be wiped by saveSoulFact", 67890L, cursor.getLong(4))
+            assertEquals(0.95, cursor.getDouble(5), 0.001)
+        }
+    }
+
+    @Test
+    fun testSaveReliabilityState_PreservesLastForceStopDetected() = runBlocking {
+        val db = dbHelper.writableDatabase
+        db.execSQL(
+            "INSERT OR REPLACE INTO reliability_state (id, last_check_at, score, issues_json, sweeper_heartbeat, last_force_stop_detected, p95_latency_ms) VALUES (1, 100, 'healthy', '[]', 200, 99999, 15)",
+            emptyArray()
+        )
+
+        // Update reliability state with sweeper heartbeat
+        val newState = ReliabilityState(
+            lastCheckAt = 300L,
+            score = "at_risk",
+            issuesJson = "[{\"issue\":\"test\"}]",
+            sweeperHeartbeat = 400L,
+            p95LatencyMs = 25
+        )
+        storage.saveReliabilityState(newState)
+
+        // Verify last_force_stop_detected survived the update
+        dbHelper.readableDatabase.query(
+            "SELECT score, last_force_stop_detected, p95_latency_ms FROM reliability_state WHERE id = 1",
+            emptyArray()
+        ).use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals("at_risk", cursor.getString(0))
+            assertEquals("last_force_stop_detected must NOT be wiped to null", 99999L, cursor.getLong(1))
+            assertEquals(25, cursor.getInt(2))
+        }
     }
 }

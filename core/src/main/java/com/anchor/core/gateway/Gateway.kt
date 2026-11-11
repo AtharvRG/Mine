@@ -53,6 +53,11 @@ class Gateway(
                 val category = (args["category"] ?: "other").take(100)
                 val confidence = args["confidence"]?.toDoubleOrNull() ?: 0.7
 
+                // Blueprint 12: Suppress if previously rejected by user
+                if (storage.isSoulFactSuppressed(statement)) {
+                    return ToolResult.Error("Fact has been rejected by user and is suppressed")
+                }
+
                 // Blueprint 20 & 24 / Task R9: Sensitive categories forced to proposed, sensitive=true, localOnly=true
                 val sensitiveCategories = setOf(
                     "health", "medical", "legal", "finance", "financial",
@@ -64,7 +69,11 @@ class Gateway(
                 val isSensitive = isSensitiveCat || args["sensitive"]?.equals("true", ignoreCase = true) == true
                 val isLocalOnly = isSensitive || args["local_only"]?.equals("true", ignoreCase = true) == true
 
-                val sId = "s_${UUID.randomUUID().toString().take(8)}"
+                val sMode = storage.getSetting("soul.mode") ?: "ask"
+                val autoAccept = sMode == "auto" && !isSensitive && confidence >= 0.75
+                val targetStatus = if (autoAccept) "active" else "proposed"
+
+                val sId = "s_${UUID.randomUUID()}"
                 val fact = SoulFact(
                     id = sId,
                     category = category,
@@ -72,17 +81,18 @@ class Gateway(
                     confidence = confidence,
                     source = "chat_ai",
                     origin = "extracted",
-                    status = "proposed",
+                    status = targetStatus,
                     createdAt = clock.now(),
                     localOnly = isLocalOnly,
                     sensitive = isSensitive
                 )
 
-                val uId = "u_${UUID.randomUUID().toString().take(6)}"
+                val uId = "u_${UUID.randomUUID()}"
                 val event = RawEvent(uId, "CREATE", "soul_fact", sId, afterJson = json.encodeToString(fact), tsUtc = clock.now(), causeMsgId = causeMsgId)
                 storage.createSoulFactAndCommit(fact, event)
 
-                ToolResult.Committed("CREATE", sId, "Proposed to Soul: $statement", uId)
+                val replyMsg = if (targetStatus == "active") "Added to Soul: $statement" else "Proposed to Soul: $statement"
+                ToolResult.Committed("CREATE", sId, replyMsg, uId)
             }
             "undo" -> handleUndo(args["token"] ?: "")
             "confirm_change" -> handleConfirmChange(args["proposal"] ?: "", args["choice"] ?: "", userMessage)
@@ -162,7 +172,7 @@ class Gateway(
 
                 if (timeResolution is DateResolution.NeedsClarification) {
                     if (intent == IntentType.CREATE || intent == IntentType.RESCHEDULE) {
-                        val pId = "p_${UUID.randomUUID().toString().take(6)}"
+                        val pId = "p_${UUID.randomUUID()}"
                         val opts = timeResolution.candidateMillis.map { millis ->
                             ProposalOption(millis.toString(), dateResolver.formatTimeOnly(millis, timeZone))
                         }
@@ -252,7 +262,7 @@ class Gateway(
                                 isNearMatch(existing.dueAt, targetTimeMillis)
                             }
                             if (duplicate != null) {
-                                val pId = "p_${UUID.randomUUID().toString().take(6)}"
+                                val pId = "p_${UUID.randomUUID()}"
                                 val dueStr = if (duplicate.dueAt != null) dateResolver.format(duplicate.dueAt) else null
                                 val priority = args["priority"]?.toIntOrNull() ?: 0
                                 val severity = args["severity"]?.toIntOrNull() ?: 0
@@ -291,7 +301,8 @@ class Gateway(
                         val severity = args["severity"]?.toIntOrNull() ?: 0
                         val pinned = args["pinned"]?.toBooleanStrictOrNull() ?: false
                         val followUpTo = args["follow_up_to"] ?: args["follow_up_of"]
-                        handleCreate(title, safeType, targetTimeMillis, followUpTo, priority, severity, pinned, tier, causeMsgId)
+                        val recurrenceRule = args["recurrence_rule"] ?: args["recurrence"] ?: args["rrule"]
+                        handleCreate(title, safeType, targetTimeMillis, followUpTo, priority, severity, pinned, tier, recurrenceRule, causeMsgId)
                     }
                     IntentType.CANCEL, IntentType.COMPLETE, IntentType.RESCHEDULE -> {
                         val timeForResolver = if (intent == IntentType.RESCHEDULE) null else targetTimeMillis
@@ -335,7 +346,7 @@ class Gateway(
         } else {
             val timeResolution = dateResolver.resolve(whenText, rolloverMin, timeZone, severity = node?.severity)
             if (timeResolution is DateResolution.NeedsClarification) {
-                val pId = "p_${UUID.randomUUID().toString().take(6)}"
+                val pId = "p_${UUID.randomUUID()}"
                 val opts = timeResolution.candidateMillis.map { millis ->
                     ProposalOption(millis.toString(), dateResolver.formatTimeOnly(millis, timeZone))
                 }
@@ -375,7 +386,7 @@ class Gateway(
             // Check AI-suggest setting: "ask" (default) vs "auto" (Blueprint 30 s3.3, Blueprint 52 line 174)
             val aiSuggestSetting = storage.getSetting("reminder.ai_suggest") ?: "ask"
             if (aiSuggestSetting != "auto") {
-                val pId = "p_${UUID.randomUUID().toString().take(6)}"
+                val pId = "p_${UUID.randomUUID()}"
                 val formattedTime = dateResolver.formatTimeOfDay(fireAt, timeZone)
                 val opts = listOf(
                     ProposalOption("set", "Set $formattedTime"),
@@ -404,7 +415,7 @@ class Gateway(
                 Math.abs(existing.fireAtMillis - fireAt) <= 30 * 60 * 1000L
             }
             if (duplicate != null) {
-                val pId = "p_${UUID.randomUUID().toString().take(6)}"
+                val pId = "p_${UUID.randomUUID()}"
                 val existingDueStr = dateResolver.formatTimeOfDay(duplicate.fireAtMillis, timeZone)
                 val newDueStr = dateResolver.formatTimeOfDay(fireAt, timeZone)
                 val opts = listOf(
@@ -441,9 +452,9 @@ class Gateway(
 
         val title = node?.title ?: "Reminder"
         val existingRem = if (node != null) storage.getReminderByNodeId(node.id) else null
-        val rId = existingRem?.id ?: "rem_${UUID.randomUUID().toString().take(8)}"
+        val rId = existingRem?.id ?: "rem_${UUID.randomUUID()}"
         val reminder = Reminder(rId, title, fireAt, nodeId = node?.id, tier = tier)
-        val uId = "u_${UUID.randomUUID().toString().take(6)}"
+        val uId = "u_${UUID.randomUUID()}"
 
         val beforeJson = existingRem?.let { json.encodeToString(it) }
         val afterJson = json.encodeToString(reminder)
@@ -551,7 +562,7 @@ class Gateway(
 
                         val beforeJson = json.encodeToString(NodeStateSnapshot(existingNode, oldRem))
                         val afterJson = json.encodeToString(NodeStateSnapshot(updatedNode, newRem))
-                        val uId = "u_${UUID.randomUUID().toString().take(6)}"
+                        val uId = "u_${UUID.randomUUID()}"
                         val event = RawEvent(uId, "UPDATE", "node", updatedNode.id, beforeJson = beforeJson, afterJson = afterJson, tsUtc = now)
 
                         storage.updateNodeAndCommit(
@@ -607,7 +618,7 @@ class Gateway(
                                 isNearMatch(existing.dueAt, chosenMillis)
                             }
                             if (duplicate != null) {
-                                val pId = "p_${UUID.randomUUID().toString().take(6)}"
+                                val pId = "p_${UUID.randomUUID()}"
                                 val dueStr = if (duplicate.dueAt != null) dateResolver.format(duplicate.dueAt) else null
                                 val newPayload = payload?.copy(targetAtMillis = chosenMillis, targetId = duplicate.id) ?: ProposalPayload(targetAtMillis = chosenMillis, title = title, targetId = duplicate.id)
                                 val newProposal = Proposal(
@@ -702,19 +713,56 @@ class Gateway(
                     val newNode = node.copy(status = "cancelled", closedAt = now, updatedAt = now)
                     val beforeJson = json.encodeToString(NodeStateSnapshot(node, oldRem))
                     val afterJson = json.encodeToString(NodeStateSnapshot(newNode, null))
-                    val uId = "u_${UUID.randomUUID().toString().take(6)}"
+                    val uId = "u_${UUID.randomUUID()}"
                     val event = RawEvent(uId, "CANCEL", "node", newNode.id, beforeJson = beforeJson, afterJson = afterJson, tsUtc = now)
                     storage.updateNodeAndCommit(newNode, event, deleteReminderId = oldRem?.id, upsertReminder = null, consumeProposalId = proposal.id)
                     ToolResult.Committed("CANCEL", newNode.id, "Applied CANCEL: ${newNode.title}", uId)
                 }
                 IntentType.COMPLETE -> {
-                    val newNode = node.copy(status = "done", closedAt = now, updatedAt = now)
-                    val beforeJson = json.encodeToString(NodeStateSnapshot(node, oldRem))
-                    val afterJson = json.encodeToString(NodeStateSnapshot(newNode, null))
-                    val uId = "u_${UUID.randomUUID().toString().take(6)}"
-                    val event = RawEvent(uId, "COMPLETE", "node", newNode.id, beforeJson = beforeJson, afterJson = afterJson, tsUtc = now)
-                    storage.updateNodeAndCommit(newNode, event, deleteReminderId = oldRem?.id, upsertReminder = null, consumeProposalId = proposal.id)
-                    ToolResult.Committed("COMPLETE", newNode.id, "Applied COMPLETE: ${newNode.title}", uId)
+                    val isRecurring = node.type == "habit" || node.recurrenceRule != null || oldRem?.rrule != null
+                    if (isRecurring) {
+                        val rule = node.recurrenceRule ?: oldRem?.rrule ?: "FREQ=DAILY"
+                        val streak = com.anchor.core.recurrence.RecurrenceEngine.evaluateHabitCompletion(
+                            rrule = rule,
+                            lastCompletedAt = node.lastCompletedAt,
+                            currentStreak = node.streakCurrent,
+                            bestStreak = node.streakBest,
+                            now = now
+                        )
+                        val baseTime = node.dueAt ?: oldRem?.fireAtMillis ?: now
+                        val nextDue = com.anchor.core.recurrence.RecurrenceEngine.nextOccurrence(rule, baseTime, now)
+                        val newNode = node.copy(
+                            status = "active",
+                            dueAt = nextDue,
+                            recurrenceRule = rule,
+                            streakCurrent = streak.currentStreak,
+                            streakBest = streak.bestStreak,
+                            lastCompletedAt = now,
+                            updatedAt = now,
+                            closedAt = null
+                        )
+                        val remId = oldRem?.id ?: "r_${node.id}"
+                        val existingTier = oldRem?.tier ?: AlarmTier.ALARM
+                        val nextRem = (oldRem ?: Reminder(remId, node.title, nextDue, node.id, tier = existingTier, rrule = rule)).copy(
+                            fireAtMillis = nextDue,
+                            rrule = rule,
+                            iteration = (oldRem?.iteration ?: 0) + 1
+                        )
+                        val beforeJson = json.encodeToString(NodeStateSnapshot(node, oldRem))
+                        val afterJson = json.encodeToString(NodeStateSnapshot(newNode, nextRem))
+                        val uId = "u_${UUID.randomUUID()}"
+                        val event = RawEvent(uId, "COMPLETE", "node", newNode.id, beforeJson = beforeJson, afterJson = afterJson, tsUtc = now)
+                        storage.updateNodeAndCommit(newNode, event, deleteReminderId = null, upsertReminder = nextRem, consumeProposalId = proposal.id)
+                        ToolResult.Committed("COMPLETE", newNode.id, "Completed: ${newNode.title} (🔥 ${newNode.streakCurrent} streak)", uId)
+                    } else {
+                        val newNode = node.copy(status = "done", closedAt = now, updatedAt = now)
+                        val beforeJson = json.encodeToString(NodeStateSnapshot(node, oldRem))
+                        val afterJson = json.encodeToString(NodeStateSnapshot(newNode, null))
+                        val uId = "u_${UUID.randomUUID()}"
+                        val event = RawEvent(uId, "COMPLETE", "node", newNode.id, beforeJson = beforeJson, afterJson = afterJson, tsUtc = now)
+                        storage.updateNodeAndCommit(newNode, event, deleteReminderId = oldRem?.id, upsertReminder = null, consumeProposalId = proposal.id)
+                        ToolResult.Committed("COMPLETE", newNode.id, "Applied COMPLETE: ${newNode.title}", uId)
+                    }
                 }
                 IntentType.RESCHEDULE -> {
                     val payload = proposal.payload?.let {
@@ -735,7 +783,7 @@ class Gateway(
                     }
                     val beforeJson = json.encodeToString(NodeStateSnapshot(node, oldRem))
                     val afterJson = json.encodeToString(NodeStateSnapshot(newNode, newRem))
-                    val uId = "u_${UUID.randomUUID().toString().take(6)}"
+                    val uId = "u_${UUID.randomUUID()}"
                     val event = RawEvent(uId, "RESCHEDULE", "node", newNode.id, beforeJson = beforeJson, afterJson = afterJson, tsUtc = now)
                     storage.updateNodeAndCommit(newNode, event, deleteReminderId = null, upsertReminder = newRem, consumeProposalId = proposal.id)
                     ToolResult.Committed("RESCHEDULE", newNode.id, "Rescheduled: ${newNode.title} to ${dateResolver.format(target)}", uId)
@@ -846,12 +894,13 @@ class Gateway(
         severity: Int = 0,
         pinned: Boolean = false,
         tier: AlarmTier = AlarmTier.ALARM,
+        recurrenceRule: String? = null,
         causeMsgId: String? = null,
         consumeProposalId: String? = null
     ): ToolResult {
         val followUpEdge: Edge?
         val followUpEdgeEvent: RawEvent?
-        val nId = "n_${UUID.randomUUID().toString().take(8)}"
+        val nId = "n_${UUID.randomUUID()}"
         val now = clock.now()
 
         if (!followUpTo.isNullOrBlank()) {
@@ -859,7 +908,7 @@ class Gateway(
             if (srcNode == null) {
                 return ToolResult.Error("Cannot create follow-up: source item '$followUpTo' not found")
             }
-            val edgeId = "e_${UUID.randomUUID().toString().take(8)}"
+            val edgeId = "e_${UUID.randomUUID()}"
             val edge = Edge(
                 id = edgeId,
                 srcId = srcNode.id,
@@ -869,7 +918,7 @@ class Gateway(
                 updatedAt = now
             )
             val edgeEvent = RawEvent(
-                opId = "u_${UUID.randomUUID().toString().take(6)}",
+                opId = "u_${UUID.randomUUID()}",
                 opType = "LINK",
                 targetType = "edge",
                 targetId = edgeId,
@@ -884,13 +933,14 @@ class Gateway(
             followUpEdgeEvent = null
         }
 
-        val node = Node(nId, type, title, "active", dueAt, createdAt = now, updatedAt = now, priority = priority, severity = severity, pinned = pinned)
+        val effectiveRRule = recurrenceRule ?: if (type == "habit") "FREQ=DAILY" else null
+        val node = Node(nId, type, title, "active", dueAt, createdAt = now, updatedAt = now, priority = priority, severity = severity, pinned = pinned, recurrenceRule = effectiveRRule)
 
         // Fix: Auto-create the reminder inherently so the LLM doesn't have to call a separate tool
-        val reminder = dueAt?.let { Reminder("r_$nId", title, it, nId, tier = tier) }
+        val reminder = dueAt?.let { Reminder("r_$nId", title, it, nId, tier = tier, rrule = effectiveRRule) }
 
         val afterJson = json.encodeToString(NodeStateSnapshot(node, reminder))
-        val uId = "u_${UUID.randomUUID().toString().take(6)}"
+        val uId = "u_${UUID.randomUUID()}"
         val event = RawEvent(uId, IntentType.CREATE.name, "node", nId, afterJson = afterJson, tsUtc = now, causeMsgId = causeMsgId)
 
         storage.createNodeAndCommit(node, event, reminder, followUpEdge, followUpEdgeEvent, consumeProposalId)
@@ -929,7 +979,7 @@ class Gateway(
         if (!newDueText.isNullOrBlank()) {
             when (val timeResolution = dateResolver.resolve(newDueText, rolloverMin, timeZone)) {
                 is DateResolution.NeedsClarification -> {
-                    val pId = "p_${UUID.randomUUID().toString().take(6)}"
+                    val pId = "p_${UUID.randomUUID()}"
                     val opts = timeResolution.candidateMillis.map { millis ->
                         ProposalOption(millis.toString(), dateResolver.formatTimeOnly(millis, timeZone))
                     }
@@ -987,7 +1037,7 @@ class Gateway(
                 is Resolution.NotFound -> null
                 is Resolution.Ambiguous -> {
                     if (consumeProposalId != null) storage.consumeProposal(consumeProposalId)
-                    val pId = "p_${UUID.randomUUID().toString().take(6)}"
+                    val pId = "p_${UUID.randomUUID()}"
                     val opts = resolution.options.map { node ->
                         val dueStr = if (node.dueAt != null) dateResolver.format(node.dueAt) else null
                         val fullTitle = if (dueStr != null) "${node.title} ($dueStr)" else node.title
@@ -1075,7 +1125,7 @@ class Gateway(
         val beforeJson = json.encodeToString(NodeStateSnapshot(oldNode, oldRem))
         val afterJson = json.encodeToString(NodeStateSnapshot(updatedNode, newRem))
 
-        val uId = "u_${UUID.randomUUID().toString().take(6)}"
+        val uId = "u_${UUID.randomUUID()}"
         val event = RawEvent(uId, IntentType.UPDATE.name, "node", updatedNode.id, beforeJson = beforeJson, afterJson = afterJson, tsUtc = clock.now(), causeMsgId = causeMsgId)
         storage.updateNodeAndCommit(updatedNode, event, deleteReminderId = null, upsertReminder = newRem, consumeProposalId = consumeProposalId)
 
@@ -1120,7 +1170,7 @@ class Gateway(
                 if (consumeProposalId != null) {
                     storage.consumeProposal(consumeProposalId)
                 }
-                val pId = "p_${UUID.randomUUID().toString().take(6)}"
+                val pId = "p_${UUID.randomUUID()}"
                 val opts = resolution.options.map { node ->
                     val dueStr = if (node.dueAt != null) dateResolver.format(node.dueAt) else null
                     val fullTitle = if (dueStr != null) "${node.title} ($dueStr)" else node.title
@@ -1136,46 +1186,77 @@ class Gateway(
                 val oldNode = resolution.node
                 val now = clock.now()
 
-                val newNode = when (intent) {
-                    IntentType.CANCEL -> oldNode.copy(status = "cancelled", closedAt = now, updatedAt = now)
-                    IntentType.COMPLETE -> oldNode.copy(status = "done", closedAt = now, updatedAt = now)
-                    IntentType.RESCHEDULE -> {
-                        val destTime = destinationTimeMillis ?: return ToolResult.Error("To when?")
-                        oldNode.copy(dueAt = destTime, updatedAt = now)
-                    }
-                    else -> return ToolResult.Error("${intent.name} is not supported yet")
-                }
-
                 // R-26: the pending read is paged, so it is only a fallback. A reminder outside
                 // the page must still be found by its node, or RESCHEDULE would create a second row.
                 val oldRem = storage.getReminderByNodeId(oldNode.id)
                     ?: storage.getPendingReminders().find { it.nodeId == oldNode.id || it.id == "r_${oldNode.id}" }
-                val remId = oldRem?.id ?: "rem_${UUID.randomUUID().toString().take(8)}"
+                val remId = oldRem?.id ?: "rem_${UUID.randomUUID()}"
                 val existingTier = oldRem?.tier ?: AlarmTier.ALARM
 
-                val newRem = if (intent == IntentType.RESCHEDULE) {
-                    val dest = destinationTimeMillis ?: return ToolResult.Error("To when?")
-                    if (oldRem != null) {
-                        oldRem.copy(text = newNode.title, fireAtMillis = dest)
-                    } else {
-                        Reminder(remId, newNode.title, dest, newNode.id, tier = existingTier)
-                    }
-                } else null
+                val isRecurringHabit = intent == IntentType.COMPLETE && (oldNode.type == "habit" || oldNode.recurrenceRule != null || oldRem?.rrule != null)
 
-                val deleteReminderId = if (intent == IntentType.CANCEL || intent == IntentType.COMPLETE) oldRem?.id else null
+                val (newNode, newRem, deleteReminderId) = when {
+                    intent == IntentType.CANCEL -> {
+                        Triple(oldNode.copy(status = "cancelled", closedAt = now, updatedAt = now), null, oldRem?.id)
+                    }
+                    isRecurringHabit -> {
+                        val rule = oldNode.recurrenceRule ?: oldRem?.rrule ?: "FREQ=DAILY"
+                        val streak = com.anchor.core.recurrence.RecurrenceEngine.evaluateHabitCompletion(
+                            rrule = rule,
+                            lastCompletedAt = oldNode.lastCompletedAt,
+                            currentStreak = oldNode.streakCurrent,
+                            bestStreak = oldNode.streakBest,
+                            now = now
+                        )
+                        val baseTime = oldNode.dueAt ?: oldRem?.fireAtMillis ?: now
+                        val nextDue = com.anchor.core.recurrence.RecurrenceEngine.nextOccurrence(rule, baseTime, now)
+                        val nodeRes = oldNode.copy(
+                            status = "active",
+                            dueAt = nextDue,
+                            recurrenceRule = rule,
+                            streakCurrent = streak.currentStreak,
+                            streakBest = streak.bestStreak,
+                            lastCompletedAt = now,
+                            updatedAt = now,
+                            closedAt = null
+                        )
+                        val nextRem = (oldRem ?: Reminder(remId, oldNode.title, nextDue, oldNode.id, tier = existingTier, rrule = rule)).copy(
+                            fireAtMillis = nextDue,
+                            rrule = rule,
+                            iteration = (oldRem?.iteration ?: 0) + 1
+                        )
+                        Triple(nodeRes, nextRem, null)
+                    }
+                    intent == IntentType.COMPLETE -> {
+                        Triple(oldNode.copy(status = "done", closedAt = now, updatedAt = now), null, oldRem?.id)
+                    }
+                    intent == IntentType.RESCHEDULE -> {
+                        val destTime = destinationTimeMillis ?: return ToolResult.Error("To when?")
+                        val nodeRes = oldNode.copy(dueAt = destTime, updatedAt = now)
+                        val remRes = if (oldRem != null) {
+                            oldRem.copy(text = nodeRes.title, fireAtMillis = destTime)
+                        } else {
+                            Reminder(remId, nodeRes.title, destTime, nodeRes.id, tier = existingTier)
+                        }
+                        Triple(nodeRes, remRes, null)
+                    }
+                    else -> return ToolResult.Error("${intent.name} is not supported yet")
+                }
 
                 val beforeJson = json.encodeToString(NodeStateSnapshot(oldNode, oldRem))
                 val afterJson = json.encodeToString(NodeStateSnapshot(newNode, newRem))
 
-                val uId = "u_${UUID.randomUUID().toString().take(6)}"
+                val uId = "u_${UUID.randomUUID()}"
                 val event = RawEvent(uId, intent.name, "node", newNode.id, beforeJson = beforeJson, afterJson = afterJson, tsUtc = clock.now(), causeMsgId = causeMsgId)
 
                 storage.updateNodeAndCommit(newNode, event, deleteReminderId, newRem, consumeProposalId)
-                val receiptText = if (intent == IntentType.RESCHEDULE) {
-                    val dest = destinationTimeMillis ?: return ToolResult.Error("To when?")
-                    "Rescheduled: ${newNode.title} to ${dateResolver.format(dest)}"
-                } else {
-                    "Applied ${intent.name}: ${newNode.title}"
+                val receiptText = when {
+                    isRecurringHabit -> "Completed: ${newNode.title} (🔥 ${newNode.streakCurrent} streak)"
+                    intent == IntentType.RESCHEDULE -> {
+                        val dest = destinationTimeMillis ?: return ToolResult.Error("To when?")
+                        "Rescheduled: ${newNode.title} to ${dateResolver.format(dest)}"
+                    }
+                    else -> "Applied ${intent.name}: ${newNode.title}"
                 }
                 return ToolResult.Committed(intent.name, newNode.id, receiptText, uId)
             }
@@ -1247,7 +1328,7 @@ class Gateway(
         }
 
         val afterJson = event.afterJson
-        val newEventId = "u_${UUID.randomUUID().toString().take(6)}"
+        val newEventId = "u_${UUID.randomUUID()}"
 
         if (event.targetType == "reminder") {
             if (event.opType == "SCHEDULE") {
@@ -1348,7 +1429,7 @@ class Gateway(
         val beforeJson = json.encodeToString(NodeStateSnapshot(node, oldRem))
         val newNode = node.copy(updatedAt = now)
         val afterJson = json.encodeToString(NodeStateSnapshot(newNode, oldRem))
-        val uId = "u_${UUID.randomUUID().toString().take(6)}"
+        val uId = "u_${UUID.randomUUID()}"
         val event = RawEvent(uId, "KEEP_STALE", "node", nodeId, beforeJson = beforeJson, afterJson = afterJson, tsUtc = now)
         storage.updateNodeAndCommit(newNode, event, deleteReminderId = null, upsertReminder = null)
         return ToolResult.Committed("KEEP_STALE", nodeId, "Kept: ${node.title}", uId)
@@ -1361,11 +1442,71 @@ class Gateway(
         val beforeJson = json.encodeToString(NodeStateSnapshot(node, oldRem))
         val newNode = node.copy(status = "cancelled", closedAt = now, updatedAt = now)
         val afterJson = json.encodeToString(NodeStateSnapshot(newNode, null))
-        val uId = "u_${UUID.randomUUID().toString().take(6)}"
+        val uId = "u_${UUID.randomUUID()}"
         val event = RawEvent(uId, "CANCEL_STALE", "node", nodeId, beforeJson = beforeJson, afterJson = afterJson, tsUtc = now)
         val deleteRemId = oldRem?.id ?: "r_$nodeId"
         storage.updateNodeAndCommit(newNode, event, deleteReminderId = deleteRemId, upsertReminder = null)
         return ToolResult.Committed("CANCEL_STALE", nodeId, "Cancelled: ${node.title}", uId)
+    }
+
+    suspend fun handleArchiveNode(nodeId: String): ToolResult {
+        val node = storage.getNode(nodeId) ?: return ToolResult.Error("Node not found")
+        if (node.status == "archived") return ToolResult.Error("Item is already archived")
+        val now = clock.now()
+        val oldRem = storage.getReminderByNodeId(nodeId) ?: storage.getPendingReminders().find { it.id == "r_$nodeId" }
+        val beforeJson = json.encodeToString(NodeStateSnapshot(node, oldRem))
+        val newNode = node.copy(status = "archived", closedAt = now, updatedAt = now)
+        val afterJson = json.encodeToString(NodeStateSnapshot(newNode, null))
+        val uId = "u_${UUID.randomUUID()}"
+        val event = RawEvent(uId, "ARCHIVE_NODE", "node", nodeId, beforeJson = beforeJson, afterJson = afterJson, tsUtc = now)
+        val deleteRemId = oldRem?.id ?: "r_$nodeId"
+        storage.updateNodeAndCommit(newNode, event, deleteReminderId = deleteRemId, upsertReminder = null)
+        return ToolResult.Committed("ARCHIVE_NODE", nodeId, "Archived: ${node.title}", uId)
+    }
+
+    suspend fun handleDeleteNode(nodeId: String): ToolResult {
+        val node = storage.getNode(nodeId) ?: return ToolResult.Error("Node not found")
+        if (node.status == "cancelled") return ToolResult.Error("Item is already deleted")
+        val now = clock.now()
+        val oldRem = storage.getReminderByNodeId(nodeId) ?: storage.getPendingReminders().find { it.id == "r_$nodeId" }
+        val beforeJson = json.encodeToString(NodeStateSnapshot(node, oldRem))
+        val newNode = node.copy(status = "cancelled", closedAt = now, updatedAt = now)
+        val afterJson = json.encodeToString(NodeStateSnapshot(newNode, null))
+        val uId = "u_${UUID.randomUUID()}"
+        val event = RawEvent(uId, "DELETE_NODE", "node", nodeId, beforeJson = beforeJson, afterJson = afterJson, tsUtc = now)
+        val deleteRemId = oldRem?.id ?: "r_$nodeId"
+        storage.updateNodeAndCommit(newNode, event, deleteReminderId = deleteRemId, upsertReminder = null)
+        return ToolResult.Committed("DELETE_NODE", nodeId, "Deleted: ${node.title}", uId)
+    }
+
+    suspend fun handleRestoreNode(nodeId: String): ToolResult {
+        val node = storage.getNode(nodeId) ?: return ToolResult.Error("Node not found")
+        if (node.status != "cancelled" && node.status != "archived") return ToolResult.Error("Item is not in trash")
+        val now = clock.now()
+        val oldRem = storage.getReminderByNodeId(nodeId) ?: storage.getPendingReminders().find { it.id == "r_$nodeId" }
+        val beforeJson = json.encodeToString(NodeStateSnapshot(node, oldRem))
+        val newNode = node.copy(status = "active", closedAt = null, updatedAt = now)
+        val afterJson = json.encodeToString(NodeStateSnapshot(newNode, null))
+        val uId = "u_${UUID.randomUUID()}"
+        val event = RawEvent(uId, "RESTORE_NODE", "node", nodeId, beforeJson = beforeJson, afterJson = afterJson, tsUtc = now)
+        storage.updateNodeAndCommit(newNode, event, deleteReminderId = null, upsertReminder = null)
+        return ToolResult.Committed("RESTORE_NODE", nodeId, "Restored: ${node.title}", uId)
+    }
+
+    suspend fun handleEraseNode(nodeId: String): ToolResult {
+        val node = storage.getNode(nodeId) ?: return ToolResult.Error("Node not found")
+        val uId = "u_${UUID.randomUUID()}"
+        storage.eraseNode(nodeId)
+        return ToolResult.Committed("ERASE_NODE", nodeId, "Erased: ${node.title}", uId)
+    }
+
+    suspend fun handleEraseSoulFact(factId: String): ToolResult {
+        val fact = storage.getActiveSoulFacts(includeLocalOnly = true).find { it.id == factId }
+            ?: storage.getProposedSoulFacts().find { it.id == factId }
+            ?: return ToolResult.Error("Soul fact not found")
+        val uId = "u_${UUID.randomUUID()}"
+        storage.eraseSoulFact(factId)
+        return ToolResult.Committed("ERASE_SOUL_FACT", factId, "Erased fact: ${fact.statement}", uId)
     }
 
     suspend fun handleAddFollowUp(srcNodeId: String, dstNodeId: String, causeMsgId: String? = null): ToolResult {
@@ -1384,7 +1525,7 @@ class Gateway(
             return ToolResult.Error("Cannot link: adding this follow-up would create a cyclic dependency")
         }
 
-        val edgeId = "e_${UUID.randomUUID().toString().take(8)}"
+        val edgeId = "e_${UUID.randomUUID()}"
         val edge = Edge(
             id = edgeId,
             srcId = srcNodeId,
@@ -1393,7 +1534,7 @@ class Gateway(
             createdAt = clock.now(),
             updatedAt = clock.now()
         )
-        val uId = "u_${UUID.randomUUID().toString().take(6)}"
+        val uId = "u_${UUID.randomUUID()}"
         val event = RawEvent(
             opId = uId,
             opType = "LINK",
@@ -1409,7 +1550,7 @@ class Gateway(
 
     suspend fun handleRemoveFollowUp(edgeId: String, causeMsgId: String? = null): ToolResult {
         val edge = storage.getEdge(edgeId) ?: return ToolResult.Error("Follow-up link '$edgeId' not found or already removed")
-        val uId = "u_${UUID.randomUUID().toString().take(6)}"
+        val uId = "u_${UUID.randomUUID()}"
         val beforeJson = json.encodeToString(edge)
         val event = RawEvent(
             opId = uId,

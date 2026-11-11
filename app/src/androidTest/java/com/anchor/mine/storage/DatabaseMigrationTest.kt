@@ -25,7 +25,7 @@ class DatabaseMigrationTest {
         val key = ByteArray(32) { 2 }
 
         val helper = DatabaseProvider.getHelper(context, key, "mine_smoke_test.db")
-        assertEquals(6, helper.readableDatabase.version)
+        assertEquals(8, helper.readableDatabase.version)
         val storage = AndroidStorage(helper)
 
         // 1. Immutable Messages
@@ -134,6 +134,57 @@ class DatabaseMigrationTest {
         storage.deleteRegisteredAlarm("rem_reg_1")
         assertTrue(storage.getRegisteredAlarms().none { it.first == "rem_reg_1" })
 
+        // 10. Outbox (B3-15 expansion)
+        val job = OutboxJob(
+            id = "ob_smoke_1",
+            jobType = OutboxJob.JOB_CHAT_TURN,
+            priority = 0,
+            payloadJson = "{\"msg_id\":\"msg_s1\"}",
+            idemKey = "msg_s1",
+            status = OutboxJob.STATUS_PENDING,
+            attempts = 0,
+            nextTryAt = 1700000000000L,
+            deadlineAt = null,
+            createdAt = 1700000000000L,
+            updatedAt = 1700000000000L
+        )
+        storage.enqueueOutbox(job)
+        val pendingOutbox = storage.getPendingOutbox(OutboxJob.JOB_CHAT_TURN)
+        assertEquals(1, pendingOutbox.size)
+        assertEquals("ob_smoke_1", pendingOutbox.first().id)
+        assertNull("B1-01 null preservation", pendingOutbox.first().deadlineAt)
+
+        storage.markOutboxDone("ob_smoke_1", 1700000001000L)
+        assertEquals(0, storage.getPendingOutbox(OutboxJob.JOB_CHAT_TURN).size)
+
+        // 11. Signals (B3-15 expansion)
+        val sig = SignalLog(
+            id = "sig_smoke_1",
+            tsUtc = 1700000000000L,
+            kind = "nudge_reply",
+            subject = "overdue",
+            value = 1.0,
+            attrs = "{}"
+        )
+        storage.recordSignal(sig)
+        val signals = storage.getSignals("nudge_reply", 0L, 10)
+        assertEquals(1, signals.size)
+        assertEquals("sig_smoke_1", signals.first().id)
+
+        // 12. DayRule (B3-15 expansion)
+        val rule = DayRule(
+            id = "rule_smoke_1",
+            effectiveFrom = 1700000000000L,
+            startMinute = 360,
+            endMinute = 1320,
+            tzId = "UTC",
+            createdAt = 1700000000000L
+        )
+        storage.saveDayRule(rule)
+        val effectiveRule = storage.getEffectiveDayRule(1700000000000L)
+        assertEquals(360, effectiveRule.startMinute)
+        assertEquals(1320, effectiveRule.endMinute)
+
         helper.close()
     }
 
@@ -167,7 +218,7 @@ class DatabaseMigrationTest {
         )
         db.execSQL("DROP INDEX IF EXISTS idx_reminder_fire")
 
-        MineDatabaseCallback().onUpgrade(db, 1, 6)
+        MineDatabaseCallback().onUpgrade(db, 1, 7)
 
         // The index must exist again.
         var indexFound = false
@@ -200,5 +251,225 @@ class DatabaseMigrationTest {
 
         helper.close()
         context.deleteDatabase(dbName)
+    }
+
+    /**
+     * B3-14: V5 -> V6 migration test.
+     * Drops outbox table and index to simulate v5 database, then runs onUpgrade(db, 5, 6)
+     * and asserts outbox table and indexes are created properly and storage operations work.
+     */
+    @Test
+    fun testDatabaseMigration_V5toV6_CreatesOutboxTableAndIndex() {
+        runBlocking {
+            val context = InstrumentationRegistry.getInstrumentation().targetContext
+            val dbName = "mine_v5_v6_test.db"
+            context.deleteDatabase(dbName)
+            val key = ByteArray(32) { 4 }
+
+            val helper = DatabaseProvider.getHelper(context, key, dbName)
+            val db = helper.writableDatabase
+
+            // Simulate a v5 state by dropping outbox table and outbox index
+            db.execSQL("DROP INDEX IF EXISTS idx_outbox_due")
+            db.execSQL("DROP TABLE IF EXISTS outbox")
+
+            // Run onUpgrade from 5 to 6
+            MineDatabaseCallback().onUpgrade(db, 5, 6)
+
+            // Verify outbox table exists in sqlite_master
+            var outboxTableFound = false
+            db.query("SELECT name FROM sqlite_master WHERE type='table' AND name='outbox'").use { c ->
+                outboxTableFound = c.moveToFirst()
+            }
+            assertTrue("B3-14: onUpgrade from 5 to 6 must create outbox table", outboxTableFound)
+
+            // Verify idx_outbox_due index exists
+            var outboxIndexFound = false
+            db.query("SELECT name FROM sqlite_master WHERE type='index' AND name='idx_outbox_due'").use { c ->
+                outboxIndexFound = c.moveToFirst()
+            }
+            assertTrue("B3-14: onUpgrade from 5 to 6 must create idx_outbox_due index", outboxIndexFound)
+
+            // Verify outbox CRUD operations succeed through AndroidStorage
+            val storage = AndroidStorage(helper)
+            val testJob = OutboxJob(
+                id = "ob_v6_migrated",
+                jobType = OutboxJob.JOB_CHAT_TURN,
+                priority = OutboxJob.PRIORITY_P0,
+                payloadJson = "{\"msg\":\"v6 test\"}",
+                idemKey = "idem_v6_migrated",
+                status = OutboxJob.STATUS_PENDING,
+                attempts = 0,
+                nextTryAt = 100_000L,
+                deadlineAt = null,
+                createdAt = 100_000L,
+                updatedAt = 100_000L
+            )
+            storage.enqueueOutbox(testJob)
+            val pending = storage.getPendingOutbox(OutboxJob.JOB_CHAT_TURN)
+            assertEquals("Enqueued outbox job must be retrievable on upgraded v6 db", 1, pending.size)
+            assertEquals("ob_v6_migrated", pending.first().id)
+            assertNull("B1-01 null deadline preserved on upgraded v6 db", pending.first().deadlineAt)
+
+            helper.close()
+            context.deleteDatabase(dbName)
+        }
+    }
+
+    /**
+     * v1.1 Item 3: V6 -> V7 migration test.
+     * Drops recurrence and streak columns to simulate v6 database state, then runs onUpgrade(db, 6, 7)
+     * and asserts columns and indexes are created properly and habit streak operations work.
+     */
+    @Test
+    fun testDatabaseMigration_V6toV7_AddsRecurrenceAndStreakColumns() {
+        runBlocking {
+            val context = InstrumentationRegistry.getInstrumentation().targetContext
+            val dbName = "mine_v6_v7_test.db"
+            context.deleteDatabase(dbName)
+            val key = ByteArray(32) { 5 }
+
+            val helper = DatabaseProvider.getHelper(context, key, dbName)
+            val db = helper.writableDatabase
+
+            // Simulate a v6 state: drop index and recreate node and reminder tables as V6 schemas
+            db.execSQL("DROP INDEX IF EXISTS idx_node_habit")
+            db.execSQL("DROP TABLE IF EXISTS node_fts")
+            db.execSQL("DROP TABLE IF EXISTS reminder")
+            db.execSQL("DROP TABLE IF EXISTS node")
+
+            // V6 DDL without recurrence/streak columns
+            db.execSQL("CREATE TABLE node (id TEXT PRIMARY KEY, device_id TEXT, type TEXT, title TEXT, body TEXT, status TEXT, priority INTEGER, severity INTEGER, start_at INTEGER, due_at INTEGER, time_precision TEXT, flexible INTEGER, lane TEXT, expires_at INTEGER, source TEXT, origin TEXT, source_msg_ids TEXT, extractor_version TEXT, attrs TEXT, local_only INTEGER, hlc TEXT, created_at INTEGER, updated_at INTEGER, closed_at INTEGER, deleted_at INTEGER)")
+            db.execSQL("CREATE TABLE reminder (id TEXT PRIMARY KEY, node_id TEXT, text TEXT NOT NULL, fire_at INTEGER NOT NULL, tier TEXT NOT NULL DEFAULT 'alarm')")
+
+            // Insert existing V6 rows
+            db.execSQL("INSERT INTO node (id, type, title, status, due_at, created_at, updated_at) VALUES ('n_v6', 'habit', 'Morning Walk', 'active', 1700000000000, 1700000000000, 1700000000000)")
+            db.execSQL("INSERT INTO reminder (id, node_id, text, fire_at, tier) VALUES ('rem_v6', 'n_v6', 'Morning Walk', 1700000000000, 'alarm')")
+
+            // Run onUpgrade from 6 to 7
+            MineDatabaseCallback().onUpgrade(db, 6, 7)
+
+            // Verify node table has new columns
+            val nodeCols = mutableSetOf<String>()
+            db.query("PRAGMA table_info(node)").use { c ->
+                val nameIdx = c.getColumnIndexOrThrow("name")
+                while (c.moveToNext()) {
+                    nodeCols.add(c.getString(nameIdx).lowercase())
+                }
+            }
+            assertTrue("V7 migration must add recurrence_rule to node", nodeCols.contains("recurrence_rule"))
+            assertTrue("V7 migration must add streak_current to node", nodeCols.contains("streak_current"))
+            assertTrue("V7 migration must add streak_best to node", nodeCols.contains("streak_best"))
+            assertTrue("V7 migration must add last_completed_at to node", nodeCols.contains("last_completed_at"))
+
+            // Verify reminder table has new columns
+            val remCols = mutableSetOf<String>()
+            db.query("PRAGMA table_info(reminder)").use { c ->
+                val nameIdx = c.getColumnIndexOrThrow("name")
+                while (c.moveToNext()) {
+                    remCols.add(c.getString(nameIdx).lowercase())
+                }
+            }
+            assertTrue("V7 migration must add rrule to reminder", remCols.contains("rrule"))
+            assertTrue("V7 migration must add iteration to reminder", remCols.contains("iteration"))
+
+            // Verify idx_node_habit index exists
+            var habitIndexFound = false
+            db.query("SELECT name FROM sqlite_master WHERE type='index' AND name='idx_node_habit'").use { c ->
+                habitIndexFound = c.moveToFirst()
+            }
+            assertTrue("V7 migration must create idx_node_habit index", habitIndexFound)
+
+            // Verify AndroidStorage can read and write migrated habit node with default streak 0
+            val storage = AndroidStorage(helper)
+            val migratedNode = storage.getNode("n_v6")
+            assertNotNull("Migrated node must be readable", migratedNode)
+            assertEquals("Default streak_current on migrated v6 row must be 0", 0, migratedNode!!.streakCurrent)
+            assertEquals("Default streak_best on migrated v6 row must be 0", 0, migratedNode.streakBest)
+            assertNull("Default recurrence_rule on migrated v6 row must be null", migratedNode.recurrenceRule)
+
+            // Verify streak update persists through updateNodeAndCommit
+            val updatedNode = migratedNode.copy(
+                streakCurrent = 1,
+                streakBest = 1,
+                recurrenceRule = "FREQ=DAILY",
+                lastCompletedAt = 1700000001000L,
+                updatedAt = 1700000001000L
+            )
+            storage.updateNodeAndCommit(
+                node = updatedNode,
+                event = RawEvent("e_streak_1", "UPDATE", "node", "n_v6", tsUtc = 1700000001000L),
+                deleteReminderId = null,
+                upsertReminder = null
+            )
+
+            val reloadedNode = storage.getNode("n_v6")
+            assertNotNull(reloadedNode)
+            assertEquals(1, reloadedNode!!.streakCurrent)
+            assertEquals(1, reloadedNode.streakBest)
+            assertEquals("FREQ=DAILY", reloadedNode.recurrenceRule)
+            assertEquals(1700000001000L, reloadedNode.lastCompletedAt)
+
+            helper.close()
+            context.deleteDatabase(dbName)
+        }
+    }
+
+    /**
+     * v1.1 Item 11 & 12: V7 -> V8 migration test.
+     * Simulates a v7 database without the embedding table, executes onUpgrade(db, 7, 8)
+     * and asserts embedding table and index exist, and AndroidStorage can persist and retrieve QuantVectors.
+     */
+    @Test
+    fun testDatabaseMigration_V7toV8_CreatesEmbeddingTableAndPerformsVectorOps() {
+        runBlocking {
+            val context = InstrumentationRegistry.getInstrumentation().targetContext
+            val dbName = "mine_v7_v8_test.db"
+            context.deleteDatabase(dbName)
+            val key = ByteArray(32) { 7 }
+
+            val helper = DatabaseProvider.getHelper(context, key, dbName)
+            val db = helper.writableDatabase
+
+            // Simulate V7 by dropping embedding table and index
+            db.execSQL("DROP INDEX IF EXISTS idx_embedding_owner")
+            db.execSQL("DROP TABLE IF EXISTS embedding")
+
+            // Run migration from 7 to 8
+            MineDatabaseCallback().onUpgrade(db, 7, 8)
+
+            // Verify embedding table exists
+            var embeddingTableFound = false
+            db.query("SELECT name FROM sqlite_master WHERE type='table' AND name='embedding'").use { c ->
+                embeddingTableFound = c.moveToFirst()
+            }
+            assertTrue("V8 migration must create embedding table", embeddingTableFound)
+
+            // Verify idx_embedding_owner index exists
+            var embeddingIndexFound = false
+            db.query("SELECT name FROM sqlite_master WHERE type='index' AND name='idx_embedding_owner'").use { c ->
+                embeddingIndexFound = c.moveToFirst()
+            }
+            assertTrue("V8 migration must create idx_embedding_owner index", embeddingIndexFound)
+
+            // Verify storage operations for embeddings
+            val storage = AndroidStorage(helper)
+            val testVec = com.anchor.core.retrieval.QuantVector(ByteArray(256) { 42 }, 0.05f)
+            storage.saveEmbedding("node", "n_embed_1", "test-model-v1", testVec)
+
+            val loaded = storage.getEmbeddings("node", "test-model-v1")
+            assertEquals(1, loaded.size)
+            assertEquals("n_embed_1", loaded[0].first)
+            assertEquals(256, loaded[0].second.dim)
+            assertEquals(0.05f, loaded[0].second.scale, 0.0001f)
+            assertEquals(42.toByte(), loaded[0].second.bytes[0])
+
+            storage.deleteEmbedding("node", "n_embed_1")
+            val emptyList = storage.getEmbeddings("node", "test-model-v1")
+            assertTrue("Deleted embedding must not be returned", emptyList.isEmpty())
+
+            helper.close()
+            context.deleteDatabase(dbName)
+        }
     }
 }

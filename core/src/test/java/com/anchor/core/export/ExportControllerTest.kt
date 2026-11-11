@@ -82,6 +82,23 @@ class ExportControllerTest {
     }
 
     @Test
+    fun testExportMarkdown_Success_WritesReadableFile() = runTest {
+        val manager = FakeManager()
+        val c = controller(manager)
+        val storage = com.anchor.core.SharedFakeStorage()
+        val tempFile = File.createTempFile("test_export", ".md")
+        try {
+            val ok = c.runExportMarkdown(tempFile, storage)
+            assertTrue("Markdown export must succeed", ok)
+            val text = tempFile.readText()
+            assertTrue(text.contains("WARNING: UNENCRYPTED PLAIN TEXT EXPORT"))
+            assertFalse(c.state.value.resultIsError)
+        } finally {
+            tempFile.delete()
+        }
+    }
+
+    @Test
     fun testImport_Success_RequiresRestart() = runTest {
         val manager = FakeManager()
         val c = controller(manager)

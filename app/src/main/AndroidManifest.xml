@@ -8,6 +8,7 @@
          granted at install; without it the oracle always reports offline and nothing would send. -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <application
         android:name=".MineApp"
         android:allowBackup="false"
@@ -28,6 +29,21 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- Blueprint 52 §360 / 90 §3.3: Provider setup import via QR code or mine:// deep link -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="mine"
+                    android:host="provider" />
+            </intent-filter>
+            <!-- Blueprint 50 §241 / 90 §61: Share sheet target ("Share to Mine") -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
             <!-- Blueprint 50 §3.14 / 52 §12: the launcher shortcut. singleTop + onNewIntent
                  keeps an open chat in place instead of remounting it under the user. -->
             <meta-data
@@ -35,13 +51,20 @@
                 android:resource="@xml/shortcuts" />
         </activity>
 
-        <receiver android:name=".alarms.AlarmReceiver" android:exported="false" />
+        <receiver
+            android:name=".alarms.AlarmReceiver"
+            android:exported="false"
+            android:directBootAware="true" />
         <!-- Blueprint 50 §3.14: inline reply on a reminder notification. Not exported: the
              PendingIntent that targets it is created by this app and is the only caller. -->
         <receiver android:name=".capture.QuickCaptureReceiver" android:exported="false" />
         <receiver android:name=".quotes.QuoteAlarmReceiver" android:exported="false" />
-        <receiver android:name=".alarms.BootReceiver" android:exported="true">
+        <receiver
+            android:name=".alarms.BootReceiver"
+            android:exported="true"
+            android:directBootAware="true">
             <intent-filter>
+                <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
                 <action android:name="android.intent.action.TIME_SET" />
