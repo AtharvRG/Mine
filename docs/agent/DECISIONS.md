@@ -550,4 +550,10 @@ Rejected: printing only the first line of the message (the diagnostic fields `Al
 - **Rejected:** VoIP audio capture / notification snooping; storing raw phone numbers; vibrating on call nudges.
 - **Proof:** `CallNudgeEngineTest` (7/7 PASS in `:core`), `SettingsCatalogTest` (5/5 PASS in `:core`), `DatabaseMigrationTest` (PASS V9->V10 on `moto g73 5G`), `CallNudgeDeviceTest` (4/4 PASS on `moto g73 5G - Android 14`).
 
-(Next free: D-179. Add: date, decision, reason, rejected.)
+## D-179 (2026-11-11) — v2 Voice STT/TTS: Pure-Kotlin Speech Sanitizer, In-Memory Audio Recorder, Kokoro Speech Output & Schema V11.
+- **Decision:** Implemented pure-Kotlin `VoiceSpeechSanitizer` in `core/src/main/java/com/anchor/core/voice/` providing markdown/code/XML stripping, 1200-character truncation with "The rest is in the chat." suffix, and sentence chunking for streaming speech playback. Implemented `AudioRecorderHelper` in `app/src/main/java/com/anchor/mine/voice/` capturing 16 kHz mono float samples into an in-memory buffer with zero audio persistence to disk or SQLite. Wired interactive Mic recording button into `ChatScreen` composer (with live duration counter, transcribing via staged Zipformer offline ASR and populating draft for review) and Speak button on assistant messages (synthesizing and playing via Kokoro TTS with PCM float audio playback). Bumped SQLite/SQLCipher `DATABASE_VERSION` from 10 to 11 with device-local `voice_job` and `model_asset` tables and `idx_voice_job_state` index.
+- **Reason:** Blueprint 60 requires high-fidelity speech input and output while strictly ensuring audio is never stored on disk, never uploaded unannounced, and never vibrates during interaction.
+- **Rejected:** Storing audio blobs in SQLite; continuous always-on listening without explicit mic button tap; emotional speech synthesis claims.
+- **Proof:** `VoiceSpeechSanitizerTest` (3/3 PASS in `:core`), `DatabaseMigrationTest` (PASS V10->V11 on `moto g73 5G`).
+
+(Next free: D-180. Add: date, decision, reason, rejected.)

@@ -245,6 +245,15 @@ interface Storage {
     suspend fun updateCallEventState(id: String, state: com.anchor.core.nudge.CallNudgeState, nudgeId: String? = null)
     suspend fun pruneCallEvents(olderThanUtc: Long): Int
 
+    /** Blueprint 60 §4 (v2 Voice): Voice jobs and model assets. */
+    suspend fun saveVoiceJob(job: com.anchor.core.voice.VoiceJob)
+    suspend fun getVoiceJob(id: String): com.anchor.core.voice.VoiceJob?
+    suspend fun getRecentVoiceJobs(limit: Int = 50): List<com.anchor.core.voice.VoiceJob>
+    suspend fun updateVoiceJobState(id: String, state: com.anchor.core.voice.VoiceJobState, error: String? = null)
+    suspend fun saveModelAsset(asset: com.anchor.core.voice.ModelAsset)
+    suspend fun getModelAssets(): List<com.anchor.core.voice.ModelAsset>
+    suspend fun getModelAsset(id: String): com.anchor.core.voice.ModelAsset?
+
     companion object {
         /** R-26: page size for [getPendingReminders]. Hitting it means "more rows exist". */
         const val PENDING_REMINDER_PAGE_LIMIT = 500

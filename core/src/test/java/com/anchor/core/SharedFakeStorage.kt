@@ -922,4 +922,48 @@ open class SharedFakeStorage(var clock: Clock = SystemClock()) : Storage {
         callEvents.removeAll { it.endedAt < olderThanUtc }
         initial - callEvents.size
     }
+
+    // Blueprint 60: Voice (Voice Jobs & Model Assets)
+    val voiceJobs = mutableListOf<com.anchor.core.voice.VoiceJob>()
+    val modelAssets = mutableListOf<com.anchor.core.voice.ModelAsset>()
+
+    override suspend fun saveVoiceJob(job: com.anchor.core.voice.VoiceJob) {
+        synchronized(this) {
+            val idx = voiceJobs.indexOfFirst { it.id == job.id }
+            if (idx != -1) voiceJobs[idx] = job else voiceJobs.add(job)
+        }
+    }
+
+    override suspend fun getVoiceJob(id: String): com.anchor.core.voice.VoiceJob? = synchronized(this) {
+        voiceJobs.find { it.id == id }
+    }
+
+    override suspend fun getRecentVoiceJobs(limit: Int): List<com.anchor.core.voice.VoiceJob> = synchronized(this) {
+        voiceJobs.sortedByDescending { it.updatedAt }.take(limit.coerceAtLeast(0))
+    }
+
+    override suspend fun updateVoiceJobState(id: String, state: com.anchor.core.voice.VoiceJobState, error: String?) {
+        synchronized(this) {
+            val idx = voiceJobs.indexOfFirst { it.id == id }
+            if (idx != -1) {
+                val current = voiceJobs[idx]
+                voiceJobs[idx] = current.copy(state = state, error = error ?: current.error, updatedAt = clock.now())
+            }
+        }
+    }
+
+    override suspend fun saveModelAsset(asset: com.anchor.core.voice.ModelAsset) {
+        synchronized(this) {
+            val idx = modelAssets.indexOfFirst { it.id == asset.id }
+            if (idx != -1) modelAssets[idx] = asset else modelAssets.add(asset)
+        }
+    }
+
+    override suspend fun getModelAssets(): List<com.anchor.core.voice.ModelAsset> = synchronized(this) {
+        modelAssets.toList()
+    }
+
+    override suspend fun getModelAsset(id: String): com.anchor.core.voice.ModelAsset? = synchronized(this) {
+        modelAssets.find { it.id == id }
+    }
 }

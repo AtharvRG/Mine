@@ -49,6 +49,8 @@ class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(DATABASE_VERSION) 
         db.execSQL(PLACE_SIGNAL_DDL)
         db.execSQL(SENSING_EVENT_DDL)
         db.execSQL(CALL_EVENT_DDL)
+        db.execSQL(VOICE_JOB_DDL)
+        db.execSQL(MODEL_ASSET_DDL)
 
         createIndexes(db)
         createTriggers(db)
@@ -141,6 +143,10 @@ class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(DATABASE_VERSION) 
         if (oldVersion < 10) {
             db.execSQL(CALL_EVENT_DDL)
         }
+        if (oldVersion < 11) {
+            db.execSQL(VOICE_JOB_DDL)
+            db.execSQL(MODEL_ASSET_DDL)
+        }
         // T19: an upgraded device must end up with the same indexes and triggers as a fresh
         // install. Indexes were previously created in onCreate only, so a device upgraded from v1
         // never got idx_reminder_fire - the index that makes the R-26 `ORDER BY fire_at` cheap.
@@ -161,7 +167,7 @@ class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(DATABASE_VERSION) 
     }
 
     companion object {
-        const val DATABASE_VERSION = 10
+        const val DATABASE_VERSION = 11
 
         /**
          * Blueprint 41 §4, verbatim. Shared by [onCreate] and the `oldVersion < 6` upgrade branch so
@@ -234,6 +240,34 @@ class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(DATABASE_VERSION) 
                 "state TEXT NOT NULL, " +
                 "created_at INTEGER NOT NULL)"
 
+        /** Blueprint 60 §4: Device-local Voice Jobs. */
+        private const val VOICE_JOB_DDL =
+            "CREATE TABLE IF NOT EXISTS voice_job (" +
+                "id TEXT PRIMARY KEY, " +
+                "kind TEXT NOT NULL, " +
+                "state TEXT NOT NULL, " +
+                "msg_id TEXT, " +
+                "audio_path TEXT, " +
+                "target_ref TEXT, " +
+                "attempts INTEGER DEFAULT 0, " +
+                "created_at INTEGER NOT NULL, " +
+                "updated_at INTEGER NOT NULL, " +
+                "error TEXT)"
+
+        /** Blueprint 60 §4: Device-local Model Assets. */
+        private const val MODEL_ASSET_DDL =
+            "CREATE TABLE IF NOT EXISTS model_asset (" +
+                "id TEXT PRIMARY KEY, " +
+                "kind TEXT NOT NULL, " +
+                "name TEXT NOT NULL, " +
+                "version TEXT, " +
+                "size_bytes INTEGER, " +
+                "sha256 TEXT, " +
+                "license_ref TEXT, " +
+                "path TEXT, " +
+                "state TEXT NOT NULL, " +
+                "updated_at INTEGER NOT NULL)"
+
         private val INDEXES = listOf(
             "CREATE INDEX IF NOT EXISTS idx_node_status_due ON node(status, due_at)",
             "CREATE INDEX IF NOT EXISTS idx_node_habit ON node(type, streak_current)",
@@ -252,7 +286,8 @@ class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(DATABASE_VERSION) 
             "CREATE INDEX IF NOT EXISTS idx_embedding_owner ON embedding(owner_type, model_version)",
             "CREATE INDEX IF NOT EXISTS idx_sensing_event_ts ON sensing_event(ts_utc)",
             "CREATE INDEX IF NOT EXISTS idx_place_kind ON place(kind)",
-            "CREATE INDEX IF NOT EXISTS idx_call_event_ended ON call_event(ended_at)"
+            "CREATE INDEX IF NOT EXISTS idx_call_event_ended ON call_event(ended_at)",
+            "CREATE INDEX IF NOT EXISTS idx_voice_job_state ON voice_job(state)"
         )
 
         /** Every trigger created by [createTriggers], in drop order. */

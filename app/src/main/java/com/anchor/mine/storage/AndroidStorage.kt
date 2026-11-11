@@ -1934,4 +1934,129 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         }
         count
     }
+
+    // Blueprint 60: Voice (Voice Jobs & Model Assets)
+    override suspend fun saveVoiceJob(job: com.anchor.core.voice.VoiceJob) = withContext(ioDispatcher) {
+        dbHelper.writableDatabase.execSQL(
+            "INSERT OR REPLACE INTO voice_job (id, kind, state, msg_id, audio_path, target_ref, attempts, created_at, updated_at, error) VALUES (?,?,?,?,?,?,?,?,?,?)",
+            arrayOf<Any?>(job.id, job.kind.wire, job.state.wire, job.msgId, job.audioPath, job.targetRef, job.attempts, job.createdAt, job.updatedAt, job.error)
+        )
+    }
+
+    override suspend fun getVoiceJob(id: String): com.anchor.core.voice.VoiceJob? = withContext(ioDispatcher) {
+        dbHelper.readableDatabase.query(
+            "SELECT id, kind, state, msg_id, audio_path, target_ref, attempts, created_at, updated_at, error FROM voice_job WHERE id = ?",
+            arrayOf(id)
+        ).use { c ->
+            if (c.moveToFirst()) {
+                com.anchor.core.voice.VoiceJob(
+                    id = c.getString(0),
+                    kind = com.anchor.core.voice.VoiceJobKind.fromWire(c.getString(1)),
+                    state = com.anchor.core.voice.VoiceJobState.fromWire(c.getString(2)),
+                    msgId = if (c.isNull(3)) null else c.getString(3),
+                    audioPath = if (c.isNull(4)) null else c.getString(4),
+                    targetRef = if (c.isNull(5)) null else c.getString(5),
+                    attempts = c.getInt(6),
+                    createdAt = c.getLong(7),
+                    updatedAt = c.getLong(8),
+                    error = if (c.isNull(9)) null else c.getString(9)
+                )
+            } else null
+        }
+    }
+
+    override suspend fun getRecentVoiceJobs(limit: Int): List<com.anchor.core.voice.VoiceJob> = withContext(ioDispatcher) {
+        val list = mutableListOf<com.anchor.core.voice.VoiceJob>()
+        dbHelper.readableDatabase.query(
+            "SELECT id, kind, state, msg_id, audio_path, target_ref, attempts, created_at, updated_at, error FROM voice_job ORDER BY updated_at DESC LIMIT ?",
+            arrayOf(limit.coerceAtLeast(0).toString())
+        ).use { c ->
+            while (c.moveToNext()) {
+                list.add(
+                    com.anchor.core.voice.VoiceJob(
+                        id = c.getString(0),
+                        kind = com.anchor.core.voice.VoiceJobKind.fromWire(c.getString(1)),
+                        state = com.anchor.core.voice.VoiceJobState.fromWire(c.getString(2)),
+                        msgId = if (c.isNull(3)) null else c.getString(3),
+                        audioPath = if (c.isNull(4)) null else c.getString(4),
+                        targetRef = if (c.isNull(5)) null else c.getString(5),
+                        attempts = c.getInt(6),
+                        createdAt = c.getLong(7),
+                        updatedAt = c.getLong(8),
+                        error = if (c.isNull(9)) null else c.getString(9)
+                    )
+                )
+            }
+        }
+        list
+    }
+
+    override suspend fun updateVoiceJobState(id: String, state: com.anchor.core.voice.VoiceJobState, error: String?) = withContext(ioDispatcher) {
+        val now = System.currentTimeMillis()
+        if (error != null) {
+            dbHelper.writableDatabase.execSQL(
+                "UPDATE voice_job SET state = ?, error = ?, updated_at = ? WHERE id = ?",
+                arrayOf<Any?>(state.wire, error, now, id)
+            )
+        } else {
+            dbHelper.writableDatabase.execSQL(
+                "UPDATE voice_job SET state = ?, updated_at = ? WHERE id = ?",
+                arrayOf<Any?>(state.wire, now, id)
+            )
+        }
+    }
+
+    override suspend fun saveModelAsset(asset: com.anchor.core.voice.ModelAsset) = withContext(ioDispatcher) {
+        dbHelper.writableDatabase.execSQL(
+            "INSERT OR REPLACE INTO model_asset (id, kind, name, version, size_bytes, sha256, license_ref, path, state, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
+            arrayOf<Any?>(asset.id, asset.kind.wire, asset.name, asset.version, asset.sizeBytes, asset.sha256, asset.licenseRef, asset.path, asset.state.wire, asset.updatedAt)
+        )
+    }
+
+    override suspend fun getModelAssets(): List<com.anchor.core.voice.ModelAsset> = withContext(ioDispatcher) {
+        val list = mutableListOf<com.anchor.core.voice.ModelAsset>()
+        dbHelper.readableDatabase.query(
+            "SELECT id, kind, name, version, size_bytes, sha256, license_ref, path, state, updated_at FROM model_asset ORDER BY name ASC"
+        ).use { c ->
+            while (c.moveToNext()) {
+                list.add(
+                    com.anchor.core.voice.ModelAsset(
+                        id = c.getString(0),
+                        kind = com.anchor.core.voice.ModelAssetKind.fromWire(c.getString(1)),
+                        name = c.getString(2),
+                        version = if (c.isNull(3)) null else c.getString(3),
+                        sizeBytes = if (c.isNull(4)) null else c.getLong(4),
+                        sha256 = if (c.isNull(5)) null else c.getString(5),
+                        licenseRef = if (c.isNull(6)) null else c.getString(6),
+                        path = if (c.isNull(7)) null else c.getString(7),
+                        state = com.anchor.core.voice.ModelAssetState.fromWire(c.getString(8)),
+                        updatedAt = c.getLong(9)
+                    )
+                )
+            }
+        }
+        list
+    }
+
+    override suspend fun getModelAsset(id: String): com.anchor.core.voice.ModelAsset? = withContext(ioDispatcher) {
+        dbHelper.readableDatabase.query(
+            "SELECT id, kind, name, version, size_bytes, sha256, license_ref, path, state, updated_at FROM model_asset WHERE id = ?",
+            arrayOf(id)
+        ).use { c ->
+            if (c.moveToFirst()) {
+                com.anchor.core.voice.ModelAsset(
+                    id = c.getString(0),
+                    kind = com.anchor.core.voice.ModelAssetKind.fromWire(c.getString(1)),
+                    name = c.getString(2),
+                    version = if (c.isNull(3)) null else c.getString(3),
+                    sizeBytes = if (c.isNull(4)) null else c.getLong(4),
+                    sha256 = if (c.isNull(5)) null else c.getString(5),
+                    licenseRef = if (c.isNull(6)) null else c.getString(6),
+                    path = if (c.isNull(7)) null else c.getString(7),
+                    state = com.anchor.core.voice.ModelAssetState.fromWire(c.getString(8)),
+                    updatedAt = c.getLong(9)
+                )
+            } else null
+        }
+    }
 }

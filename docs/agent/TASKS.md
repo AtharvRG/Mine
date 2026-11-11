@@ -441,7 +441,8 @@ Audit report: `docs/agent/work/audit-2026-11-10.md` & `docs/agent/work/backend-r
 ## P2.0: v2 Execution
 [x] P2.0-01 Context Sensing (Blueprint 43, Schema V9, D-177): Dual-axis state machine (PlaceAxis, MotionAxis), 15-minute flap guard, 90-second walking transition, 45-second motion debounce, vehicle hold in NudgeEngine, context line injection in ContextBuilder, 11 sensing settings in SettingsCatalog, and V8->V9 migration on device.
 [x] P2.0-02 Call Nudge & Telephony (Blueprint 44, Schema V10, D-178): Pure-Kotlin CallNudgeEngine, minimum call duration filter (<45s dropped), 10-minute coalesce window, 3-hour expiry, 3-ignore stop preference rule, CallEvent table and index in DB V10, CallStateReceiver, CallNudgeNotifications (Reply/Voice/Skip, zero vibration), CallNudgeActionReceiver, and V9->V10 migration tested on device.
-[ ] P2.0-03 Voice STT/TTS & Ambient Listening (Blueprints 60, 61): In-memory 16 kHz audio recorder in :app, interactive microphone button in ChatScreen composer, voice transcript review sheet, and Kokoro sentence-by-sentence streaming playback.
+[x] P2.0-03 Voice STT/TTS & Ambient Listening (Blueprints 60, 61, Schema V11, D-179): Pure-Kotlin VoiceSpeechSanitizer (code/markdown stripping, 1200-char cap, sentence chunking), AudioRecorderHelper (16 kHz in-memory PCM float buffer, zero audio on disk), interactive microphone button in ChatScreen composer with live recording timer, Kokoro TTS sentence-by-sentence streaming playback via Speak button, voice_job and model_asset tables in DB V11, and V10->V11 migration tested on device.
+
 
 
 

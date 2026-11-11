@@ -697,4 +697,92 @@ class DatabaseMigrationTest {
             context.deleteDatabase(dbName)
         }
     }
+
+    /**
+     * v2 Item 3: V10 -> V11 migration test (Blueprint 60 §4).
+     * Simulates a v10 database without voice_job and model_asset tables,
+     * executes onUpgrade(db, 10, 11), asserts tables and indexes exist,
+     * and verifies AndroidStorage methods for voice jobs and model assets work cleanly.
+     */
+    @Test
+    fun testDatabaseMigration_V10toV11_CreatesVoiceJobAndModelAssetTablesAndIndexes() {
+        runBlocking {
+            val context = InstrumentationRegistry.getInstrumentation().targetContext
+            val dbName = "mine_v10_v11_test.db"
+            context.deleteDatabase(dbName)
+            val key = ByteArray(32) { 10 }
+
+            val helper = DatabaseProvider.getHelper(context, key, dbName)
+            val db = helper.writableDatabase
+
+            // Simulate V10 by dropping V11 tables and indexes
+            db.execSQL("DROP INDEX IF EXISTS idx_voice_job_state")
+            db.execSQL("DROP TABLE IF EXISTS voice_job")
+            db.execSQL("DROP TABLE IF EXISTS model_asset")
+
+            // Run migration from 10 to 11
+            MineDatabaseCallback().onUpgrade(db, 10, 11)
+
+            // Verify tables exist
+            var voiceJobFound = false
+            var modelAssetFound = false
+            db.query("SELECT name FROM sqlite_master WHERE type='table'").use { c ->
+                while (c.moveToNext()) {
+                    val name = c.getString(0)
+                    if (name.equals("voice_job", ignoreCase = true)) voiceJobFound = true
+                    if (name.equals("model_asset", ignoreCase = true)) modelAssetFound = true
+                }
+            }
+            assertTrue("V11 migration must create voice_job table", voiceJobFound)
+            assertTrue("V11 migration must create model_asset table", modelAssetFound)
+
+            // Verify index idx_voice_job_state exists
+            var voiceIndexFound = false
+            db.query("SELECT name FROM sqlite_master WHERE type='index'").use { c ->
+                while (c.moveToNext()) {
+                    val name = c.getString(0)
+                    if (name.equals("idx_voice_job_state", ignoreCase = true)) voiceIndexFound = true
+                }
+            }
+            assertTrue("V11 migration must create idx_voice_job_state", voiceIndexFound)
+
+            // Verify AndroidStorage operations for VoiceJob and ModelAsset
+            val storage = AndroidStorage(helper)
+            val job = com.anchor.core.voice.VoiceJob(
+                id = "vjob_1",
+                kind = com.anchor.core.voice.VoiceJobKind.STT,
+                state = com.anchor.core.voice.VoiceJobState.QUEUED,
+                msgId = "m_1",
+                createdAt = 1000L
+            )
+            storage.saveVoiceJob(job)
+
+            val fetchedJob = storage.getVoiceJob("vjob_1")
+            assertNotNull(fetchedJob)
+            assertEquals(com.anchor.core.voice.VoiceJobState.QUEUED, fetchedJob?.state)
+
+            storage.updateVoiceJobState("vjob_1", com.anchor.core.voice.VoiceJobState.DONE)
+            val updatedJob = storage.getVoiceJob("vjob_1")
+            assertEquals(com.anchor.core.voice.VoiceJobState.DONE, updatedJob?.state)
+
+            val asset = com.anchor.core.voice.ModelAsset(
+                id = "asset_kokoro",
+                kind = com.anchor.core.voice.ModelAssetKind.TTS,
+                name = "Kokoro TTS",
+                version = "1.0",
+                sizeBytes = 134_000_000L,
+                state = com.anchor.core.voice.ModelAssetState.READY,
+                updatedAt = 2000L
+            )
+            storage.saveModelAsset(asset)
+
+            val fetchedAsset = storage.getModelAsset("asset_kokoro")
+            assertNotNull(fetchedAsset)
+            assertEquals("Kokoro TTS", fetchedAsset?.name)
+            assertEquals(1, storage.getModelAssets().size)
+
+            helper.close()
+            context.deleteDatabase(dbName)
+        }
+    }
 }

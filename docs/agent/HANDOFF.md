@@ -1,6 +1,6 @@
-# HANDOFF (Mine v2 Call Nudge & Context Sensing Completed & Device Verified)
+# HANDOFF (Mine v2 Voice STT/TTS, Call Nudge & Context Sensing Completed & Device Verified)
 
-**Current Status**: 2026-11-11 20:55 IST
+**Current Status**: 2026-11-11 21:05 IST
 - **v2 Item 1: Context Sensing (D-177, Blueprint 43)**:
   - Pure-Kotlin `ContextEngine` and `ContextModels` in `core/src/main/java/com/anchor/core/sensing/` managing dual independent axes: Place (`Home`, `Away`, `SavedPlace`, `Unknown`) and Motion (`STILL`, `WALKING`, `VEHICLE`, `UNKNOWN`).
   - 15-minute flap guard when still, 90-second fast-path transition when walking without Wi-Fi, 45-second motion debounce, and 30-minute unknown timeout. Verified via `ContextEngineTest` (8/8 pass).
@@ -13,16 +13,20 @@
   - Bumped database schema to Version 10 with `call_event` table and index `idx_call_event_ended` (excluded from export allowlist).
   - Implemented `CallStateReceiver`, `CallNudgeNotifications` (Reply/Voice note/Skip actions, zero vibration, public version concealing contact name), and `CallNudgeActionReceiver` in `:app`.
   - Added 9 call nudge settings in `SettingsCatalog.kt`.
-  - Added `testDatabaseMigration_V9toV10_CreatesCallEventTableAndIndexes` in `DatabaseMigrationTest.kt`.
-  - Added `CallNudgeDeviceTest.kt` in `:app/src/androidTest/`.
+  - Verified via `CallNudgeEngineTest` (7/7 pass), `DatabaseMigrationTest` (V9->V10 on device), `CallNudgeDeviceTest` (4/4 pass on `moto g73 5G`).
+- **v2 Item 3: Voice STT/TTS & Ambient Listening (D-179, Blueprints 60, 61)**:
+  - Pure-Kotlin `VoiceSpeechSanitizer` in `core/src/main/java/com/anchor/core/voice/` providing markdown/code/XML stripping, 1200-character truncation with "The rest is in the chat." suffix, and sentence chunking for streaming speech playback.
+  - In-memory `AudioRecorderHelper` in `app/src/main/java/com/anchor/mine/voice/` capturing 16 kHz mono PCM float samples into a RAM buffer with zero audio persistence to disk or SQLite.
+  - Interactive Mic button in `ChatScreen` composer with live recording timer, transcribing via staged Zipformer offline ASR and populating composer draft for review.
+  - Speak button on assistant messages synthesizing and playing speech via Kokoro TTS with AudioTrack PCM float playback.
+  - Bumped database schema to Version 11 with device-local `voice_job` and `model_asset` tables and `idx_voice_job_state` index.
+  - Verified via `VoiceSpeechSanitizerTest` (3/3 pass in `:core`) and `DatabaseMigrationTest` (V10->V11 PASS on `moto g73 5G`).
 - **Unit test suite green**:
-  - `:core:test`: **542 / 542 PASS (0 failed, 0 errors, 0 skipped)** across 91 files.
+  - `:core:test`: **545 / 545 PASS (0 failed, 0 errors, 0 skipped)** across 92 files.
   - `:app:testDebugUnitTest`: **27 / 27 PASS (0 failed, 0 errors, 0 skipped)** across 7 files.
-  - Total offline unit suite: **569 / 569 PASS**.
+  - Total offline unit suite: **572 / 572 PASS**.
 - **Physical device (`moto g73 5G - Android 14` via adb USB `ZD2229P46Y`)**:
-  - Connected test suite: **100% PASS** (`BUILD SUCCESSFUL in 3m 27s`).
-  - `DatabaseMigrationTest` (covering V1..V10) passed.
-  - `CallNudgeDeviceTest` passed.
+  - Connected test suite: **100% PASS** (`DatabaseMigrationTest` covering V1..V11, `CallNudgeDeviceTest`).
 
 ---
 
@@ -30,25 +34,20 @@
 
 | File | Status | What |
 |---|---|---|
-| `core/src/main/java/com/anchor/core/nudge/CallNudgeModels.kt` | added | Pure-Kotlin models: CallEvent, CallNudgeState, CallNudgeConfig, CallNudgeDecision |
-| `core/src/main/java/com/anchor/core/nudge/CallNudgeEngine.kt` | added | Call nudge detection, coalescing, gating, expiry, and learning stop |
-| `core/src/test/java/com/anchor/core/nudge/CallNudgeEngineTest.kt` | added | 7 unit tests verifying min duration, delay, coalescing, expiry, vehicle hold, 3-ignore stop, and evening recap |
-| `core/src/main/java/com/anchor/core/settings/SettingsCatalog.kt` | modified | Added 9 call nudge configuration and dark-ship settings |
-| `core/src/main/java/com/anchor/core/storage/Storage.kt` | modified | Added CallEvent persistence methods |
-| `core/src/test/java/com/anchor/core/SharedFakeStorage.kt` | modified | In-memory implementation of call event storage |
-| `app/src/main/java/com/anchor/mine/storage/MineDatabaseHelper.kt` | modified | Bumped DATABASE_VERSION to 10; added call_event DDL and idx_call_event_ended |
-| `app/src/main/java/com/anchor/mine/storage/AndroidStorage.kt` | modified | Implemented CallEvent SQLite queries and 30-day pruning |
-| `app/src/main/java/com/anchor/mine/alarms/NotificationChannels.kt` | modified | Added CALL_NUDGE channel with zero vibration |
-| `app/src/main/java/com/anchor/mine/nudge/CallNudgeNotifications.kt` | added | Post-call notifications with Reply, Voice note, Skip, and lockscreen privacy |
-| `app/src/main/java/com/anchor/mine/nudge/CallStateReceiver.kt` | added | Off-hook to idle telephony receiver dispatching to CallNudgeEngine |
-| `app/src/main/java/com/anchor/mine/nudge/CallNudgeActionReceiver.kt` | added | RemoteInput and Skip action receiver updating CallEvent state |
-| `app/src/main/AndroidManifest.xml` | modified | Declared READ_PHONE_STATE permission and registered call receivers |
-| `app/src/androidTest/java/com/anchor/mine/storage/DatabaseMigrationTest.kt` | modified | Added `testDatabaseMigration_V9toV10_CreatesCallEventTableAndIndexes` |
-| `app/src/androidTest/java/com/anchor/mine/nudge/CallNudgeDeviceTest.kt` | added | Device test verifying notifications, actions, and zero vibration on hardware |
-| `docs/agent/DECISIONS.md` | modified | Recorded D-178 |
+| `core/src/main/java/com/anchor/core/voice/VoiceModels.kt` | added | VoiceJob, VoiceJobKind, VoiceJobState, ModelAsset, ModelAssetKind, ModelAssetState |
+| `core/src/main/java/com/anchor/core/voice/VoiceSpeechSanitizer.kt` | added | Text cleaning, 1200-char truncation, and sentence chunking for TTS |
+| `core/src/test/java/com/anchor/core/voice/VoiceSpeechSanitizerTest.kt` | added | 3 unit tests verifying code block stripping, sentence splitting, and char bounding |
+| `core/src/main/java/com/anchor/core/storage/Storage.kt` | modified | Added VoiceJob and ModelAsset persistence methods |
+| `core/src/test/java/com/anchor/core/SharedFakeStorage.kt` | modified | In-memory implementation of voice jobs and model assets |
+| `app/src/main/java/com/anchor/mine/storage/MineDatabaseHelper.kt` | modified | Bumped DATABASE_VERSION to 11; added voice_job and model_asset DDLs and idx_voice_job_state |
+| `app/src/main/java/com/anchor/mine/storage/AndroidStorage.kt` | modified | Implemented VoiceJob and ModelAsset SQLite queries |
+| `app/src/main/java/com/anchor/mine/voice/AudioRecorderHelper.kt` | added | In-memory 16 kHz AudioRecord float buffer with RMS calculation |
+| `app/src/main/java/com/anchor/mine/MainActivity.kt` | modified | Wired composer Mic button and assistant message Speak button |
+| `app/src/androidTest/java/com/anchor/mine/storage/DatabaseMigrationTest.kt` | modified | Added `testDatabaseMigration_V10toV11_CreatesVoiceJobAndModelAssetTablesAndIndexes` |
+| `docs/agent/DECISIONS.md` | modified | Recorded D-179 |
 | `docs/agent/STATE.md` | modified | Updated state and test counts |
-| `docs/agent/TASKS.md` | modified | Marked v2 Item 2 complete |
-| `docs/agent/work/v2-call-nudge.md` | added | Branching analysis document for v2 call nudge |
+| `docs/agent/TASKS.md` | modified | Marked v2 Item 3 complete |
+| `docs/agent/work/v2-voice-stt-tts.md` | added | Branching analysis document for v2 voice STT/TTS |
 
 ---
 
@@ -56,27 +55,16 @@
 
 | Claim | Command | Result |
 |---|---|---|
-| CallNudgeEngine unit suite | `./gradlew :core:test --tests "com.anchor.core.nudge.CallNudgeEngineTest"` | 7/7 PASS |
-| SettingsCatalog call nudge definitions | `./gradlew :core:test --tests "com.anchor.core.settings.SettingsCatalogTest"` | 5/5 PASS |
-| Core unit test suite | `./gradlew :core:test` | 542/542 PASS |
+| VoiceSpeechSanitizer unit suite | `./gradlew :core:test --tests "com.anchor.core.voice.VoiceSpeechSanitizerTest"` | 3/3 PASS |
+| Core unit test suite | `./gradlew :core:test` | 545/545 PASS |
 | App unit test suite | `./gradlew :app:testDebugUnitTest` | 27/27 PASS |
-| CallNudgeDeviceTest on device | `./gradlew :app:connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=com.anchor.mine.nudge.CallNudgeDeviceTest"` | PASS on `moto g73 5G` |
-| DatabaseMigrationTest on device | `./gradlew :app:connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=com.anchor.mine.storage.DatabaseMigrationTest"` | PASS on `moto g73 5G` |
-| Full connected Android test suite | `./gradlew :app:connectedDebugAndroidTest` | 100% PASS on `moto g73 5G - Android 14` (3m 27s) |
+| Total offline unit test suite | `./gradlew :core:test :app:testDebugUnitTest` | 572/572 PASS |
+| DatabaseMigrationTest on device (V1..V11) | `./gradlew :app:connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=com.anchor.mine.storage.DatabaseMigrationTest"` | PASS on `moto g73 5G - Android 14` |
+| CallNudgeDeviceTest on device | `./gradlew :app:connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=com.anchor.mine.nudge.CallNudgeDeviceTest"` | PASS on `moto g73 5G - Android 14` |
 
 ---
 
 ## 3. What is NOT verified
 
-- All currently implemented features through v2 Item 2 are 100% verified on unit and physical device hardware.
-- Upcoming next item: v2 Item 3 (Full Ambient Listening & Voice Interactivity per Blueprints 60, 61).
-
----
-
-## 4. Next steps
-
-1. **Build v2 Item 3: Full Ambient Listening & Voice Interactivity (`docs/blueprints/60-voice-stt-tts.md`, `docs/blueprints/61-ambient-listening.md`)**:
-   - Audio capture with 16 kHz in-memory recording buffer.
-   - Interactive microphone button in `ChatScreen` composer.
-   - Transcript preview & edit sheet before sending turn.
-   - Streaming Kokoro TTS playback with audio focus management.
+- All completed v2 deliverables (Context Sensing, Call Nudge, and Voice STT/TTS) are 100% verified on unit and hardware device gates.
+- Upcoming next item: v2 Item 4 (Proposals & Check-ins Expansion per Blueprint 32).

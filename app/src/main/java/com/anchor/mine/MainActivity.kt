@@ -30,6 +30,7 @@ import androidx.compose.ui.focus.focusRequester
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
@@ -38,6 +39,11 @@ import com.anchor.core.models.AlarmTier
 import com.anchor.core.ui.ChatController
 import com.anchor.core.ui.UiAction
 import com.anchor.core.ui.UiState
+import com.anchor.core.voice.VoiceSpeechSanitizer
+import com.anchor.mine.voice.AudioRecorderHelper
+import com.anchor.mine.voice.SherpaVoiceEngine
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
 
@@ -344,6 +350,7 @@ fun ChatScreen(
 
     // SEC 4: Added imePadding to prevent keyboard overlap
     Column(modifier = Modifier.fillMaxSize().imePadding()) {
+        val scope = rememberCoroutineScope()
         val quote = state.homeQuote
         if (quote != null) {
             Card(
@@ -388,6 +395,29 @@ fun ChatScreen(
                     text = if (queued) "${msg.role.uppercase()}: $textContent (queued)" else "${msg.role.uppercase()}: $textContent",
                     modifier = Modifier.fillMaxWidth().then(align).padding(4.dp).background(color).padding(8.dp)
                 )
+                if (!isUser) {
+                    val context = LocalContext.current
+                    Row(
+                        modifier = Modifier.fillMaxWidth().then(align).padding(horizontal = 4.dp),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        Button(
+                            onClick = {
+                                scope.launch(Dispatchers.Default) {
+                                    val engine = SherpaVoiceEngine.create(context)
+                                    val chunks = VoiceSpeechSanitizer.chunkSentences(msg.content ?: "")
+                                    for (chunk in chunks) {
+                                        val samples = engine?.synthesize(chunk) ?: FloatArray(0)
+                                        engine?.play(samples)
+                                    }
+                                }
+                            },
+                            modifier = Modifier.padding(2.dp)
+                        ) {
+                            Text("🔊 Speak")
+                        }
+                    }
+                }
             }
             
             // RENDER RECEIPTS (Tool Results & Undo)
@@ -451,12 +481,52 @@ fun ChatScreen(
         LaunchedEffect(focusComposerRequests.value) {
             if (focusComposerRequests.value > 0) composerFocus.requestFocus()
         }
-        Row(modifier = Modifier.fillMaxWidth()) {
+        val context = LocalContext.current
+        var isRecording by remember { mutableStateOf(false) }
+        val recorder = remember { AudioRecorderHelper() }
+        var recordingSeconds by remember { mutableStateOf(0) }
+
+        LaunchedEffect(isRecording) {
+            if (isRecording) {
+                recordingSeconds = 0
+                while (isRecording) {
+                    delay(1000L)
+                    recordingSeconds++
+                }
+            }
+        }
+
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             OutlinedTextField(
                 value = state.composerDraft,
                 onValueChange = { onAction(UiAction.UpdateDraft(it)) },
                 modifier = Modifier.weight(1f).focusRequester(composerFocus).testTag("composer")
             )
+            IconButton(
+                onClick = {
+                    if (!isRecording) {
+                        val started = recorder.startRecording(scope)
+                        if (started) isRecording = true
+                    } else {
+                        isRecording = false
+                        val samples = recorder.stopRecording()
+                        scope.launch(Dispatchers.Default) {
+                            val engine = SherpaVoiceEngine.create(context)
+                            val transcript = engine?.transcribe(samples) ?: ""
+                            if (transcript.isNotBlank()) {
+                                onAction(UiAction.UpdateDraft(transcript))
+                            }
+                        }
+                    }
+                },
+                modifier = Modifier.testTag("micButton")
+            ) {
+                if (isRecording) {
+                    Text("⏹ ${recordingSeconds}s", color = Color.Red)
+                } else {
+                    Text("🎤")
+                }
+            }
             if (state.isChatLoading) {
                 Button(onClick = { onAction(UiAction.Stop) }) { Text("Stop") }
             } else {
