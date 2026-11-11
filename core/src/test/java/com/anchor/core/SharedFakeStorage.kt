@@ -354,6 +354,10 @@ open class SharedFakeStorage(var clock: Clock = SystemClock()) : Storage {
     override suspend fun getNode(id: String): Node? = activeNodes.find { it.id == id }
     override suspend fun getEvent(opId: String): RawEvent? = loggedEvents.find { it.opId == opId }
     override suspend fun hasUndo(token: String): Boolean = loggedEvents.any { it.undoOf == token }
+    override suspend fun getUndoneOpIds(sinceUtc: Long): Set<String> =
+        loggedEvents.filter { it.undoOf != null && (sinceUtc == 0L || it.tsUtc >= sinceUtc) }
+            .mapNotNull { it.undoOf }
+            .toSet()
     override suspend fun getRecentEvents(limit: Int): List<RawEvent> {
         val uiVisibleOps = setOf("CREATE", "CANCEL", "COMPLETE", "RESCHEDULE", "UPDATE", "SCHEDULE", "KEEP_STALE", "CANCEL_STALE", "DELETE", "CONFIRM", "ACCEPT", "REJECT", "LINK", "UNLINK")
         return loggedEvents
@@ -973,5 +977,14 @@ open class SharedFakeStorage(var clock: Clock = SystemClock()) : Storage {
 
     override suspend fun getModelAsset(id: String): com.anchor.core.voice.ModelAsset? = synchronized(this) {
         modelAssets.find { it.id == id }
+    }
+
+    override suspend fun pruneOperationalLogs(now: Long): Int = synchronized(this) {
+        val fireCutoff = now - 90 * 86_400_000L
+        val outboxCutoff = now - 7 * 86_400_000L
+
+        reminderFires.removeAll { it.firedAt < fireCutoff }
+        outbox.removeAll { it.status in listOf(OutboxJob.STATUS_DONE, OutboxJob.STATUS_DROPPED) && it.updatedAt < outboxCutoff }
+        1
     }
 }

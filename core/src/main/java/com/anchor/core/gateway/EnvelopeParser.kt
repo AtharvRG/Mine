@@ -29,27 +29,66 @@ object EnvelopeParser {
     fun parse(rawOutput: String): ToolEnvelope? {
         val clean = rawOutput.replace("```json", "").replace("```", "").trim()
         val end = clean.lastIndexOf("}")
-        if (end == -1) return null
 
-        // 1. Try standard envelope parse from the first '{'
-        val firstStart = clean.indexOf("{")
-        if (firstStart != -1 && firstStart < end) {
-            try {
-                val parsed = json.decodeFromString<ToolEnvelope>(clean.substring(firstStart, end + 1))
-                if (parsed.reply.isNotBlank() || parsed.calls.isNotEmpty()) return parsed
-            } catch (_: Exception) {}
-        }
-
-        // 2. If failover concatenated a fresh JSON envelope after an interrupted one, search backwards for '{'
-        if (firstStart != -1) {
-            var candidateStart = clean.lastIndexOf("{", end - 1)
-            while (candidateStart > firstStart) {
+        if (end != -1) {
+            // 1. Try standard envelope parse from the first '{'
+            val firstStart = clean.indexOf("{")
+            if (firstStart != -1 && firstStart < end) {
                 try {
-                    val parsed = json.decodeFromString<ToolEnvelope>(clean.substring(candidateStart, end + 1))
+                    val parsed = json.decodeFromString<ToolEnvelope>(clean.substring(firstStart, end + 1))
                     if (parsed.reply.isNotBlank() || parsed.calls.isNotEmpty()) return parsed
                 } catch (_: Exception) {}
-                candidateStart = clean.lastIndexOf("{", candidateStart - 1)
             }
+
+            // 2. If failover concatenated a fresh JSON envelope after an interrupted one, search backwards for '{'
+            if (firstStart != -1) {
+                var candidateStart = clean.lastIndexOf("{", end - 1)
+                while (candidateStart > firstStart) {
+                    try {
+                        val parsed = json.decodeFromString<ToolEnvelope>(clean.substring(candidateStart, end + 1))
+                        if (parsed.reply.isNotBlank() || parsed.calls.isNotEmpty()) return parsed
+                    } catch (_: Exception) {}
+                    candidateStart = clean.lastIndexOf("{", candidateStart - 1)
+                }
+            }
+        }
+
+        // 3. Fallback: Lenient extraction for truncated or unescaped model outputs
+        val replyKey = Regex(""""reply"\s*:\s*"""").find(clean)
+        val extractedReply = if (replyKey != null) {
+            val textStart = replyKey.range.last + 1
+            val callsIdx = clean.indexOf("\"calls\"", textStart)
+            val replySub = if (callsIdx != -1) {
+                val lastQuoteBeforeCalls = clean.lastIndexOf("\"", callsIdx - 1)
+                if (lastQuoteBeforeCalls > textStart) {
+                    clean.substring(textStart, lastQuoteBeforeCalls)
+                } else {
+                    clean.substring(textStart, callsIdx).trim().removeSuffix(",").removeSuffix("\"")
+                }
+            } else {
+                val lastQuote = clean.lastIndexOf("\"")
+                if (lastQuote > textStart) {
+                    clean.substring(textStart, lastQuote)
+                } else {
+                    clean.substring(textStart)
+                }
+            }
+            replySub.replace("\\\"", "\"").replace("\\n", "\n").replace("\\\\", "\\").trim()
+        } else null
+
+        val callsMatch = Regex(""""calls"\s*:\s*(\[\s*\{.*?\}\s*\])""", RegexOption.DOT_MATCHES_ALL).find(clean)
+        val extractedCalls = if (callsMatch != null) {
+            try {
+                json.decodeFromString<List<ToolCall>>(callsMatch.groupValues[1])
+            } catch (_: Exception) {
+                emptyList()
+            }
+        } else {
+            emptyList()
+        }
+
+        if (!extractedReply.isNullOrBlank() || extractedCalls.isNotEmpty()) {
+            return ToolEnvelope(reply = extractedReply ?: "", calls = extractedCalls)
         }
 
         return null

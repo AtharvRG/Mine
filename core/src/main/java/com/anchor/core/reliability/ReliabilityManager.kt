@@ -51,6 +51,9 @@ class ReliabilityManager(
         storage.saveReliabilityState(state.copy(sweeperHeartbeat = now))
         evaluateReliabilityScore()
         
+        // Blueprint 30 & 42: Prune expired operational logs (diag_log 7d, reminder_fire 90d, outbox 7d)
+        storage.pruneOperationalLogs(now)
+        
         if (autoExportScheduler.shouldRunAutoExport()) {
             onAutoExportTriggered?.invoke()
         }

@@ -225,4 +225,23 @@ class ReliabilityManagerTest {
         val gapDetected = manager.detectStartupGap()
         assertFalse("No gap when heartbeat is fresh", gapDetected)
     }
+
+    @Test
+    fun testSweeper_PrunesExpiredOperationalLogs() = runBlocking {
+        val now = 100_000_000_000L
+        val clock = FakeClock(now)
+        val storage = SharedFakeStorage(clock)
+        val manager = ReliabilityManager(storage, clock)
+
+        // Seed old reminder fire (95 days old) and recent reminder fire (5 days old)
+        val day = 86_400_000L
+        storage.recordReminderFire(com.anchor.core.models.ReminderFire("rf_old", "r_old", now - (95 * day), now - (95 * day), 0, "delivered"))
+        storage.recordReminderFire(com.anchor.core.models.ReminderFire("rf_new", "r_new", now - (5 * day), now - (5 * day), 0, "delivered"))
+
+        manager.runSweeper()
+
+        // r_old should be pruned, r_new should remain
+        assertEquals(1, storage.reminderFires.size)
+        assertEquals("r_new", storage.reminderFires[0].reminderId)
+    }
 }

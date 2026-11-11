@@ -6,8 +6,11 @@ package com.anchor.mine.voice
 
 import android.content.Context
 import android.media.AudioAttributes
+import android.media.AudioFocusRequest
 import android.media.AudioFormat
+import android.media.AudioManager
 import android.media.AudioTrack
+import android.os.Build
 import com.k2fsa.sherpa.onnx.FeatureConfig
 import com.k2fsa.sherpa.onnx.OfflineTts
 import com.k2fsa.sherpa.onnx.OfflineTtsConfig
@@ -34,15 +37,70 @@ class SherpaVoiceEngine private constructor(
     private val paths: VoiceModelPaths,
     private val vad: Vad?,
     private val recognizer: OnlineRecognizer?,
-    private val tts: OfflineTts?
+    private val tts: OfflineTts?,
+    private val audioManager: AudioManager? = null
 ) : Closeable {
 
     private var activeAudioTrack: AudioTrack? = null
     private val audioLock = Any()
+    private var focusRequest: AudioFocusRequest? = null
 
     val isVadAvailable: Boolean get() = vad != null
     val isSttAvailable: Boolean get() = recognizer != null
     val isTtsAvailable: Boolean get() = tts != null
+
+    private fun requestFocus(): Boolean {
+        val am = audioManager ?: return true
+        return try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val playbackAttributes = AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                    .build()
+                val request = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
+                    .setAudioAttributes(playbackAttributes)
+                    .setAcceptsDelayedFocusGain(false)
+                    .setOnAudioFocusChangeListener { focusChange ->
+                        if (focusChange == AudioManager.AUDIOFOCUS_LOSS ||
+                            focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT
+                        ) {
+                            stopPlaying()
+                        }
+                    }
+                    .build()
+                focusRequest = request
+                am.requestAudioFocus(request) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
+            } else {
+                @Suppress("DEPRECATION")
+                am.requestAudioFocus(
+                    { focusChange ->
+                        if (focusChange == AudioManager.AUDIOFOCUS_LOSS ||
+                            focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT
+                        ) {
+                            stopPlaying()
+                        }
+                    },
+                    AudioManager.STREAM_MUSIC,
+                    AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK
+                ) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
+            }
+        } catch (_: Throwable) {
+            true
+        }
+    }
+
+    private fun abandonFocus() {
+        val am = audioManager ?: return
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                focusRequest?.let { am.abandonAudioFocusRequest(it) }
+                focusRequest = null
+            } else {
+                @Suppress("DEPRECATION")
+                am.abandonAudioFocus(null)
+            }
+        } catch (_: Throwable) {}
+    }
 
     /**
      * Transcribes 16kHz mono float audio samples to text.
@@ -86,6 +144,7 @@ class SherpaVoiceEngine private constructor(
     fun play(samples: FloatArray, sampleRate: Int = ttsSampleRate()) {
         if (samples.isEmpty()) return
         stopPlaying()
+        requestFocus()
 
         synchronized(audioLock) {
             val audioAttributes = AudioAttributes.Builder()
@@ -124,45 +183,50 @@ class SherpaVoiceEngine private constructor(
     suspend fun playBlocking(samples: FloatArray, sampleRate: Int = ttsSampleRate()) {
         if (samples.isEmpty()) return
         stopPlaying()
+        requestFocus()
 
-        synchronized(audioLock) {
-            val audioAttributes = AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE)
-                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
-                .build()
+        try {
+            synchronized(audioLock) {
+                val audioAttributes = AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                    .build()
 
-            val audioFormat = AudioFormat.Builder()
-                .setEncoding(AudioFormat.ENCODING_PCM_FLOAT)
-                .setSampleRate(sampleRate)
-                .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
-                .build()
+                val audioFormat = AudioFormat.Builder()
+                    .setEncoding(AudioFormat.ENCODING_PCM_FLOAT)
+                    .setSampleRate(sampleRate)
+                    .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+                    .build()
 
-            val bufferSize = maxOf(
-                AudioTrack.getMinBufferSize(sampleRate, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_FLOAT),
-                samples.size * 4
-            )
+                val bufferSize = maxOf(
+                    AudioTrack.getMinBufferSize(sampleRate, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_FLOAT),
+                    samples.size * 4
+                )
 
-            val track = AudioTrack.Builder()
-                .setAudioAttributes(audioAttributes)
-                .setAudioFormat(audioFormat)
-                .setBufferSizeInBytes(bufferSize)
-                .setTransferMode(AudioTrack.MODE_STATIC)
-                .build()
+                val track = AudioTrack.Builder()
+                    .setAudioAttributes(audioAttributes)
+                    .setAudioFormat(audioFormat)
+                    .setBufferSizeInBytes(bufferSize)
+                    .setTransferMode(AudioTrack.MODE_STATIC)
+                    .build()
 
-            track.write(samples, 0, samples.size, AudioTrack.WRITE_BLOCKING)
-            track.play()
-            activeAudioTrack = track
-        }
-
-        val estimatedDurationMs = (samples.size * 1000L) / sampleRate
-        val startTime = System.currentTimeMillis()
-        while (System.currentTimeMillis() - startTime < estimatedDurationMs + 250L) {
-            val isPlaying = synchronized(audioLock) {
-                activeAudioTrack?.playState == AudioTrack.PLAYSTATE_PLAYING &&
-                    (activeAudioTrack?.playbackHeadPosition ?: 0) < samples.size
+                track.write(samples, 0, samples.size, AudioTrack.WRITE_BLOCKING)
+                track.play()
+                activeAudioTrack = track
             }
-            if (!isPlaying) break
-            kotlinx.coroutines.delay(40L)
+
+            val estimatedDurationMs = (samples.size * 1000L) / sampleRate
+            val startTime = System.currentTimeMillis()
+            while (System.currentTimeMillis() - startTime < estimatedDurationMs + 250L) {
+                val isPlaying = synchronized(audioLock) {
+                    activeAudioTrack?.playState == AudioTrack.PLAYSTATE_PLAYING &&
+                        (activeAudioTrack?.playbackHeadPosition ?: 0) < samples.size
+                }
+                if (!isPlaying) break
+                kotlinx.coroutines.delay(40L)
+            }
+        } finally {
+            abandonFocus()
         }
     }
 
@@ -170,6 +234,7 @@ class SherpaVoiceEngine private constructor(
      * Immediately stops and releases any active audio playback.
      */
     fun stopPlaying() {
+        abandonFocus()
         synchronized(audioLock) {
             activeAudioTrack?.let { track ->
                 try {
@@ -290,7 +355,8 @@ class SherpaVoiceEngine private constructor(
                 null
             }
 
-            return SherpaVoiceEngine(paths, vad, recognizer, tts)
+            val am = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+            return SherpaVoiceEngine(paths, vad, recognizer, tts, am)
         }
     }
 }

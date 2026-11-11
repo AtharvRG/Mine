@@ -1986,4 +1986,73 @@ class AndroidStorageTest {
             assertEquals(25, cursor.getInt(2))
         }
     }
+
+    @Test
+    fun testGetUndoneOpIds_ReturnsBatchUndoneTokens() = runBlocking {
+        val db = dbHelper.writableDatabase
+        db.execSQL(
+            "INSERT INTO raw_event (op_id, op_type, target_type, target_id, undo_of, before_json, after_json, ts_utc) VALUES ('op1', 'CREATE', 'node', 'n1', NULL, NULL, '{}', 1000)",
+            emptyArray()
+        )
+        db.execSQL(
+            "INSERT INTO raw_event (op_id, op_type, target_type, target_id, undo_of, before_json, after_json, ts_utc) VALUES ('op2', 'CANCEL', 'node', 'n1', 'op1', '{}', '{}', 1050)",
+            emptyArray()
+        )
+        db.execSQL(
+            "INSERT INTO raw_event (op_id, op_type, target_type, target_id, undo_of, before_json, after_json, ts_utc) VALUES ('op3', 'CANCEL', 'node', 'n0', 'op_old', '{}', '{}', 500)",
+            emptyArray()
+        )
+
+        val allUndone = storage.getUndoneOpIds(0L)
+        assertEquals(setOf("op1", "op_old"), allUndone)
+
+        val recentUndone = storage.getUndoneOpIds(800L)
+        assertEquals(setOf("op1"), recentUndone)
+    }
+
+    @Test
+    fun testPruneOperationalLogs_DeletesExpiredRows() = runBlocking {
+        val db = dbHelper.writableDatabase
+        val now = 1_000_000_000L
+        val day = 86_400_000L
+
+        // Diag logs: 7 days retention
+        db.execSQL("INSERT INTO diag_log (ts, level, tag, msg) VALUES (?, 'INFO', 't1', 'old')", arrayOf(now - (8 * day)))
+        db.execSQL("INSERT INTO diag_log (ts, level, tag, msg) VALUES (?, 'INFO', 't2', 'recent')", arrayOf(now - (1 * day)))
+
+        // Reminder fire: 90 days retention
+        db.execSQL("INSERT INTO reminder_fire (id, reminder_id, scheduled_for, fired_at, latency_ms, outcome) VALUES ('rf1', 'r1', 100, ?, 0, 'delivered')", arrayOf(now - (95 * day)))
+        db.execSQL("INSERT INTO reminder_fire (id, reminder_id, scheduled_for, fired_at, latency_ms, outcome) VALUES ('rf2', 'r2', 200, ?, 0, 'delivered')", arrayOf(now - (10 * day)))
+
+        // Outbox: 7 days retention for done/dropped
+        db.execSQL("INSERT INTO outbox (id, job_type, priority, payload_json, idem_key, status, next_try_at, created_at, updated_at) VALUES ('ob1', 'chat', 1, '{}', 'k1', 'done', 100, 100, ?)", arrayOf(now - (8 * day)))
+        db.execSQL("INSERT INTO outbox (id, job_type, priority, payload_json, idem_key, status, next_try_at, created_at, updated_at) VALUES ('ob2', 'chat', 1, '{}', 'k2', 'pending', 100, 100, ?)", arrayOf(now - (8 * day)))
+        db.execSQL("INSERT INTO outbox (id, job_type, priority, payload_json, idem_key, status, next_try_at, created_at, updated_at) VALUES ('ob3', 'chat', 1, '{}', 'k3', 'done', 100, 100, ?)", arrayOf(now - (1 * day)))
+
+        val prunedCount = storage.pruneOperationalLogs(now)
+        assertTrue(prunedCount >= 1)
+
+        // Check diag_log
+        dbHelper.readableDatabase.query("SELECT msg FROM diag_log", emptyArray()).use { c ->
+            assertEquals(1, c.count)
+            assertTrue(c.moveToFirst())
+            assertEquals("recent", c.getString(0))
+        }
+
+        // Check reminder_fire
+        dbHelper.readableDatabase.query("SELECT reminder_id FROM reminder_fire", emptyArray()).use { c ->
+            assertEquals(1, c.count)
+            assertTrue(c.moveToFirst())
+            assertEquals("r2", c.getString(0))
+        }
+
+        // Check outbox (ob1 deleted, ob2 pending retained, ob3 recent done retained)
+        dbHelper.readableDatabase.query("SELECT id FROM outbox ORDER BY id ASC", emptyArray()).use { c ->
+            assertEquals(2, c.count)
+            assertTrue(c.moveToFirst())
+            assertEquals("ob2", c.getString(0))
+            assertTrue(c.moveToNext())
+            assertEquals("ob3", c.getString(0))
+        }
+    }
 }

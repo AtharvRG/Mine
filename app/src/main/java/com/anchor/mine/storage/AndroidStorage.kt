@@ -25,26 +25,37 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
 
     fun rebind(newHelper: SupportSQLiteOpenHelper) {
         this.dbHelper = newHelper
-        try {
-            newHelper.readableDatabase.query("SELECT value FROM app_meta WHERE \"key\" = 'device_id'").use {
-                if (it.moveToFirst()) deviceId = it.getString(0)
+        this.cachedDeviceId = null
+    }
+
+    @Volatile
+    private var cachedDeviceId: String? = null
+
+    private fun getOrInitDeviceId(): String {
+        cachedDeviceId?.let { return it }
+        synchronized(this) {
+            cachedDeviceId?.let { return it }
+            var id = ""
+            try {
+                dbHelper.readableDatabase.query("SELECT value FROM app_meta WHERE \"key\" = 'device_id'").use {
+                    if (it.moveToFirst()) id = it.getString(0)
+                }
+                if (id.isEmpty()) {
+                    id = java.util.UUID.randomUUID().toString()
+                    dbHelper.writableDatabase.execSQL(
+                        "INSERT INTO app_meta (\"key\", value) VALUES ('device_id', ?)", arrayOf(id)
+                    )
+                }
+            } catch (_: Exception) {
+                id = java.util.UUID.randomUUID().toString()
             }
-        } catch (_: Exception) {}
-    }
-
-    private var deviceId: String = ""
-
-    init {
-        dbHelper.readableDatabase.query("SELECT value FROM app_meta WHERE \"key\" = 'device_id'").use {
-            if (it.moveToFirst()) deviceId = it.getString(0)
-        }
-        if (deviceId.isEmpty()) {
-            deviceId = java.util.UUID.randomUUID().toString()
-            dbHelper.writableDatabase.execSQL(
-                "INSERT INTO app_meta (\"key\", value) VALUES ('device_id', ?)", arrayOf(deviceId)
-            )
+            cachedDeviceId = id
+            return id
         }
     }
+
+    private val deviceId: String
+        get() = getOrInitDeviceId()
 
     override suspend fun insertRawMessage(id: String, role: String, content: String) =
         insertRawMessage(id, role, content, null, null)
@@ -633,6 +644,27 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         dbHelper.readableDatabase.query("SELECT COUNT(*) FROM raw_event WHERE undo_of = ?", arrayOf(token)).use {
             if (it.moveToFirst()) it.getInt(0) > 0 else false
         }
+    }
+
+    override suspend fun getUndoneOpIds(sinceUtc: Long): Set<String> = withContext(ioDispatcher) {
+        val result = mutableSetOf<String>()
+        val cursor = if (sinceUtc > 0L) {
+            dbHelper.readableDatabase.query(
+                "SELECT undo_of FROM raw_event WHERE undo_of IS NOT NULL AND ts_utc >= ?",
+                arrayOf(sinceUtc)
+            )
+        } else {
+            dbHelper.readableDatabase.query(
+                "SELECT undo_of FROM raw_event WHERE undo_of IS NOT NULL"
+            )
+        }
+        cursor.use { c ->
+            while (c.moveToNext()) {
+                val token = c.getString(0)
+                if (!token.isNullOrBlank()) result.add(token)
+            }
+        }
+        result
     }
 
     override suspend fun getRecentEvents(limit: Int): List<RawEvent> = withContext(ioDispatcher) {
@@ -2058,5 +2090,26 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
                 )
             } else null
         }
+    }
+
+    override suspend fun pruneOperationalLogs(now: Long): Int = withContext(ioDispatcher) {
+        val diagCutoff = now - 7 * 86_400_000L
+        val fireCutoff = now - 90 * 86_400_000L
+        val outboxCutoff = now - 7 * 86_400_000L
+
+        var pruned = 0
+        val db = dbHelper.writableDatabase
+        db.beginTransaction()
+        try {
+            db.execSQL("DELETE FROM diag_log WHERE ts < ?", arrayOf(diagCutoff))
+            db.execSQL("DELETE FROM reminder_fire WHERE fired_at < ?", arrayOf(fireCutoff))
+            db.execSQL("DELETE FROM outbox WHERE status IN ('done', 'dropped') AND updated_at < ?", arrayOf(outboxCutoff))
+            db.setTransactionSuccessful()
+            pruned = 1
+        } catch (_: Exception) {
+        } finally {
+            db.endTransaction()
+        }
+        pruned
     }
 }

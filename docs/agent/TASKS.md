@@ -1,16 +1,41 @@
 # TASKS (one at a time, smallest first). Status: [ ] open, [~] in progress, [x] done+reviewed
 Specs for R1-R10: docs/agent/work/session1-remediation-spec.md. Read the task's section before starting.
 
+## Bulletproof & Invisible Recovery Audit #3 (2026-11-12)
+[x] Layer 1: Zero Main-Thread Load
+    [x] AndroidStorage constructor zero-I/O: `deviceId` moved to lazy thread-safe `getOrInitDeviceId()`, eliminating synchronous DB open on main thread / receivers.
+    [x] MineDatabaseCallback.onOpen schema cache guard: `createIndexes` & `createTriggers` guarded by `triggerCount < 13` check, eliminating 32 schema catalog rewrites per DB open.
+    [x] ChatController UI refresh N+1 elimination: Added `Storage.getUndoneOpIds(sinceUtc)` batch query (`SELECT undo_of FROM raw_event WHERE undo_of IS NOT NULL AND ts_utc >= ?`), collapsing 40 sequential queries in `loadReceipts` & `recentlyClosed` into a single query.
+    [x] AudioRecorderHelper primitive chunking: Replaced `mutableListOf<Float>()` with chunked `ArrayList<FloatArray>`, completely eliminating boxed `java.lang.Float` object allocation (up to 1.9M objects avoided).
+[x] Layer 2: Silent Self-Healing & "Cover-Up" Architecture
+    [x] Lenient JSON parsing: `EnvelopeParser.parse()` auto-repairs unescaped quotes and missing `}` in small LLM outputs.
+    [x] Prose extraction from raw JSON stream: Never displays raw `{ ... }` envelope text to the user bubble.
+    [x] Action claim 1-turn retry loop: If small model claims action ("Setting an alarm...") but omits ToolEnvelope, silently triggers loop 2 to generate `ToolEnvelope`.
+    [x] Stream throttle flush: Flushes `extractReplyFromJsonStream` to `updateLastMessage` immediately when stream finishes, ensuring zero missing trailing characters.
+    [x] SQLCipher busy_timeout: Configured `PRAGMA busy_timeout = 5000` and `PRAGMA synchronous = NORMAL` in `onConfigure` to tank database lock contention cleanly.
+    [x] Outbox poison-pill auto-retire: Immediately marks outbox jobs as done/retired if referenced `queuedMsgId` is missing or deleted from `raw_message`.
+    [x] Offline network drop cover-up: Catches `OfflineException` and clears `connectionError` when handled by offline quick-add or outbox enqueue.
+[x] Layer 3: Memory & Battery Armor (90-Day Durability)
+    [x] Operational log pruning: Implemented `Storage.pruneOperationalLogs(now)` (`diag_log` 7d, `reminder_fire` 90d, `outbox` 7d) called from `ReliabilityManager.runSweeper()`. Verified on device via `AndroidStorageTest`.
+    [x] Audio focus management: `SherpaVoiceEngine` requests transient audio focus (`AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK`), abandons on completion, and handles phone call interruptions cleanly.
+
 ## v2 Implementation & Roadmap (2026-11-11)
-[~] Item 1: Context Sensing (Blueprint 43, D-177)
+[x] Item 1: Context Sensing (Blueprint 43, D-177, D-185)
     [x] Core Dual-Axis State Machine: PlaceAxis (Home, Away, SavedPlace, Unknown) and MotionAxis (STILL, WALKING, VEHICLE, UNKNOWN) in ContextEngine.kt (verified via ContextEngineTest 8/8 pass).
     [x] Debounce, Flap Guard & Fast Path: 15-min flap guard when still, 90s fast path when walking/vehicle, 45s motion hold, 30m unknown timeout (verified via ContextEngineTest).
     [x] Vehicle Hold: Conversational nudges suppressed while in vehicle; critical alarms pass through (verified via NudgeEngineTest 2/2 pass).
     [x] Context Prompt Formatting: Now block gets Context: at <Place>, <motion> (since HH:mm) with zero SSID or coordinates leaked (verified via ContextBuilderTest).
     [x] Settings Catalog: 11 sensing settings registered in SettingsCatalog (verified via SettingsCatalogTest 5/5 pass).
-    [~] Database Migration Version 9: place, place_signal (device-local), sensing_event (device-local, 30-day pruned) in MineDatabaseHelper and AndroidStorage (connected test pending).
-[ ] Item 2: Call Nudge & Telephony (Blueprint 44)
-[ ] Item 3: Full Ambient Listening & Audio Buffer Consent (Blueprint 60, 61)
+    [x] Database Migration Version 9: place, place_signal (device-local), sensing_event (device-local, 30-day pruned) in MineDatabaseHelper and AndroidStorage (connected test passed).
+    [x] ContextSensingManager in :app: Wi-Fi connectivity and motion sensor listeners wired into ContextEngine and ChatController.
+[x] Item 2: Call Nudge & Telephony (Blueprint 44, D-178, D-182)
+    [x] Pure-Kotlin CallNudgeEngine in :core: call event lifecycle, <45s drop, 10m coalescing, 3h expiry, 3-ignore stop preference.
+    [x] DB v10 Migration: device-local call_event table and index.
+    [x] CallStateReceiver & CallNudgeActionReceiver: AlarmManager exact dispatch without coroutine delay inside broadcast receiver. Real proactive state respected.
+[x] Item 3: Full Ambient Listening & Audio Buffer Consent (Blueprint 60, 61, D-179, D-181)
+    [x] VoiceSpeechSanitizer: Pure Kotlin text cleaning and chunking.
+    [x] SherpaVoiceEngine: Thread-safe singleton, AudioTrack blocking playback, transient audio focus.
+    [x] AudioRecorderHelper: RAM-only 16 kHz PCM float recording with primitive chunked buffers, zero disk I/O.
 
 ## v1.1 Implementation & Roadmap (2026-11-11)
 [x] Item 1: Provider Setup Import & Export — `ProviderConfigParser`, `ProviderScreen` import dialog, and `mine://provider` deep-link (verified on device via `ProviderDeepLinkTest`).

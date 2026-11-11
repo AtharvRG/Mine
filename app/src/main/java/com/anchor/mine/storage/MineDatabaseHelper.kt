@@ -16,6 +16,8 @@ class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(DATABASE_VERSION) 
         super.onConfigure(db)
         if (!db.isReadOnly) db.setForeignKeyConstraintsEnabled(true)
         db.query("PRAGMA secure_delete = ON").close()
+        db.query("PRAGMA busy_timeout = 5000").close()
+        db.query("PRAGMA synchronous = NORMAL").close()
     }
 
     override fun onCreate(db: SupportSQLiteDatabase) {
@@ -162,8 +164,16 @@ class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(DATABASE_VERSION) 
 
     override fun onOpen(db: SupportSQLiteDatabase) {
         super.onOpen(db)
-        createIndexes(db)
-        createTriggers(db)
+        val triggerCount = try {
+            db.query("SELECT COUNT(*) FROM sqlite_master WHERE type = 'trigger'").use {
+                if (it.moveToFirst()) it.getInt(0) else 0
+            }
+        } catch (_: Exception) { 0 }
+
+        if (triggerCount < 13) {
+            createIndexes(db)
+            createTriggers(db)
+        }
     }
 
     companion object {

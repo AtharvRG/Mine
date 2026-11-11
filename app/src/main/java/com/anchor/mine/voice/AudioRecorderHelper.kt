@@ -38,14 +38,16 @@ class AudioRecorderHelper(
 
     private var audioRecord: AudioRecord? = null
     private var recordingJob: Job? = null
-    private val sampleBuffer = mutableListOf<Float>()
+    private val chunkList = ArrayList<FloatArray>()
+    private var totalSampleCount = 0
     private val lock = Any()
 
     @SuppressLint("MissingPermission")
     fun startRecording(coroutineScope: CoroutineScope): Boolean {
         synchronized(lock) {
             if (isRecording) return true
-            sampleBuffer.clear()
+            chunkList.clear()
+            totalSampleCount = 0
 
             val minBufferSize = AudioRecord.getMinBufferSize(
                 sampleRate,
@@ -95,9 +97,8 @@ class AudioRecorderHelper(
                         }
                         currentRms = sqrt(sumSq / read).toFloat()
                         synchronized(lock) {
-                            for (i in 0 until read) {
-                                sampleBuffer.add(floats[i])
-                            }
+                            chunkList.add(floats)
+                            totalSampleCount += read
                         }
                     }
                 }
@@ -120,8 +121,14 @@ class AudioRecorderHelper(
                 audioRecord = null
             }
 
-            val result = sampleBuffer.toFloatArray()
-            sampleBuffer.clear()
+            val result = FloatArray(totalSampleCount)
+            var offset = 0
+            for (chunk in chunkList) {
+                System.arraycopy(chunk, 0, result, offset, chunk.size)
+                offset += chunk.size
+            }
+            chunkList.clear()
+            totalSampleCount = 0
             currentRms = 0f
             return result
         }
@@ -139,7 +146,8 @@ class AudioRecorderHelper(
             } finally {
                 audioRecord = null
             }
-            sampleBuffer.clear()
+            chunkList.clear()
+            totalSampleCount = 0
             currentRms = 0f
         }
     }

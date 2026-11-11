@@ -118,6 +118,7 @@ interface Storage {
     suspend fun getNode(id: String): Node?
     suspend fun getEvent(opId: String): RawEvent?
     suspend fun hasUndo(token: String): Boolean
+    suspend fun getUndoneOpIds(sinceUtc: Long = 0L): Set<String>
     suspend fun getRecentEvents(limit: Int): List<RawEvent>
 
     suspend fun getProactiveState(): com.anchor.core.models.ProactiveState
@@ -253,6 +254,9 @@ interface Storage {
     suspend fun saveModelAsset(asset: com.anchor.core.voice.ModelAsset)
     suspend fun getModelAssets(): List<com.anchor.core.voice.ModelAsset>
     suspend fun getModelAsset(id: String): com.anchor.core.voice.ModelAsset?
+
+    /** Prunes expired operational logs (diag_log 7d, reminder_fire 90d, outbox done/dropped 7d). */
+    suspend fun pruneOperationalLogs(now: Long): Int
 
     companion object {
         /** R-26: page size for [getPendingReminders]. Hitting it means "more rows exist". */

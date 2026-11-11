@@ -105,8 +105,9 @@ class ChatController(
         val events = storage.getRecentEvents(30)
         val now = clock.now()
         val dayMs = 24L * 3600 * 1000L
+        val undoneOpIds = storage.getUndoneOpIds(now - dayMs)
         return events.map { event ->
-            val undoValid = (now - event.tsUtc < dayMs) && !storage.hasUndo(event.opId)
+            val undoValid = (now - event.tsUtc < dayMs) && !undoneOpIds.contains(event.opId)
             val undoToken = if (undoValid) event.opId else null
             val message = receiptFormatter.format(event)
             ReceiptState(
@@ -1254,9 +1255,19 @@ class ChatController(
             storage.dropStaleOutbox(now)
             val due = storage.getDueOutbox(OutboxJob.JOB_CHAT_TURN, now)
             if (due.isEmpty()) return
-            val ids = due.mapNotNull { queuedMsgId(it) }
-            if (ids.isEmpty()) return
+            val validDue = mutableListOf<Pair<OutboxJob, String>>()
             for (job in due) {
+                val msgId = queuedMsgId(job)
+                if (msgId == null || !storage.hasRawMessage(msgId)) {
+                    // Poison pill / deleted message defense: retire immediately so it never loops stuck
+                    storage.markOutboxDone(job.id, now)
+                } else {
+                    validDue.add(job to msgId)
+                }
+            }
+            if (validDue.isEmpty()) return
+            val ids = validDue.map { it.second }
+            for ((job, _) in validDue) {
                 storage.claimOutbox(job.id, now + QUEUE_CLAIM_MS, now)
             }
 
@@ -1422,6 +1433,12 @@ class ChatController(
                         }
                     }
 
+                    // Flush any remaining characters immediately so nothing is dropped before tool execution
+                    val finalStreamDisplay = extractReplyFromJsonStream(botResponse.toString())
+                    if (finalStreamDisplay != null) {
+                        updateLastMessage(botId, finalStreamDisplay)
+                    }
+
                     val rawBot = botResponse.toString()
                     val envelope = EnvelopeParser.parse(rawBot)
 
@@ -1529,8 +1546,16 @@ class ChatController(
                         // confirmation ("Setting an alarm…", "Reminder set.") the user is told a
                         // reminder exists that does not — show what actually happened instead.
                         val claimsAction = ACTION_CLAIM_RE.containsMatchIn(rawBot)
+                        if (claimsAction && loops < 2) {
+                            // Silent 1-turn auto-retry: instruct model to emit the valid ToolEnvelope
+                            pack = pack + ChatMessage("sys_${UUID.randomUUID()}", "user", "System feedback: You stated you would set an alarm or reminder, but you emitted no tool call. Output the valid JSON ToolEnvelope with a propose_change or create call now.")
+                            continue
+                        }
+
+                        val extractedProse = if (rawBot.trim().startsWith("{")) extractReplyFromJsonStream(rawBot) else null
                         val finalTxt = when {
                             claimsAction -> "I couldn't turn that into a reminder, so nothing was saved. Please try again."
+                            !extractedProse.isNullOrBlank() -> extractedProse
                             rawBot.isBlank() -> "..."
                             else -> rawBot
                         }
@@ -1583,26 +1608,22 @@ class ChatController(
                     }
                     throw e
                 }
-                // Blueprint 41 §2: a queued batch that is still offline is not an error — the
-                // messages stay queued and the banner already says so. Every job is left pending,
-                // so the next attempt (reconnect, retry timer, app open) answers them.
-                if (queuedBatch && e is OfflineException) {
+                // Blueprint 41 §2: an offline state is not an unhandled error — messages are either
+                // handled immediately via RuleBasedQuickAdd or queued safely in outbox.
+                if (e is OfflineException) {
                     _state.update { it.copy(connectionError = null) }
+                    if (!queuedBatch && activeUserMsgId != null) {
+                        val quickAdd = ruleBasedQuickAdd.parse(text)
+                        if (quickAdd != null) {
+                            handleOfflineQuickAdd(quickAdd, text, activeUserMsgId)
+                        } else {
+                            enqueueChatTurn(text, activeUserMsgId)
+                        }
+                    }
                     return@withLock
                 }
                 // A10: Provider error refreshes UI properly below in finally
                 _state.update { it.copy(connectionError = "Error: ${e.message}") }
-                // Blueprint 41 §2: a live send that fails because the network dropped goes into the
-                // same queue a capture made offline uses. The user's row is already stored, so it is
-                // answered on reconnect instead of surfacing as a lost message.
-                if (!queuedBatch && e is OfflineException && activeUserMsgId != null) {
-                    val quickAdd = ruleBasedQuickAdd.parse(text)
-                    if (quickAdd != null) {
-                        handleOfflineQuickAdd(quickAdd, text, activeUserMsgId)
-                    } else {
-                        enqueueChatTurn(text, activeUserMsgId)
-                    }
-                }
                 // E-17: a capture whose turn never ran stays unanswered in the raw log, so the
                 // next start retries it. Tell the notification that showed "Sending..." now.
                 if (existingUserMsgId != null && !(e is OfflineException)) {
@@ -1684,9 +1705,10 @@ class ChatController(
         val priorityList = storage.getHomePriorityList(nowMs)
         val closedNodes = storage.getRecentlyClosed(nowMs)
         val dayMs = 24L * 3600 * 1000L
+        val undoneOpIds = storage.getUndoneOpIds(nowMs - dayMs)
         val recentlyClosed = closedNodes.map { node ->
             val event = storage.getLatestEventForTarget("node", node.id)
-            val undoValid = event != null && (nowMs - event.tsUtc < dayMs) && !storage.hasUndo(event.opId)
+            val undoValid = event != null && (nowMs - event.tsUtc < dayMs) && !undoneOpIds.contains(event.opId)
             RecentlyClosed(node, undoValid, if (undoValid) event.opId else null)
         }
         val proactive = storage.getProactiveState()
