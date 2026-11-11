@@ -167,14 +167,35 @@ class AlarmReceiver : BroadcastReceiver() {
                     .setAutoCancel(true)
                     .build()
                 manager.notify(id.hashCode(), notification)
-                storage.deleteReminder(id) // Mark done
-                try {
-                    DirectBootAlarmStore(context).removeAlarm(id)
-                } catch (_: Exception) {}
+
+                val rrule = rem?.rrule
+                if (!rrule.isNullOrBlank() && rem != null) {
+                    val now = System.currentTimeMillis()
+                    val nextFireAt = com.anchor.core.recurrence.RecurrenceEngine.nextOccurrence(rrule, rem.fireAtMillis, now)
+                    val nextRem = rem.copy(
+                        fireAtMillis = nextFireAt,
+                        iteration = rem.iteration + 1
+                    )
+                    storage.saveReminder(nextRem)
+                    try {
+                        DirectBootAlarmStore(context).saveAlarm(
+                            id = nextRem.id,
+                            fireAtMillis = nextRem.fireAtMillis,
+                            tier = nextRem.tier,
+                            label = "Reminder"
+                        )
+                    } catch (_: Exception) {}
+                    AndroidAlarmScheduler(context).schedule(nextRem)
+                } else {
+                    storage.deleteReminder(id) // Mark done
+                    try {
+                        DirectBootAlarmStore(context).removeAlarm(id)
+                    } catch (_: Exception) {}
+                }
 
                 // D-124: the completion signal follows the durable write, so "fired" means
-                // "delivered and row retired", never "attempted". A caller that observes
-                // lastFiredId can now rely on the reminder row already being gone.
+                // "delivered and row retired or rescheduled", never "attempted". A caller that observes
+                // lastFiredId can now rely on the state transition already being durable.
                 lastFiredId = id
                 AndroidAlarmScheduler.notifyFired(id)
 

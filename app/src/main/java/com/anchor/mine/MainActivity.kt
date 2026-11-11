@@ -9,6 +9,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
@@ -404,11 +405,11 @@ fun ChatScreen(
                         Button(
                             onClick = {
                                 scope.launch(Dispatchers.Default) {
-                                    val engine = SherpaVoiceEngine.create(context)
+                                    val engine = SherpaVoiceEngine.getInstance(context)
                                     val chunks = VoiceSpeechSanitizer.chunkSentences(msg.content ?: "")
                                     for (chunk in chunks) {
                                         val samples = engine?.synthesize(chunk) ?: FloatArray(0)
-                                        engine?.play(samples)
+                                        engine?.playBlocking(samples)
                                     }
                                 }
                             },
@@ -486,6 +487,21 @@ fun ChatScreen(
         val recorder = remember { AudioRecorderHelper() }
         var recordingSeconds by remember { mutableStateOf(0) }
 
+        var hasMicPermission by remember {
+            mutableStateOf(
+                ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+            )
+        }
+        val micPermissionLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.RequestPermission()
+        ) { granted ->
+            hasMicPermission = granted
+            if (granted) {
+                val started = recorder.startRecording(scope)
+                if (started) isRecording = true
+            }
+        }
+
         LaunchedEffect(isRecording) {
             if (isRecording) {
                 recordingSeconds = 0
@@ -505,13 +521,17 @@ fun ChatScreen(
             IconButton(
                 onClick = {
                     if (!isRecording) {
-                        val started = recorder.startRecording(scope)
-                        if (started) isRecording = true
+                        if (hasMicPermission) {
+                            val started = recorder.startRecording(scope)
+                            if (started) isRecording = true
+                        } else {
+                            micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                        }
                     } else {
                         isRecording = false
                         val samples = recorder.stopRecording()
                         scope.launch(Dispatchers.Default) {
-                            val engine = SherpaVoiceEngine.create(context)
+                            val engine = SherpaVoiceEngine.getInstance(context)
                             val transcript = engine?.transcribe(samples) ?: ""
                             if (transcript.isNotBlank()) {
                                 onAction(UiAction.UpdateDraft(transcript))

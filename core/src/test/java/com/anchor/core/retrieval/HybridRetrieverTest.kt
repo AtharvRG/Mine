@@ -17,28 +17,6 @@ import org.junit.Test
 
 class HybridRetrieverTest {
 
-    private class FakeEmbedder(
-        override val version: String = "test-embedder-v1",
-        override val dim: Int = 256
-    ) : Embedder {
-        val vectorMap = mutableMapOf<String, QuantVector>()
-
-        override suspend fun embed(texts: List<String>, kind: Embedder.Kind): List<QuantVector> {
-            return texts.map { text ->
-                vectorMap[text] ?: run {
-                    val bytes = ByteArray(dim) { 0 }
-                    if (text.contains("doctor", ignoreCase = true) || text.contains("physician", ignoreCase = true)) {
-                        bytes[0] = 50
-                        bytes[1] = 50
-                    } else if (text.contains("tax", ignoreCase = true)) {
-                        bytes[2] = 50
-                    }
-                    QuantVector(bytes, 1.0f)
-                }
-            }
-        }
-    }
-
     @Test
     fun testCosineSimilarity_IdenticalAndOrthogonalVectors() {
         val bytes1 = ByteArray(256) { 10 }
@@ -59,7 +37,7 @@ class HybridRetrieverTest {
     fun testRrfFusion_FusesKeywordAndVectorHitsWithoutDroppingEither() = runBlocking {
         val clock = FakeClock(100_000L)
         val storage = SharedFakeStorage(clock)
-        val embedder = FakeEmbedder()
+        val embedder = PureKotlinEmbedder()
         val retriever = HybridRetriever(storage, embedder, clock, DateResolver(clock))
 
         // Node 1: Exact keyword match for "doctor", no vector stored

@@ -274,4 +274,46 @@ class AlarmReceiverTest {
 
         notificationManager.cancel(rId.hashCode())
     }
+
+    @Test
+    fun testAlarmReceiver_RecurringReminder_AdvancesToNextOccurrenceAndReschedules() = runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val storage = (context.applicationContext as MineApp).sharedStorage.await()
+
+        val rId = "r_recur_${System.currentTimeMillis()}"
+        val scheduledFor = System.currentTimeMillis() - 5000L
+        val rrule = "FREQ=DAILY;INTERVAL=1"
+        storage.saveReminder(
+            Reminder(
+                id = rId,
+                text = "Take daily vitamins",
+                fireAtMillis = scheduledFor,
+                rrule = rrule,
+                iteration = 0
+            )
+        )
+
+        val receiver = AlarmReceiver()
+        val intent = Intent().apply { putExtra("EXTRA_ID", rId) }
+        receiver.onReceive(context, intent)
+
+        var elapsed = 0
+        while (AlarmReceiver.lastFiredId != rId && elapsed < 5000) {
+            kotlinx.coroutines.delay(250)
+            elapsed += 250
+        }
+
+        assertEquals(rId, AlarmReceiver.lastFiredId)
+
+        // Reminder row must NOT be deleted; it must be updated with next occurrence (> now) and iteration 1
+        val updated = storage.getPendingReminders().find { it.id == rId }
+        assertNotNull("Recurring reminder must remain in pending reminders", updated)
+        assertTrue("Next fire time must be in the future", updated!!.fireAtMillis > System.currentTimeMillis())
+        assertEquals("Iteration must increment", 1, updated.iteration)
+
+        // Cleanup
+        storage.deleteReminder(rId)
+        val notificationManager = context.getSystemService(android.content.Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+        notificationManager.cancel(rId.hashCode())
+    }
 }

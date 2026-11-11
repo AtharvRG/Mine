@@ -23,7 +23,9 @@ class Gateway(
     private val storage: Storage, 
     private val resolver: Resolver,
     private val dateResolver: DateResolver,
-    private val clock: Clock
+    private val clock: Clock,
+    private val hybridRetriever: com.anchor.core.retrieval.HybridRetriever? = null,
+    private val embedder: com.anchor.core.retrieval.Embedder? = null
 ) {
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -37,7 +39,7 @@ class Gateway(
             "search_memory" -> {
                 val query = args["query"] ?: ""
                 val limit = (args["limit"]?.toIntOrNull() ?: 6).coerceIn(1, 12)
-                val results = storage.searchMemoryFts(query, limit)
+                val results = hybridRetriever?.search(query, limit) ?: storage.searchMemoryFts(query, limit)
                 ToolResult.Data(formatSearchResults(results))
             }
             // Blueprint 23 §5: the original messages, for when exact earlier wording matters.
@@ -90,6 +92,13 @@ class Gateway(
                 val uId = "u_${UUID.randomUUID()}"
                 val event = RawEvent(uId, "CREATE", "soul_fact", sId, afterJson = json.encodeToString(fact), tsUtc = clock.now(), causeMsgId = causeMsgId)
                 storage.createSoulFactAndCommit(fact, event)
+
+                if (embedder != null && targetStatus == "active" && !fact.localOnly) {
+                    val vec = embedder.embed(listOf(fact.statement), com.anchor.core.retrieval.Embedder.Kind.DOCUMENT).firstOrNull()
+                    if (vec != null) {
+                        storage.saveEmbedding("soul_fact", fact.id, embedder.version, vec)
+                    }
+                }
 
                 val replyMsg = if (targetStatus == "active") "Added to Soul: $statement" else "Proposed to Soul: $statement"
                 ToolResult.Committed("CREATE", sId, replyMsg, uId)
@@ -945,6 +954,13 @@ class Gateway(
 
         storage.createNodeAndCommit(node, event, reminder, followUpEdge, followUpEdgeEvent, consumeProposalId)
 
+        if (embedder != null && !node.localOnly) {
+            val vec = embedder.embed(listOf(node.title), com.anchor.core.retrieval.Embedder.Kind.DOCUMENT).firstOrNull()
+            if (vec != null) {
+                storage.saveEmbedding("node", node.id, embedder.version, vec)
+            }
+        }
+
         val timeStr = if (dueAt != null) " (Due: ${dateResolver.format(dueAt)})" else ""
         return ToolResult.Committed(IntentType.CREATE.name, nId, "Created: $title$timeStr", uId)
     }
@@ -1128,6 +1144,12 @@ class Gateway(
         val uId = "u_${UUID.randomUUID()}"
         val event = RawEvent(uId, IntentType.UPDATE.name, "node", updatedNode.id, beforeJson = beforeJson, afterJson = afterJson, tsUtc = clock.now(), causeMsgId = causeMsgId)
         storage.updateNodeAndCommit(updatedNode, event, deleteReminderId = null, upsertReminder = newRem, consumeProposalId = consumeProposalId)
+        if (embedder != null && !updatedNode.localOnly && newTitle != null && newTitle != oldNode.title) {
+            val vec = embedder.embed(listOf(updatedNode.title), com.anchor.core.retrieval.Embedder.Kind.DOCUMENT).firstOrNull()
+            if (vec != null) {
+                storage.saveEmbedding("node", updatedNode.id, embedder.version, vec)
+            }
+        }
 
         val changes = mutableListOf<String>()
         changes.add("Updated: ${updatedNode.title}")
@@ -1497,6 +1519,7 @@ class Gateway(
         val node = storage.getNode(nodeId) ?: return ToolResult.Error("Node not found")
         val uId = "u_${UUID.randomUUID()}"
         storage.eraseNode(nodeId)
+        storage.deleteEmbedding("node", nodeId)
         return ToolResult.Committed("ERASE_NODE", nodeId, "Erased: ${node.title}", uId)
     }
 
@@ -1506,6 +1529,7 @@ class Gateway(
             ?: return ToolResult.Error("Soul fact not found")
         val uId = "u_${UUID.randomUUID()}"
         storage.eraseSoulFact(factId)
+        storage.deleteEmbedding("soul_fact", factId)
         return ToolResult.Committed("ERASE_SOUL_FACT", factId, "Erased fact: ${fact.statement}", uId)
     }
 

@@ -118,6 +118,55 @@ class SherpaVoiceEngine private constructor(
     }
 
     /**
+     * Plays synthesized speech samples on the device speaker, suspending until
+     * playback finishes to allow sequential chunked sentence playback.
+     */
+    suspend fun playBlocking(samples: FloatArray, sampleRate: Int = ttsSampleRate()) {
+        if (samples.isEmpty()) return
+        stopPlaying()
+
+        synchronized(audioLock) {
+            val audioAttributes = AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                .build()
+
+            val audioFormat = AudioFormat.Builder()
+                .setEncoding(AudioFormat.ENCODING_PCM_FLOAT)
+                .setSampleRate(sampleRate)
+                .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+                .build()
+
+            val bufferSize = maxOf(
+                AudioTrack.getMinBufferSize(sampleRate, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_FLOAT),
+                samples.size * 4
+            )
+
+            val track = AudioTrack.Builder()
+                .setAudioAttributes(audioAttributes)
+                .setAudioFormat(audioFormat)
+                .setBufferSizeInBytes(bufferSize)
+                .setTransferMode(AudioTrack.MODE_STATIC)
+                .build()
+
+            track.write(samples, 0, samples.size, AudioTrack.WRITE_BLOCKING)
+            track.play()
+            activeAudioTrack = track
+        }
+
+        val estimatedDurationMs = (samples.size * 1000L) / sampleRate
+        val startTime = System.currentTimeMillis()
+        while (System.currentTimeMillis() - startTime < estimatedDurationMs + 250L) {
+            val isPlaying = synchronized(audioLock) {
+                activeAudioTrack?.playState == AudioTrack.PLAYSTATE_PLAYING &&
+                    (activeAudioTrack?.playbackHeadPosition ?: 0) < samples.size
+            }
+            if (!isPlaying) break
+            kotlinx.coroutines.delay(40L)
+        }
+    }
+
+    /**
      * Immediately stops and releases any active audio playback.
      */
     fun stopPlaying() {
@@ -144,6 +193,21 @@ class SherpaVoiceEngine private constructor(
     }
 
     companion object {
+        @Volatile
+        private var instance: SherpaVoiceEngine? = null
+
+        fun getInstance(context: Context, customPaths: VoiceModelPaths? = null): SherpaVoiceEngine? {
+            return instance ?: synchronized(this) {
+                instance ?: create(context.applicationContext, customPaths)?.also { instance = it }
+            }
+        }
+
+        fun resetInstanceForTesting() {
+            synchronized(this) {
+                instance?.close()
+                instance = null
+            }
+        }
         /**
          * Cleans message text for speech synthesis according to Blueprint 60 §3.3:
          * Strips markdown fences, formatting, chips, and receipts.

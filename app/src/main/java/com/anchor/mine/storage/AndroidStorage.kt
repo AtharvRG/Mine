@@ -372,7 +372,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
             db.execSQL("DELETE FROM node WHERE id = ?", arrayOf<Any>(nodeId))
             db.execSQL("DELETE FROM reminder WHERE node_id = ?", arrayOf<Any>(nodeId))
             db.execSQL("DELETE FROM edge WHERE src_id = ? OR dst_id = ?", arrayOf<Any>(nodeId, nodeId))
-            db.execSQL("DELETE FROM raw_event WHERE target_id = ?", arrayOf<Any>(nodeId))
+            db.execSQL("UPDATE raw_event SET before_json = NULL, after_json = NULL WHERE target_id = ?", arrayOf<Any>(nodeId))
             db.setTransactionSuccessful()
         } finally {
             db.endTransaction()
@@ -384,7 +384,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         db.beginTransaction()
         try {
             db.execSQL("DELETE FROM soul_fact WHERE id = ?", arrayOf<Any>(factId))
-            db.execSQL("DELETE FROM raw_event WHERE target_id = ?", arrayOf<Any>(factId))
+            db.execSQL("UPDATE raw_event SET before_json = NULL, after_json = NULL WHERE target_id = ?", arrayOf<Any>(factId))
             db.setTransactionSuccessful()
         } finally {
             db.endTransaction()

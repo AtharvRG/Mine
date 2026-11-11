@@ -4,6 +4,8 @@
 
 package com.anchor.mine.nudge
 
+import android.app.AlarmManager
+import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -17,7 +19,6 @@ import com.anchor.core.time.SystemClock
 import com.anchor.mine.MineApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
@@ -90,12 +91,22 @@ class CallStateReceiver : BroadcastReceiver() {
 
                         when (decision) {
                             is CallNudgeDecision.ScheduleAfterDelay -> {
-                                val delayMs = delayS * 1000L
-                                delay(delayMs)
-                                val eval = callEngine.evaluateCandidate(decision.eventId, ProactiveState())
-                                if (eval is CallNudgeDecision.ReadyToNudge) {
-                                    CallNudgeNotifications.show(appContext, decision.eventId)
+                                val alarmManager = appContext.getSystemService(Context.ALARM_SERVICE) as? AlarmManager
+                                val nudgeIntent = Intent(appContext, CallNudgeActionReceiver::class.java).apply {
+                                    action = CallNudgeActionReceiver.ACTION_EVALUATE_CALL_NUDGE
+                                    putExtra(CallNudgeNotifications.EXTRA_CALL_EVENT_ID, decision.eventId)
                                 }
+                                val pending = PendingIntent.getBroadcast(
+                                    appContext,
+                                    decision.eventId.hashCode(),
+                                    nudgeIntent,
+                                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                                )
+                                alarmManager?.setExactAndAllowWhileIdle(
+                                    AlarmManager.RTC_WAKEUP,
+                                    decision.fireAt,
+                                    pending
+                                )
                             }
                             is CallNudgeDecision.CoalesceWithExisting -> {
                                 // Merged with active candidate

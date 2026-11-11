@@ -351,7 +351,24 @@ class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(DATABASE_VERSION) 
                 END;
             """)
             db.execSQL("CREATE TRIGGER IF NOT EXISTS trg_raw_msg_no_delete BEFORE DELETE ON raw_message BEGIN SELECT RAISE(ABORT, 'raw_message is append-only'); END;")
-            db.execSQL("CREATE TRIGGER IF NOT EXISTS trg_raw_evt_no_update BEFORE UPDATE ON raw_event BEGIN SELECT RAISE(ABORT, 'raw_event is append-only'); END;")
+            db.execSQL("""
+                CREATE TRIGGER IF NOT EXISTS trg_raw_evt_no_update BEFORE UPDATE ON raw_event
+                BEGIN
+                    SELECT RAISE(ABORT, 'raw_event is append-only except for erase scrubbing')
+                    WHERE NEW.before_json IS NOT NULL 
+                       OR NEW.after_json IS NOT NULL 
+                       OR OLD.op_id != NEW.op_id
+                       OR OLD.ts_utc != NEW.ts_utc
+                       OR OLD.device_id != NEW.device_id
+                       OR OLD.actor != NEW.actor
+                       OR OLD.op_type != NEW.op_type
+                       OR OLD.target_type != NEW.target_type
+                       OR OLD.target_id != NEW.target_id
+                       OR IFNULL(OLD.cause_msg_id, '') != IFNULL(NEW.cause_msg_id, '')
+                       OR IFNULL(OLD.undo_of, '') != IFNULL(NEW.undo_of, '')
+                       OR IFNULL(OLD.attrs, '') != IFNULL(NEW.attrs, '');
+                END;
+            """)
             db.execSQL("CREATE TRIGGER IF NOT EXISTS trg_raw_evt_no_delete BEFORE DELETE ON raw_event BEGIN SELECT RAISE(ABORT, 'raw_event is append-only'); END;")
             
             db.execSQL("CREATE TRIGGER IF NOT EXISTS trg_node_fts_insert AFTER INSERT ON node BEGIN INSERT INTO node_fts (rowid, title, body) VALUES (new.rowid, new.title, new.body); END;")

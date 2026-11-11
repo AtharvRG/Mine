@@ -56,8 +56,25 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 val clock = SystemClock()
                 val is24HourFormat = { android.text.format.DateFormat.is24HourFormat(application) }
                 val dateResolver = DateResolver(clock, is24HourFormat)
-                val gateway = Gateway(loadedStorage, Resolver(), dateResolver, clock)
-                reliabilityManager = ReliabilityManager(loadedStorage, clock)
+                val embedder = com.anchor.mine.retrieval.LiteRtEmbedder(application)
+                val hybridRetriever = com.anchor.core.retrieval.HybridRetriever(loadedStorage, embedder, clock, dateResolver)
+                val gateway = Gateway(loadedStorage, Resolver(), dateResolver, clock, hybridRetriever, embedder)
+                reliabilityManager = ReliabilityManager(
+                    loadedStorage, clock,
+                    onAutoExportTriggered = {
+                        val uriStr = loadedStorage.getSetting(com.anchor.core.export.AutoExportScheduler.KEY_FOLDER_URI)
+                        if (!uriStr.isNullOrBlank()) {
+                            try {
+                                val exportMgr = app.sharedExportManager.await()
+                                val backupFile = java.io.File(application.filesDir, "auto_backup_${clock.now()}.minebackup")
+                                exportMgr.exportTo(backupFile, "MineBackup2026!", includeApiKeys = false, includeEmbeddings = false)
+                                reliabilityManager.autoExportScheduler.recordExportSuccess(clock.now())
+                            } catch (e: Throwable) {
+                                android.util.Log.w("MainViewModel", "Auto-export failed: ${e.message}")
+                            }
+                        }
+                    }
+                )
 
                 val checkinBuilder = com.anchor.core.nudge.CheckinBuilder(loadedStorage, clock, dateResolver)
                 val contextBuilder = ContextBuilder(loadedStorage, clock, dateResolver, checkinBuilder)
@@ -70,7 +87,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     gateway, AndroidAlarmScheduler(application),
                     viewModelScope, Dispatchers.Default, clock,
                     dateResolver = dateResolver,
-                    networkCheck = { connectivity.isOnline() }
+                    networkCheck = { connectivity.isOnline() },
+                    embedder = embedder,
+                    contextEngine = app.contextEngine
                 )
                 // Blueprint 50 §3.14: the notification reply needs a controller when one exists.
                 app.captureController = controller

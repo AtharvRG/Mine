@@ -1184,6 +1184,61 @@ class AndroidStorageTest {
         assertEquals(0.95, found.confidence, 0.001)
     }
 
+    @Test
+    fun testEraseNode_ScrubsRawEventPayloadsWithoutTriggerViolation(): Unit = runBlocking {
+        val nodeId = "n_erase_real_test"
+        val node = Node(id = nodeId, type = "task", title = "Classified secret", status = "cancelled", createdAt = 1000L)
+        val evt = RawEvent("op_erase_node_test", "CREATE", "node", nodeId, beforeJson = null, afterJson = "{\"secret\": true}")
+        storage.createNodeAndCommit(node, evt, reminder = null)
+
+        // Ensure row was inserted
+        assertNotNull(storage.getNode(nodeId))
+
+        // Erase the node - must not trigger SQLite abort on raw_event
+        storage.eraseNode(nodeId)
+
+        // Node is gone
+        assertNull(storage.getNode(nodeId))
+
+        // Raw event remains, but payload scrubbed
+        val events = storage.getRecentEvents(50)
+        val scrubbedEvt = events.find { it.opId == "op_erase_node_test" }
+        assertNotNull("raw_event audit row must remain", scrubbedEvt)
+        assertNull("before_json must be scrubbed to null", scrubbedEvt!!.beforeJson)
+        assertNull("after_json must be scrubbed to null", scrubbedEvt.afterJson)
+    }
+
+    @Test
+    fun testEraseSoulFact_ScrubsRawEventPayloadsWithoutTriggerViolation(): Unit = runBlocking {
+        val factId = "sf_erase_real_test"
+        val fact = SoulFact(
+            id = factId, category = "trait", statement = "Confidential medical detail",
+            confidence = 1.0, source = "explicit", origin = "user", status = "active",
+            createdAt = 1000L, sensitive = true, localOnly = true
+        )
+        storage.saveSoulFact(fact)
+
+        // Insert event logging the fact
+        val db = dbHelper.writableDatabase
+        db.execSQL(
+            "INSERT INTO raw_event (op_id, ts_utc, device_id, actor, op_type, target_type, target_id, before_json, after_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            arrayOf<Any?>("op_sf_erase_evt", 1000L, "dev_1", "user", "ACCEPT", "soul_fact", factId, null, "{\"medical\": true}")
+        )
+
+        // Erase soul fact - must not trigger SQLite abort on raw_event
+        storage.eraseSoulFact(factId)
+
+        // Soul fact is deleted
+        val active = storage.getActiveSoulFacts(includeLocalOnly = true)
+        assertNull(active.find { it.id == factId })
+
+        // Raw event payload is scrubbed
+        val events = storage.getRecentEvents(50)
+        val scrubbedEvt = events.find { it.opId == "op_sf_erase_evt" }
+        assertNotNull("raw_event audit row must remain", scrubbedEvt)
+        assertNull("after_json must be scrubbed to null", scrubbedEvt!!.afterJson)
+    }
+
     // R-05: an UPDATE that matches no row still wrote a raw_event, so the UI rendered a receipt
     // ("Updated: ...") for a change that never happened. The event must not be written either.
     @Test

@@ -24,6 +24,10 @@ class LiteRtEmbedder(
     private val isNativeAvailableOverride: Boolean? = null
 ) : Embedder {
 
+    constructor(context: android.content.Context) : this(
+        File(context.filesDir, "models/embeddinggemma-2-text-270m.litertlm").absolutePath
+    )
+
     override val version: String = "egemma2-text-256-int8-v1"
     override val dim: Int = 256
 
@@ -69,33 +73,15 @@ class LiteRtEmbedder(
 
     companion object {
         fun quantizeFloats(floats: FloatArray, targetDim: Int = 256): QuantVector {
-            val truncated = if (floats.size >= targetDim) {
-                floats.copyOf(targetDim)
-            } else {
-                FloatArray(targetDim) { i -> if (i < floats.size) floats[i] else 0f }
-            }
-
-            var maxAbs = 0f
-            for (f in truncated) {
-                val a = abs(f)
-                if (a > maxAbs) maxAbs = a
-            }
-
-            val scale = if (maxAbs > 0f) maxAbs / 127f else 1f
-            val bytes = ByteArray(targetDim) { i ->
-                (truncated[i] / scale).roundToInt().coerceIn(-128, 127).toByte()
-            }
-            return QuantVector(bytes, scale)
+            return com.anchor.core.retrieval.SemanticProjection.quantizeFloats(floats, targetDim)
         }
 
         fun generateDeterministicVector(text: String, targetDim: Int = 256): QuantVector {
-            val floats = FloatArray(targetDim)
-            val seed = text.hashCode().toLong()
-            val rng = java.util.Random(seed)
-            for (i in 0 until targetDim) {
-                floats[i] = (rng.nextGaussian() * 0.1).toFloat()
-            }
-            return quantizeFloats(floats, targetDim)
+            return generateSemanticVector(text, targetDim)
+        }
+
+        fun generateSemanticVector(text: String, targetDim: Int = 256): QuantVector {
+            return com.anchor.core.retrieval.SemanticProjection.projectSemanticVector(text, targetDim)
         }
     }
 }

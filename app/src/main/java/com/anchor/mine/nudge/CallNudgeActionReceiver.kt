@@ -10,19 +10,26 @@ import android.content.Intent
 import androidx.core.app.RemoteInput
 import com.anchor.core.capture.QuickCapture
 import com.anchor.core.nudge.CallNudgeState
+import com.anchor.core.nudge.CallNudgeConfig
+import com.anchor.core.nudge.CallNudgeDecision
+import com.anchor.core.nudge.CallNudgeEngine
+import com.anchor.core.nudge.NudgeEngine
+import com.anchor.core.time.SystemClock
 import com.anchor.mine.MineApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 /**
- * Handles user interactions (Reply and Skip) from the post-call notification.
+ * Handles user interactions (Reply and Skip) from the post-call notification,
+ * and handles delayed post-call evaluation alarms without blocking broadcast threads.
  * Blueprint 44 §2 / §3.4.
  *
  * Invariants:
  * - Text stored immediately.
  * - Call event transitioned to ANSWERED or SKIPPED.
  * - Skip produces no guilt and does not count as ignored.
+ * - Uses real durable ProactiveState from storage during delayed candidate evaluation.
  */
 class CallNudgeActionReceiver : BroadcastReceiver() {
 
@@ -32,8 +39,10 @@ class CallNudgeActionReceiver : BroadcastReceiver() {
         val notificationId = intent.getIntExtra(CallNudgeNotifications.EXTRA_NOTIFICATION_ID, callEventId.hashCode())
         val appContext = context.applicationContext
 
-        // Dismiss notification immediately
-        CallNudgeNotifications.dismiss(context, notificationId)
+        // Dismiss notification immediately only for user dismiss/reply actions
+        if (action == CallNudgeNotifications.ACTION_REPLY || action == CallNudgeNotifications.ACTION_SKIP) {
+            CallNudgeNotifications.dismiss(context, notificationId)
+        }
 
         val pendingResult = try { goAsync() } catch (_: Exception) { null }
         CoroutineScope(Dispatchers.IO).launch {
@@ -42,6 +51,26 @@ class CallNudgeActionReceiver : BroadcastReceiver() {
                 val storage = app.sharedStorage.await()
 
                 when (action) {
+                    ACTION_EVALUATE_CALL_NUDGE -> {
+                        val clock = SystemClock()
+                        val minDuration = storage.getSetting("callnudge.min_duration_s")?.toIntOrNull() ?: 45
+                        val delayS = storage.getSetting("callnudge.delay_s")?.toIntOrNull() ?: 20
+                        val coalesceMin = storage.getSetting("callnudge.coalesce_min")?.toIntOrNull() ?: 10
+                        val expireH = storage.getSetting("callnudge.expire_h")?.toIntOrNull() ?: 3
+                        val callConfig = CallNudgeConfig(minDurationS = minDuration, delayS = delayS, coalesceMin = coalesceMin, expireH = expireH)
+                        val callEngine = CallNudgeEngine(
+                            storage = storage,
+                            clock = clock,
+                            nudgeEngine = NudgeEngine(clock),
+                            configProvider = { callConfig }
+                        )
+                        // Use real durable ProactiveState
+                        val proactiveState = storage.getProactiveState()
+                        val eval = callEngine.evaluateCandidate(callEventId, proactiveState)
+                        if (eval is CallNudgeDecision.ReadyToNudge) {
+                            CallNudgeNotifications.show(appContext, callEventId)
+                        }
+                    }
                     CallNudgeNotifications.ACTION_REPLY -> {
                         val replyText = RemoteInput.getResultsFromIntent(intent)
                             ?.getCharSequence(CallNudgeNotifications.RESULT_KEY)
@@ -64,5 +93,9 @@ class CallNudgeActionReceiver : BroadcastReceiver() {
                 pendingResult?.finish()
             }
         }
+    }
+
+    companion object {
+        const val ACTION_EVALUATE_CALL_NUDGE = "com.anchor.mine.nudge.ACTION_EVALUATE_CALL_NUDGE"
     }
 }

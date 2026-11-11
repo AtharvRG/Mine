@@ -14,7 +14,9 @@ import java.util.UUID
 
 class ReliabilityManager(
     private val storage: Storage,
-    private val clock: Clock
+    private val clock: Clock,
+    val autoExportScheduler: com.anchor.core.export.AutoExportScheduler = com.anchor.core.export.AutoExportScheduler(storage, clock),
+    private val onAutoExportTriggered: (suspend () -> Unit)? = null
 ) {
     // BP 42 (3.6): The Sweeper job. Finds armed reminders with fire_at in the past
     // and handles them as missed (recording the latency and cleaning up).
@@ -48,6 +50,10 @@ class ReliabilityManager(
         val state = storage.getReliabilityState()
         storage.saveReliabilityState(state.copy(sweeperHeartbeat = now))
         evaluateReliabilityScore()
+        
+        if (autoExportScheduler.shouldRunAutoExport()) {
+            onAutoExportTriggered?.invoke()
+        }
         
         return toNotify
     }

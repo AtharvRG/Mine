@@ -27,6 +27,11 @@ class MineApp : Application() {
         ProviderOrchestrator(rateLimiter, AndroidHttpTransport())
     }
 
+    val contextEngine: com.anchor.core.sensing.ContextEngine by lazy {
+        com.anchor.core.sensing.ContextEngine(com.anchor.core.time.SystemClock())
+    }
+    private var contextSensingManager: com.anchor.mine.sensing.ContextSensingManager? = null
+
     /**
      * Blueprint 50 §3.14 / E-17: the chat controller the notification reply sends through.
      *
@@ -57,6 +62,13 @@ class MineApp : Application() {
         // Must exist before the first alarm fires: a notification posted to a channel that was
         // never created is dropped silently, and checkHealth() would call that state broken.
         com.anchor.mine.alarms.NotificationChannels.ensureCreated(this)
+        val sensingMgr = com.anchor.mine.sensing.ContextSensingManager(
+            this,
+            contextEngine,
+            storageProvider = { if (sharedStorage.isCompleted) sharedStorage.await() else null }
+        )
+        contextSensingManager = sensingMgr
+        sensingMgr.start()
         CoroutineScope(Dispatchers.IO).launch {
             // H-06 (R-11): catches Throwable, not Exception — an Error here used to leave both
             // deferreds unsettled, so every await() hung forever.

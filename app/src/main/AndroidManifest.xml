@@ -7,6 +7,7 @@
     <!-- Blueprint 41 §3.1: the connectivity oracle the offline queue keys on. Normal permission,
          granted at install; without it the oracle always reports offline and nothing would send. -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <!-- Blueprint 44 §2: Phone state permission for post-call nudges (detection only, zero audio, zero numbers) -->

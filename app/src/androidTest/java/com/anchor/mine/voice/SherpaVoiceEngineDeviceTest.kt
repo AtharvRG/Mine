@@ -65,5 +65,11 @@ class SherpaVoiceEngineDeviceTest {
         // Verify transcription pipeline accepts float waveform and executes offline without crashing
         val transcript = voice.transcribe(samples, sampleRate = voice.ttsSampleRate())
         assertNotNull("Transcription result must not be null", transcript)
+
+        // 3. Verify singleton returns the cached instance without reloading models
+        val instance1 = SherpaVoiceEngine.getInstance(context, paths)
+        val instance2 = SherpaVoiceEngine.getInstance(context, paths)
+        assertNotNull("getInstance must return valid engine", instance1)
+        assertTrue("getInstance must return identical singleton instance", instance1 === instance2)
     }
 }

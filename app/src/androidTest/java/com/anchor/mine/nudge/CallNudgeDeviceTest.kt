@@ -173,4 +173,38 @@ class CallNudgeDeviceTest {
 
         assertEquals(CallNudgeState.SKIPPED, updated?.state)
     }
+
+    @Test
+    fun testCallNudgeActionReceiver_EvaluateCallNudgeUsesRealStorageState() = runBlocking {
+        val app = context.applicationContext as MineApp
+        val storage = app.sharedStorage.await()
+
+        val eventId = "test_eval_call_${UUID.randomUUID()}"
+        val callEvent = CallEvent(
+            id = eventId,
+            startedAt = System.currentTimeMillis() - 90_000L,
+            endedAt = System.currentTimeMillis() - 25_000L,
+            durationS = 65,
+            state = CallNudgeState.PENDING,
+            createdAt = System.currentTimeMillis() - 25_000L
+        )
+        storage.saveCallEvent(callEvent)
+
+        val intent = Intent(context, CallNudgeActionReceiver::class.java).apply {
+            action = CallNudgeActionReceiver.ACTION_EVALUATE_CALL_NUDGE
+            putExtra(CallNudgeNotifications.EXTRA_CALL_EVENT_ID, eventId)
+        }
+
+        CallNudgeActionReceiver().onReceive(context, intent)
+
+        // Give coroutine time to execute evaluation
+        delay(300)
+
+        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val notifications = manager.activeNotifications
+        val active = notifications.find { it.id == eventId.hashCode() }
+        assertNotNull("Delayed evaluation must trigger notification", active)
+
+        CallNudgeNotifications.dismiss(context, eventId.hashCode())
+    }
 }

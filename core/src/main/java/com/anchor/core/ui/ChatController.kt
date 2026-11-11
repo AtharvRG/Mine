@@ -52,7 +52,9 @@ class ChatController(
     // Blueprint 41 §3.1: "network validated and the provider answers". Null means no oracle was
     // installed (core unit tests), and every send is attempted — a wrong "online" costs one failed
     // request, while a wrong "offline" would queue a message that could have been answered now.
-    private val networkCheck: (() -> Boolean)? = null
+    private val networkCheck: (() -> Boolean)? = null,
+    private val embedder: com.anchor.core.retrieval.Embedder? = null,
+    private val contextEngine: com.anchor.core.sensing.ContextEngine? = null
 ) {
     private val _state = MutableStateFlow(UiState())
     val state: StateFlow<UiState> = _state.asStateFlow()
@@ -399,6 +401,12 @@ class ChatController(
                     val afterJson = updatedFact?.let { json.encodeToString(it) }
                     val event = RawEvent(uId, "ACCEPT", "soul_fact", action.factId, beforeJson = beforeJson, afterJson = afterJson, tsUtc = clock.now())
                     storage.updateSoulFactStatusAndCommit(action.factId, "active", event)
+                    if (embedder != null && updatedFact != null && !updatedFact.localOnly) {
+                        val vec = embedder.embed(listOf(updatedFact.statement), com.anchor.core.retrieval.Embedder.Kind.DOCUMENT).firstOrNull()
+                        if (vec != null) {
+                            storage.saveEmbedding("soul_fact", updatedFact.id, embedder.version, vec)
+                        }
+                    }
                     refreshUI()
                 } catch (e: Exception) {
                     if (e is kotlinx.coroutines.CancellationException) throw e
@@ -870,7 +878,8 @@ class ChatController(
                         return@launch
                     }
                     val (candidate, node) = picked
-                    when (val gate = nudgeEngine.evaluate(candidate, afterIgnore, currentDayKey = currentDayKey)) {
+                    val isVehicle = contextEngine?.isVehicleHoldActive() ?: false
+                    when (val gate = nudgeEngine.evaluate(candidate, afterIgnore, currentDayKey = currentDayKey, isVehicle = isVehicle)) {
                         is GateResult.Held -> _state.update { it.copy(nudgeGate = gate.reason) }
                         is GateResult.Pass -> {
                             val msgId = "n_${UUID.randomUUID()}"
@@ -1357,7 +1366,8 @@ class ChatController(
                 if (existingUserMsgId == null && !queuedBatch) storage.insertRawMessage(userMsgId, "user", text)
                 refreshUI()
 
-                var pack = contextBuilder.buildPack()
+                val contextLine = contextEngine?.formatNowContext()
+                var pack = contextBuilder.buildPack(contextLine = contextLine)
                 // Blueprint 41 §3.5: the queued messages are already rows in the pack. The
                 // instruction that names them is this turn's own text, which the pack was built
                 // before and so cannot carry; it goes last, after the newest history, as the turn.

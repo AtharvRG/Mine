@@ -250,12 +250,20 @@ open class SharedFakeStorage(var clock: Clock = SystemClock()) : Storage {
         activeNodes.removeAll { it.id == nodeId }
         reminders.removeAll { it.nodeId == nodeId }
         edges.removeAll { it.srcId == nodeId || it.dstId == nodeId }
-        loggedEvents.removeAll { it.targetId == nodeId }
+        for (i in loggedEvents.indices) {
+            if (loggedEvents[i].targetId == nodeId) {
+                loggedEvents[i] = loggedEvents[i].copy(beforeJson = null, afterJson = null)
+            }
+        }
     }
 
     override suspend fun eraseSoulFact(factId: String): Unit = synchronized(this) {
         soulFacts.removeAll { it.id == factId }
-        loggedEvents.removeAll { it.targetId == factId }
+        for (i in loggedEvents.indices) {
+            if (loggedEvents[i].targetId == factId) {
+                loggedEvents[i] = loggedEvents[i].copy(beforeJson = null, afterJson = null)
+            }
+        }
     }
 
     override suspend fun isSoulFactSuppressed(statement: String): Boolean = synchronized(this) {
