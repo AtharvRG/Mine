@@ -25,7 +25,7 @@ class DatabaseMigrationTest {
         val key = ByteArray(32) { 2 }
 
         val helper = DatabaseProvider.getHelper(context, key, "mine_smoke_test.db")
-        assertEquals(8, helper.readableDatabase.version)
+        assertEquals(MineDatabaseCallback.DATABASE_VERSION, helper.readableDatabase.version)
         val storage = AndroidStorage(helper)
 
         // 1. Immutable Messages
@@ -589,6 +589,109 @@ class DatabaseMigrationTest {
             val remaining = storage.getRecentSensingEvents(10)
             assertEquals(1, remaining.size)
             assertEquals("se_new", remaining[0].id)
+
+            helper.close()
+            context.deleteDatabase(dbName)
+        }
+    }
+
+    /**
+     * v2 Item 2: V9 -> V10 migration test (Blueprint 44 §4).
+     * Simulates a v9 database without the call_event table,
+     * executes onUpgrade(db, 9, 10), asserts call_event table and index exist,
+     * and verifies AndroidStorage methods for call events work cleanly.
+     */
+    @Test
+    fun testDatabaseMigration_V9toV10_CreatesCallEventTableAndIndexes() {
+        runBlocking {
+            val context = InstrumentationRegistry.getInstrumentation().targetContext
+            val dbName = "mine_v9_v10_test.db"
+            context.deleteDatabase(dbName)
+            val key = ByteArray(32) { 9 }
+
+            val helper = DatabaseProvider.getHelper(context, key, dbName)
+            val db = helper.writableDatabase
+
+            // Simulate V9 by dropping V10 table and index
+            db.execSQL("DROP INDEX IF EXISTS idx_call_event_ended")
+            db.execSQL("DROP TABLE IF EXISTS call_event")
+
+            // Run migration from 9 to 10
+            MineDatabaseCallback().onUpgrade(db, 9, 10)
+
+            // Verify call_event table exists
+            var callEventFound = false
+            db.query("SELECT name FROM sqlite_master WHERE type='table'").use { c ->
+                while (c.moveToNext()) {
+                    val name = c.getString(0)
+                    if (name.equals("call_event", ignoreCase = true)) callEventFound = true
+                }
+            }
+            assertTrue("V10 migration must create call_event table", callEventFound)
+
+            // Verify index idx_call_event_ended exists
+            var callIndexFound = false
+            db.query("SELECT name FROM sqlite_master WHERE type='index'").use { c ->
+                while (c.moveToNext()) {
+                    val name = c.getString(0)
+                    if (name.equals("idx_call_event_ended", ignoreCase = true)) callIndexFound = true
+                }
+            }
+            assertTrue("V10 migration must create idx_call_event_ended", callIndexFound)
+
+            // Verify AndroidStorage operations for CallEvent
+            val storage = AndroidStorage(helper)
+            val event1 = com.anchor.core.nudge.CallEvent(
+                id = "call_1",
+                startedAt = 1000L,
+                endedAt = 70_000L,
+                durationS = 69,
+                direction = "in",
+                contactRef = null,
+                nudgeId = null,
+                state = com.anchor.core.nudge.CallNudgeState.PENDING,
+                createdAt = 70_000L
+            )
+            val event2 = com.anchor.core.nudge.CallEvent(
+                id = "call_2",
+                startedAt = 80_000L,
+                endedAt = 150_000L,
+                durationS = 70,
+                direction = "out",
+                contactRef = "Alice",
+                nudgeId = "nudge_2",
+                state = com.anchor.core.nudge.CallNudgeState.ANSWERED,
+                createdAt = 150_000L
+            )
+
+            storage.saveCallEvent(event1)
+            storage.saveCallEvent(event2)
+
+            val fetched = storage.getCallEvent("call_1")
+            assertNotNull(fetched)
+            assertEquals(69, fetched?.durationS)
+            assertEquals(com.anchor.core.nudge.CallNudgeState.PENDING, fetched?.state)
+
+            val recent = storage.getRecentCallEvents(10)
+            assertEquals(2, recent.size)
+            assertEquals("call_2", recent[0].id) // DESC by endedAt
+
+            val between = storage.getCallEventsBetween(50_000L, 100_000L)
+            assertEquals(1, between.size)
+            assertEquals("call_1", between[0].id)
+
+            // Update state
+            storage.updateCallEventState("call_1", com.anchor.core.nudge.CallNudgeState.SKIPPED, "nudge_1")
+            val updated = storage.getCallEvent("call_1")
+            assertEquals(com.anchor.core.nudge.CallNudgeState.SKIPPED, updated?.state)
+            assertEquals("nudge_1", updated?.nudgeId)
+
+            // Pruning
+            val pruned = storage.pruneCallEvents(100_000L)
+            assertEquals(1, pruned) // call_1 pruned
+            val remaining = storage.getRecentCallEvents(10)
+            assertEquals(1, remaining.size)
+            assertEquals("call_2", remaining[0].id)
 
             helper.close()
             context.deleteDatabase(dbName)

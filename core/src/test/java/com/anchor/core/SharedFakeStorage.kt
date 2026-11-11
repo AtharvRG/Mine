@@ -880,4 +880,46 @@ open class SharedFakeStorage(var clock: Clock = SystemClock()) : Storage {
         sensingEvents.removeAll { it.tsUtc < olderThanUtc }
         initial - sensingEvents.size
     }
+
+    // Blueprint 44: Call Nudge (Call Events)
+    val callEvents = mutableListOf<com.anchor.core.nudge.CallEvent>()
+
+    override suspend fun saveCallEvent(callEvent: com.anchor.core.nudge.CallEvent) {
+        synchronized(this) {
+            val idx = callEvents.indexOfFirst { it.id == callEvent.id }
+            if (idx != -1) callEvents[idx] = callEvent else callEvents.add(callEvent)
+        }
+    }
+
+    override suspend fun getCallEvent(id: String): com.anchor.core.nudge.CallEvent? = synchronized(this) {
+        callEvents.find { it.id == id }
+    }
+
+    override suspend fun getRecentCallEvents(limit: Int): List<com.anchor.core.nudge.CallEvent> = synchronized(this) {
+        callEvents.sortedWith(
+            compareByDescending<com.anchor.core.nudge.CallEvent> { it.endedAt }
+                .thenByDescending { it.createdAt }
+                .thenByDescending { it.id }
+        ).take(limit.coerceAtLeast(0))
+    }
+
+    override suspend fun getCallEventsBetween(startUtc: Long, endUtc: Long): List<com.anchor.core.nudge.CallEvent> = synchronized(this) {
+        callEvents.filter { it.endedAt in startUtc..endUtc }
+    }
+
+    override suspend fun updateCallEventState(id: String, state: com.anchor.core.nudge.CallNudgeState, nudgeId: String?) {
+        synchronized(this) {
+            val idx = callEvents.indexOfFirst { it.id == id }
+            if (idx != -1) {
+                val current = callEvents[idx]
+                callEvents[idx] = current.copy(state = state, nudgeId = nudgeId ?: current.nudgeId)
+            }
+        }
+    }
+
+    override suspend fun pruneCallEvents(olderThanUtc: Long): Int = synchronized(this) {
+        val initial = callEvents.size
+        callEvents.removeAll { it.endedAt < olderThanUtc }
+        initial - callEvents.size
+    }
 }

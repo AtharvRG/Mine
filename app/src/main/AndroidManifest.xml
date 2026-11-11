@@ -9,6 +9,8 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- Blueprint 44 §2: Phone state permission for post-call nudges (detection only, zero audio, zero numbers) -->
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
     <application
         android:name=".MineApp"
         android:allowBackup="false"
@@ -59,6 +61,15 @@
              PendingIntent that targets it is created by this app and is the only caller. -->
         <receiver android:name=".capture.QuickCaptureReceiver" android:exported="false" />
         <receiver android:name=".quotes.QuoteAlarmReceiver" android:exported="false" />
+        <!-- Blueprint 44: Post-call nudge receivers -->
+        <receiver
+            android:name=".nudge.CallStateReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.PHONE_STATE" />
+            </intent-filter>
+        </receiver>
+        <receiver android:name=".nudge.CallNudgeActionReceiver" android:exported="false" />
         <receiver
             android:name=".alarms.BootReceiver"
             android:exported="true"

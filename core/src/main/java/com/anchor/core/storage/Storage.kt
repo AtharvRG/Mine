@@ -237,6 +237,14 @@ interface Storage {
     suspend fun getRecentSensingEvents(limit: Int = 100): List<com.anchor.core.sensing.SensingEvent>
     suspend fun pruneSensingEvents(olderThanUtc: Long): Int
 
+    /** Blueprint 44 §4 (v2 Call Nudge): Operational, device-local call events. */
+    suspend fun saveCallEvent(callEvent: com.anchor.core.nudge.CallEvent)
+    suspend fun getCallEvent(id: String): com.anchor.core.nudge.CallEvent?
+    suspend fun getRecentCallEvents(limit: Int = 50): List<com.anchor.core.nudge.CallEvent>
+    suspend fun getCallEventsBetween(startUtc: Long, endUtc: Long): List<com.anchor.core.nudge.CallEvent>
+    suspend fun updateCallEventState(id: String, state: com.anchor.core.nudge.CallNudgeState, nudgeId: String? = null)
+    suspend fun pruneCallEvents(olderThanUtc: Long): Int
+
     companion object {
         /** R-26: page size for [getPendingReminders]. Hitting it means "more rows exist". */
         const val PENDING_REMINDER_PAGE_LIMIT = 500

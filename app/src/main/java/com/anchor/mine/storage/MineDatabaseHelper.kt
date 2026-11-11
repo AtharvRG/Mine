@@ -48,6 +48,7 @@ class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(DATABASE_VERSION) 
         db.execSQL(PLACE_DDL)
         db.execSQL(PLACE_SIGNAL_DDL)
         db.execSQL(SENSING_EVENT_DDL)
+        db.execSQL(CALL_EVENT_DDL)
 
         createIndexes(db)
         createTriggers(db)
@@ -137,6 +138,9 @@ class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(DATABASE_VERSION) 
             db.execSQL(PLACE_SIGNAL_DDL)
             db.execSQL(SENSING_EVENT_DDL)
         }
+        if (oldVersion < 10) {
+            db.execSQL(CALL_EVENT_DDL)
+        }
         // T19: an upgraded device must end up with the same indexes and triggers as a fresh
         // install. Indexes were previously created in onCreate only, so a device upgraded from v1
         // never got idx_reminder_fire - the index that makes the R-26 `ORDER BY fire_at` cheap.
@@ -157,7 +161,7 @@ class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(DATABASE_VERSION) 
     }
 
     companion object {
-        const val DATABASE_VERSION = 9
+        const val DATABASE_VERSION = 10
 
         /**
          * Blueprint 41 §4, verbatim. Shared by [onCreate] and the `oldVersion < 6` upgrade branch so
@@ -217,6 +221,19 @@ class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(DATABASE_VERSION) 
                 "source TEXT, " +
                 "attrs TEXT)"
 
+        /** Blueprint 44 §4: Device-local Call Events (pruned after 30 days). */
+        private const val CALL_EVENT_DDL =
+            "CREATE TABLE IF NOT EXISTS call_event (" +
+                "id TEXT PRIMARY KEY, " +
+                "started_at INTEGER NOT NULL, " +
+                "ended_at INTEGER NOT NULL, " +
+                "duration_s INTEGER NOT NULL, " +
+                "direction TEXT, " +
+                "contact_ref TEXT, " +
+                "nudge_id TEXT, " +
+                "state TEXT NOT NULL, " +
+                "created_at INTEGER NOT NULL)"
+
         private val INDEXES = listOf(
             "CREATE INDEX IF NOT EXISTS idx_node_status_due ON node(status, due_at)",
             "CREATE INDEX IF NOT EXISTS idx_node_habit ON node(type, streak_current)",
@@ -234,7 +251,8 @@ class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(DATABASE_VERSION) 
             "CREATE INDEX IF NOT EXISTS idx_proposal_status_created ON proposal(status, created_at)",
             "CREATE INDEX IF NOT EXISTS idx_embedding_owner ON embedding(owner_type, model_version)",
             "CREATE INDEX IF NOT EXISTS idx_sensing_event_ts ON sensing_event(ts_utc)",
-            "CREATE INDEX IF NOT EXISTS idx_place_kind ON place(kind)"
+            "CREATE INDEX IF NOT EXISTS idx_place_kind ON place(kind)",
+            "CREATE INDEX IF NOT EXISTS idx_call_event_ended ON call_event(ended_at)"
         )
 
         /** Every trigger created by [createTriggers], in drop order. */

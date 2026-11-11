@@ -65,6 +65,17 @@ object SettingsCatalog {
         SettingDef("sensing.show_chip", SettingSection.NUDGES, "0", SettingScope.SYNCED, validator = { it.matches(BOOL_REGEX) }),
         SettingDef("sensing.keep_events_days", SettingSection.NUDGES, "30", SettingScope.SYNCED, validator = { it.matches(INT_REGEX) }),
 
+        // Blueprint 44 §5: Call Nudge
+        SettingDef("flag.call_nudge", SettingSection.NUDGES, "0", SettingScope.DEVICE_LOCAL, validator = { it.matches(BOOL_REGEX) }),
+        SettingDef("callnudge.enabled", SettingSection.NUDGES, "0", SettingScope.DEVICE_LOCAL, validator = { it.matches(BOOL_REGEX) }),
+        SettingDef("callnudge.min_duration_s", SettingSection.NUDGES, "45", SettingScope.SYNCED, validator = { it.matches(INT_REGEX) }),
+        SettingDef("callnudge.delay_s", SettingSection.NUDGES, "20", SettingScope.SYNCED, validator = { it.matches(INT_REGEX) }),
+        SettingDef("callnudge.expire_h", SettingSection.NUDGES, "3", SettingScope.SYNCED, validator = { it.matches(INT_REGEX) }),
+        SettingDef("callnudge.coalesce_min", SettingSection.NUDGES, "10", SettingScope.SYNCED, validator = { it.matches(INT_REGEX) }),
+        SettingDef("callnudge.voice_action", SettingSection.NUDGES, "1", SettingScope.SYNCED, validator = { it.matches(BOOL_REGEX) }),
+        SettingDef("callnudge.evening_recap", SettingSection.NUDGES, "1", SettingScope.SYNCED, validator = { it.matches(BOOL_REGEX) }),
+        SettingDef("callnudge.know_contact", SettingSection.NUDGES, "0", SettingScope.DEVICE_LOCAL, validator = { it.matches(BOOL_REGEX) }),
+
         // Section 6: Reminders and alarms
         SettingDef("reminder.default_tier", SettingSection.REMINDERS_AND_ALARMS, "alarm", SettingScope.SYNCED, description = "Default reminder tier: alarm or gentle"),
         SettingDef("reminder.lead_time_minutes", SettingSection.REMINDERS_AND_ALARMS, "0", SettingScope.SYNCED, validator = { it.matches(INT_REGEX) }),

@@ -19,6 +19,7 @@ import com.anchor.core.models.AlarmTier
 object NotificationChannels {
     const val ALARM = "mine_reminders_v3"
     const val GENTLE = "mine_gentle_reminders_v3"
+    const val CALL_NUDGE = "mine_call_nudge"
 
     fun channelId(tier: AlarmTier): String = if (tier == AlarmTier.GENTLE) GENTLE else ALARM
 
@@ -26,6 +27,7 @@ object NotificationChannels {
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return
         manager.createNotificationChannel(channel(GENTLE, "Gentle Reminders", NotificationManager.IMPORTANCE_DEFAULT))
         manager.createNotificationChannel(channel(ALARM, "Reminders", NotificationManager.IMPORTANCE_HIGH))
+        manager.createNotificationChannel(channel(CALL_NUDGE, "Post-call Nudges", NotificationManager.IMPORTANCE_DEFAULT))
     }
 
     private fun channel(id: String, name: String, importance: Int) =

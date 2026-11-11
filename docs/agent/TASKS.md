@@ -424,13 +424,25 @@ Audit report: `docs/agent/work/audit-2026-11-10.md` & `docs/agent/work/backend-r
 [x] B4-21 `QuoteAlarmReceiverTest` boundary contract assertions (`QuoteAlarmReceiverTest.kt`): added genuine assertions on boundary hours (4, 11, 16, 20) and future receiver schedule. [connected-verified]
 [x] B4-22 `OnboardingScreen` `LazyColumn` viewport constraint (`MainActivity.kt:680`): added `Modifier.fillMaxSize()`, eliminating `ComposeNotIdleException` timeouts in `OnboardingGateTest`. [connected-verified 6/6]
 
-## P1.1: v1.1 Execution
+## P1.1: v1.1 Execution (COMPLETE)
 [x] P1.1-01 Provider setup import (file/QR; mine://provider deep link) (D-161): ProviderConfigParser, ProviderScreen import dialog, and mine://provider deep link tested on device (ProviderDeepLinkTest PASS).
 [x] P1.1-02 Direct-boot alarm safety net (Blueprint 42 & Roadmap P1.1 Item 2, D-162): Device-Protected Storage (DE) SQLite database `direct_boot_alarms.db` storing only `(id, fire_at, label, tier)` with Invariant 1 (Privacy - NO private user text); synchronized in tandem from CE reminders on reconcile/schedule/cancel; `BootReceiver` and `AlarmReceiver` configured with `android:directBootAware="true"`; `LOCKED_BOOT_COMPLETED` handled to re-arm upcoming alarms before first unlock; `AlarmReceiver` direct boot fallback posts generic notification without touching CE SQLCipher. Tested on device (`DirectBootSafetyNetTest` 4/4 PASS on physical moto g73 5G).
 [x] Voice & ML Assets Autonomous Staging (v1.1 / v2): Downloaded, decompressed, and staged on physical device (`/data/local/tmp/models/`):
     - Silero VAD (`silero_vad.onnx`, 643 KB)
     - Kokoro TTS (int8 quantized `model.int8.onnx` 134 MB, `voices.bin` 5.7 MB, `tokens.txt`, `espeak-ng-data/` 355 phoneme files)
     - Streaming Zipformer STT (int8 quantized `encoder...int8.onnx` 70 MB, `decoder...int8.onnx` 540 KB, `joiner...int8.onnx` 259 KB, `tokens.txt`)
+[x] P1.1-03 Recurrence Rules & Habit Streaks (Blueprint 13 §3.4, Schema V7, D-169): RecurrenceRule model, rrule expansion, StreakCalculator, and V6->V7 database migration tested on device.
+[x] P1.1-04 Vector Embeddings & Hybrid Search (Blueprint 21 §3.3, Schema V8, D-170): Quantized 8-bit vector embeddings table in SQLCipher, CosineDistance cosine similarity ranking, HybridSearchRanker combining BM25 FTS and vector cosine scores.
+[x] P1.1-05 Home Screen Widget (Blueprint 50 §3.15, D-173): Glance-based Home Widget displaying top priority tasks and next pending alarms.
+[x] P1.1-06 Rule-Based Offline Quick Add (Blueprint 41 §3.6, D-174): Offline natural language parser scheduling tasks & alarms immediately without waiting for outbox drain.
+[x] P1.1-07 Template Language Packs & What's New Upgrade Card (Blueprint 41 §3.7, Blueprint 90, D-175): Localized Spanish/English template language packs and post-upgrade What's New notification card.
+[x] P1.1-08 Plain-Code Digest Generator (Blueprint 21 §3.7, D-176): Local deterministic daily/weekly timeline summary generator.
+
+## P2.0: v2 Execution
+[x] P2.0-01 Context Sensing (Blueprint 43, Schema V9, D-177): Dual-axis state machine (PlaceAxis, MotionAxis), 15-minute flap guard, 90-second walking transition, 45-second motion debounce, vehicle hold in NudgeEngine, context line injection in ContextBuilder, 11 sensing settings in SettingsCatalog, and V8->V9 migration on device.
+[x] P2.0-02 Call Nudge & Telephony (Blueprint 44, Schema V10, D-178): Pure-Kotlin CallNudgeEngine, minimum call duration filter (<45s dropped), 10-minute coalesce window, 3-hour expiry, 3-ignore stop preference rule, CallEvent table and index in DB V10, CallStateReceiver, CallNudgeNotifications (Reply/Voice/Skip, zero vibration), CallNudgeActionReceiver, and V9->V10 migration tested on device.
+[ ] P2.0-03 Voice STT/TTS & Ambient Listening (Blueprints 60, 61): In-memory 16 kHz audio recorder in :app, interactive microphone button in ChatScreen composer, voice transcript review sheet, and Kokoro sentence-by-sentence streaming playback.
+
 
 
 

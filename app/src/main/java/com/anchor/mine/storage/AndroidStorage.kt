@@ -1819,4 +1819,119 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         }
         count
     }
+
+    // Blueprint 44: Call Nudge (Call Events)
+    override suspend fun saveCallEvent(callEvent: com.anchor.core.nudge.CallEvent) = withContext(ioDispatcher) {
+        dbHelper.writableDatabase.execSQL(
+            "INSERT OR REPLACE INTO call_event (id, started_at, ended_at, duration_s, direction, contact_ref, nudge_id, state, created_at) VALUES (?,?,?,?,?,?,?,?,?)",
+            arrayOf<Any?>(
+                callEvent.id,
+                callEvent.startedAt,
+                callEvent.endedAt,
+                callEvent.durationS,
+                callEvent.direction,
+                callEvent.contactRef,
+                callEvent.nudgeId,
+                callEvent.state.wire,
+                callEvent.createdAt
+            )
+        )
+    }
+
+    override suspend fun getCallEvent(id: String): com.anchor.core.nudge.CallEvent? = withContext(ioDispatcher) {
+        dbHelper.readableDatabase.query(
+            "SELECT id, started_at, ended_at, duration_s, direction, contact_ref, nudge_id, state, created_at FROM call_event WHERE id = ?",
+            arrayOf(id)
+        ).use { c ->
+            if (c.moveToFirst()) {
+                com.anchor.core.nudge.CallEvent(
+                    id = c.getString(0),
+                    startedAt = c.getLong(1),
+                    endedAt = c.getLong(2),
+                    durationS = c.getInt(3),
+                    direction = if (c.isNull(4)) null else c.getString(4),
+                    contactRef = if (c.isNull(5)) null else c.getString(5),
+                    nudgeId = if (c.isNull(6)) null else c.getString(6),
+                    state = com.anchor.core.nudge.CallNudgeState.fromWire(c.getString(7)),
+                    createdAt = c.getLong(8)
+                )
+            } else null
+        }
+    }
+
+    override suspend fun getRecentCallEvents(limit: Int): List<com.anchor.core.nudge.CallEvent> = withContext(ioDispatcher) {
+        val list = mutableListOf<com.anchor.core.nudge.CallEvent>()
+        dbHelper.readableDatabase.query(
+            "SELECT id, started_at, ended_at, duration_s, direction, contact_ref, nudge_id, state, created_at FROM call_event ORDER BY ended_at DESC, created_at DESC LIMIT ?",
+            arrayOf(limit.coerceAtLeast(0).toString())
+        ).use { c ->
+            while (c.moveToNext()) {
+                list.add(
+                    com.anchor.core.nudge.CallEvent(
+                        id = c.getString(0),
+                        startedAt = c.getLong(1),
+                        endedAt = c.getLong(2),
+                        durationS = c.getInt(3),
+                        direction = if (c.isNull(4)) null else c.getString(4),
+                        contactRef = if (c.isNull(5)) null else c.getString(5),
+                        nudgeId = if (c.isNull(6)) null else c.getString(6),
+                        state = com.anchor.core.nudge.CallNudgeState.fromWire(c.getString(7)),
+                        createdAt = c.getLong(8)
+                    )
+                )
+            }
+        }
+        list
+    }
+
+    override suspend fun getCallEventsBetween(startUtc: Long, endUtc: Long): List<com.anchor.core.nudge.CallEvent> = withContext(ioDispatcher) {
+        val list = mutableListOf<com.anchor.core.nudge.CallEvent>()
+        dbHelper.readableDatabase.query(
+            "SELECT id, started_at, ended_at, duration_s, direction, contact_ref, nudge_id, state, created_at FROM call_event WHERE ended_at BETWEEN ? AND ? ORDER BY ended_at ASC",
+            arrayOf(startUtc.toString(), endUtc.toString())
+        ).use { c ->
+            while (c.moveToNext()) {
+                list.add(
+                    com.anchor.core.nudge.CallEvent(
+                        id = c.getString(0),
+                        startedAt = c.getLong(1),
+                        endedAt = c.getLong(2),
+                        durationS = c.getInt(3),
+                        direction = if (c.isNull(4)) null else c.getString(4),
+                        contactRef = if (c.isNull(5)) null else c.getString(5),
+                        nudgeId = if (c.isNull(6)) null else c.getString(6),
+                        state = com.anchor.core.nudge.CallNudgeState.fromWire(c.getString(7)),
+                        createdAt = c.getLong(8)
+                    )
+                )
+            }
+        }
+        list
+    }
+
+    override suspend fun updateCallEventState(id: String, state: com.anchor.core.nudge.CallNudgeState, nudgeId: String?) = withContext(ioDispatcher) {
+        if (nudgeId != null) {
+            dbHelper.writableDatabase.execSQL(
+                "UPDATE call_event SET state = ?, nudge_id = ? WHERE id = ?",
+                arrayOf(state.wire, nudgeId, id)
+            )
+        } else {
+            dbHelper.writableDatabase.execSQL(
+                "UPDATE call_event SET state = ? WHERE id = ?",
+                arrayOf(state.wire, id)
+            )
+        }
+    }
+
+    override suspend fun pruneCallEvents(olderThanUtc: Long): Int = withContext(ioDispatcher) {
+        val db = dbHelper.writableDatabase
+        var count = 0
+        db.query("SELECT COUNT(*) FROM call_event WHERE ended_at < ?", arrayOf(olderThanUtc.toString())).use { c ->
+            if (c.moveToFirst()) count = c.getInt(0)
+        }
+        if (count > 0) {
+            db.execSQL("DELETE FROM call_event WHERE ended_at < ?", arrayOf(olderThanUtc.toString()))
+        }
+        count
+    }
 }

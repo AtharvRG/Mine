@@ -544,4 +544,10 @@ Rejected: printing only the first line of the message (the diagnostic fields `Al
 - **Rejected:** Background GPS location tracking; leaky prompt formatting; polling sensors continuously.
 - **Proof:** `ContextEngineTest` (8/8 PASS in `:core`), `NudgeEngineTest` (2/2 PASS in `:core`), `ContextBuilderTest` (10/10 PASS in `:core`), `SettingsCatalogTest` (5/5 PASS in `:core`).
 
-(Next free: D-178. Add: date, decision, reason, rejected.)
+## D-178 (2026-11-11) — v2 Call Nudge: Pure-Kotlin Engine, Post-Call Telephony Hook, Zero Audio/Number Privacy, & Schema V10.
+- **Decision:** Implemented pure-Kotlin `CallNudgeEngine` in `core/src/main/java/com/anchor/core/nudge/` with `CallEvent` (`started_at`, `ended_at`, `duration_s`, `direction`, `contact_ref`, `nudge_id`, `state`, `created_at`), minimum call duration filter (< 45s dropped), 10-minute coalescing window for rapid calls, 3-hour expiry window, and 3-consecutive-ignores learning stop preference prompt. Bumped SQLite/SQLCipher `DATABASE_VERSION` from 9 to 10 with device-local `call_event` table and index `idx_call_event_ended` (excluded from export allowlist). Implemented `CallStateReceiver`, `CallNudgeNotifications` (with Reply, Voice note, Skip actions, and zero vibration), and `CallNudgeActionReceiver` in `:app`.
+- **Reason:** Blueprint 44 requires post-call memory aids with absolute zero call audio recording/buffering, zero phone number logging/storage, zero vibration, and coarse notification delivery that gracefully stops when ignored.
+- **Rejected:** VoIP audio capture / notification snooping; storing raw phone numbers; vibrating on call nudges.
+- **Proof:** `CallNudgeEngineTest` (7/7 PASS in `:core`), `SettingsCatalogTest` (5/5 PASS in `:core`), `DatabaseMigrationTest` (PASS V9->V10 on `moto g73 5G`), `CallNudgeDeviceTest` (4/4 PASS on `moto g73 5G - Android 14`).
+
+(Next free: D-179. Add: date, decision, reason, rejected.)
