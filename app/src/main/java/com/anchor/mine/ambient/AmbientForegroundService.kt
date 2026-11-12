@@ -45,6 +45,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.util.UUID
@@ -172,6 +173,9 @@ class AmbientForegroundService : Service() {
             ACTION_RESUME -> {
                 pausedUntilMs = 0L
                 serviceScope.launch { evaluateBlockers() }
+            }
+            ACTION_BOOKMARK_2M -> {
+                bookmarkLast2Minutes()
             }
         }
 
@@ -316,7 +320,8 @@ class AmbientForegroundService : Service() {
 
                 synchronized(recentTurns) {
                     recentTurns.add(turn)
-                    if (recentTurns.size > 24) recentTurns.removeAt(0)
+                    val cutoff = sliceEnd - 120_000L
+                    recentTurns.removeAll { it.tEndMs < cutoff }
                 }
 
                 // 5. If user is present, extract proposals & commit
@@ -426,6 +431,175 @@ class AmbientForegroundService : Service() {
         }
     }
 
+    private fun bookmarkLast2Minutes() {
+        serviceScope.launch(Dispatchers.IO) {
+            val now = System.currentTimeMillis()
+            val turnsSnapshot = synchronized(recentTurns) {
+                val cutoff = now - 120_000L
+                recentTurns.filter { it.tEndMs >= cutoff }.sortedBy { it.tStartMs }
+            }
+
+            if (turnsSnapshot.isEmpty()) {
+                withContext(Dispatchers.Main) {
+                    android.widget.Toast.makeText(
+                        applicationContext,
+                        "No recent speech detected in the last 2 minutes.",
+                        android.widget.Toast.LENGTH_SHORT
+                    ).show()
+                }
+                return@launch
+            }
+
+            val bookmarkWindow = dialogueEngine.createBookmarkWindow(turnsSnapshot, now, 120_000L)
+            if (bookmarkWindow == null) {
+                withContext(Dispatchers.Main) {
+                    android.widget.Toast.makeText(
+                        applicationContext,
+                        "No speech within the 2-minute window.",
+                        android.widget.Toast.LENGTH_SHORT
+                    ).show()
+                }
+                return@launch
+            }
+
+            val app = application as? MineApp ?: return@launch
+            if (!app.sharedStorage.isCompleted) return@launch
+            val storage = try { app.sharedStorage.await() } catch (_: Exception) { return@launch }
+
+            val existingNodes = storage.getActiveNodes(50)
+            val extracted = proposalExtractor.extract(
+                window = bookmarkWindow,
+                llmResponseJson = null,
+                existingNodes = existingNodes,
+                nowMs = now,
+                manualBookmark = true
+            )
+
+            if (extracted.isNotEmpty()) {
+                val sId = currentSessionId ?: run {
+                    val newSId = "amb_sess_${UUID.randomUUID()}"
+                    currentSessionId = newSId
+                    storage.saveAmbientSession(
+                        AmbientSession(
+                            id = newSId,
+                            startedAt = bookmarkWindow.startedAtMs,
+                            listenSeconds = 120,
+                            speechSeconds = 120,
+                            segmentsCount = bookmarkWindow.turns.size
+                        )
+                    )
+                    newSId
+                }
+
+                storage.saveAmbientWindow(
+                    AmbientWindow(
+                        id = bookmarkWindow.id,
+                        sessionId = sId,
+                        startedAt = bookmarkWindow.startedAtMs,
+                        endedAt = bookmarkWindow.endedAtMs,
+                        state = "extracted",
+                        gateOpened = true
+                    )
+                )
+
+                for (turn in bookmarkWindow.turns) {
+                    storage.saveAmbientSegment(
+                        AmbientSegment(
+                            id = turn.segmentId,
+                            windowId = bookmarkWindow.id,
+                            tStart = turn.tStartMs,
+                            tEnd = turn.tEndMs,
+                            label = turn.label.wire,
+                            score = turn.score,
+                            isShort = turn.isShort,
+                            text = turn.text,
+                            sttRef = "sherpa_offline",
+                            expiresAt = now + 48L * 3600 * 1000L
+                        )
+                    )
+                }
+
+                val dayRule = storage.getEffectiveDayRule(now)
+                val currentDayKey = com.anchor.core.time.DayRollover.computeDayKey(now, dayRule)
+                val report = storage.getLatestAmbientReport()?.takeIf { it.dayKey == currentDayKey } ?: run {
+                    val rep = AmbientReport(id = "amb_rep_${UUID.randomUUID()}", dayKey = currentDayKey, generatedAt = now)
+                    storage.saveAmbientReport(rep)
+                    rep
+                }
+
+                val existingSummaries = storage.getAmbientReportItems(report.id)
+                    .map { it.summary.trim().lowercase() }
+                    .toSet()
+
+                var addedCount = 0
+                for (item in extracted) {
+                    val pNode = item.proposedNode
+                    if (item.kind == "proposal" && pNode != null) {
+                        if (item.summary.trim().lowercase() in existingSummaries) {
+                            continue
+                        }
+                        val uId = "u_${UUID.randomUUID()}"
+                        val event = RawEvent(
+                            opId = uId,
+                            opType = "PROPOSE",
+                            targetType = "node",
+                            targetId = pNode.id,
+                            afterJson = json.encodeToString(NodeStateSnapshot(pNode, null)),
+                            tsUtc = now
+                        )
+                        storage.createNodeAndCommit(pNode, event, reminder = null)
+                        storage.saveAmbientReportItem(
+                            AmbientReportItem(
+                                id = UUID.randomUUID().toString(),
+                                reportId = report.id,
+                                windowId = bookmarkWindow.id,
+                                kind = "proposal",
+                                summary = item.summary,
+                                nodeId = pNode.id,
+                                flags = item.flags.joinToString(","),
+                                state = "pending"
+                            )
+                        )
+                        addedCount++
+                    } else if (item.kind == "keypoint") {
+                        if (item.summary.trim().lowercase() in existingSummaries) {
+                            continue
+                        }
+                        storage.saveAmbientReportItem(
+                            AmbientReportItem(
+                                id = UUID.randomUUID().toString(),
+                                reportId = report.id,
+                                windowId = bookmarkWindow.id,
+                                kind = "keypoint",
+                                summary = item.summary,
+                                nodeId = null,
+                                flags = item.flags.joinToString(","),
+                                state = "pending"
+                            )
+                        )
+                        addedCount++
+                    }
+                }
+
+                withContext(Dispatchers.Main) {
+                    android.widget.Toast.makeText(
+                        applicationContext,
+                        "Remembered last 2m: $addedCount item(s) captured.",
+                        android.widget.Toast.LENGTH_SHORT
+                    ).show()
+                }
+            } else {
+                withContext(Dispatchers.Main) {
+                    android.widget.Toast.makeText(
+                        applicationContext,
+                        "No action items found in the last 2 minutes.",
+                        android.widget.Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }
+        }
+    }
+
     private fun stopListeningLoop() {
         listeningJob?.cancel()
         listeningJob = null
@@ -458,17 +632,17 @@ class AmbientForegroundService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val pause1hIntent = PendingIntent.getService(
-            this,
-            2,
-            Intent(this, AmbientForegroundService::class.java).apply { action = ACTION_PAUSE_1H },
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-
         val stopIntent = PendingIntent.getService(
             this,
             3,
             Intent(this, AmbientForegroundService::class.java).apply { action = ACTION_STOP },
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val bookmarkIntent = PendingIntent.getService(
+            this,
+            4,
+            Intent(this, AmbientForegroundService::class.java).apply { action = ACTION_BOOKMARK_2M },
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
@@ -480,8 +654,8 @@ class AmbientForegroundService : Service() {
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setVibrate(longArrayOf(0))
+            .addAction(android.R.drawable.ic_menu_agenda, "Remember 2m", bookmarkIntent)
             .addAction(android.R.drawable.ic_media_pause, "Pause 15m", pause15mIntent)
-            .addAction(android.R.drawable.ic_media_pause, "Pause 1h", pause1hIntent)
             .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Stop", stopIntent)
             .build()
     }
@@ -515,6 +689,7 @@ class AmbientForegroundService : Service() {
         const val ACTION_PAUSE_15M = "com.anchor.mine.ambient.ACTION_PAUSE_15M"
         const val ACTION_PAUSE_1H = "com.anchor.mine.ambient.ACTION_PAUSE_1H"
         const val ACTION_RESUME = "com.anchor.mine.ambient.ACTION_RESUME"
+        const val ACTION_BOOKMARK_2M = "com.anchor.mine.ambient.ACTION_BOOKMARK_2M"
 
         fun start(context: Context) {
             val hasMic = androidx.core.content.ContextCompat.checkSelfPermission(
@@ -538,6 +713,17 @@ class AmbientForegroundService : Service() {
                 action = ACTION_STOP
             }
             context.startService(intent)
+        }
+
+        fun bookmark(context: Context) {
+            val intent = Intent(context, AmbientForegroundService::class.java).apply {
+                action = ACTION_BOOKMARK_2M
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(intent)
+            } else {
+                context.startService(intent)
+            }
         }
     }
 }

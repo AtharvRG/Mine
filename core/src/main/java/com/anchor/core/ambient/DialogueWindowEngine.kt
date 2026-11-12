@@ -130,4 +130,24 @@ class DialogueWindowEngine(
         val userPrompt = "Dialogue window:\n${window.formatForExtraction()}"
         return Pair(systemPrompt, userPrompt)
     }
+
+    /**
+     * Creates a dialogue window from the most recent turns within [windowDurationMs] (default 120s / 2m)
+     * per Blueprint 61 §9 (P-019). Returns null if no turns exist within the time window.
+     */
+    fun createBookmarkWindow(
+        turns: List<Turn>,
+        nowMs: Long,
+        windowDurationMs: Long = 120_000L
+    ): Window? {
+        val cutoff = nowMs - windowDurationMs
+        val recent = turns.filter { it.tEndMs >= cutoff }.sortedBy { it.tStartMs }
+        if (recent.isEmpty()) return null
+        return Window(
+            id = UUID.randomUUID().toString(),
+            turns = recent,
+            startedAtMs = recent.first().tStartMs,
+            endedAtMs = recent.last().tEndMs
+        )
+    }
 }

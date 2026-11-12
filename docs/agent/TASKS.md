@@ -1,6 +1,16 @@
 # TASKS (one at a time, smallest first). Status: [ ] open, [~] in progress, [x] done+reviewed
 Specs for R1-R10: docs/agent/work/session1-remediation-spec.md. Read the task's section before starting.
 
+## v4 Ambient Feature: "Remember the Last 2 Minutes" Bookmark (2026-11-13)
+[x] Implement "Remember the Last 2 Minutes" Ambient Bookmark (P-019 & Blueprint 61 §9)
+    [x] Core Presence Gate manual override (PresenceGate.kt manualBookmark parameter).
+    [x] Core DialogueWindowEngine retroactive 120s slice (createBookmarkWindow).
+    [x] Core AmbientProposalExtractor extraction with manual_bookmark and attribution_uncertain tags.
+    [x] ChatController handling BookmarkAmbientLast2Min with transient receipts and UI refresh.
+    [x] AmbientForegroundService ACTION_BOOKMARK_2M intent, "Remember 2m" notification action, 120s buffer retention, and proposal generation.
+    [x] AmbientControlCard UI button and AmbientReportCard badge pill.
+    [x] Verified on Moto G73 5G via AmbientAndV3DeviceTest.testManualBookmark2m_OpensGateAndPersistsProposalsWithFlags (8/8 PASS).
+
 ## Audit #9 Final Sign-Off & Daily Driver Readiness (2026-11-13)
 [x] Full Verification across 8 Audit Rounds Completed
     [x] 588 / 588 offline tests passing (561 core + 27 app).

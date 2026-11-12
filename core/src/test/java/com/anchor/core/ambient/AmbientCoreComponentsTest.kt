@@ -176,4 +176,85 @@ class AmbientCoreComponentsTest {
         assertEquals("Recent pending proposal must NOT be pruned", 1, remainingRecent.size)
         assertEquals("item_recent", remainingRecent.first().id)
     }
+
+    @Test
+    fun testManualBookmark_ForciblyOpensGate_AndExtractsCommitmentFromOtherTurn() {
+        val gate = PresenceGate(tHi = 0.80f, tLo = 0.60f)
+        val dummyAudio = FloatArray(16000)
+
+        // Segment labeled OTHER (e.g. low score or other speaker)
+        val scoredSegment = PresenceGate.ScoredSegment(
+            tStartMs = 1000L,
+            tEndMs = 4000L,
+            audioSamples = dummyAudio,
+            label = SpeakerLabel.OTHER,
+            score = 0.35f,
+            isShort = false
+        )
+
+        // Normal presence gate without manual bookmark stays closed
+        assertFalse("Automatic gate must stay closed without user speech", gate.evaluateWindowGate(listOf(scoredSegment), manualBookmark = false))
+
+        // Manual bookmark forcibly opens the gate (Blueprint 61 §9 / P-019)
+        assertTrue("Manual bookmark must forcibly open the presence gate", gate.evaluateWindowGate(listOf(scoredSegment), manualBookmark = true))
+
+        val engine = DialogueWindowEngine()
+        val turn = DialogueWindowEngine.Turn(
+            segmentId = "seg_other",
+            tStartMs = 1000L,
+            tEndMs = 4000L,
+            label = SpeakerLabel.OTHER,
+            text = "Remember to send the quarterly financial report",
+            score = 0.35f,
+            isShort = false
+        )
+
+        val bookmarkWindow = engine.createBookmarkWindow(listOf(turn), nowMs = 5000L, windowDurationMs = 120_000L)
+        assertNotNull("Bookmark window must be created from recent turns", bookmarkWindow)
+
+        val extractor = AmbientProposalExtractor()
+        val items = extractor.extract(
+            window = bookmarkWindow!!,
+            llmResponseJson = null,
+            existingNodes = emptyList(),
+            nowMs = 5000L,
+            manualBookmark = true
+        )
+
+        assertEquals("Must extract proposal from bookmarked dialogue", 1, items.size)
+        val item = items.first()
+        assertEquals("proposal", item.kind)
+        assertTrue("Must have manual_bookmark flag", item.flags.contains("manual_bookmark"))
+        assertTrue("Must have attribution_uncertain flag for non-user turn", item.flags.contains("attribution_uncertain"))
+        assertEquals("proposed", item.proposedNode?.status)
+        assertEquals("ambient", item.proposedNode?.origin)
+    }
+
+    @Test
+    fun testDialogueWindowEngine_CreateBookmarkWindow_FiltersTurnsOlderThan120Seconds() {
+        val engine = DialogueWindowEngine()
+        val now = 200_000L // 200s
+        // Cutoff is 200s - 120s = 80s
+
+        val turnOld1 = DialogueWindowEngine.Turn(
+            segmentId = "t1", tStartMs = 10_000L, tEndMs = 20_000L, label = SpeakerLabel.USER, text = "old 1"
+        )
+        val turnOld2 = DialogueWindowEngine.Turn(
+            segmentId = "t2", tStartMs = 50_000L, tEndMs = 60_000L, label = SpeakerLabel.USER, text = "old 2"
+        )
+        val turnRecent1 = DialogueWindowEngine.Turn(
+            segmentId = "t3", tStartMs = 90_000L, tEndMs = 110_000L, label = SpeakerLabel.USER, text = "recent 1"
+        )
+        val turnRecent2 = DialogueWindowEngine.Turn(
+            segmentId = "t4", tStartMs = 150_000L, tEndMs = 180_000L, label = SpeakerLabel.OTHER, text = "recent 2"
+        )
+
+        val window = engine.createBookmarkWindow(listOf(turnOld1, turnOld2, turnRecent1, turnRecent2), nowMs = now, windowDurationMs = 120_000L)
+        assertNotNull(window)
+        assertEquals(2, window!!.turns.size)
+        assertEquals("t3", window.turns[0].segmentId)
+        assertEquals("t4", window.turns[1].segmentId)
+        assertEquals(90_000L, window.startedAtMs)
+        assertEquals(180_000L, window.endedAtMs)
+    }
 }

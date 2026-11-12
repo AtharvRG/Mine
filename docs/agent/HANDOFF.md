@@ -1,3 +1,25 @@
+# HANDOFF (v4 Ambient Feature: "Remember the Last 2 Minutes" Bookmark COMPLETE & VERIFIED)
+
+**Current Status**: 2026-11-13 04:10 IST
+- **v4 "Remember the Last 2 Minutes" Ambient Bookmark Delivered (P-019 & Blueprint 61 §9)**:
+  - **Presence Gate Manual Override (`PresenceGate.kt`)**: Added `manualBookmark: Boolean = false` to `evaluateWindowGate(...)`, forcibly opening the presence gate regardless of speaker score when `manualBookmark == true`.
+  - **Dialogue Window Engine Retroactive Slice (`DialogueWindowEngine.kt`)**: Added `createBookmarkWindow(turns, nowMs, windowDurationMs = 120_000L)` to construct a dialogue window from turns in the last 120 seconds.
+  - **Ambient Proposal Extractor Bookmark Flags (`AmbientProposalExtractor.kt`)**: Added `manualBookmark: Boolean = false` parameter; extracts commitments from all turns (including non-user/low-score turns), tags them with `manual_bookmark`, and tags non-user turns with `attribution_uncertain`.
+  - **Chat Controller & UI State (`ChatContract.kt` & `ChatController.kt`)**: Added `data object BookmarkAmbientLast2Min : UiAction`, handled with transient receipt and UI refresh.
+  - **Ambient Foreground Service Retroactive Bookmark & Notification Action (`AmbientForegroundService.kt`)**: Added `ACTION_BOOKMARK_2M`, "Remember 2m" notification action button, 120s TTL ring buffer pruning, and `bookmarkLast2Minutes()` to extract and persist sessions, windows, segments, reports, items, and proposed nodes (`status = "proposed"`, `origin = "ambient"`).
+  - **UI Card Integration (`AmbientControlCard.kt` & `AmbientReportCard.kt`)**: Added "Remember Last 2 Min (Open Gate)" `OutlinedButton` and `manual bookmark` BadgePill styling (`Color(0xFF6A1B9A)`).
+  - **Physical Device Verification (`AmbientAndV3DeviceTest.kt`)**: Added `testManualBookmark2m_OpensGateAndPersistsProposalsWithFlags` (8/8 PASS on physical Moto G73 5G).
+- **Core Invariants Maintained**:
+  - Pure Kotlin in `:core` (zero Android dependencies).
+  - Absolute zero raw audio saved to disk or SQLite (bounded RAM-only ring buffer < 100 KB).
+  - Zero vibration across all ambient notifications.
+  - Strict proposal-only persistence (`status = "proposed"`, `origin = "ambient"`).
+- **Verification Summary**:
+  - Offline test suites: **588 / 588 PASS (100%)** (`:core:test` 561/561, `:app:testDebugUnitTest` 27/27).
+  - Connected test suites on physical Moto G73 5G: `AmbientAndV3DeviceTest` **8 / 8 PASS (100%)**.
+
+---
+
 # HANDOFF (Audit #9 Final Sign-Off: Titanium-Grade Backend Certified)
 
 **Current Status**: 2026-11-13 03:50 IST

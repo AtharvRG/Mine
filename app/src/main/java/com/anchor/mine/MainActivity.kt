@@ -785,7 +785,8 @@ fun MemoryScreen(
             item {
                 AmbientControlCard(
                     storage = storage,
-                    onDeleteAllClick = { onAction(UiAction.DeleteAllAmbientData) }
+                    onDeleteAllClick = { onAction(UiAction.DeleteAllAmbientData) },
+                    onBookmarkClick = { onAction(UiAction.BookmarkAmbientLast2Min) }
                 )
                 Spacer(modifier = Modifier.height(16.dp))
             }

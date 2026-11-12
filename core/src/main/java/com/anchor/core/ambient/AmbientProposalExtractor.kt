@@ -33,17 +33,21 @@ class AmbientProposalExtractor(
         window: DialogueWindowEngine.Window,
         llmResponseJson: String?,
         existingNodes: List<Node> = emptyList(),
-        nowMs: Long
+        nowMs: Long,
+        manualBookmark: Boolean = false
     ): List<ExtractedItem> {
         val parsed = if (!llmResponseJson.isNullOrBlank()) {
             parseLlmJson(llmResponseJson, window, nowMs)
         } else {
-            fallbackRuleBasedExtraction(window, nowMs)
+            fallbackRuleBasedExtraction(window, nowMs, manualBookmark)
         }
 
         // Apply duplicate checks and attribution verification
         return parsed.take(maxProposalsPerWindow).map { item ->
             val flags = item.flags.toMutableSet()
+            if (manualBookmark) {
+                flags.add("manual_bookmark")
+            }
 
             // Check if user turn was short / low confidence
             val userTurns = window.turns.filter { it.label == SpeakerLabel.USER }
@@ -123,24 +127,29 @@ class AmbientProposalExtractor(
      */
     fun fallbackRuleBasedExtraction(
         window: DialogueWindowEngine.Window,
-        nowMs: Long
+        nowMs: Long,
+        manualBookmark: Boolean = false
     ): List<ExtractedItem> {
         val items = mutableListOf<ExtractedItem>()
 
-        // Look for commitment / promise markers in user turns
+        // Look for commitment / promise markers in user turns (or all turns if manual bookmark)
         val commitmentRegex = Regex(
-            """\b(?:I will|I'll|need to|have to|promise to|going to|remind me to)\s+([^.!?\n]{3,60})""",
+            """\b(?:I will|I'll|need to|have to|promise to|going to|remind me to|remember to|call|buy|meet)\s+([^.!?\n]{3,60})""",
             RegexOption.IGNORE_CASE
         )
 
         for (turn in window.turns) {
-            if (turn.label == SpeakerLabel.USER) {
+            val isUser = turn.label == SpeakerLabel.USER
+            if (isUser || manualBookmark) {
                 val matches = commitmentRegex.findAll(turn.text)
                 for (m in matches) {
                     val taskAction = m.groupValues[1].trim()
                     val title = "Task: $taskAction"
                     val flags = mutableSetOf<String>()
-                    if (turn.isShort || turn.score < 0.70f) {
+                    if (manualBookmark) {
+                        flags.add("manual_bookmark")
+                    }
+                    if (!isUser || turn.isShort || turn.score < 0.70f) {
                         flags.add("attribution_uncertain")
                     }
 
@@ -168,12 +177,13 @@ class AmbientProposalExtractor(
         if (items.isEmpty() && window.turns.isNotEmpty()) {
             val firstTurn = window.turns.first()
             val shortParaphrase = NumberScrubber.scrub(firstTurn.text.take(80))
+            val flags = if (manualBookmark) setOf("manual_bookmark") else emptySet()
             items.add(
                 ExtractedItem(
                     kind = "keypoint",
                     summary = "Discussion point: $shortParaphrase",
                     proposedNode = null,
-                    flags = emptySet()
+                    flags = flags
                 )
             )
         }

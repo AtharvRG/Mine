@@ -20,6 +20,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -56,7 +57,8 @@ import kotlinx.coroutines.launch
 @Composable
 fun AmbientControlCard(
     storage: Storage?,
-    onDeleteAllClick: () -> Unit = {}
+    onDeleteAllClick: () -> Unit = {},
+    onBookmarkClick: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -240,6 +242,19 @@ fun AmbientControlCard(
                     modifier = Modifier.testTag("deleteAllAmbientBtn")
                 ) {
                     Text("Delete All")
+                }
+            }
+
+            if (isAmbientEnabled && isServiceRunning) {
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedButton(
+                    onClick = {
+                        AmbientForegroundService.bookmark(context)
+                        onBookmarkClick()
+                    },
+                    modifier = Modifier.fillMaxWidth().testTag("bookmarkLast2mBtn")
+                ) {
+                    Text("Remember Last 2 Min (Open Gate)")
                 }
             }
         }

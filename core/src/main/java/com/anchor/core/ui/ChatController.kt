@@ -1102,6 +1102,16 @@ class ChatController(
                     refreshUI()
                 }
             }
+            is UiAction.BookmarkAmbientLast2Min -> coroutineScope.launch(defaultDispatcher) {
+                try {
+                    addTransientReceipt(ReceiptState(UUID.randomUUID().toString(), "Remembering last 2 minutes...", null, isError = false, timestamp = clock.now()))
+                    refreshUI()
+                } catch (e: Exception) {
+                    if (e is kotlinx.coroutines.CancellationException) throw e
+                    addTransientReceipt(ReceiptState(UUID.randomUUID().toString(), "Could not trigger ambient bookmark: ${e.message}", null, isError = true, timestamp = clock.now()))
+                    refreshUI()
+                }
+            }
             else -> {}
         }
     }

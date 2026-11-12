@@ -408,4 +408,83 @@ class AmbientAndV3DeviceTest {
         assertFalse("ambient_report must NEVER be exported", exported.contains("ambient_report"))
         assertFalse("ambient_report_item must NEVER be exported", exported.contains("ambient_report_item"))
     }
+
+    /**
+     * Test 8: Manual Bookmark ("Remember last 2m", Blueprint 61 §9 & P-019)
+     * Forcibly opens presence gate, extracts proposals with flags, and commits to SQLCipher.
+     */
+    @Test
+    fun testManualBookmark2m_OpensGateAndPersistsProposalsWithFlags() = runBlocking {
+        val now = System.currentTimeMillis()
+        val dialogueEngine = DialogueWindowEngine()
+        val proposalExtractor = AmbientProposalExtractor()
+
+        val turn = DialogueWindowEngine.Turn(
+            segmentId = "seg_bm_1",
+            tStartMs = now - 30_000L,
+            tEndMs = now - 10_000L,
+            label = SpeakerLabel.OTHER,
+            text = "Need to submit the compliance report by Friday",
+            score = 0.40f,
+            isShort = false
+        )
+
+        val bookmarkWindow = dialogueEngine.createBookmarkWindow(listOf(turn), nowMs = now, windowDurationMs = 120_000L)
+        assertNotNull("Bookmark window must be constructed from recent turns", bookmarkWindow)
+
+        val extracted = proposalExtractor.extract(
+            window = bookmarkWindow!!,
+            llmResponseJson = null,
+            existingNodes = emptyList(),
+            nowMs = now,
+            manualBookmark = true
+        )
+
+        assertEquals("Must extract exactly one proposal", 1, extracted.size)
+        val item = extracted.first()
+        assertEquals("proposal", item.kind)
+        assertTrue("Flags must contain manual_bookmark", item.flags.contains("manual_bookmark"))
+        assertTrue("Flags must contain attribution_uncertain", item.flags.contains("attribution_uncertain"))
+
+        val pNode = item.proposedNode
+        assertNotNull(pNode)
+        assertEquals("proposed", pNode!!.status)
+        assertEquals("ambient", pNode.origin)
+
+        // Persist to SQLCipher storage
+        val report = AmbientReport("rep_bm_1", "2026-11-13", now)
+        storage.saveAmbientReport(report)
+        storage.saveAmbientWindow(
+            AmbientWindow(
+                id = bookmarkWindow.id,
+                sessionId = "sess_bm_1",
+                startedAt = bookmarkWindow.startedAtMs,
+                endedAt = bookmarkWindow.endedAtMs,
+                state = "extracted",
+                gateOpened = true
+            )
+        )
+
+        val event = RawEvent("ev_bm_1", "PROPOSE", "node", pNode.id, afterJson = "{}", tsUtc = now)
+        storage.createNodeAndCommit(pNode, event, null)
+
+        val reportItem = AmbientReportItem(
+            id = "item_bm_1",
+            reportId = report.id,
+            windowId = bookmarkWindow.id,
+            kind = "proposal",
+            summary = item.summary,
+            nodeId = pNode.id,
+            flags = item.flags.joinToString(","),
+            state = "pending"
+        )
+        storage.saveAmbientReportItem(reportItem)
+
+        // Verify retrieval from SQLCipher
+        val items = storage.getAmbientReportItems(report.id)
+        assertEquals(1, items.size)
+        assertEquals("item_bm_1", items.first().id)
+        assertTrue("Stored item must retain manual_bookmark flag", items.first().flags?.contains("manual_bookmark") == true)
+        assertTrue("Stored item must retain attribution_uncertain flag", items.first().flags?.contains("attribution_uncertain") == true)
+    }
 }

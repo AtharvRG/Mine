@@ -191,4 +191,5 @@ sealed interface UiAction {
     data class RejectAmbientItem(val itemId: String) : UiAction
     data class AcceptAllAmbientItems(val reportId: String) : UiAction
     data object DeleteAllAmbientData : UiAction
+    data object BookmarkAmbientLast2Min : UiAction
 }

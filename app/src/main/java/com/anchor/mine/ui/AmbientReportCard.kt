@@ -85,6 +85,9 @@ fun AmbientReportCard(
                         if (flags.isNotBlank()) {
                             Spacer(modifier = Modifier.height(4.dp))
                             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                if (flags.contains("manual_bookmark")) {
+                                    BadgePill("manual bookmark", Color(0xFF6A1B9A))
+                                }
                                 if (flags.contains("attribution_uncertain")) {
                                     BadgePill("attribution uncertain", Color(0xFFE65100))
                                 }

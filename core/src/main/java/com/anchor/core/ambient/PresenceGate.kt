@@ -73,8 +73,12 @@ class PresenceGate(
      * Evaluates a list of dialogue window segments to determine if the presence gate opens.
      * Blueprint 61 §3.4: "A window of conversation is sent to STT only if it contains at least
      * one user segment at or above t_lo."
+     *
+     * If [manualBookmark] is true (Blueprint 61 §9, P-019), the presence gate is forcibly opened
+     * by user intent to capture the recent exchange even if speaker confidence was low.
      */
-    fun evaluateWindowGate(segments: List<ScoredSegment>): Boolean {
+    fun evaluateWindowGate(segments: List<ScoredSegment>, manualBookmark: Boolean = false): Boolean {
+        if (manualBookmark) return true
         if (!gateUserPresence) return true
         if (segments.isEmpty()) return false
 
