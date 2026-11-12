@@ -67,6 +67,18 @@ fun AmbientControlCard(
     var isEnrolling by remember { mutableStateOf(false) }
     var showConsentDialog by remember { mutableStateOf(false) }
 
+    val refreshState = {
+        if (storage != null) {
+            scope.launch {
+                val enabled = storage.getSetting("ambient.enabled") == "1"
+                val vp = storage.getVoiceprint()
+                isAmbientEnabled = enabled
+                isVoiceprintEnrolled = vp != null
+                isServiceRunning = AmbientHeartbeatHelper.isServiceRunning(context)
+            }
+        }
+    }
+
     val micPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
@@ -94,15 +106,18 @@ fun AmbientControlCard(
         }
     }
 
-    val refreshState = {
-        if (storage != null) {
+    val enableAmbientPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
             scope.launch {
-                val enabled = storage.getSetting("ambient.enabled") == "1"
-                val vp = storage.getVoiceprint()
-                isAmbientEnabled = enabled
-                isVoiceprintEnrolled = vp != null
-                isServiceRunning = AmbientHeartbeatHelper.isServiceRunning(context)
+                storage?.saveSetting("ambient.enabled", "1")
+                storage?.saveSetting("flag.ambient", "1")
+                AmbientForegroundService.start(context)
+                refreshState()
             }
+        } else {
+            refreshState()
         }
     }
 
@@ -247,11 +262,20 @@ fun AmbientControlCard(
                 TextButton(
                     onClick = {
                         showConsentDialog = false
-                        scope.launch {
-                            storage?.saveSetting("ambient.enabled", "1")
-                            storage?.saveSetting("flag.ambient", "1")
-                            AmbientForegroundService.start(context)
-                            refreshState()
+                        val hasMic = ContextCompat.checkSelfPermission(
+                            context,
+                            Manifest.permission.RECORD_AUDIO
+                        ) == PackageManager.PERMISSION_GRANTED
+
+                        if (hasMic) {
+                            scope.launch {
+                                storage?.saveSetting("ambient.enabled", "1")
+                                storage?.saveSetting("flag.ambient", "1")
+                                AmbientForegroundService.start(context)
+                                refreshState()
+                            }
+                        } else {
+                            enableAmbientPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
                         }
                     }
                 ) {

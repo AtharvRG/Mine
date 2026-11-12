@@ -321,9 +321,7 @@ class AmbientForegroundService : Service() {
 
                 // 5. If user is present, extract proposals & commit
                 if (gateResult.label == SpeakerLabel.USER) {
-                    val windowTurns = synchronized(recentTurns) { recentTurns.toList() }
-                    val windows = dialogueEngine.splitIntoWindows(windowTurns)
-                    val activeWindow = windows.lastOrNull() ?: DialogueWindowEngine.Window(
+                    val liveWindow = DialogueWindowEngine.Window(
                         id = UUID.randomUUID().toString(),
                         turns = listOf(turn),
                         startedAtMs = sliceStart,
@@ -332,7 +330,7 @@ class AmbientForegroundService : Service() {
 
                     val existingNodes = storage.getActiveNodes(50)
                     val extracted = proposalExtractor.extract(
-                        window = activeWindow,
+                        window = liveWindow,
                         llmResponseJson = null,
                         existingNodes = existingNodes,
                         nowMs = sliceEnd
@@ -356,10 +354,10 @@ class AmbientForegroundService : Service() {
 
                         storage.saveAmbientWindow(
                             AmbientWindow(
-                                id = activeWindow.id,
+                                id = liveWindow.id,
                                 sessionId = sId,
-                                startedAt = activeWindow.startedAtMs,
-                                endedAt = activeWindow.endedAtMs,
+                                startedAt = liveWindow.startedAtMs,
+                                endedAt = liveWindow.endedAtMs,
                                 state = "extracted",
                                 gateOpened = true
                             )
@@ -368,7 +366,7 @@ class AmbientForegroundService : Service() {
                         storage.saveAmbientSegment(
                             AmbientSegment(
                                 id = turn.segmentId,
-                                windowId = activeWindow.id,
+                                windowId = liveWindow.id,
                                 tStart = turn.tStartMs,
                                 tEnd = turn.tEndMs,
                                 label = turn.label.wire,
@@ -382,7 +380,7 @@ class AmbientForegroundService : Service() {
 
                         val dayRule = storage.getEffectiveDayRule(sliceEnd)
                         val currentDayKey = com.anchor.core.time.DayRollover.computeDayKey(sliceEnd, dayRule)
-                        val report = storage.getLatestAmbientReport() ?: run {
+                        val report = storage.getLatestAmbientReport()?.takeIf { it.dayKey == currentDayKey } ?: run {
                             val rep = AmbientReport(id = "amb_rep_${UUID.randomUUID()}", dayKey = currentDayKey, generatedAt = sliceEnd)
                             storage.saveAmbientReport(rep)
                             rep
@@ -405,7 +403,7 @@ class AmbientForegroundService : Service() {
                                     AmbientReportItem(
                                         id = UUID.randomUUID().toString(),
                                         reportId = report.id,
-                                        windowId = activeWindow.id,
+                                        windowId = liveWindow.id,
                                         kind = "proposal",
                                         summary = item.summary,
                                         nodeId = pNode.id,
@@ -512,6 +510,12 @@ class AmbientForegroundService : Service() {
         const val ACTION_RESUME = "com.anchor.mine.ambient.ACTION_RESUME"
 
         fun start(context: Context) {
+            val hasMic = androidx.core.content.ContextCompat.checkSelfPermission(
+                context,
+                android.Manifest.permission.RECORD_AUDIO
+            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+            if (!hasMic) return
+
             val intent = Intent(context, AmbientForegroundService::class.java).apply {
                 action = ACTION_START
             }

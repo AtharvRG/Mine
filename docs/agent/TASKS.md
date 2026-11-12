@@ -1,6 +1,21 @@
 # TASKS (one at a time, smallest first). Status: [ ] open, [~] in progress, [x] done+reviewed
 Specs for R1-R10: docs/agent/work/session1-remediation-spec.md. Read the task's section before starting.
 
+## Audit #6 Post-Fix Verification & Final Polish (2026-11-12)
+[x] Bug 1: Android 14 ForegroundServiceDidNotStartInTimeException Prevention
+    [x] In AmbientControlCard.kt, checked RECORD_AUDIO permission when user taps "I Agree" on consent dialog; launched RequestPermission() launcher and only set ambient.enabled="1" and started FGS when permission is granted.
+    [x] Added defensive mic permission check in AmbientForegroundService.start(context).
+[x] Bug 2: Duplicate Ambient Proposal Elimination & UI State Refresh
+    [x] In AmbientForegroundService.kt, passed single-turn window (listOf(turn)) to proposalExtractor.extract(...) during live 3-second slices, preventing whole-window re-extraction loops.
+    [x] Checked storage.getLatestAmbientReport()?.takeIf { it.dayKey == currentDayKey } to ensure new days generate new reports.
+    [x] In ChatController.refreshUI(), reloaded latestAmbientReport, ambientReportItems, ambientEnabled, and voiceprintEnrolled into _state.
+[x] Bug 3: Remove Duplicate Receipts on Event-Logged Actions
+    [x] In ChatController.kt, removed is ToolResult.Committed -> addTransientReceipt(...) from ArchiveNode, DeleteNode, RestoreNode, and UpdateNodeStatus (relying on raw_event reconstruction in loadReceipts).
+    [x] Added unit test testNodeActionReceipts_AreNotDuplicatedInUiState in R12ConcurrencyLifecycleTest.kt (PASS).
+[x] Bug 4: Assign currentStreamJob Inside sendMutex.withLock for UiAction.Stop
+    [x] In ChatController.kt, moved currentStreamJob = currentCoroutineContext()[Job] inside sendMutex.withLock in sendText and handleSendMessage, preventing queued turns from overriding active streaming job.
+    [x] Added unit test testStopAction_CancelsActiveStreamingTurn_NotQueuedTurn in R12ConcurrencyLifecycleTest.kt (PASS).
+
 ## Audit #5 Post-Remediation Hardening (2026-11-12)
 [x] Item 1: AliasRegistry Resolution in Gateway & ChatController
     [x] Mapped aliases (n_1, s_1, p_1, etc.) back to raw DB UUIDs in Gateway.kt (handleConfirmChange, handleAddFollowUp, handleRemoveFollowUp, propose_change, handleKeepStale, handleCancelStale, handleArchiveNode, handleDeleteNode, handleRestoreNode, handleActivateNode, handleEraseNode, handleCreate followUpTo).

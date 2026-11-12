@@ -1,3 +1,24 @@
+# HANDOFF (Adversarial Audit #6 Post-Fix Polish 100% COMPLETE & VERIFIED)
+
+**Current Status**: 2026-11-12 18:00 IST
+- **Adversarial Audit #6 All 4 Items Remediated**:
+  1. **Android 14 FGS Mic Consent Guard**: In `AmbientControlCard.kt`, wired `enableAmbientPermissionLauncher`. When user taps "I Agree" in consent dialog, checks `Manifest.permission.RECORD_AUDIO`. If granted, sets `ambient.enabled = "1"` and starts service; if not, requests permission and starts only upon grant. Added defensive mic permission check in `AmbientForegroundService.start(context)`.
+  2. **Duplicate Ambient Proposals & Ambient UI Refresh**: In `AmbientForegroundService.kt`, passed a single-turn window (`listOf(turn)`) to `proposalExtractor.extract(...)` during live 3-second slices, preventing whole-window re-extraction loops. Added `dayKey` check on `storage.getLatestAmbientReport()?.takeIf { it.dayKey == currentDayKey }` so daily rollover creates fresh reports. In `ChatController.refreshUI()`, reloaded `latestAmbientReport`, `ambientReportItems`, `ambientEnabled`, and `voiceprintEnrolled` into `_state`. Verified via `R12ConcurrencyLifecycleTest.testRefreshUi_ReloadsAmbientState` (PASS).
+  3. **Receipt Deduping on Event-Logged Actions**: In `ChatController.kt`, removed `is ToolResult.Committed -> addTransientReceipt(...)` from `ArchiveNode`, `DeleteNode`, `RestoreNode`, and `UpdateNodeStatus`, letting `loadReceipts()` reconstruct the canonical receipt from `raw_event` with valid undo tokens. Verified via `R12ConcurrencyLifecycleTest.testNodeActionReceipts_AreNotDuplicatedInUiState` (PASS: exactly 1 receipt).
+  4. **`currentStreamJob` Assignment Inside `sendMutex.withLock`**: In `ChatController.kt`, moved `currentStreamJob = currentCoroutineContext()[Job]` inside `sendMutex.withLock` in both `sendText` and `handleSendMessage`, ensuring `UiAction.Stop` always cancels the actively streaming turn rather than a queued turn. Verified via `R12ConcurrencyLifecycleTest.testStopAction_CancelsActiveStreamingTurn_NotQueuedTurn` (PASS).
+- **Verification on Device & Test Suites**:
+  - `:core:test`: **559 / 559 PASS (100%)** across 96 files.
+  - `:app:testDebugUnitTest`: **27 / 27 PASS (100%)** across 7 files.
+  - **Connected Device Tests on physical Moto G73 5G (Android 14)**:
+    - `AmbientAndV3DeviceTest`: **7 / 7 PASS (100%)**.
+    - `AndroidStorageTest`: **49 / 49 PASS (100%)**.
+- **Compilation**:
+  - `:core:compileKotlin`: SUCCESS.
+  - `:app:compileDebugKotlin`: SUCCESS.
+  - `:app:compileDebugAndroidTestKotlin`: SUCCESS.
+
+---
+
 # HANDOFF (Adversarial Audit #5 Post-Remediation 100% COMPLETE & VERIFIED)
 
 **Current Status**: 2026-11-12 17:25 IST

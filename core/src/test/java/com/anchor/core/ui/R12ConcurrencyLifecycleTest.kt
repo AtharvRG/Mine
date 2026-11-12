@@ -770,5 +770,113 @@ class R12ConcurrencyLifecycleTest {
         assertNull("Node must NOT be committed when in-transaction CAS fails", storage.getNode("n_should_not_exist"))
         assertTrue("Logged events must NOT contain aborted event", storage.loggedEvents.none { it.opId == "op_ghost" })
     }
+
+    // Audit #6 Bug 4: Stop action cancels the active streaming turn, not the waiting turn
+    @Test
+    fun testStopAction_CancelsActiveStreamingTurn_NotQueuedTurn() = runBlocking {
+        val clock = FakeClock(1000L)
+        val storage = SharedFakeStorage(clock).apply {
+            settings["key"] = "test-key"
+        }
+        val turn1Started = CompletableDeferred<Unit>()
+        val turn1Cancelled = CompletableDeferred<Unit>()
+
+        val transport = object : HttpTransport {
+            override suspend fun postStream(target: Target, body: String): Flow<String> = flow {
+                turn1Started.complete(Unit)
+                try {
+                    delay(5000L) // Simulate long streaming
+                    emit("""data: {"choices":[{"delta":{"content":"Turn reply"}}]}""")
+                } catch (e: CancellationException) {
+                    turn1Cancelled.complete(Unit)
+                    throw e
+                }
+            }
+        }
+
+        val testScope = CoroutineScope(Dispatchers.Default + Job())
+        val controller = buildController(storage, clock, transport, testScope, Dispatchers.Default)
+
+        // Start Turn 1
+        controller.sendText("First message")
+        turn1Started.await()
+
+        // Enqueue Turn 2 while Turn 1 is holding sendMutex
+        controller.sendText("Second message")
+
+        // User taps Stop
+        controller.onAction(UiAction.Stop)
+
+        // Turn 1 must have received the cancellation signal
+        withTimeout(2000L) {
+            turn1Cancelled.await()
+        }
+        assertTrue("Active turn 1 must be cancelled by Stop action", turn1Cancelled.isCompleted)
+        testScope.cancel()
+    }
+
+    // Audit #6 Bug 3: Archive, Delete, Restore, and UpdateNodeStatus do not emit duplicate receipts
+    @Test
+    fun testNodeActionReceipts_AreNotDuplicatedInUiState() = runBlocking {
+        val clock = FakeClock(1000L)
+        val storage = SharedFakeStorage(clock)
+        val node = Node("n_test_dup", "task", "Receipt Test Task", "active")
+        storage.saveNode(node)
+
+        val transport = object : HttpTransport {
+            override suspend fun postStream(target: Target, body: String): Flow<String> = flow {
+                emit("""data: {"choices":[{"delta":{"content":"done"}}]}""")
+            }
+        }
+        val testScope = CoroutineScope(Dispatchers.Default + Job())
+        val controller = buildController(storage, clock, transport, testScope, Dispatchers.Default)
+
+        // Archive the node
+        controller.onAction(UiAction.ArchiveNode("n_test_dup"))
+
+        // Wait for UI refresh
+        delay(200L)
+        val receipts = controller.state.value.receipts
+        val archiveReceipts = receipts.filter { it.message.contains("Archived", ignoreCase = true) }
+        assertEquals("There must be exactly one archive receipt, not duplicated", 1, archiveReceipts.size)
+
+        testScope.cancel()
+    }
+
+    // Audit #6 Bug 2: refreshUI reloads ambient report, items, and settings
+    @Test
+    fun testRefreshUi_ReloadsAmbientState() = runBlocking {
+        val clock = FakeClock(1000L)
+        val storage = SharedFakeStorage(clock)
+        val transport = object : HttpTransport {
+            override suspend fun postStream(target: Target, body: String): Flow<String> = flow {
+                emit("""data: {"choices":[{"delta":{"content":"done"}}]}""")
+            }
+        }
+        val testScope = CoroutineScope(Dispatchers.Default + Job())
+        val controller = buildController(storage, clock, transport, testScope, Dispatchers.Default)
+
+        assertEquals(false, controller.state.value.ambientEnabled)
+        assertNull(controller.state.value.latestAmbientReport)
+
+        // External process/service adds report and enables ambient
+        storage.saveSetting("ambient.enabled", "1")
+        val report = com.anchor.core.ambient.AmbientReport("rep_test_1", "2026-11-12", 1000L)
+        storage.saveAmbientReport(report)
+        storage.saveAmbientReportItem(
+            com.anchor.core.ambient.AmbientReportItem("item_1", "rep_test_1", "win_1", "proposal", "Summary 1", "n_1")
+        )
+
+        // Trigger refresh
+        controller.onAction(UiAction.RefreshStats)
+        delay(150L)
+
+        assertEquals(true, controller.state.value.ambientEnabled)
+        assertNotNull(controller.state.value.latestAmbientReport)
+        assertEquals("rep_test_1", controller.state.value.latestAmbientReport?.id)
+        assertEquals(1, controller.state.value.ambientReportItems.size)
+
+        testScope.cancel()
+    }
 }
 

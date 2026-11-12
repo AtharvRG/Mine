@@ -1,5 +1,17 @@
 # STATE (update every session; facts only)
-Updated: 2026-11-12 17:25 IST (**Mine Full Codebase Adversarial Audit #5 Remediation COMPLETE: all 6 items fixed across AliasRegistry, Zero-Mean Voiceprint, Real Ambient Loop, Board View Race & Habit Recurrence, sendText turn serialization, and EraseNode raw_event scrubbing; :core:test 100% PASS, :app:testDebugUnitTest 100% PASS, connected tests AmbientAndV3DeviceTest 7/7 PASS on Moto G73 5G**)
+Updated: 2026-11-12 18:00 IST (**Mine Full Codebase Adversarial Audit #6 Remediation COMPLETE: all 4 items fixed across Android 14 FGS mic permission consent guard, duplicate proposal elimination, receipt deduping on event-logged actions, and currentStreamJob assignment inside sendMutex; :core:test 100% PASS [559/559], :app:testDebugUnitTest 100% PASS [27/27]**)
+
+**Adversarial Audit #6 Post-Fix Polish Deliverables (2026-11-12):**
+- **Bug 1: Android 14 `ForegroundServiceDidNotStartInTimeException` Prevention**:
+  - `AmbientControlCard.kt`: Added `enableAmbientPermissionLauncher`. When user taps "I Agree" in the consent dialog, checks `Manifest.permission.RECORD_AUDIO`. If granted, sets `ambient.enabled = "1"` and starts service; if not, requests permission and starts only upon grant.
+  - `AmbientForegroundService.kt`: Added defensive `RECORD_AUDIO` permission check in companion `start(context)`.
+- **Bug 2: Duplicate Proposal Elimination & Ambient UI Refresh**:
+  - `AmbientForegroundService.kt`: Live 3-second slices now pass a single-turn window (`listOf(turn)`) to `proposalExtractor.extract(...)`, preventing previously recorded turns from re-extracting duplicate proposals every 3 seconds. Added `dayKey` check on `storage.getLatestAmbientReport()?.takeIf { it.dayKey == currentDayKey }` so daily rollover creates fresh reports.
+  - `ChatController.kt`: In `refreshUI()`, reloaded `latestAmbientReport`, `ambientReportItems`, `ambientEnabled`, and `voiceprintEnrolled` into `_state`. Verified via `R12ConcurrencyLifecycleTest.testRefreshUi_ReloadsAmbientState` (PASS).
+- **Bug 3: Receipt Deduping on Event-Logged Actions**:
+  - `ChatController.kt`: Removed `is ToolResult.Committed -> addTransientReceipt(...)` from `ArchiveNode`, `DeleteNode`, `RestoreNode`, and `UpdateNodeStatus`, letting `loadReceipts()` reconstruct the canonical receipt from `raw_event` with valid undo tokens. Verified via `R12ConcurrencyLifecycleTest.testNodeActionReceipts_AreNotDuplicatedInUiState` (PASS: exactly 1 receipt).
+- **Bug 4: `currentStreamJob` Assignment Inside `sendMutex.withLock`**:
+  - `ChatController.kt`: Moved `currentStreamJob = currentCoroutineContext()[Job]` inside `sendMutex.withLock` in both `sendText` and `handleSendMessage`, ensuring `UiAction.Stop` always cancels the actively streaming turn rather than a queued turn. Verified via `R12ConcurrencyLifecycleTest.testStopAction_CancelsActiveStreamingTurn_NotQueuedTurn` (PASS).
 
 **Adversarial Audit #5 Full Codebase Remediation Deliverables (2026-11-12):**
 - **Item 1: `AliasRegistry` Bidirectional Mapping in `Gateway`**:

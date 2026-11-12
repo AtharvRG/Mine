@@ -655,9 +655,6 @@ class ChatController(
                 try {
                     val result = gateway.handleArchiveNode(action.nodeId)
                     when (result) {
-                        is ToolResult.Committed -> {
-                            addTransientReceipt(ReceiptState(UUID.randomUUID().toString(), result.message, result.undoToken, isError = false, timestamp = clock.now()))
-                        }
                         is ToolResult.Error -> {
                             addTransientReceipt(ReceiptState(UUID.randomUUID().toString(), result.reason, null, isError = true, timestamp = clock.now()))
                         }
@@ -678,9 +675,6 @@ class ChatController(
                 try {
                     val result = gateway.handleDeleteNode(action.nodeId)
                     when (result) {
-                        is ToolResult.Committed -> {
-                            addTransientReceipt(ReceiptState(UUID.randomUUID().toString(), result.message, result.undoToken, isError = false, timestamp = clock.now()))
-                        }
                         is ToolResult.Error -> {
                             addTransientReceipt(ReceiptState(UUID.randomUUID().toString(), result.reason, null, isError = true, timestamp = clock.now()))
                         }
@@ -701,9 +695,6 @@ class ChatController(
                 try {
                     val result = gateway.handleRestoreNode(action.nodeId)
                     when (result) {
-                        is ToolResult.Committed -> {
-                            addTransientReceipt(ReceiptState(UUID.randomUUID().toString(), result.message, result.undoToken, isError = false, timestamp = clock.now()))
-                        }
                         is ToolResult.Error -> {
                             addTransientReceipt(ReceiptState(UUID.randomUUID().toString(), result.reason, null, isError = true, timestamp = clock.now()))
                         }
@@ -774,7 +765,6 @@ class ChatController(
                 try {
                     val result = gateway.handleUpdateNodeStatus(action.nodeId, action.newStatus)
                     when (result) {
-                        is ToolResult.Committed -> addTransientReceipt(ReceiptState(UUID.randomUUID().toString(), result.message, null, isError = false, timestamp = clock.now()))
                         is ToolResult.Error -> addTransientReceipt(ReceiptState(UUID.randomUUID().toString(), result.reason, null, isError = true, timestamp = clock.now()))
                         else -> {}
                     }
@@ -1165,8 +1155,9 @@ class ChatController(
      */
     fun sendText(text: String, userMsgId: String? = null) {
         if (text.isBlank()) return
-        currentStreamJob = coroutineScope.launch(defaultDispatcher) {
+        coroutineScope.launch(defaultDispatcher) {
             sendMutex.withLock {
+                currentStreamJob = currentCoroutineContext()[Job]
                 try {
                     val before = storage.getProactiveState()
                     if (before.openThreadMsgId != null) {
@@ -1183,38 +1174,44 @@ class ChatController(
                     if (e is kotlinx.coroutines.CancellationException) throw e
                 }
 
-                _state.update { it.copy(isChatLoading = true, connectionError = null) }
-                val key = storage.getSetting("key") ?: ""
-                if (key.isBlank()) {
-                    _state.update {
-                        it.copy(
-                            isChatLoading = false,
-                            connectionError = "Connect an AI provider in Settings first."
-                        )
-                    }
-                    QuickCapture.notifyCaptureFailed(userMsgId)
-                    return@withLock
-                }
-                _state.update {
-                    it.copy(
-                        providerKey = key,
-                        providerEndpoint = storage.getSetting("ep") ?: "https://api.openai.com/v1/chat/completions",
-                        providerModel = storage.getSetting("mod") ?: "gpt-4o-mini"
-                    )
-                }
-
-                if (!networkAvailable()) {
-                    _state.update { it.copy(isChatLoading = false) }
-                    val quickAdd = ruleBasedQuickAdd.parse(text)
-                    if (quickAdd != null) {
-                        handleOfflineQuickAdd(quickAdd, text, userMsgId)
+                try {
+                    _state.update { it.copy(isChatLoading = true, connectionError = null) }
+                    val key = storage.getSetting("key") ?: ""
+                    if (key.isBlank()) {
+                        _state.update {
+                            it.copy(
+                                isChatLoading = false,
+                                connectionError = "Connect an AI provider in Settings first."
+                            )
+                        }
+                        QuickCapture.notifyCaptureFailed(userMsgId)
                         return@withLock
                     }
-                    enqueueChatTurn(text, userMsgId)
-                    return@withLock
-                }
+                    _state.update {
+                        it.copy(
+                            providerKey = key,
+                            providerEndpoint = storage.getSetting("ep") ?: "https://api.openai.com/v1/chat/completions",
+                            providerModel = storage.getSetting("mod") ?: "gpt-4o-mini"
+                        )
+                    }
 
-                executeChatTurn(text, userMsgId, queuedBatch = false, batchIds = emptyList())
+                    if (!networkAvailable()) {
+                        _state.update { it.copy(isChatLoading = false) }
+                        val quickAdd = ruleBasedQuickAdd.parse(text)
+                        if (quickAdd != null) {
+                            handleOfflineQuickAdd(quickAdd, text, userMsgId)
+                            return@withLock
+                        }
+                        enqueueChatTurn(text, userMsgId)
+                        return@withLock
+                    }
+
+                    executeChatTurn(text, userMsgId, queuedBatch = false, batchIds = emptyList())
+                } finally {
+                    if (currentStreamJob == currentCoroutineContext()[Job]) {
+                        currentStreamJob = null
+                    }
+                }
             }
         }
     }
@@ -1454,10 +1451,17 @@ class ChatController(
         queuedBatch: Boolean = false,
         batchIds: List<String> = emptyList()
     ) {
-        currentStreamJob = coroutineScope.launch(defaultDispatcher) {
+        coroutineScope.launch(defaultDispatcher) {
             sendMutex.withLock {
-                _state.update { it.copy(isChatLoading = true, connectionError = null) }
-                executeChatTurn(text, existingUserMsgId, queuedBatch, batchIds)
+                currentStreamJob = currentCoroutineContext()[Job]
+                try {
+                    _state.update { it.copy(isChatLoading = true, connectionError = null) }
+                    executeChatTurn(text, existingUserMsgId, queuedBatch, batchIds)
+                } finally {
+                    if (currentStreamJob == currentCoroutineContext()[Job]) {
+                        currentStreamJob = null
+                    }
+                }
             }
         }
     }
@@ -1869,6 +1873,10 @@ class ChatController(
         val activeThread = proactive.openThreadMsgId?.let { ActiveThread(it, proactive.threadOpenedAt ?: 0L) }
         val relState = storage.getReliabilityState()
         val allPrefs = storage.getAllLearnedPrefs()
+        val latestReport = storage.getLatestAmbientReport()
+        val reportItems = latestReport?.let { r -> storage.getAmbientReportItems(r.id) } ?: emptyList()
+        val ambEnabled = storage.getSetting("ambient.enabled") == "1"
+        val vpEnrolled = storage.getVoiceprint() != null
 
         _state.update { it.copy(
             receipts = recentReceipts + currentTransientReceipts(),
@@ -1884,7 +1892,11 @@ class ChatController(
             homePriorityList = priorityList,
             recentlyClosed = recentlyClosed,
             queuedChatIds = queuedChatIds(),
-            learnedPrefs = allPrefs
+            learnedPrefs = allPrefs,
+            latestAmbientReport = latestReport,
+            ambientReportItems = reportItems,
+            ambientEnabled = ambEnabled,
+            voiceprintEnrolled = vpEnrolled
         ) }
         _state.update { it.copy(chatItems = ChatTimelineBuilder.build(it.chatMessages, it.receipts, it.openProposals)) }
     }
