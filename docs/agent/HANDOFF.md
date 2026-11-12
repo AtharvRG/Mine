@@ -1,3 +1,25 @@
+# HANDOFF (Adversarial Audit #5 Post-Remediation 100% COMPLETE & VERIFIED)
+
+**Current Status**: 2026-11-12 17:25 IST
+- **Adversarial Audit #5 All 6 Items Remediated**:
+  1. `AliasRegistry` Resolution: Mapped aliases (`n_1`, `s_1`, `p_1`, `m_1`) back to raw DB UUIDs in `Gateway.kt` (`handleConfirmChange`, `handleAddFollowUp`, `handleRemoveFollowUp`, `propose_change`, `handleKeepStale`, `handleCancelStale`, `handleArchiveNode`, `handleDeleteNode`, `handleRestoreNode`, `handleActivateNode`, `handleEraseNode`, `handleCreate` followUpTo); verified via `EndToEndChatTest.kt`.
+  2. Real Ambient Audio Capture & Mathematical Zero-Mean Vector: Replaced variance-in-positive-orthant vector in `SyntheticAudioFixtures.kt` with normalized lag autocorrelation + DCT-II decorrelation + mean-centering (expected cosine similarity of orthogonal speech $\approx 0.0$); wired `RECORD_AUDIO` permission request in `AmbientControlCard.kt`; implemented real 3-second recording, VAD energy detection, acoustic feature extraction, PresenceGate scoring, SherpaVoiceEngine offline STT, NumberScrubber, and AmbientProposalExtractor in `AmbientForegroundService.kt` with proposal-only persistence (`status = "proposed"`, `origin = "ambient"`).
+  3. Board View Race Condition & Habit Status Recurrence: Fixed habit status update in `Gateway.handleUpdateNodeStatus` to advance `dueAt` and preserve streaks via `RecurrenceEngine.evaluateHabitCompletion` + `nextOccurrence` while keeping `status = "active"`; closes non-habit tasks and removes alarms from `alarm_registry`; added `'UPDATE_STATUS'`, `'ARCHIVE_NODE'`, `'DELETE_NODE'`, `'RESTORE_NODE'` to `getRecentEvents` and `ReceiptFormatter`; added `stateVersion` key and optimistic state updates to `BoardViewScreen.kt`.
+  4. `sendText` Turn Serialization: Wrapped entire turn execution in `sendMutex.withLock` directly inside `sendText` in `ChatController.kt`, eliminating check-then-act while-loop races.
+  5. Voice Speech Sanitization & STT User Feedback: Sanitized text in `NativeTtsHelper` via `VoiceSpeechSanitizer.chunkSentences(text).joinToString(" ")`; added user Toast feedback in `MainActivity.kt` when STT model is missing or blank speech is detected.
+  6. Complete `eraseNode` Scrubbing, N+1 Hoisting, & `day_digest` Context: Scrubbed `raw_event` where `target_id IN (SELECT id FROM reminder WHERE node_id = ?)` and deleted from `alarm_registry` in `AndroidStorage.eraseNode(nodeId)`; hoisted `getActiveSoulFacts()` outside scoring loop in `HybridRetriever.kt`; wired `storage.getDayDigest(yesterdayKey)` into `ContextBuilder.kt` `fullSystemPrompt`.
+- **Verification on Device & Test Suites**:
+  - `:core:test`: **100% PASS** (all unit tests green).
+  - `:app:testDebugUnitTest`: **100% PASS** (all unit tests green).
+  - **Connected Device Tests on physical Moto G73 5G (Android 14)**:
+    - `AmbientAndV3DeviceTest`: **7 / 7 PASS (100%)**.
+- **Compilation**:
+  - `:core:compileKotlin`: SUCCESS.
+  - `:app:compileDebugKotlin`: SUCCESS.
+  - `:app:compileDebugAndroidTestKotlin`: SUCCESS.
+
+---
+
 # HANDOFF (Adversarial Audit #4 Remediation 100% COMPLETE & VERIFIED)
 
 **Current Status**: 2026-11-12 15:45 IST

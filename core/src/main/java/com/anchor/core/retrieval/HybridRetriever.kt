@@ -43,6 +43,10 @@ class HybridRetriever(
                     if (sim > 0.1f) Triple(ownerType, ownerId, sim) else null
                 }.sortedByDescending { it.third }.take(CANDIDATE_LIMIT)
 
+                val activeSoulFactsMap = if (scored.any { it.first == "soul_fact" }) {
+                    storage.getActiveSoulFacts().associateBy { it.id }
+                } else emptyMap()
+
                 for ((ownerType, ownerId, _) in scored) {
                     when (ownerType) {
                         "node" -> {
@@ -54,8 +58,8 @@ class HybridRetriever(
                             }
                         }
                         "soul_fact" -> {
-                            val fact = storage.getActiveSoulFacts().find { it.id == ownerId && !it.localOnly }
-                            if (fact != null) {
+                            val fact = activeSoulFactsMap[ownerId]
+                            if (fact != null && !fact.localOnly) {
                                 vectorHits.add(SearchResult(fact.id, "soul_fact", fact.category, fact.statement, fact.createdAt))
                             }
                         }

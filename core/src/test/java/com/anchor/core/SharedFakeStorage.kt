@@ -359,7 +359,7 @@ open class SharedFakeStorage(var clock: Clock = SystemClock()) : Storage {
             .mapNotNull { it.undoOf }
             .toSet()
     override suspend fun getRecentEvents(limit: Int): List<RawEvent> {
-        val uiVisibleOps = setOf("CREATE", "CANCEL", "COMPLETE", "RESCHEDULE", "UPDATE", "SCHEDULE", "KEEP_STALE", "CANCEL_STALE", "DELETE", "CONFIRM", "ACCEPT", "REJECT", "LINK", "UNLINK")
+        val uiVisibleOps = setOf("CREATE", "CANCEL", "COMPLETE", "RESCHEDULE", "UPDATE", "SCHEDULE", "KEEP_STALE", "CANCEL_STALE", "DELETE", "CONFIRM", "ACCEPT", "REJECT", "LINK", "UNLINK", "UPDATE_STATUS", "ARCHIVE_NODE", "DELETE_NODE", "RESTORE_NODE")
         return loggedEvents
             .filter { it.undoOf == null && it.opType in uiVisibleOps }
             .takeLast(limit)

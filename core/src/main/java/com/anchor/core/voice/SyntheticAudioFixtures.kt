@@ -5,6 +5,8 @@
 package com.anchor.core.voice
 
 import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.ln
 import kotlin.math.sin
 import kotlin.math.sqrt
 import java.util.Random
@@ -105,28 +107,47 @@ object SyntheticAudioFixtures {
     }
 
     /**
-     * Extracts an L2-normalized 192-dimensional acoustic feature vector from real audio samples.
+     * Extracts an L2-normalized 192-dimensional zero-mean signed acoustic feature vector from audio samples.
+     * Computes the normalized autocorrelation sequence across lags (capturing pitch fundamental F0
+     * and vocal tract formant resonances), applies DCT-II decorrelation, and mean-centers across
+     * dimensions so that different voices have near-zero / low similarity (< 0.60).
      */
     fun extractVoiceprintFromAudio(samples: FloatArray, dimension: Int = 192): FloatArray {
         if (samples.isEmpty()) return FloatArray(dimension)
-        val result = FloatArray(dimension)
-        val chunkSize = maxOf(1, samples.size / dimension)
-        for (d in 0 until dimension) {
-            val start = d * chunkSize
-            val end = minOf(samples.size, start + chunkSize)
+        val n = samples.size
+        val maxLag = minOf(dimension, n / 2)
+        val raw = FloatArray(dimension)
+
+        // Compute autocorrelation across lags 1..maxLag
+        for (lag in 1..maxLag) {
             var sum = 0.0
-            var sumSq = 0.0
-            for (i in start until end) {
-                val s = samples[i].toDouble()
-                sum += s
-                sumSq += s * s
+            val count = n - lag
+            for (i in 0 until count) {
+                sum += samples[i] * samples[i + lag]
             }
-            val count = maxOf(1, end - start)
-            val mean = sum / count
-            val variance = maxOf(0.0, (sumSq / count) - (mean * mean))
-            result[d] = sqrt(variance).toFloat()
+            raw[lag - 1] = (sum / count).toFloat()
         }
-        return normalizeL2(result)
+
+        // Decorrelate across dimensions using Discrete Cosine Transform (DCT-II)
+        val dct = FloatArray(dimension)
+        val piOverDim = Math.PI / dimension
+        for (k in 0 until dimension) {
+            var sum = 0.0
+            for (m in 0 until dimension) {
+                sum += raw[m] * cos(piOverDim * (m + 0.5) * k)
+            }
+            dct[k] = sum.toFloat()
+        }
+
+        // Mean-center across dimensions so expected cosine similarity of unrelated audio is ~ 0.0
+        var mean = 0.0
+        for (v in dct) mean += v
+        mean /= dimension
+        for (d in 0 until dimension) {
+            dct[d] = (dct[d] - mean).toFloat()
+        }
+
+        return normalizeL2(dct)
     }
 
     /**

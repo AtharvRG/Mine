@@ -254,27 +254,10 @@ class ChatController(
             }
             is UiAction.UpdateDraft -> _state.update { it.copy(composerDraft = action.text) }
             is UiAction.SendMessage -> {
-                val text = _state.value.composerDraft
-                if (_state.value.isChatLoading || text.isBlank()) return
-
-                // A12: Check API key without losing draft
-                if (_state.value.providerKey.isBlank()) {
-                    coroutineScope.launch(defaultDispatcher) {
-                        val key = storage.getSetting("key") ?: ""
-                        if (key.isBlank()) {
-                            _state.update { it.copy(connectionError = "Connect an AI provider in Settings first.") }
-                        } else {
-                            val ep = storage.getSetting("ep") ?: "https://api.openai.com/v1/chat/completions"
-                            val mod = storage.getSetting("mod") ?: "gpt-4o-mini"
-                            _state.update { it.copy(providerKey = key, providerEndpoint = ep, providerModel = mod, isChatLoading = true, composerDraft = "", connectionError = null) }
-                            handleSendMessage(text)
-                        }
-                    }
-                    return
-                }
-
-                _state.update { it.copy(isChatLoading = true, composerDraft = "", connectionError = null) }
-                handleSendMessage(text)
+                val text = _state.value.composerDraft.trim()
+                if (text.isBlank()) return
+                _state.update { it.copy(composerDraft = "") }
+                sendText(text)
             }
             is UiAction.Stop -> {
                 // B10: Cancel job, but do NOT set isChatLoading = false here.
@@ -1182,71 +1165,57 @@ class ChatController(
      */
     fun sendText(text: String, userMsgId: String? = null) {
         if (text.isBlank()) return
-        coroutineScope.launch(defaultDispatcher) {
-            // Blueprint 31 §3.6: the user answering closes the open proactive thread and resets the
-            // backoff. Without this the first nudge would hold the thread forever and the engine's
-            // open_thread gate would block every later one.
-            try {
-                val before = storage.getProactiveState()
-                if (before.openThreadMsgId != null) {
-                    val now = clock.now()
-                    storage.saveProactiveState(nudgeEngine.processReply(before, now))
-                    learningEngine.recordSignal(
-                        kind = com.anchor.core.learning.LearningEngine.SIGNAL_NUDGE_REPLY,
-                        subject = "overdue",
-                        now = now
-                    )
-                    learningEngine.recomputePreferences(now)
+        currentStreamJob = coroutineScope.launch(defaultDispatcher) {
+            sendMutex.withLock {
+                try {
+                    val before = storage.getProactiveState()
+                    if (before.openThreadMsgId != null) {
+                        val now = clock.now()
+                        storage.saveProactiveState(nudgeEngine.processReply(before, now))
+                        learningEngine.recordSignal(
+                            kind = com.anchor.core.learning.LearningEngine.SIGNAL_NUDGE_REPLY,
+                            subject = "overdue",
+                            now = now
+                        )
+                        learningEngine.recomputePreferences(now)
+                    }
+                } catch (e: Exception) {
+                    if (e is kotlinx.coroutines.CancellationException) throw e
                 }
-            } catch (e: Exception) {
-                if (e is kotlinx.coroutines.CancellationException) throw e
-            }
-            // Queued behind the in-flight turn, if any. The stream job is what clears
-            // isChatLoading, so joining it is the wait; a turn started meanwhile is joined too.
-            while (_state.value.isChatLoading || sendMutex.isLocked) {
-                val job = currentStreamJob
-                if (job != null && job.isActive) {
-                    job.join()
-                } else {
-                    delay(25)
+
+                _state.update { it.copy(isChatLoading = true, connectionError = null) }
+                val key = storage.getSetting("key") ?: ""
+                if (key.isBlank()) {
+                    _state.update {
+                        it.copy(
+                            isChatLoading = false,
+                            connectionError = "Connect an AI provider in Settings first."
+                        )
+                    }
+                    QuickCapture.notifyCaptureFailed(userMsgId)
+                    return@withLock
                 }
-            }
-            _state.update { it.copy(isChatLoading = true, connectionError = null) }
-            val key = storage.getSetting("key") ?: ""
-            if (key.isBlank()) {
                 _state.update {
                     it.copy(
-                        isChatLoading = false,
-                        connectionError = "Connect an AI provider in Settings first."
+                        providerKey = key,
+                        providerEndpoint = storage.getSetting("ep") ?: "https://api.openai.com/v1/chat/completions",
+                        providerModel = storage.getSetting("mod") ?: "gpt-4o-mini"
                     )
                 }
-                QuickCapture.notifyCaptureFailed(userMsgId)
-                return@launch
-            }
-            _state.update {
-                it.copy(
-                    providerKey = key,
-                    providerEndpoint = storage.getSetting("ep") ?: "https://api.openai.com/v1/chat/completions",
-                    providerModel = storage.getSetting("mod") ?: "gpt-4o-mini"
-                )
-            }
-            // Blueprint 41 §2/§3.3: a capture made with no network is kept and answered later.
-            // Deciding here rather than after a failed request is what makes an airplane-mode
-            // capture instant instead of a ten-second connect timeout followed by an error.
-            if (!networkAvailable()) {
-                // The flag was raised above for a turn that will not run. Left set, it would keep
-                // every later send waiting on a stream job that does not exist and make
-                // drainQueuedTurns return at its own isChatLoading guard.
-                _state.update { it.copy(isChatLoading = false) }
-                val quickAdd = ruleBasedQuickAdd.parse(text)
-                if (quickAdd != null) {
-                    handleOfflineQuickAdd(quickAdd, text, userMsgId)
-                    return@launch
+
+                if (!networkAvailable()) {
+                    _state.update { it.copy(isChatLoading = false) }
+                    val quickAdd = ruleBasedQuickAdd.parse(text)
+                    if (quickAdd != null) {
+                        handleOfflineQuickAdd(quickAdd, text, userMsgId)
+                        return@withLock
+                    }
+                    enqueueChatTurn(text, userMsgId)
+                    return@withLock
                 }
-                enqueueChatTurn(text, userMsgId)
-                return@launch
+
+                executeChatTurn(text, userMsgId, queuedBatch = false, batchIds = emptyList())
             }
-            handleSendMessage(text, userMsgId)
         }
     }
 
@@ -1487,28 +1456,40 @@ class ChatController(
     ) {
         currentStreamJob = coroutineScope.launch(defaultDispatcher) {
             sendMutex.withLock {
-                var activeUserMsgId: String? = existingUserMsgId
-                var activeBatchIds: List<String> = emptyList()
-            try {
-                currentBotId = null
-                // Read before the turn starts: a capture queued while this turn is streaming must
-                // not be marked answered by a reply that was written without it.
-                activeBatchIds = if (queuedBatch) {
-                    if (batchIds.isNotEmpty()) batchIds else storage.getPendingOutbox(OutboxJob.JOB_CHAT_TURN).mapNotNull { queuedMsgId(it) }
-                } else emptyList()
-                val userMsgId = existingUserMsgId ?: "u_${UUID.randomUUID()}"
-                activeUserMsgId = userMsgId
+                _state.update { it.copy(isChatLoading = true, connectionError = null) }
+                executeChatTurn(text, existingUserMsgId, queuedBatch, batchIds)
+            }
+        }
+    }
 
-                if (!networkAvailable() && !queuedBatch) {
-                    val quickAdd = ruleBasedQuickAdd.parse(text)
-                    if (quickAdd != null) {
-                        handleOfflineQuickAdd(quickAdd, text, existingUserMsgId)
-                        return@withLock
-                    }
-                    enqueueChatTurn(text, existingUserMsgId)
-                    refreshUI()
-                    return@withLock
+    private suspend fun executeChatTurn(
+        text: String,
+        existingUserMsgId: String? = null,
+        queuedBatch: Boolean = false,
+        batchIds: List<String> = emptyList()
+    ) {
+        var activeUserMsgId: String? = existingUserMsgId
+        var activeBatchIds: List<String> = emptyList()
+        try {
+            currentBotId = null
+            // Read before the turn starts: a capture queued while this turn is streaming must
+            // not be marked answered by a reply that was written without it.
+            activeBatchIds = if (queuedBatch) {
+                if (batchIds.isNotEmpty()) batchIds else storage.getPendingOutbox(OutboxJob.JOB_CHAT_TURN).mapNotNull { queuedMsgId(it) }
+            } else emptyList()
+            val userMsgId = existingUserMsgId ?: "u_${UUID.randomUUID()}"
+            activeUserMsgId = userMsgId
+
+            if (!networkAvailable() && !queuedBatch) {
+                val quickAdd = ruleBasedQuickAdd.parse(text)
+                if (quickAdd != null) {
+                    handleOfflineQuickAdd(quickAdd, text, existingUserMsgId)
+                    return
                 }
+                enqueueChatTurn(text, existingUserMsgId)
+                refreshUI()
+                return
+            }
 
                 if (existingUserMsgId == null && !queuedBatch) storage.insertRawMessage(userMsgId, "user", text)
                 refreshUI()
@@ -1777,7 +1758,7 @@ class ChatController(
                             enqueueChatTurn(text, activeUserMsgId)
                         }
                     }
-                    return@withLock
+                    return
                 }
                 // A10: Provider error refreshes UI properly below in finally
                 _state.update { it.copy(connectionError = "Error: ${e.message}") }
@@ -1816,8 +1797,6 @@ class ChatController(
                 _state.update { it.copy(isChatLoading = false) }
                 refreshUI()
             }
-            }
-        }
     }
 
     private fun buildJsonPayload(pack: List<ChatMessage>): String {

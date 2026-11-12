@@ -1,5 +1,28 @@
 # STATE (update every session; facts only)
-Updated: 2026-11-12 15:45 IST (**Mine Full Codebase Adversarial Audit #4 Remediation COMPLETE: all 13 items across Priority 0, 1, 2 fixed; :core:test 350+ PASS, :app:testDebugUnitTest PASS, physical device Moto G73 5G connected tests 100% PASS [AndroidStorageTest 49/49, AmbientAndV3DeviceTest 7/7, SherpaVoiceEngineDeviceTest 1/1]**)
+Updated: 2026-11-12 17:25 IST (**Mine Full Codebase Adversarial Audit #5 Remediation COMPLETE: all 6 items fixed across AliasRegistry, Zero-Mean Voiceprint, Real Ambient Loop, Board View Race & Habit Recurrence, sendText turn serialization, and EraseNode raw_event scrubbing; :core:test 100% PASS, :app:testDebugUnitTest 100% PASS, connected tests AmbientAndV3DeviceTest 7/7 PASS on Moto G73 5G**)
+
+**Adversarial Audit #5 Full Codebase Remediation Deliverables (2026-11-12):**
+- **Item 1: `AliasRegistry` Bidirectional Mapping in `Gateway`**:
+  - `Gateway.kt`: Resolved `choice` via `resolveRef(choice, "n")`, matched option against `it.id == choice || it.id == resolvedChoice`, passed `resolvedChoice` to `targetNodeId`, resolved `nodeId` in ambiguous proposals, resolved `followUpTo` in `propose_change` and `handleCreate`, resolved IDs in `handleKeepStale`, `handleCancelStale`, `handleArchiveNode`, `handleDeleteNode`, `handleRestoreNode`, `handleActivateNode`, `handleEraseNode`, `handleEraseSoulFact`, `handleAddFollowUp`, `handleRemoveFollowUp`.
+  - `EndToEndChatTest.kt`: Updated fake LLM to parse `body` for `p_1` and `n_1` and verify end-to-end alias resolution without leaking raw DB UUIDs to LLM prompts. Verified via `:core:test` (PASS).
+- **Item 2: Real Ambient Audio Capture & Mathematical Zero-Mean Vector**:
+  - `SyntheticAudioFixtures.kt`: Rewrote `extractVoiceprintFromAudio` to compute normalized autocorrelation across pitch/formant lags ($1 \dots 192$), apply DCT-II decorrelation, and mean-center across dimensions so expected cosine similarity of orthogonal/unrelated audio is $\approx 0.0$ while identical voice yields $\approx 1.0$. Verified via `SyntheticAudioFixturesTest` (5/5 PASS).
+  - `AmbientControlCard.kt`: Wired `rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission())` for `RECORD_AUDIO`. Removed all synthetic random float generation on enrollment tap.
+  - `AmbientForegroundService.kt`: Check mic permission in `onCreate()` and call `stopSelf()` if absent (prevents Android 14 `InvalidForegroundServiceTypeException`). Implemented `startListeningLoop()` and `stopListeningLoop()`: in-memory 3-second slices via `AudioRecorderHelper`, VAD energy check via `SyntheticAudioFixtures.isSpeechEnergy`, acoustic extraction via `SyntheticAudioFixtures.extractVoiceprintFromAudio`, scoring via `PresenceGate`, offline transcription via `SherpaVoiceEngine`, digit scrubbing via `NumberScrubber.scrub()`, proposal extraction via `AmbientProposalExtractor`, and persistence of sessions, windows, segments, reports, and proposed nodes (`status = "proposed"`, `origin = "ambient"`).
+- **Item 3: Board View Race Condition & Habit Status Recurrence**:
+  - `Gateway.kt`: In `handleUpdateNodeStatus`, added habit recurrence evaluation via `RecurrenceEngine.evaluateHabitCompletion` + `nextOccurrence`, advancing `dueAt` and preserving streaks with `status = "active"` while rescheduling alarm; for task closure, cancels alarm and calls `storage.deleteRegisteredAlarm(deleteRemId)`.
+  - `AndroidStorage.kt` & `SharedFakeStorage.kt`: Added `'UPDATE_STATUS'`, `'ARCHIVE_NODE'`, `'DELETE_NODE'`, `'RESTORE_NODE'` to `getRecentEvents`.
+  - `ReceiptFormatter.kt`: Formatted `'UPDATE_STATUS'`, `'ARCHIVE_NODE'`, `'DELETE_NODE'`, `'RESTORE_NODE'`.
+  - `BoardViewScreen.kt`: Added `stateVersion: Int = 0` parameter, `LaunchedEffect(storage, stateVersion)`, and optimistic state updates on column action buttons.
+  - `MainActivity.kt`: Passed `stateVersion = state.receipts.size` to `BoardViewScreen`.
+- **Item 4: `sendText` Turn Serialization**:
+  - `ChatController.kt`: Wrapped turn execution in `sendMutex.withLock` directly inside `sendText`, removing the busy-waiting `while (_state.value.isChatLoading || sendMutex.isLocked)` loop. Refactored turn execution into `executeChatTurn`, ensuring `isChatLoading = true` is set inside `sendMutex.withLock` and reset to `false` in `finally`.
+- **Item 5: Voice Speech Sanitization & STT User Feedback**:
+  - `MainActivity.kt`: Sanitized text passed to `NativeTtsHelper.speak` using `VoiceSpeechSanitizer.chunkSentences(text).joinToString(" ")`. Added user `Toast` feedback when `engine == null || !engine.isSttAvailable` or when no speech is detected.
+- **Item 6: Complete `eraseNode` Scrubbing, N+1 Hoisting, & `day_digest` Context**:
+  - `AndroidStorage.kt`: In `eraseNode(nodeId)`, scrubbed `raw_event` where `target_id = ? OR target_id IN (SELECT id FROM reminder WHERE node_id = ?)` and deleted from `alarm_registry WHERE reminder_id IN (SELECT id FROM reminder WHERE node_id = ?)`.
+  - `HybridRetriever.kt`: Hoisted `activeSoulFactsMap` outside the scoring loop to eliminate the N+1 SQL query per soul hit.
+  - `ContextBuilder.kt`: Computed `yesterdayKey = DayRollover.computeDayKey(now - 24h, dayRule)`, retrieved `storage.getDayDigest(yesterdayKey)`, and appended `Yesterday's Consolidation:\n...` to `fullSystemPrompt`.
 
 **Adversarial Audit #4 Full Codebase Remediation Deliverables (2026-11-12):**
 - **Priority 0 (Stop the Bleeding - Privacy, Data Loss & Crashes)**:

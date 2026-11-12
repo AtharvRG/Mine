@@ -138,11 +138,12 @@ class Gateway(
                     return handleUpdate(args, causeMsgId)
                 }
 
-                val followUpTo = args["follow_up_to"] ?: args["follow_up_of"]
+                val rawFollowUpTo = args["follow_up_to"] ?: args["follow_up_of"]
+                val followUpTo = rawFollowUpTo?.let { resolveRef(it, "n") }
                 if (intent == IntentType.CREATE && !followUpTo.isNullOrBlank()) {
                     val srcNode = storage.getNode(followUpTo)
                     if (srcNode == null) {
-                        return ToolResult.Error("Cannot create follow-up: source item '$followUpTo' not found")
+                        return ToolResult.Error("Cannot create follow-up: source item '$rawFollowUpTo' not found")
                     }
                 }
 
@@ -480,8 +481,10 @@ class Gateway(
             ?: return ToolResult.Error("unknown_ref: no proposal '$proposalId'")
         if (proposal.status != "open") return ToolResult.Error("Proposal already resolved")
 
+        val resolvedChoice = resolveRef(choice, "n")
+
         val chosenOption = proposal.options.find {
-            it.id == choice || (choice == "update" && it.id != "add_new" && it.id != "cancel")
+            it.id == choice || it.id == resolvedChoice || (choice == "update" && it.id != "add_new" && it.id != "cancel")
         } ?: return ToolResult.Error("Invalid choice")
 
         // H-13 (R-15): the overlap check below is "any shared token", so a reply that *rejects*
@@ -537,7 +540,7 @@ class Gateway(
                         )
                     }
                     else -> {
-                        val targetNodeId = if (choice != "update") choice else (payload?.targetId ?: return ToolResult.Error("Target node not found"))
+                        val targetNodeId = if (choice != "update") resolvedChoice else (payload?.targetId ?: return ToolResult.Error("Target node not found"))
                         val existingNode = storage.getNode(targetNodeId)
                         if (existingNode == null) {
                             if (storage.getProposal(resolvedProposalId)?.status != "open") {
@@ -697,7 +700,7 @@ class Gateway(
             }
         }
 
-        val nodeId = choice
+        val nodeId = resolveRef(choice, "n")
         val node = storage.getNode(nodeId)
         if (node == null) {
             if (storage.getProposal(resolvedProposalId)?.status != "open") {
@@ -866,6 +869,8 @@ class Gateway(
     private fun matchesUserMessage(userMessage: String, option: ProposalOption, choice: String, proposal: Proposal): Boolean {
         val cleanMsg = userMessage.trim().lowercase(java.util.Locale.US)
         val cleanChoice = choice.trim().lowercase(java.util.Locale.US)
+        val resolvedChoice = resolveRef(choice, "n")
+        val cleanResolved = resolvedChoice.trim().lowercase(java.util.Locale.US)
         val cleanTitle = option.title.trim().lowercase(java.util.Locale.US)
         // The item's own name is a valid way to select its option: a dedupe chip's option title
         // is "Update existing" and its id is the node id, so without this the only way to answer
@@ -874,7 +879,7 @@ class Gateway(
             try { json.decodeFromString<ProposalPayload>(it).title } catch (e: Exception) { null }
         }?.trim()?.lowercase(java.util.Locale.US).orEmpty()
 
-        if (cleanMsg == cleanChoice || cleanMsg == cleanTitle) return true
+        if (cleanMsg == cleanChoice || cleanMsg == cleanResolved || cleanMsg == cleanTitle) return true
         if (itemTitle.isNotEmpty() && cleanMsg == itemTitle) return true
         if (cleanTitle.contains(cleanMsg) || cleanMsg.contains(cleanTitle)) return true
 
@@ -913,8 +918,9 @@ class Gateway(
         val nId = "n_${UUID.randomUUID()}"
         val now = clock.now()
 
-        if (!followUpTo.isNullOrBlank()) {
-            val srcNode = storage.getNode(followUpTo)
+        val resolvedFollowUpTo = followUpTo?.ifBlank { null }?.let { resolveRef(it, "n") }
+        if (!resolvedFollowUpTo.isNullOrBlank()) {
+            val srcNode = storage.getNode(resolvedFollowUpTo)
             if (srcNode == null) {
                 return ToolResult.Error("Cannot create follow-up: source item '$followUpTo' not found")
             }
@@ -1442,149 +1448,198 @@ class Gateway(
     }
 
     suspend fun handleKeepStale(nodeId: String): ToolResult {
-        val node = storage.getNode(nodeId) ?: return ToolResult.Error("Node not found")
+        val resolvedId = resolveRef(nodeId, "n")
+        val node = storage.getNode(resolvedId) ?: return ToolResult.Error("Node not found")
         val now = clock.now()
-        val oldRem = storage.getReminderByNodeId(nodeId) ?: storage.getPendingReminders().find { it.id == "r_$nodeId" }
+        val oldRem = storage.getReminderByNodeId(resolvedId) ?: storage.getPendingReminders().find { it.id == "r_$resolvedId" }
         val beforeJson = json.encodeToString(NodeStateSnapshot(node, oldRem))
         val newNode = node.copy(updatedAt = now)
         val afterJson = json.encodeToString(NodeStateSnapshot(newNode, oldRem))
         val uId = "u_${UUID.randomUUID()}"
-        val event = RawEvent(uId, "KEEP_STALE", "node", nodeId, beforeJson = beforeJson, afterJson = afterJson, tsUtc = now)
+        val event = RawEvent(uId, "KEEP_STALE", "node", resolvedId, beforeJson = beforeJson, afterJson = afterJson, tsUtc = now)
         storage.updateNodeAndCommit(newNode, event, deleteReminderId = null, upsertReminder = null)
-        return ToolResult.Committed("KEEP_STALE", nodeId, "Kept: ${node.title}", uId)
+        return ToolResult.Committed("KEEP_STALE", resolvedId, "Kept: ${node.title}", uId)
     }
 
     suspend fun handleCancelStale(nodeId: String): ToolResult {
-        val node = storage.getNode(nodeId) ?: return ToolResult.Error("Node not found")
+        val resolvedId = resolveRef(nodeId, "n")
+        val node = storage.getNode(resolvedId) ?: return ToolResult.Error("Node not found")
         val now = clock.now()
-        val oldRem = storage.getReminderByNodeId(nodeId) ?: storage.getPendingReminders().find { it.id == "r_$nodeId" }
+        val oldRem = storage.getReminderByNodeId(resolvedId) ?: storage.getPendingReminders().find { it.id == "r_$resolvedId" }
         val beforeJson = json.encodeToString(NodeStateSnapshot(node, oldRem))
         val newNode = node.copy(status = "cancelled", closedAt = now, updatedAt = now)
         val afterJson = json.encodeToString(NodeStateSnapshot(newNode, null))
         val uId = "u_${UUID.randomUUID()}"
-        val event = RawEvent(uId, "CANCEL_STALE", "node", nodeId, beforeJson = beforeJson, afterJson = afterJson, tsUtc = now)
-        val deleteRemId = oldRem?.id ?: "r_$nodeId"
+        val event = RawEvent(uId, "CANCEL_STALE", "node", resolvedId, beforeJson = beforeJson, afterJson = afterJson, tsUtc = now)
+        val deleteRemId = oldRem?.id ?: "r_$resolvedId"
         storage.updateNodeAndCommit(newNode, event, deleteReminderId = deleteRemId, upsertReminder = null)
-        return ToolResult.Committed("CANCEL_STALE", nodeId, "Cancelled: ${node.title}", uId)
+        return ToolResult.Committed("CANCEL_STALE", resolvedId, "Cancelled: ${node.title}", uId)
     }
 
     suspend fun handleArchiveNode(nodeId: String): ToolResult {
-        val node = storage.getNode(nodeId) ?: return ToolResult.Error("Node not found")
+        val resolvedId = resolveRef(nodeId, "n")
+        val node = storage.getNode(resolvedId) ?: return ToolResult.Error("Node not found")
         if (node.status == "archived") return ToolResult.Error("Item is already archived")
         val now = clock.now()
-        val oldRem = storage.getReminderByNodeId(nodeId) ?: storage.getPendingReminders().find { it.id == "r_$nodeId" }
+        val oldRem = storage.getReminderByNodeId(resolvedId) ?: storage.getPendingReminders().find { it.id == "r_$resolvedId" }
         val beforeJson = json.encodeToString(NodeStateSnapshot(node, oldRem))
         val newNode = node.copy(status = "archived", closedAt = now, updatedAt = now)
         val afterJson = json.encodeToString(NodeStateSnapshot(newNode, null))
         val uId = "u_${UUID.randomUUID()}"
-        val event = RawEvent(uId, "ARCHIVE_NODE", "node", nodeId, beforeJson = beforeJson, afterJson = afterJson, tsUtc = now)
-        val deleteRemId = oldRem?.id ?: "r_$nodeId"
+        val event = RawEvent(uId, "ARCHIVE_NODE", "node", resolvedId, beforeJson = beforeJson, afterJson = afterJson, tsUtc = now)
+        val deleteRemId = oldRem?.id ?: "r_$resolvedId"
         storage.updateNodeAndCommit(newNode, event, deleteReminderId = deleteRemId, upsertReminder = null)
-        return ToolResult.Committed("ARCHIVE_NODE", nodeId, "Archived: ${node.title}", uId)
+        return ToolResult.Committed("ARCHIVE_NODE", resolvedId, "Archived: ${node.title}", uId)
     }
 
     suspend fun handleDeleteNode(nodeId: String): ToolResult {
-        val node = storage.getNode(nodeId) ?: return ToolResult.Error("Node not found")
+        val resolvedId = resolveRef(nodeId, "n")
+        val node = storage.getNode(resolvedId) ?: return ToolResult.Error("Node not found")
         if (node.status == "cancelled") return ToolResult.Error("Item is already deleted")
         val now = clock.now()
-        val oldRem = storage.getReminderByNodeId(nodeId) ?: storage.getPendingReminders().find { it.id == "r_$nodeId" }
+        val oldRem = storage.getReminderByNodeId(resolvedId) ?: storage.getPendingReminders().find { it.id == "r_$resolvedId" }
         val beforeJson = json.encodeToString(NodeStateSnapshot(node, oldRem))
         val newNode = node.copy(status = "cancelled", closedAt = now, updatedAt = now)
         val afterJson = json.encodeToString(NodeStateSnapshot(newNode, null))
         val uId = "u_${UUID.randomUUID()}"
-        val event = RawEvent(uId, "DELETE_NODE", "node", nodeId, beforeJson = beforeJson, afterJson = afterJson, tsUtc = now)
-        val deleteRemId = oldRem?.id ?: "r_$nodeId"
+        val event = RawEvent(uId, "DELETE_NODE", "node", resolvedId, beforeJson = beforeJson, afterJson = afterJson, tsUtc = now)
+        val deleteRemId = oldRem?.id ?: "r_$resolvedId"
         storage.updateNodeAndCommit(newNode, event, deleteReminderId = deleteRemId, upsertReminder = null)
-        return ToolResult.Committed("DELETE_NODE", nodeId, "Deleted: ${node.title}", uId)
+        return ToolResult.Committed("DELETE_NODE", resolvedId, "Deleted: ${node.title}", uId)
     }
 
     suspend fun handleRestoreNode(nodeId: String): ToolResult {
-        val node = storage.getNode(nodeId) ?: return ToolResult.Error("Node not found")
+        val resolvedId = resolveRef(nodeId, "n")
+        val node = storage.getNode(resolvedId) ?: return ToolResult.Error("Node not found")
         if (node.status != "cancelled" && node.status != "archived") return ToolResult.Error("Item is not in trash")
         val now = clock.now()
-        val oldRem = storage.getReminderByNodeId(nodeId) ?: storage.getPendingReminders().find { it.id == "r_$nodeId" }
+        val oldRem = storage.getReminderByNodeId(resolvedId) ?: storage.getPendingReminders().find { it.id == "r_$resolvedId" }
         val beforeJson = json.encodeToString(NodeStateSnapshot(node, oldRem))
         val newNode = node.copy(status = "active", closedAt = null, updatedAt = now)
         val afterJson = json.encodeToString(NodeStateSnapshot(newNode, null))
         val uId = "u_${UUID.randomUUID()}"
-        val event = RawEvent(uId, "RESTORE_NODE", "node", nodeId, beforeJson = beforeJson, afterJson = afterJson, tsUtc = now)
+        val event = RawEvent(uId, "RESTORE_NODE", "node", resolvedId, beforeJson = beforeJson, afterJson = afterJson, tsUtc = now)
         storage.updateNodeAndCommit(newNode, event, deleteReminderId = null, upsertReminder = null)
-        return ToolResult.Committed("RESTORE_NODE", nodeId, "Restored: ${node.title}", uId)
+        return ToolResult.Committed("RESTORE_NODE", resolvedId, "Restored: ${node.title}", uId)
     }
 
     suspend fun handleActivateNode(nodeId: String): ToolResult {
-        val node = storage.getNode(nodeId) ?: return ToolResult.Error("Node not found")
+        val resolvedId = resolveRef(nodeId, "n")
+        val node = storage.getNode(resolvedId) ?: return ToolResult.Error("Node not found")
         val now = clock.now()
         val beforeJson = json.encodeToString(NodeStateSnapshot(node, null))
         val newNode = node.copy(status = "active", updatedAt = now)
         val afterJson = json.encodeToString(NodeStateSnapshot(newNode, null))
         val uId = "u_${UUID.randomUUID()}"
-        val event = RawEvent(uId, "ACTIVATE_NODE", "node", nodeId, beforeJson = beforeJson, afterJson = afterJson, tsUtc = now)
+        val event = RawEvent(uId, "ACTIVATE_NODE", "node", resolvedId, beforeJson = beforeJson, afterJson = afterJson, tsUtc = now)
         storage.updateNodeAndCommit(newNode, event, deleteReminderId = null, upsertReminder = null)
-        return ToolResult.Committed("ACTIVATE_NODE", nodeId, "Activated: ${node.title}", uId)
+        return ToolResult.Committed("ACTIVATE_NODE", resolvedId, "Activated: ${node.title}", uId)
     }
 
     suspend fun handleUpdateNodeStatus(nodeId: String, newStatus: String): ToolResult {
-        val node = storage.getNode(nodeId) ?: return ToolResult.Error("Node not found")
+        val resolvedId = resolveRef(nodeId, "n")
+        val node = storage.getNode(resolvedId) ?: return ToolResult.Error("Node not found")
         val now = clock.now()
-        val oldRem = storage.getReminderByNodeId(nodeId) ?: storage.getPendingReminders().find { it.id == "r_$nodeId" }
+        val oldRem = storage.getReminderByNodeId(resolvedId) ?: storage.getPendingReminders().find { it.nodeId == resolvedId || it.id == "r_$resolvedId" }
         val beforeJson = json.encodeToString(NodeStateSnapshot(node, oldRem))
+
+        val isRecurringHabit = newStatus == "done" && (node.type == "habit" || node.recurrenceRule != null || oldRem?.rrule != null)
+        if (isRecurringHabit) {
+            val rule = node.recurrenceRule ?: oldRem?.rrule ?: "FREQ=DAILY"
+            val streak = com.anchor.core.recurrence.RecurrenceEngine.evaluateHabitCompletion(
+                rrule = rule,
+                lastCompletedAt = node.lastCompletedAt,
+                currentStreak = node.streakCurrent,
+                bestStreak = node.streakBest,
+                now = now
+            )
+            val baseTime = node.dueAt ?: oldRem?.fireAtMillis ?: now
+            val nextDue = com.anchor.core.recurrence.RecurrenceEngine.nextOccurrence(rule, baseTime, now)
+            val newNode = node.copy(
+                status = "active",
+                dueAt = nextDue,
+                recurrenceRule = rule,
+                streakCurrent = streak.currentStreak,
+                streakBest = streak.bestStreak,
+                lastCompletedAt = now,
+                updatedAt = now,
+                closedAt = null
+            )
+            val remId = oldRem?.id ?: "r_${newNode.id}"
+            val existingTier = oldRem?.tier ?: AlarmTier.ALARM
+            val nextRem = (oldRem ?: Reminder(remId, node.title, nextDue, newNode.id, tier = existingTier, rrule = rule)).copy(
+                fireAtMillis = nextDue,
+                rrule = rule,
+                iteration = (oldRem?.iteration ?: 0) + 1
+            )
+            val afterJson = json.encodeToString(NodeStateSnapshot(newNode, nextRem))
+            val uId = "u_${UUID.randomUUID()}"
+            val event = RawEvent(uId, "UPDATE_STATUS", "node", newNode.id, beforeJson = beforeJson, afterJson = afterJson, tsUtc = now)
+            storage.updateNodeAndCommit(newNode, event, deleteReminderId = null, upsertReminder = nextRem)
+            return ToolResult.Committed("UPDATE_STATUS", newNode.id, "Completed: ${newNode.title} (🔥 ${newNode.streakCurrent} streak)", uId)
+        }
+
         val closedAt = if (newStatus == "done" || newStatus == "archived" || newStatus == "cancelled") now else null
-        val deleteRemId = if (closedAt != null) (oldRem?.id ?: "r_$nodeId") else null
+        val deleteRemId = if (closedAt != null) (oldRem?.id ?: "r_$resolvedId") else null
         val newNode = node.copy(status = newStatus, closedAt = closedAt, updatedAt = now)
         val afterJson = json.encodeToString(NodeStateSnapshot(newNode, if (deleteRemId != null) null else oldRem))
         val uId = "u_${UUID.randomUUID()}"
-        val event = RawEvent(uId, "UPDATE_STATUS", "node", nodeId, beforeJson = beforeJson, afterJson = afterJson, tsUtc = now)
+        val event = RawEvent(uId, "UPDATE_STATUS", "node", resolvedId, beforeJson = beforeJson, afterJson = afterJson, tsUtc = now)
         storage.updateNodeAndCommit(newNode, event, deleteReminderId = deleteRemId, upsertReminder = null)
         if (deleteRemId != null) {
             alarmScheduler?.cancel(deleteRemId)
+            storage.deleteRegisteredAlarm(deleteRemId)
         }
-        return ToolResult.Committed("UPDATE_STATUS", nodeId, "Updated status of ${node.title} to $newStatus", uId)
+        return ToolResult.Committed("UPDATE_STATUS", resolvedId, "Updated status of ${node.title} to $newStatus", uId)
     }
 
     suspend fun handleEraseNode(nodeId: String): ToolResult {
-        val node = storage.getNode(nodeId) ?: return ToolResult.Error("Node not found")
-        val rem = storage.getReminderByNodeId(nodeId) ?: storage.getReminderById("r_$nodeId")
+        val resolvedId = resolveRef(nodeId, "n")
+        val node = storage.getNode(resolvedId) ?: return ToolResult.Error("Node not found")
+        val rem = storage.getReminderByNodeId(resolvedId) ?: storage.getReminderById("r_$resolvedId")
         if (rem != null) {
             alarmScheduler?.cancel(rem.id)
         }
         val uId = "u_${UUID.randomUUID()}"
-        storage.eraseNode(nodeId)
-        storage.deleteEmbedding("node", nodeId)
-        return ToolResult.Committed("ERASE_NODE", nodeId, "Erased: ${node.title}", uId)
+        storage.eraseNode(resolvedId)
+        storage.deleteEmbedding("node", resolvedId)
+        return ToolResult.Committed("ERASE_NODE", resolvedId, "Erased: ${node.title}", uId)
     }
 
     suspend fun handleEraseSoulFact(factId: String): ToolResult {
-        val fact = storage.getActiveSoulFacts(includeLocalOnly = true).find { it.id == factId }
-            ?: storage.getProposedSoulFacts().find { it.id == factId }
+        val resolvedId = resolveRef(factId, "s")
+        val fact = storage.getActiveSoulFacts(includeLocalOnly = true).find { it.id == resolvedId }
+            ?: storage.getProposedSoulFacts().find { it.id == resolvedId }
             ?: return ToolResult.Error("Soul fact not found")
         val uId = "u_${UUID.randomUUID()}"
-        storage.eraseSoulFact(factId)
-        storage.deleteEmbedding("soul_fact", factId)
-        return ToolResult.Committed("ERASE_SOUL_FACT", factId, "Erased fact: ${fact.statement}", uId)
+        storage.eraseSoulFact(resolvedId)
+        storage.deleteEmbedding("soul_fact", resolvedId)
+        return ToolResult.Committed("ERASE_SOUL_FACT", resolvedId, "Erased fact: ${fact.statement}", uId)
     }
 
     suspend fun handleAddFollowUp(srcNodeId: String, dstNodeId: String, causeMsgId: String? = null): ToolResult {
-        if (srcNodeId == dstNodeId) {
+        val resolvedSrc = resolveRef(srcNodeId, "n")
+        val resolvedDst = resolveRef(dstNodeId, "n")
+        if (resolvedSrc == resolvedDst) {
             return ToolResult.Error("Cannot link an item to itself (self-loop detected)")
         }
-        val srcNode = storage.getNode(srcNodeId) ?: return ToolResult.Error("Source item '$srcNodeId' not found")
-        val dstNode = storage.getNode(dstNodeId) ?: return ToolResult.Error("Destination item '$dstNodeId' not found")
+        val srcNode = storage.getNode(resolvedSrc) ?: return ToolResult.Error("Source item '$srcNodeId' not found")
+        val dstNode = storage.getNode(resolvedDst) ?: return ToolResult.Error("Destination item '$dstNodeId' not found")
 
-        val existingEdges = storage.getEdgesForSource(srcNodeId, EdgeTypes.FOLLOW_UP)
-        if (existingEdges.any { it.dstId == dstNodeId }) {
+        val existingEdges = storage.getEdgesForSource(resolvedSrc, EdgeTypes.FOLLOW_UP)
+        if (existingEdges.any { it.dstId == resolvedDst }) {
             return ToolResult.Error("Follow-up link from '${srcNode.title}' to '${dstNode.title}' already exists")
         }
 
-        if (causesCycle(srcNodeId, dstNodeId)) {
+        if (causesCycle(resolvedSrc, resolvedDst)) {
             return ToolResult.Error("Cannot link: adding this follow-up would create a cyclic dependency")
         }
 
         val edgeId = "e_${UUID.randomUUID()}"
         val edge = Edge(
             id = edgeId,
-            srcId = srcNodeId,
-            dstId = dstNodeId,
+            srcId = resolvedSrc,
+            dstId = resolvedDst,
             type = EdgeTypes.FOLLOW_UP,
             createdAt = clock.now(),
             updatedAt = clock.now()
@@ -1604,21 +1659,22 @@ class Gateway(
     }
 
     suspend fun handleRemoveFollowUp(edgeId: String, causeMsgId: String? = null): ToolResult {
-        val edge = storage.getEdge(edgeId) ?: return ToolResult.Error("Follow-up link '$edgeId' not found or already removed")
+        val resolvedEdgeId = resolveRef(edgeId, "e")
+        val edge = storage.getEdge(resolvedEdgeId) ?: return ToolResult.Error("Follow-up link '$edgeId' not found or already removed")
         val uId = "u_${UUID.randomUUID()}"
         val beforeJson = json.encodeToString(edge)
         val event = RawEvent(
             opId = uId,
             opType = "UNLINK",
             targetType = "edge",
-            targetId = edgeId,
+            targetId = resolvedEdgeId,
             beforeJson = beforeJson,
             afterJson = null,
             tsUtc = clock.now(),
             causeMsgId = causeMsgId
         )
-        storage.deleteEdgeAndCommit(edgeId, event)
-        return ToolResult.Committed("UNLINK", edgeId, "Removed follow-up link", uId)
+        storage.deleteEdgeAndCommit(resolvedEdgeId, event)
+        return ToolResult.Committed("UNLINK", resolvedEdgeId, "Removed follow-up link", uId)
     }
 
     private suspend fun causesCycle(srcId: String, dstId: String, maxDepth: Int = 20): Boolean {

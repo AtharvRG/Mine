@@ -48,6 +48,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun BoardViewScreen(
     storage: Storage?,
+    stateVersion: Int = 0,
     onActionClick: (nodeId: String, newStatus: String) -> Unit = { _, _ -> }
 ) {
     var boardNodes by remember { mutableStateOf<Map<String, List<Node>>>(emptyMap()) }
@@ -64,8 +65,27 @@ fun BoardViewScreen(
         }
     }
 
-    LaunchedEffect(storage) {
+    LaunchedEffect(storage, stateVersion) {
         refreshBoard()
+    }
+
+    val handleAction: (String, String, String, String) -> Unit = { id, fromCol, targetStatus, targetCol ->
+        // Optimistic UI update so card moves instantly
+        val currentFromList = boardNodes[fromCol] ?: emptyList()
+        val nodeToMove = currentFromList.find { it.id == id }
+        if (nodeToMove != null) {
+            val newFromList = currentFromList.filter { it.id != id }
+            val currentToList = boardNodes[targetCol] ?: emptyList()
+            val newToList = listOf(nodeToMove.copy(status = targetStatus)) + currentToList
+            boardNodes = boardNodes + mapOf(fromCol to newFromList, targetCol to newToList)
+        }
+        onActionClick(id, targetStatus)
+        scope.launch {
+            kotlinx.coroutines.delay(150L)
+            if (storage != null) {
+                boardNodes = storage.getBoardViewNodes(limitPerColumn = 30)
+            }
+        }
     }
 
     Column(modifier = Modifier.fillMaxSize().padding(8.dp).testTag("boardViewScreen")) {
@@ -96,7 +116,7 @@ fun BoardViewScreen(
                 title = "To Do",
                 nodes = boardNodes["todo"] ?: emptyList(),
                 tag = "boardCol-todo",
-                onAction = { id -> onActionClick(id, "in_progress"); refreshBoard() },
+                onAction = { id -> handleAction(id, "todo", "in_progress", "in_progress") },
                 actionLabel = "Start"
             )
 
@@ -104,7 +124,7 @@ fun BoardViewScreen(
                 title = "In Progress",
                 nodes = boardNodes["in_progress"] ?: emptyList(),
                 tag = "boardCol-in_progress",
-                onAction = { id -> onActionClick(id, "done"); refreshBoard() },
+                onAction = { id -> handleAction(id, "in_progress", "done", "done") },
                 actionLabel = "Done"
             )
 
@@ -112,7 +132,7 @@ fun BoardViewScreen(
                 title = "Done",
                 nodes = boardNodes["done"] ?: emptyList(),
                 tag = "boardCol-done",
-                onAction = { id -> onActionClick(id, "active"); refreshBoard() },
+                onAction = { id -> handleAction(id, "done", "active", "todo") },
                 actionLabel = "Reopen"
             )
         }

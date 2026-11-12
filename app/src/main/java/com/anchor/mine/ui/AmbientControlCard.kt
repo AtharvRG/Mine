@@ -43,6 +43,8 @@ import com.anchor.mine.ambient.AmbientForegroundService
 import com.anchor.mine.ambient.AmbientHeartbeatHelper
 import android.Manifest
 import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import com.anchor.mine.voice.AudioRecorderHelper
 import kotlinx.coroutines.delay
@@ -64,6 +66,33 @@ fun AmbientControlCard(
     var isServiceRunning by remember { mutableStateOf(false) }
     var isEnrolling by remember { mutableStateOf(false) }
     var showConsentDialog by remember { mutableStateOf(false) }
+
+    val micPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            scope.launch {
+                isEnrolling = true
+                try {
+                    val recorder = AudioRecorderHelper()
+                    if (recorder.startRecording(this)) {
+                        delay(3000L)
+                        val samples = recorder.stopRecording()
+                        val vpFloats = SyntheticAudioFixtures.extractVoiceprintFromAudio(samples)
+                        val vp = Voiceprint.fromFloatArray("vp-local", vpFloats, "sherpa-onnx-v1", System.currentTimeMillis())
+                        storage?.saveVoiceprint(vp)
+                    }
+                } finally {
+                    isEnrolling = false
+                    val enabled = storage?.getSetting("ambient.enabled") == "1"
+                    val vp = storage?.getVoiceprint()
+                    isAmbientEnabled = enabled
+                    isVoiceprintEnrolled = vp != null
+                    isServiceRunning = AmbientHeartbeatHelper.isServiceRunning(context)
+                }
+            }
+        }
+    }
 
     val refreshState = {
         if (storage != null) {
@@ -156,26 +185,24 @@ fun AmbientControlCard(
                             Manifest.permission.RECORD_AUDIO
                         ) == PackageManager.PERMISSION_GRANTED
 
+                        if (!hasMicPermission) {
+                            micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                            return@Button
+                        }
+
                         scope.launch {
-                            if (hasMicPermission) {
-                                isEnrolling = true
-                                try {
-                                    val recorder = AudioRecorderHelper()
-                                    if (recorder.startRecording(this)) {
-                                        delay(3000L)
-                                        val samples = recorder.stopRecording()
-                                        val vpFloats = SyntheticAudioFixtures.extractVoiceprintFromAudio(samples)
-                                        val vp = Voiceprint.fromFloatArray("vp-local", vpFloats, "sherpa-onnx-v1", System.currentTimeMillis())
-                                        storage?.saveVoiceprint(vp)
-                                    }
-                                } finally {
-                                    isEnrolling = false
-                                    refreshState()
+                            isEnrolling = true
+                            try {
+                                val recorder = AudioRecorderHelper()
+                                if (recorder.startRecording(this)) {
+                                    delay(3000L)
+                                    val samples = recorder.stopRecording()
+                                    val vpFloats = SyntheticAudioFixtures.extractVoiceprintFromAudio(samples)
+                                    val vp = Voiceprint.fromFloatArray("vp-local", vpFloats, "sherpa-onnx-v1", System.currentTimeMillis())
+                                    storage?.saveVoiceprint(vp)
                                 }
-                            } else {
-                                val vpFloats = SyntheticAudioFixtures.generateSyntheticVoiceprint(dimension = 192, seed = System.currentTimeMillis())
-                                val vp = Voiceprint.fromFloatArray("vp-local", vpFloats, "sherpa-onnx-v1", System.currentTimeMillis())
-                                storage?.saveVoiceprint(vp)
+                            } finally {
+                                isEnrolling = false
                                 refreshState()
                             }
                         }

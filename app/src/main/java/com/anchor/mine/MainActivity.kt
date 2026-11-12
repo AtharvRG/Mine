@@ -323,7 +323,7 @@ fun MineAppUI(
                 3 -> BackupScreen(exportManager, storage, onAction = onAction)
                 4 -> DebugScreen(state, onAction)
                 5 -> MemoryScreen(state, onAction, storage = storage)
-                6 -> com.anchor.mine.ui.BoardViewScreen(storage = storage, onActionClick = { id, status -> onAction(UiAction.UpdateNodeStatus(id, status)) })
+                6 -> com.anchor.mine.ui.BoardViewScreen(storage = storage, stateVersion = state.receipts.size, onActionClick = { id, status -> onAction(UiAction.UpdateNodeStatus(id, status)) })
                 7 -> com.anchor.mine.ui.CalendarViewScreen(storage = storage)
             }
         }
@@ -420,7 +420,8 @@ fun ChatScreen(
                                         }
                                     } else {
                                         withContext(Dispatchers.Main) {
-                                            com.anchor.mine.voice.NativeTtsHelper.speak(context, text)
+                                            val sanitized = VoiceSpeechSanitizer.chunkSentences(text).joinToString(" ")
+                                            com.anchor.mine.voice.NativeTtsHelper.speak(context, sanitized)
                                         }
                                     }
                                 }
@@ -556,9 +557,27 @@ fun ChatScreen(
                         val samples = recorder.stopRecording()
                         scope.launch(Dispatchers.Default) {
                             val engine = SherpaVoiceEngine.getInstance(context)
-                            val transcript = engine?.transcribe(samples) ?: ""
+                            if (engine == null || !engine.isSttAvailable) {
+                                withContext(Dispatchers.Main) {
+                                    android.widget.Toast.makeText(
+                                        context,
+                                        "Offline voice model missing. Download sherpa-onnx STT model files to use voice transcription.",
+                                        android.widget.Toast.LENGTH_LONG
+                                    ).show()
+                                }
+                                return@launch
+                            }
+                            val transcript = engine.transcribe(samples)
                             if (transcript.isNotBlank()) {
                                 onAction(UiAction.UpdateDraft(transcript))
+                            } else {
+                                withContext(Dispatchers.Main) {
+                                    android.widget.Toast.makeText(
+                                        context,
+                                        "No speech detected.",
+                                        android.widget.Toast.LENGTH_SHORT
+                                    ).show()
+                                }
                             }
                         }
                     }

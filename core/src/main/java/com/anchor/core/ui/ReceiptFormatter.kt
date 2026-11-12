@@ -135,6 +135,31 @@ class ReceiptFormatter(private val dateResolver: DateResolver) {
                 }
                 "LINK" -> "Linked follow-up"
                 "UNLINK" -> "Removed follow-up link"
+                "UPDATE_STATUS" -> {
+                    val snapshot = (event.afterJson ?: event.beforeJson)?.let { json.decodeFromString<NodeStateSnapshot>(it) }
+                    val node = snapshot?.node
+                    if (node != null) {
+                        if (node.status == "done") "Completed: ${node.title}${if (node.streakCurrent > 0) " (🔥 ${node.streakCurrent} streak)" else ""}"
+                        else "Status: ${node.title} -> ${node.status}"
+                    } else {
+                        "Status updated: ${event.targetId}"
+                    }
+                }
+                "ARCHIVE_NODE" -> {
+                    val snapshot = (event.afterJson ?: event.beforeJson)?.let { json.decodeFromString<NodeStateSnapshot>(it) }
+                    val node = snapshot?.node
+                    if (node != null) "Archived: ${node.title}" else "Archived: ${event.targetId}"
+                }
+                "DELETE_NODE" -> {
+                    val snapshot = (event.beforeJson ?: event.afterJson)?.let { json.decodeFromString<NodeStateSnapshot>(it) }
+                    val node = snapshot?.node
+                    if (node != null) "Deleted: ${node.title}" else "Deleted: ${event.targetId}"
+                }
+                "RESTORE_NODE" -> {
+                    val snapshot = (event.afterJson ?: event.beforeJson)?.let { json.decodeFromString<NodeStateSnapshot>(it) }
+                    val node = snapshot?.node
+                    if (node != null) "Restored: ${node.title}" else "Restored: ${event.targetId}"
+                }
                 else -> "${event.opType.lowercase().replaceFirstChar { it.uppercase() }}: ${event.targetId}"
             }
         } catch (_: Exception) {

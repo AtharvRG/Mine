@@ -62,4 +62,26 @@ class SyntheticAudioFixturesTest {
         val diffSim = SyntheticAudioFixtures.cosineSimilarity(userVoiceprint, otherVoiceprint)
         assertTrue("Different random voiceprints should have low similarity: $diffSim", diffSim < 0.5f)
     }
+
+    @Test
+    fun testExtractVoiceprintFromAudio_ZeroMeanSignedAndSimilarity() {
+        val audio1 = SyntheticAudioFixtures.generateSpeechLikeFormants(durationSec = 2.0f, f0 = 120f)
+        val audioSame = SyntheticAudioFixtures.generateSpeechLikeFormants(durationSec = 2.0f, f0 = 120f)
+        val audioDiff = SyntheticAudioFixtures.generateSpeechLikeFormants(durationSec = 2.0f, f0 = 240f)
+
+        val vp1 = SyntheticAudioFixtures.extractVoiceprintFromAudio(audio1)
+        val vpSame = SyntheticAudioFixtures.extractVoiceprintFromAudio(audioSame)
+        val vpDiff = SyntheticAudioFixtures.extractVoiceprintFromAudio(audioDiff)
+
+        assertEquals(192, vp1.size)
+        // Verify mean is approximately zero
+        val mean = vp1.sum() / vp1.size
+        assertEquals(0.0f, mean, 1e-4f)
+
+        val simSame = SyntheticAudioFixtures.cosineSimilarity(vp1, vpSame)
+        val simDiff = SyntheticAudioFixtures.cosineSimilarity(vp1, vpDiff)
+
+        assertTrue("Same audio should have high similarity: $simSame", simSame > 0.99f)
+        assertTrue("Different voice should have lower similarity than t_lo=0.60: $simDiff", simDiff < 0.60f)
+    }
 }

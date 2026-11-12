@@ -400,10 +400,17 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         val db = dbHelper.writableDatabase
         db.beginTransaction()
         try {
-            db.execSQL("DELETE FROM node WHERE id = ?", arrayOf<Any>(nodeId))
+            db.execSQL(
+                "UPDATE raw_event SET before_json = NULL, after_json = NULL WHERE target_id = ? OR target_id IN (SELECT id FROM reminder WHERE node_id = ?)",
+                arrayOf<Any>(nodeId, nodeId)
+            )
+            db.execSQL(
+                "DELETE FROM alarm_registry WHERE reminder_id IN (SELECT id FROM reminder WHERE node_id = ?)",
+                arrayOf<Any>(nodeId)
+            )
             db.execSQL("DELETE FROM reminder WHERE node_id = ?", arrayOf<Any>(nodeId))
             db.execSQL("DELETE FROM edge WHERE src_id = ? OR dst_id = ?", arrayOf<Any>(nodeId, nodeId))
-            db.execSQL("UPDATE raw_event SET before_json = NULL, after_json = NULL WHERE target_id = ?", arrayOf<Any>(nodeId))
+            db.execSQL("DELETE FROM node WHERE id = ?", arrayOf<Any>(nodeId))
             db.setTransactionSuccessful()
         } finally {
             db.endTransaction()
@@ -689,7 +696,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
 
     override suspend fun getRecentEvents(limit: Int): List<RawEvent> = withContext(ioDispatcher) {
         val list = mutableListOf<RawEvent>()
-        val sql = "SELECT op_id, op_type, target_type, target_id, undo_of, before_json, after_json, ts_utc, cause_msg_id FROM raw_event WHERE undo_of IS NULL AND op_type IN ('CREATE', 'CANCEL', 'COMPLETE', 'RESCHEDULE', 'UPDATE', 'SCHEDULE', 'KEEP_STALE', 'CANCEL_STALE', 'DELETE', 'CONFIRM', 'ACCEPT', 'REJECT', 'LINK', 'UNLINK') ORDER BY ts_utc DESC, rowid DESC LIMIT ?"
+        val sql = "SELECT op_id, op_type, target_type, target_id, undo_of, before_json, after_json, ts_utc, cause_msg_id FROM raw_event WHERE undo_of IS NULL AND op_type IN ('CREATE', 'CANCEL', 'COMPLETE', 'RESCHEDULE', 'UPDATE', 'SCHEDULE', 'KEEP_STALE', 'CANCEL_STALE', 'DELETE', 'CONFIRM', 'ACCEPT', 'REJECT', 'LINK', 'UNLINK', 'UPDATE_STATUS', 'ARCHIVE_NODE', 'DELETE_NODE', 'RESTORE_NODE') ORDER BY ts_utc DESC, rowid DESC LIMIT ?"
         dbHelper.readableDatabase.query(sql, arrayOf(limit)).use { cursor ->
             while (cursor.moveToNext()) {
                 list.add(

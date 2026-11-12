@@ -1,6 +1,28 @@
 # TASKS (one at a time, smallest first). Status: [ ] open, [~] in progress, [x] done+reviewed
 Specs for R1-R10: docs/agent/work/session1-remediation-spec.md. Read the task's section before starting.
 
+## Audit #5 Post-Remediation Hardening (2026-11-12)
+[x] Item 1: AliasRegistry Resolution in Gateway & ChatController
+    [x] Mapped aliases (n_1, s_1, p_1, etc.) back to raw DB UUIDs in Gateway.kt (handleConfirmChange, handleAddFollowUp, handleRemoveFollowUp, propose_change, handleKeepStale, handleCancelStale, handleArchiveNode, handleDeleteNode, handleRestoreNode, handleActivateNode, handleEraseNode, handleCreate followUpTo).
+    [x] Verified end-to-end alias resolution in EndToEndChatTest.kt without leaking raw DB UUIDs to LLM prompts.
+[x] Item 2: Real Ambient Audio Capture & Mathematical Zero-Mean Vector
+    [x] Replaced variance-in-positive-orthant vector in SyntheticAudioFixtures.kt with normalized lag autocorrelation + DCT-II decorrelation + mean-centering (expected cosine similarity of orthogonal speech ~0.0). Verified via SyntheticAudioFixturesTest.
+    [x] Wired RECORD_AUDIO permission request in AmbientControlCard.kt, removing all fake random floats on click.
+    [x] Implemented real 3-second recording, VAD energy detection, acoustic feature extraction, PresenceGate scoring, SherpaVoiceEngine offline STT, NumberScrubber, and AmbientProposalExtractor in AmbientForegroundService.kt with proposal-only persistence (status="proposed", origin="ambient").
+[x] Item 3: Board View Race Condition & Habit Status Recurrence
+    [x] Fixed habit status update in Gateway.handleUpdateNodeStatus: advances dueAt and preserves streaks via RecurrenceEngine.evaluateHabitCompletion + nextOccurrence while keeping status="active"; closes non-habit tasks and removes alarms from alarm_registry.
+    [x] Added 'UPDATE_STATUS', 'ARCHIVE_NODE', 'DELETE_NODE', 'RESTORE_NODE' to getRecentEvents and ReceiptFormatter.
+    [x] Added stateVersion key and optimistic state updates to BoardViewScreen.kt to eliminate UI desync races.
+[x] Item 4: sendText Turn Serialization
+    [x] Wrapped entire turn execution in sendMutex.withLock in ChatController.kt, eliminating check-then-act while-loop races.
+[x] Item 5: Voice Speech Sanitization & STT User Feedback
+    [x] Sanitized text in NativeTtsHelper via VoiceSpeechSanitizer.chunkSentences(text).joinToString(" ").
+    [x] Added Toast feedback in MainActivity.kt when STT model is missing or blank speech is detected.
+[x] Item 6: Complete eraseNode Scrubbing, N+1 Query Hoisting, & Yesterday's Consolidation Context
+    [x] In AndroidStorage.eraseNode(nodeId), scrubbed raw_event where target_id IN (SELECT id FROM reminder WHERE node_id = ?) and deleted from alarm_registry.
+    [x] Hoisted getActiveSoulFacts() outside scoring loop in HybridRetriever.kt, eliminating N+1 SQL queries.
+    [x] Wired storage.getDayDigest(yesterdayKey) into ContextBuilder.kt fullSystemPrompt.
+
 ## v3 Ambient Architecture & Implementation (2026-11-12)
 [x] Phase 1: Deterministic Synthetic Audio & Voice Testing Harness
     [x] SyntheticAudioFixtures.kt in :core (16 kHz sine wave, silence, white noise, formant speech bursts, 192-dim voiceprints, cosine similarity, RMS).

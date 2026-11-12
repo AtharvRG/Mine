@@ -126,8 +126,15 @@ class ContextBuilder(
         // D1 / Blueprint 32: Dynamic briefing facts based on time-of-day (morning / evening / weekly)
         val checkinFacts = checkinBuilder.buildCurrentFacts(now)
 
+        val dayRule = storage.getEffectiveDayRule(now)
+        val yesterdayKey = com.anchor.core.time.DayRollover.computeDayKey(now - 24L * 3600 * 1000L, dayRule)
+        val yesterdayDigest = storage.getDayDigest(yesterdayKey)
+        val digestText = if (yesterdayDigest != null && yesterdayDigest.summaryText.isNotBlank()) {
+            "\n\nYesterday's Consolidation:\n${yesterdayDigest.summaryText}"
+        } else ""
+
         val contextPart = if (!contextLine.isNullOrBlank()) "\n$contextLine" else ""
-        val fullSystemPrompt = "$TOOL_INSTRUCTIONS\n\n$systemRules\n\nSoul:\n$soulText\n\nActive Items:\n$nodesText\n\nNow: $nowStr$contextPart\n\n$checkinFacts\n\nPending Clarifications:\n$proposalsText"
+        val fullSystemPrompt = "$TOOL_INSTRUCTIONS\n\n$systemRules\n\nSoul:\n$soulText\n\nActive Items:\n$nodesText\n\nNow: $nowStr$contextPart\n\n$checkinFacts$digestText\n\nPending Clarifications:\n$proposalsText"
         pack.add(ChatMessage("sys", "system", fullSystemPrompt))
 
         // Blueprint 20 §3.1 & §3.7: 1500 tokens normal, 600 tokens compact

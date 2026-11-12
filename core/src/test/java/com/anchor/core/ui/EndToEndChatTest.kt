@@ -43,8 +43,9 @@ class EndToEndChatTest {
                 if (turnCount == 1) {
                     emit("""data: {"choices":[{"delta":{"content":"```json\n{\"reply\":\"I see two.\",\"calls\":[{\"tool\":\"propose_change\",\"args\":{\"intent\":\"CANCEL\",\"hint\":\"the dinner\"}}]}\n```"}}]}""")
                 } else if (turnCount == 2) {
-                    val pId = storage.savedProposals.first().id
-                    emit("""data: {"choices":[{"delta":{"content":"{\"reply\":\"Canceling Raj.\",\"calls\":[{\"tool\":\"confirm_change\",\"args\":{\"proposal\":\"$pId\",\"choice\":\"n_tomo\"}}]}"}}]}""")
+                    val pMatch = Regex("""Proposal (p_\d+)""").find(body)?.groupValues?.get(1) ?: "p_1"
+                    val nMatch = Regex("""(n_\d+): Dinner with Raj""").find(body)?.groupValues?.get(1) ?: "n_1"
+                    emit("""data: {"choices":[{"delta":{"content":"{\"reply\":\"Canceling Raj.\",\"calls\":[{\"tool\":\"confirm_change\",\"args\":{\"proposal\":\"$pMatch\",\"choice\":\"$nMatch\"}}]}"}}]}""")
                 }
                 emit("data: [DONE]")
             }
