@@ -46,6 +46,7 @@ import com.anchor.mine.ui.AmbientReportCard
 import com.anchor.mine.voice.AudioRecorderHelper
 import com.anchor.mine.voice.SherpaVoiceEngine
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
@@ -304,7 +305,7 @@ fun MineAppUI(
                 modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.errorContainer).padding(8.dp).testTag("notificationsBlockedBanner")
             )
         }
-        PrimaryTabRow(selectedTabIndex = selectedTab) {
+        PrimaryScrollableTabRow(selectedTabIndex = selectedTab, edgePadding = 16.dp) {
             tabs.forEachIndexed { index, title ->
                 Tab(selected = selectedTab == index, onClick = { selectedTab = index }, text = { Text(title) })
             }
@@ -319,10 +320,10 @@ fun MineAppUI(
                 // save produced the old value concatenated with the new one. ProviderScreen
                 // already follows `state` through a LaunchedEffect.
                 2 -> ProviderScreen(state, onImport = { payload -> onAction(UiAction.ImportProviderConfig(payload)) }) { ep, k, m -> onAction(UiAction.SaveProvider(ep, k, m)) }
-                3 -> BackupScreen(exportManager, storage)
+                3 -> BackupScreen(exportManager, storage, onAction = onAction)
                 4 -> DebugScreen(state, onAction)
                 5 -> MemoryScreen(state, onAction, storage = storage)
-                6 -> com.anchor.mine.ui.BoardViewScreen(storage = storage)
+                6 -> com.anchor.mine.ui.BoardViewScreen(storage = storage, onActionClick = { id, status -> onAction(UiAction.UpdateNodeStatus(id, status)) })
                 7 -> com.anchor.mine.ui.CalendarViewScreen(storage = storage)
             }
         }
@@ -408,12 +409,19 @@ fun ChatScreen(
                     ) {
                         Button(
                             onClick = {
+                                val text = msg.content ?: ""
                                 scope.launch(Dispatchers.Default) {
                                     val engine = SherpaVoiceEngine.getInstance(context)
-                                    val chunks = VoiceSpeechSanitizer.chunkSentences(msg.content ?: "")
-                                    for (chunk in chunks) {
-                                        val samples = engine?.synthesize(chunk) ?: FloatArray(0)
-                                        engine?.playBlocking(samples)
+                                    if (engine != null && engine.isTtsAvailable) {
+                                        val chunks = VoiceSpeechSanitizer.chunkSentences(text)
+                                        for (chunk in chunks) {
+                                            val samples = engine.synthesize(chunk)
+                                            engine.playBlocking(samples)
+                                        }
+                                    } else {
+                                        withContext(Dispatchers.Main) {
+                                            com.anchor.mine.voice.NativeTtsHelper.speak(context, text)
+                                        }
                                     }
                                 }
                             },

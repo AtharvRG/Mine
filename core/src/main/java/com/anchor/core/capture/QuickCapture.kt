@@ -102,10 +102,17 @@ object QuickCapture {
      * order the user wrote them.
      */
     suspend fun pending(storage: Storage): List<String> {
+        val outboxPending = try {
+            storage.getPendingOutbox(com.anchor.core.models.OutboxJob.JOB_CHAT_TURN)
+                .mapNotNull { job -> job.idemKey.ifBlank { null } ?: (job.id.removePrefix("ob_")) }
+                .toSet()
+        } catch (_: Exception) {
+            emptySet()
+        }
         val recent = storage.getRecentMessages(200)
         return recent.withIndex()
             .filter { (i, m) ->
-                m.role == "user" && m.id.startsWith("q_") && !hasAssistantAfter(recent, i)
+                m.role == "user" && m.id.startsWith("q_") && m.id !in outboxPending && !hasAssistantAfter(recent, i)
             }
             .map { it.value.id }
     }

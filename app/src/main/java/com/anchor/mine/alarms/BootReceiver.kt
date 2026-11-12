@@ -146,7 +146,7 @@ class BootReceiver : BroadcastReceiver() {
                     val deStore = DirectBootAlarmStore(context)
                     val firedAlarms = deStore.getFiredAlarms()
                     if (firedAlarms.isNotEmpty()) {
-                        com.anchor.core.alarms.DirectBootReconciler.reconcileFiredAlarms(storage, firedAlarms)
+                        com.anchor.core.alarms.DirectBootReconciler.reconcileFiredAlarms(storage, firedAlarms, scheduler)
                         deStore.clearFiredAlarms()
                     }
                 } catch (e: Exception) {

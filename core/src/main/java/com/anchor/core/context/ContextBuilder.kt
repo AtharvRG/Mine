@@ -18,7 +18,8 @@ class ContextBuilder(
     private val clock: Clock,
     private val dateResolver: DateResolver,
     private val checkinBuilder: com.anchor.core.nudge.CheckinBuilder,
-    private val personaEngine: PersonaEngine = PersonaEngine()
+    private val personaEngine: PersonaEngine = PersonaEngine(),
+    var aliasRegistry: com.anchor.core.gateway.AliasRegistry? = null
 ) {
     suspend fun buildPack(
         compactMode: Boolean? = null,
@@ -56,7 +57,8 @@ class ContextBuilder(
         for (node in rankedNodes.take(25)) {
             val due = if (node.dueAt != null) "Due: ${dateResolver.format(node.dueAt)}" else "No time"
             val sanitizedTitle = PromptSanitizer.sanitize(node.title, 80)
-            val line = "${node.id} | ${node.type} | $sanitizedTitle | $due"
+            val alias = aliasRegistry?.aliasFor("n", node.id) ?: node.id
+            val line = "$alias | ${node.type} | $sanitizedTitle | $due"
             if (shownNodes.isNotEmpty() && currentChars + line.length > maxChars) {
                 break
             }
@@ -75,7 +77,8 @@ class ContextBuilder(
             val itemsLines = shownNodes.joinToString("\n") {
                 val due = if (it.dueAt != null) "Due: ${dateResolver.format(it.dueAt)}" else "No time"
                 val sanitizedTitle = PromptSanitizer.sanitize(it.title, 80)
-                "${it.id} | ${it.type} | $sanitizedTitle | $due"
+                val alias = aliasRegistry?.aliasFor("n", it.id) ?: it.id
+                "$alias | ${it.type} | $sanitizedTitle | $due"
             }
             "$itemsLines\n$countLine"
         }
@@ -86,12 +89,14 @@ class ContextBuilder(
         var currentProposalChars = 0
         val shownProposals = mutableListOf<String>()
         for (prop in openProposals.take(5)) {
+            val propAlias = aliasRegistry?.aliasFor("p", prop.id) ?: prop.id
             val optionsText = prop.options.joinToString("; ") { opt ->
+                val optAlias = if (opt.id == "add_new" || opt.id == "cancel") opt.id else (aliasRegistry?.aliasFor("n", opt.id) ?: opt.id)
                 val sanitizedTitle = PromptSanitizer.sanitize(opt.title, 80)
-                if (opt.dueTime != null) "${opt.id}: $sanitizedTitle (${PromptSanitizer.sanitize(opt.dueTime, 40)})"
-                else "${opt.id}: $sanitizedTitle"
+                if (opt.dueTime != null) "$optAlias: $sanitizedTitle (${PromptSanitizer.sanitize(opt.dueTime, 40)})"
+                else "$optAlias: $sanitizedTitle"
             }
-            val line = "Proposal ${prop.id} (${prop.intent}): Needs clarification. Options: $optionsText"
+            val line = "Proposal $propAlias (${prop.intent}): Needs clarification. Options: $optionsText"
             if (shownProposals.isNotEmpty() && currentProposalChars + line.length > maxProposalChars) {
                 break
             }

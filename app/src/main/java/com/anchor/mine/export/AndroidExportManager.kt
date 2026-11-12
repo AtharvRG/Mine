@@ -51,7 +51,11 @@ class AndroidExportManager(
             "day_rule",
             "reminder",
             "proposal",
-            "quote_slot"
+            "quote_slot",
+            "learned_pref",
+            "signal_log",
+            "place",
+            "day_digest"
         )
 
         internal fun generateKek(passphrase: String, salt: ByteArray, mem: Int = 65536, iters: Int = 3, par: Int = 1): ByteArray {
@@ -135,6 +139,10 @@ class AndroidExportManager(
                             exportTable(db, "reminder", writer, includeApiKeys)
                             exportTable(db, "proposal", writer, includeApiKeys)
                             exportTable(db, "quote_slot", writer, includeApiKeys)
+                            exportTable(db, "learned_pref", writer, includeApiKeys)
+                            exportTable(db, "signal_log", writer, includeApiKeys)
+                            exportTable(db, "place", writer, includeApiKeys)
+                            exportTable(db, "day_digest", writer, includeApiKeys)
                             
                             writer.flush()
                             val footer = buildJsonObject {

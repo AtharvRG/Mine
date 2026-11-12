@@ -248,7 +248,7 @@ open class SharedFakeStorage(var clock: Clock = SystemClock()) : Storage {
 
     override suspend fun eraseNode(nodeId: String): Unit = synchronized(this) {
         activeNodes.removeAll { it.id == nodeId }
-        reminders.removeAll { it.nodeId == nodeId }
+        reminders.removeAll { it.nodeId == nodeId || it.id == "r_$nodeId" }
         edges.removeAll { it.srcId == nodeId || it.dstId == nodeId }
         for (i in loggedEvents.indices) {
             if (loggedEvents[i].targetId == nodeId) {
@@ -497,34 +497,45 @@ open class SharedFakeStorage(var clock: Clock = SystemClock()) : Storage {
         loggedEvents.add(event)
     }
     override suspend fun searchMemoryFts(query: String, limit: Int): List<SearchResult> = synchronized(this) {
-        val results = mutableListOf<SearchResult>()
-        if (query.isBlank()) return results
+        if (query.isBlank()) return emptyList()
         val sanitized = query.replace(Regex("[^\\p{L}\\p{M}\\p{N}\\s]"), "").trim()
         val tokens = sanitized.split(Regex("\\s+")).filter { it.isNotBlank() }
-        if (tokens.isEmpty()) return results
+        if (tokens.isEmpty()) return emptyList()
+
+        val nodeResults = mutableListOf<SearchResult>()
+        val soulResults = mutableListOf<SearchResult>()
+        val chatResults = mutableListOf<SearchResult>()
 
         activeNodes.filter { node ->
             node.status !in listOf("archived", "cancelled", "done") &&
                 !node.localOnly &&
                 tokens.all { token -> node.title.contains(token, ignoreCase = true) }
         }.forEach {
-            results.add(SearchResult(it.id, it.type, it.title, ""))
+            nodeResults.add(SearchResult(it.id, it.type, it.title, ""))
         }
         soulFacts.filter { fact ->
             (fact.status == "active" || fact.status == "pinned") &&
                 !fact.localOnly &&
                 tokens.all { token -> fact.statement.contains(token, ignoreCase = true) || fact.category.contains(token, ignoreCase = true) }
         }.forEach {
-            results.add(SearchResult(it.id, "soul_fact", it.category, it.statement))
+            soulResults.add(SearchResult(it.id, "soul_fact", it.category, it.statement))
         }
         messages.filter { msg ->
             msg.role != "system" &&
                 msg.content != null &&
                 tokens.all { token -> msg.content.contains(token, ignoreCase = true) }
         }.forEach {
-            results.add(SearchResult("chunk_${it.id}", "chat", it.dayKey ?: "", it.content!!, it.tsUtc))
+            chatResults.add(SearchResult("chunk_${it.id}", "chat", it.dayKey ?: "", it.content!!, it.tsUtc))
         }
-        return results.take(limit.coerceAtLeast(0))
+
+        val interleaved = mutableListOf<SearchResult>()
+        val maxLen = maxOf(nodeResults.size, soulResults.size, chatResults.size)
+        for (i in 0 until maxLen) {
+            if (i < nodeResults.size) interleaved.add(nodeResults[i])
+            if (i < soulResults.size) interleaved.add(soulResults[i])
+            if (i < chatResults.size) interleaved.add(chatResults[i])
+        }
+        return interleaved.take(limit.coerceAtLeast(0))
     }
 
     override suspend fun searchHistory(query: String, limit: Int): List<SearchResult> = synchronized(this) {

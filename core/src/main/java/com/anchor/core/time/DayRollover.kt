@@ -53,6 +53,17 @@ object DayRollover {
         return cal.timeInMillis
     }
 
+    fun isInDayWindow(tsUtc: Long, rule: DayRule): Boolean {
+        val tz = safeTimeZone(rule.tzId)
+        val cal = Calendar.getInstance(tz).apply { timeInMillis = tsUtc }
+        val currentMin = cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE)
+        return if (rule.startMinute <= rule.endMinute) {
+            currentMin in rule.startMinute..rule.endMinute
+        } else {
+            currentMin >= rule.startMinute || currentMin <= rule.endMinute
+        }
+    }
+
     fun getNextRollover(
         nowUtc: Long,
         currentRule: DayRule,

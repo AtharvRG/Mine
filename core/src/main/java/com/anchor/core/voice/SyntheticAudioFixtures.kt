@@ -105,6 +105,31 @@ object SyntheticAudioFixtures {
     }
 
     /**
+     * Extracts an L2-normalized 192-dimensional acoustic feature vector from real audio samples.
+     */
+    fun extractVoiceprintFromAudio(samples: FloatArray, dimension: Int = 192): FloatArray {
+        if (samples.isEmpty()) return FloatArray(dimension)
+        val result = FloatArray(dimension)
+        val chunkSize = maxOf(1, samples.size / dimension)
+        for (d in 0 until dimension) {
+            val start = d * chunkSize
+            val end = minOf(samples.size, start + chunkSize)
+            var sum = 0.0
+            var sumSq = 0.0
+            for (i in start until end) {
+                val s = samples[i].toDouble()
+                sum += s
+                sumSq += s * s
+            }
+            val count = maxOf(1, end - start)
+            val mean = sum / count
+            val variance = maxOf(0.0, (sumSq / count) - (mean * mean))
+            result[d] = sqrt(variance).toFloat()
+        }
+        return normalizeL2(result)
+    }
+
+    /**
      * Generates a deterministic L2-normalized synthetic speaker embedding vector.
      */
     fun generateSyntheticVoiceprint(

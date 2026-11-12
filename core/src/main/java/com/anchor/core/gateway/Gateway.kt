@@ -25,7 +25,8 @@ class Gateway(
     private val dateResolver: DateResolver,
     private val clock: Clock,
     private val hybridRetriever: com.anchor.core.retrieval.HybridRetriever? = null,
-    private val embedder: com.anchor.core.retrieval.Embedder? = null
+    private val embedder: com.anchor.core.retrieval.Embedder? = null,
+    private val alarmScheduler: com.anchor.core.alarms.AlarmScheduler? = null
 ) {
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -1290,24 +1291,20 @@ class Gateway(
      * gateway maps the alias back. The map lives in this instance for the turn that produced
      * the results (one Gateway per chat controller); a new turn replaces it.
      */
-    private val aliasMap = java.util.concurrent.ConcurrentHashMap<String, String>()
+    val aliasRegistry: AliasRegistry = AliasRegistry()
 
-    private fun aliasFor(prefix: String, targetId: String): String {
-        val alias = "${prefix}_$targetId"
-        if (aliasMap.size >= MAX_ALIASES) aliasMap.clear()
-        aliasMap[alias] = targetId
-        return alias
+    fun aliasFor(prefix: String, targetId: String): String {
+        return aliasRegistry.aliasFor(prefix, targetId)
     }
 
     /**
-     * Resolves a tool argument that may be an alias (`n_<id>`) or a real id.
+     * Resolves a tool argument that may be an alias (`n_1`) or a real id.
      * An alias-shaped ref the map never issued is passed through unchanged, because real ids
      * share the alias prefixes (proposals are `p_<hex6>`, soul facts `s_<hex8>`); the caller
      * answers `unknown_ref` when the subsequent storage lookup finds no such row.
      */
     private fun resolveRef(ref: String, prefix: String): String {
-        if (!ref.startsWith("${prefix}_")) return ref
-        return aliasMap[ref] ?: ref
+        return aliasRegistry.resolveRef(ref, prefix)
     }
 
     /**
@@ -1527,8 +1524,30 @@ class Gateway(
         return ToolResult.Committed("ACTIVATE_NODE", nodeId, "Activated: ${node.title}", uId)
     }
 
+    suspend fun handleUpdateNodeStatus(nodeId: String, newStatus: String): ToolResult {
+        val node = storage.getNode(nodeId) ?: return ToolResult.Error("Node not found")
+        val now = clock.now()
+        val oldRem = storage.getReminderByNodeId(nodeId) ?: storage.getPendingReminders().find { it.id == "r_$nodeId" }
+        val beforeJson = json.encodeToString(NodeStateSnapshot(node, oldRem))
+        val closedAt = if (newStatus == "done" || newStatus == "archived" || newStatus == "cancelled") now else null
+        val deleteRemId = if (closedAt != null) (oldRem?.id ?: "r_$nodeId") else null
+        val newNode = node.copy(status = newStatus, closedAt = closedAt, updatedAt = now)
+        val afterJson = json.encodeToString(NodeStateSnapshot(newNode, if (deleteRemId != null) null else oldRem))
+        val uId = "u_${UUID.randomUUID()}"
+        val event = RawEvent(uId, "UPDATE_STATUS", "node", nodeId, beforeJson = beforeJson, afterJson = afterJson, tsUtc = now)
+        storage.updateNodeAndCommit(newNode, event, deleteReminderId = deleteRemId, upsertReminder = null)
+        if (deleteRemId != null) {
+            alarmScheduler?.cancel(deleteRemId)
+        }
+        return ToolResult.Committed("UPDATE_STATUS", nodeId, "Updated status of ${node.title} to $newStatus", uId)
+    }
+
     suspend fun handleEraseNode(nodeId: String): ToolResult {
         val node = storage.getNode(nodeId) ?: return ToolResult.Error("Node not found")
+        val rem = storage.getReminderByNodeId(nodeId) ?: storage.getReminderById("r_$nodeId")
+        if (rem != null) {
+            alarmScheduler?.cancel(rem.id)
+        }
         val uId = "u_${UUID.randomUUID()}"
         storage.eraseNode(nodeId)
         storage.deleteEmbedding("node", nodeId)

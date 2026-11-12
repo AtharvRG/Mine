@@ -122,6 +122,7 @@ class ChatController(
     }
 
     init {
+        contextBuilder.aliasRegistry = gateway.aliasRegistry
         coroutineScope.launch(defaultDispatcher) {
             // H-07 (R-08): everything below is the only thing that ever paints the first frame.
             // Uncaught, a storage failure killed this coroutine and left the default UiState on
@@ -445,6 +446,15 @@ class ChatController(
                     refreshUI()
                 }
             }
+            is UiAction.ReloadStorage -> coroutineScope.launch(defaultDispatcher) {
+                try {
+                    loadInitialState()
+                    refreshUI()
+                } catch (e: Exception) {
+                    if (e is kotlinx.coroutines.CancellationException) throw e
+                    _state.update { it.copy(globalError = "Could not reload data: ${e.message ?: e.javaClass.simpleName}") }
+                }
+            }
             is UiAction.Undo -> coroutineScope.launch(defaultDispatcher) {
                 try {
                     // D-033: Chip taps call gateway directly. Instant, no LLM.
@@ -729,6 +739,10 @@ class ChatController(
             }
             is UiAction.EraseNode -> coroutineScope.launch(defaultDispatcher) {
                 try {
+                    val rem = storage.getReminderByNodeId(action.nodeId) ?: storage.getReminderById("r_${action.nodeId}")
+                    if (rem != null) {
+                        alarmScheduler.cancel(rem.id)
+                    }
                     val result = gateway.handleEraseNode(action.nodeId)
                     when (result) {
                         is ToolResult.Committed -> {
@@ -770,6 +784,26 @@ class ChatController(
                 } catch (e: Exception) {
                     if (e is kotlinx.coroutines.CancellationException) throw e
                     addTransientReceipt(ReceiptState(UUID.randomUUID().toString(), "Could not erase fact: ${e.message ?: e.javaClass.simpleName}", null, isError = true, timestamp = clock.now()))
+                    refreshUI()
+                }
+            }
+            is UiAction.UpdateNodeStatus -> coroutineScope.launch(defaultDispatcher) {
+                try {
+                    val result = gateway.handleUpdateNodeStatus(action.nodeId, action.newStatus)
+                    when (result) {
+                        is ToolResult.Committed -> addTransientReceipt(ReceiptState(UUID.randomUUID().toString(), result.message, null, isError = false, timestamp = clock.now()))
+                        is ToolResult.Error -> addTransientReceipt(ReceiptState(UUID.randomUUID().toString(), result.reason, null, isError = true, timestamp = clock.now()))
+                        else -> {}
+                    }
+                    if (_state.value.memoryLoaded) {
+                        val activeNodes = storage.getActiveNodes(limit = 200)
+                        val activeFacts = storage.getActiveSoulFacts(includeLocalOnly = true)
+                        _state.update { it.copy(memoryNodes = activeNodes, memorySoulFacts = activeFacts) }
+                    }
+                    refreshUI()
+                } catch (e: Exception) {
+                    if (e is kotlinx.coroutines.CancellationException) throw e
+                    addTransientReceipt(ReceiptState(UUID.randomUUID().toString(), "Could not update node status: ${e.message ?: e.javaClass.simpleName}", null, isError = true, timestamp = clock.now()))
                     refreshUI()
                 }
             }
@@ -861,6 +895,23 @@ class ChatController(
                     storage.dropStaleOutbox(now)
                     val dayRule = storage.getEffectiveDayRule(now)
                     val currentDayKey = com.anchor.core.time.DayRollover.computeDayKey(now, dayRule)
+                    val isInDayWindow = com.anchor.core.time.DayRollover.isInDayWindow(now, dayRule)
+
+                    // Overnight / evening memory consolidation: persist DayDigest if outside day window or late
+                    if (!isInDayWindow && storage.getDayDigest(currentDayKey) == null) {
+                        try {
+                            val closed = storage.getRecentlyClosed(now, limit = 50)
+                            val open = storage.getActiveNodes(limit = 50)
+                            val digest = com.anchor.core.consolidation.ConsolidationEngine().consolidateDay(
+                                dayKey = currentDayKey,
+                                completedNodes = closed,
+                                openNodes = open,
+                                nowMs = now
+                            )
+                            storage.saveDayDigest(digest)
+                        } catch (_: Exception) {}
+                    }
+
                     val state = storage.getProactiveState()
                     // An ignored thread is closed by the engine after its 3-hour window; running
                     // that first is what lets the next nudge out once the window has passed.
@@ -884,7 +935,7 @@ class ChatController(
                     }
                     val (candidate, node) = picked
                     val isVehicle = contextEngine?.isVehicleHoldActive() ?: false
-                    when (val gate = nudgeEngine.evaluate(candidate, afterIgnore, currentDayKey = currentDayKey, isVehicle = isVehicle)) {
+                    when (val gate = nudgeEngine.evaluate(candidate, afterIgnore, isInDayWindow = isInDayWindow, currentDayKey = currentDayKey, isVehicle = isVehicle)) {
                         is GateResult.Held -> _state.update { it.copy(nudgeGate = gate.reason) }
                         is GateResult.Pass -> {
                             val msgId = "n_${UUID.randomUUID()}"
@@ -1096,7 +1147,8 @@ class ChatController(
             ?: return null
         // Blueprint 31 §3.3: a candidate is worth sending only if it scores at or above the
         // threshold, which falls as time passes since the last contact.
-        val candidate = NudgeCandidate("overdue_item", isCritical = false)
+        val baseValue = 20.0 + (overdue.priority * 5.0) + (overdue.severity * 5.0)
+        val candidate = NudgeCandidate("overdue_item", isCritical = false, baseValue = baseValue)
         if (candidate.baseValue < nudgeEngine.calculateThreshold(state)) return null
         return candidate to overdue
     }
@@ -1152,8 +1204,12 @@ class ChatController(
             // Queued behind the in-flight turn, if any. The stream job is what clears
             // isChatLoading, so joining it is the wait; a turn started meanwhile is joined too.
             while (_state.value.isChatLoading || sendMutex.isLocked) {
-                val job = currentStreamJob ?: break
-                job.join()
+                val job = currentStreamJob
+                if (job != null && job.isActive) {
+                    job.join()
+                } else {
+                    delay(25)
+                }
             }
             _state.update { it.copy(isChatLoading = true, connectionError = null) }
             val key = storage.getSetting("key") ?: ""
@@ -1457,6 +1513,7 @@ class ChatController(
                 if (existingUserMsgId == null && !queuedBatch) storage.insertRawMessage(userMsgId, "user", text)
                 refreshUI()
 
+                gateway.aliasRegistry.clear()
                 val contextLine = contextEngine?.formatNowContext()
                 var pack = contextBuilder.buildPack(contextLine = contextLine)
                 // Blueprint 41 §3.5: the queued messages are already rows in the pack. The
@@ -1655,7 +1712,27 @@ class ChatController(
                         val causeId = if (queuedBatch) activeBatchIds.lastOrNull() else userMsgId
                         storage.insertRawMessage(botId, "assistant", finalTxt, causeMsgId = causeId)
                         currentBotId = null
-                        if (activeBatchIds.isNotEmpty()) markBatchAnswered(activeBatchIds)
+                        if (activeBatchIds.isNotEmpty()) {
+                            if (!claimsAction) {
+                                markBatchAnswered(activeBatchIds)
+                            } else {
+                                val now = clock.now()
+                                val pendingJobs = storage.getPendingOutbox(OutboxJob.JOB_CHAT_TURN)
+                                activeBatchIds.forEach { msgId ->
+                                    val jobId = chatTurnJobId(msgId)
+                                    val job = pendingJobs.find { it.id == jobId }
+                                    val attempts = (job?.attempts ?: 0) + 1
+                                    val backoffMs = when (attempts) {
+                                        1 -> 60_000L
+                                        2 -> 120_000L
+                                        3 -> 300_000L
+                                        4 -> 600_000L
+                                        else -> 1_800_000L
+                                    }
+                                    storage.markOutboxFailed(jobId, now, now + backoffMs, "Model claimed action without envelope")
+                                }
+                            }
+                        }
                         turnComplete = true
                     }
                 }
@@ -1704,6 +1781,24 @@ class ChatController(
                 }
                 // A10: Provider error refreshes UI properly below in finally
                 _state.update { it.copy(connectionError = "Error: ${e.message}") }
+                if (queuedBatch && activeBatchIds.isNotEmpty() && e !is OfflineException) {
+                    val now = clock.now()
+                    val errText = e.message ?: e.javaClass.simpleName
+                    val pendingJobs = storage.getPendingOutbox(OutboxJob.JOB_CHAT_TURN)
+                    activeBatchIds.forEach { msgId ->
+                        val jobId = chatTurnJobId(msgId)
+                        val job = pendingJobs.find { it.id == jobId }
+                        val attempts = (job?.attempts ?: 0) + 1
+                        val backoffMs = when (attempts) {
+                            1 -> 60_000L
+                            2 -> 120_000L
+                            3 -> 300_000L
+                            4 -> 600_000L
+                            else -> 1_800_000L
+                        }
+                        storage.markOutboxFailed(jobId, now, now + backoffMs, errText)
+                    }
+                }
                 // E-17: a capture whose turn never ran stays unanswered in the raw log, so the
                 // next start retries it. Tell the notification that showed "Sending..." now.
                 if (existingUserMsgId != null && !(e is OfflineException)) {
@@ -1873,12 +1968,14 @@ class ChatController(
         // performed nothing, so it must not be shown as a confirmation. Deliberately excludes
         // questions ("For what?") and offers ("Shall I set…"), which are honest non-actions.
         internal val ACTION_CLAIM_RE = Regex(
-            """(?i)\b(""" +
-                """setting (an? )?(alarm|reminder|notification)|""" +
-                """(alarm|reminder|notification) (is )?(now )?set|""" +
-                """i'?ve set|i have set|i set (an? )?(alarm|reminder)|""" +
-                """(done|saved|created|added|scheduled)\b[.!]?$""" +
-                """)\b"""
+            """(?i)(""" +
+                """\bsetting (an? )?(alarm|reminder|notification)\b|""" +
+                """\b(alarm|reminder|notification) (is )?(now )?set\b|""" +
+                """\b(i'?ve|i have|i'm|i am)\s+(set|scheduled|created|added|saved)\b|""" +
+                """\bi set (an? )?(alarm|reminder|task)\b|""" +
+                """\b(all\s+set|all\s+done)[.!]?\s*$|""" +
+                """^(done|saved|created|scheduled)[.!]?\s*$""" +
+                """)"""
         )
 
         private val REPLY_KEY_REGEX = Regex(""""reply"\s*:\s*"""")

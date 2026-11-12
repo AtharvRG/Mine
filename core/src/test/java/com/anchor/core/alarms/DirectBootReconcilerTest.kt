@@ -90,4 +90,49 @@ class DirectBootReconcilerTest {
         assertNotNull(fire)
         assertEquals(1000, fire?.latencyMs)
     }
+
+    @Test
+    fun testDirectBootReconciler_RecurringReminder_AdvancesNextOccurrence_NotDeleted() = runBlocking {
+        val storage = SharedFakeStorage()
+        val scheduledAlarms = mutableListOf<Reminder>()
+        val dummyScheduler = object : AlarmScheduler {
+            override val lastFiredId = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
+            override fun schedule(reminder: Reminder): ScheduleResult {
+                scheduledAlarms.add(reminder)
+                return ScheduleResult.Armed
+            }
+            override fun cancel(reminderId: String) {}
+        }
+
+        val recurringRem = Reminder(
+            id = "rem_daily",
+            text = "Daily habit",
+            fireAtMillis = 100_000L,
+            tier = AlarmTier.ALARM,
+            rrule = "FREQ=DAILY;INTERVAL=1",
+            iteration = 0
+        )
+        storage.saveReminder(recurringRem)
+
+        val firedRecords = listOf(
+            DirectBootReconciler.FiredRecord(
+                id = "rem_daily",
+                firedAt = 100_500L,
+                scheduledFor = 100_000L
+            )
+        )
+
+        DirectBootReconciler.reconcileFiredAlarms(storage, firedRecords, dummyScheduler)
+
+        val updatedRem = storage.getReminderById("rem_daily")
+        assertNotNull("Recurring reminder must be preserved", updatedRem)
+        assertTrue("fireAtMillis must be advanced past firedAt", updatedRem!!.fireAtMillis > 100_500L)
+        assertEquals("Iteration must increment", 1, updatedRem.iteration)
+        assertEquals("Must be scheduled with AlarmScheduler", 1, scheduledAlarms.size)
+        assertEquals(updatedRem.fireAtMillis, scheduledAlarms.first().fireAtMillis)
+
+        val fire = storage.getReminderFire("rem_daily", "delivered")
+        assertNotNull(fire)
+        assertEquals(500, fire?.latencyMs)
+    }
 }

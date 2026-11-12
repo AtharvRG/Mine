@@ -47,14 +47,16 @@ class HybridRetriever(
                     when (ownerType) {
                         "node" -> {
                             val node = storage.getNode(ownerId)
-                            if (node != null && node.status != "archived" && node.status != "cancelled") {
-                                vectorHits.add(SearchResult(node.id, "node", node.title, "", node.createdAt))
+                            if (node != null && node.status != "archived" && node.status != "cancelled" && node.status != "done" && !node.localOnly) {
+                                val dueText = if (node.dueAt != null) "Due: ${node.dueAt}" else ""
+                                val details = "Status: ${node.status} $dueText".trim()
+                                vectorHits.add(SearchResult(node.id, node.type, node.title, details, node.createdAt))
                             }
                         }
                         "soul_fact" -> {
-                            val fact = storage.getActiveSoulFacts().find { it.id == ownerId }
+                            val fact = storage.getActiveSoulFacts().find { it.id == ownerId && !it.localOnly }
                             if (fact != null) {
-                                vectorHits.add(SearchResult(fact.id, "soul_fact", fact.statement, "", fact.createdAt))
+                                vectorHits.add(SearchResult(fact.id, "soul_fact", fact.category, fact.statement, fact.createdAt))
                             }
                         }
                     }

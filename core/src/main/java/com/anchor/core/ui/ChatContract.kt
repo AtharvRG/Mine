@@ -144,6 +144,10 @@ sealed interface UiAction {
     data class EraseNode(val nodeId: String) : UiAction
     /** Blueprint 51 §3.1 / §3.9: Memory viewer action - permanently erase/scrub a soul fact. */
     data class EraseSoulFact(val factId: String) : UiAction
+    /** Blueprint 51 §50: Board / Kanban status update. */
+    data class UpdateNodeStatus(val nodeId: String, val newStatus: String) : UiAction
+    /** Reload all memory, receipts, and state from storage after an in-place DB rebind/import. */
+    data object ReloadStorage : UiAction
     /** Blueprint 31: run one proactive pass — pick a candidate, score it, gate it, deliver or hold. */
     data object TickProactive : UiAction
 

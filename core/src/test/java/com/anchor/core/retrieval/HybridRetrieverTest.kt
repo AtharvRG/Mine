@@ -103,4 +103,29 @@ class HybridRetrieverTest {
         assertEquals(0.0f, HybridRetriever.cosineSimilarity(vZero, vNonZero), 0.0001f)
         assertEquals(0.0f, HybridRetriever.cosineSimilarity(vZero, vZero), 0.0001f)
     }
+
+    @Test
+    fun testLocalOnlyAndDoneNodesExcludedFromVectorHits() = runBlocking {
+        val clock = FakeClock(100_000L)
+        val storage = SharedFakeStorage(clock)
+        val embedder = PureKotlinEmbedder()
+        val retriever = HybridRetriever(storage, embedder, clock, DateResolver(clock))
+
+        // Node with secret title marked localOnly
+        val secretNode = Node("n_secret", "task", "Secret bank vault code", "active", localOnly = true)
+        val doneNode = Node("n_done", "task", "Completed tax submission", "done")
+        storage.saveNode(secretNode)
+        storage.saveNode(doneNode)
+
+        val vecSecret = embedder.embed(listOf(secretNode.title), Embedder.Kind.DOCUMENT).first()
+        val vecDone = embedder.embed(listOf(doneNode.title), Embedder.Kind.DOCUMENT).first()
+        storage.saveEmbedding("node", secretNode.id, embedder.version, vecSecret)
+        storage.saveEmbedding("node", doneNode.id, embedder.version, vecDone)
+
+        val results = retriever.search("bank vault", limit = 10)
+        assertTrue("LocalOnly node must never be returned in hybrid search", results.none { it.id == "n_secret" })
+
+        val doneResults = retriever.search("tax submission", limit = 10)
+        assertTrue("Done node must not be returned in hybrid search", doneResults.none { it.id == "n_done" })
+    }
 }

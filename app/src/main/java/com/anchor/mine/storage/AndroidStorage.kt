@@ -209,11 +209,30 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
     }
 
     private companion object {
-        const val NODE_COLS = "id, type, title, status, due_at, created_at, updated_at, closed_at, priority, severity, attrs, local_only, recurrence_rule, streak_current, streak_best, last_completed_at"
+        const val NODE_COLS = "id, type, title, status, due_at, created_at, updated_at, closed_at, priority, severity, attrs, local_only, recurrence_rule, streak_current, streak_best, last_completed_at, origin"
         const val REMINDER_COLS = "id, text, fire_at, node_id, tier, rrule, iteration"
         const val OUTBOX_COLUMNS =
             "id, job_type, priority, payload_json, idem_key, status, attempts, next_try_at, deadline_at, " +
                 "created_at, updated_at, last_error"
+    }
+
+    private val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+
+    private fun mergePinnedAttr(existingAttrs: String?, pinned: Boolean): String? {
+        if (existingAttrs.isNullOrBlank()) {
+            return if (pinned) """{"pinned":true}""" else null
+        }
+        return try {
+            val root = json.parseToJsonElement(existingAttrs).let { (it as? kotlinx.serialization.json.JsonObject)?.toMutableMap() ?: mutableMapOf() }
+            if (pinned) {
+                root["pinned"] = kotlinx.serialization.json.JsonPrimitive(true)
+            } else {
+                root.remove("pinned")
+            }
+            if (root.isEmpty()) null else kotlinx.serialization.json.JsonObject(root).toString()
+        } catch (_: Exception) {
+            if (pinned) """{"pinned":true}""" else null
+        }
     }
 
     private fun parseReminder(cursor: android.database.Cursor): Reminder {
@@ -253,7 +272,8 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
                 val streakCurrent = if (it.columnCount > 13 && !it.isNull(13)) it.getInt(13) else 0
                 val streakBest = if (it.columnCount > 14 && !it.isNull(14)) it.getInt(14) else 0
                 val lastCompletedAt = if (it.columnCount > 15 && !it.isNull(15)) it.getLong(15) else null
-                list.add(Node(id, type, title, status, dueAt, createdAt, updatedAt, closedAt, priority, severity, pinned, localOnly = localOnly, recurrenceRule = recurrenceRule, streakCurrent = streakCurrent, streakBest = streakBest, lastCompletedAt = lastCompletedAt))
+                val origin = if (it.columnCount > 16 && !it.isNull(16)) it.getString(16) else "user_edit"
+                list.add(Node(id, type, title, status, dueAt, createdAt, updatedAt, closedAt, priority, severity, pinned, localOnly = localOnly, origin = origin, recurrenceRule = recurrenceRule, streakCurrent = streakCurrent, streakBest = streakBest, lastCompletedAt = lastCompletedAt))
             }
         }
         return list
@@ -696,8 +716,8 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         try {
             val attrs = if (node.pinned) "{\"pinned\":true}" else null
             val localOnlyVal = if (node.localOnly) 1 else 0
-            db.execSQL("INSERT INTO node (id, device_id, type, title, status, due_at, priority, severity, attrs, local_only, origin, hlc, created_at, updated_at, recurrence_rule, streak_current, streak_best, last_completed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'extracted', '', ?, ?, ?, ?, ?, ?)",
-                arrayOf<Any?>(node.id, deviceId, node.type, node.title, node.status, node.dueAt, node.priority, node.severity, attrs, localOnlyVal, node.createdAt, node.updatedAt, node.recurrenceRule, node.streakCurrent, node.streakBest, node.lastCompletedAt))
+            db.execSQL("INSERT INTO node (id, device_id, type, title, status, due_at, priority, severity, attrs, local_only, origin, hlc, created_at, updated_at, recurrence_rule, streak_current, streak_best, last_completed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '', ?, ?, ?, ?, ?, ?)",
+                arrayOf<Any?>(node.id, deviceId, node.type, node.title, node.status, node.dueAt, node.priority, node.severity, attrs, localOnlyVal, node.origin, node.createdAt, node.updatedAt, node.recurrenceRule, node.streakCurrent, node.streakBest, node.lastCompletedAt))
             reminder?.let { db.execSQL("INSERT OR REPLACE INTO reminder (id, node_id, text, fire_at, tier, rrule, iteration) VALUES (?, ?, ?, ?, ?, ?, ?)", arrayOf<Any?>(it.id, it.nodeId, it.text, it.fireAtMillis, it.tier.name.lowercase(), it.rrule, it.iteration)) }
             edge?.let {
                 db.execSQL(
@@ -728,7 +748,13 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         val db = dbHelper.writableDatabase
         db.beginTransaction()
         try {
-            val attrs = if (node.pinned) "{\"pinned\":true}" else null
+            var existingAttrs: String? = null
+            db.query("SELECT attrs FROM node WHERE id = ?", arrayOf<Any?>(node.id)).use { cursor ->
+                if (cursor.moveToFirst() && !cursor.isNull(0)) {
+                    existingAttrs = cursor.getString(0)
+                }
+            }
+            val attrs = mergePinnedAttr(existingAttrs, node.pinned)
             val localOnlyVal = if (node.localOnly) 1 else 0
             // T-01: the column list must cover every mutable field the caller can change.
             // Omitting title/type/local_only silently dropped renames on disk while
@@ -744,7 +770,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
             val closedAt = node.closedAt
             val lastCompletedAt = node.lastCompletedAt
             val recurrenceRule = node.recurrenceRule
-            val updated = db.compileStatement("UPDATE node SET type = ?, title = ?, status = ?, due_at = ?, closed_at = ?, priority = ?, severity = ?, attrs = ?, local_only = ?, recurrence_rule = ?, streak_current = ?, streak_best = ?, last_completed_at = ?, updated_at = ? WHERE id = ?").use { stmt ->
+            val updated = db.compileStatement("UPDATE node SET type = ?, title = ?, status = ?, due_at = ?, closed_at = ?, priority = ?, severity = ?, attrs = ?, local_only = ?, origin = ?, recurrence_rule = ?, streak_current = ?, streak_best = ?, last_completed_at = ?, updated_at = ? WHERE id = ?").use { stmt ->
                 stmt.bindString(1, node.type)
                 stmt.bindString(2, node.title)
                 stmt.bindString(3, node.status)
@@ -754,12 +780,13 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
                 stmt.bindLong(7, node.severity.toLong())
                 if (attrs == null) stmt.bindNull(8) else stmt.bindString(8, attrs)
                 stmt.bindLong(9, localOnlyVal.toLong())
-                if (recurrenceRule == null) stmt.bindNull(10) else stmt.bindString(10, recurrenceRule)
-                stmt.bindLong(11, node.streakCurrent.toLong())
-                stmt.bindLong(12, node.streakBest.toLong())
-                if (lastCompletedAt == null) stmt.bindNull(13) else stmt.bindLong(13, lastCompletedAt)
-                stmt.bindLong(14, node.updatedAt)
-                stmt.bindString(15, node.id)
+                stmt.bindString(10, node.origin)
+                if (recurrenceRule == null) stmt.bindNull(11) else stmt.bindString(11, recurrenceRule)
+                stmt.bindLong(12, node.streakCurrent.toLong())
+                stmt.bindLong(13, node.streakBest.toLong())
+                if (lastCompletedAt == null) stmt.bindNull(14) else stmt.bindLong(14, lastCompletedAt)
+                stmt.bindLong(15, node.updatedAt)
+                stmt.bindString(16, node.id)
                 stmt.executeUpdateDelete()
             }
             if (updated != 1) throw IllegalStateException("updateNodeAndCommit: no row for node ${node.id}")
@@ -793,10 +820,16 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
             // FIX: Restore due_at, priority, severity, and attrs so snapshots roll back accurately
             // T-02: the undo snapshot is a whole Node, so the restore must be whole too — a
             // renamed node rolled back to its old status but kept the new title.
-            val attrs = if (node.pinned) "{\"pinned\":true}" else null
+            var existingAttrs: String? = null
+            db.query("SELECT attrs FROM node WHERE id = ?", arrayOf<Any?>(node.id)).use { cursor ->
+                if (cursor.moveToFirst() && !cursor.isNull(0)) {
+                    existingAttrs = cursor.getString(0)
+                }
+            }
+            val attrs = mergePinnedAttr(existingAttrs, node.pinned)
             val localOnlyVal = if (node.localOnly) 1 else 0
-            db.execSQL("UPDATE node SET type = ?, title = ?, status = ?, due_at = ?, closed_at = ?, priority = ?, severity = ?, attrs = ?, local_only = ?, recurrence_rule = ?, streak_current = ?, streak_best = ?, last_completed_at = ?, updated_at = ? WHERE id = ?",
-                arrayOf<Any?>(node.type, node.title, node.status, node.dueAt, node.closedAt, node.priority, node.severity, attrs, localOnlyVal, node.recurrenceRule, node.streakCurrent, node.streakBest, node.lastCompletedAt, node.updatedAt, node.id))
+            db.execSQL("UPDATE node SET type = ?, title = ?, status = ?, due_at = ?, closed_at = ?, priority = ?, severity = ?, attrs = ?, local_only = ?, origin = ?, recurrence_rule = ?, streak_current = ?, streak_best = ?, last_completed_at = ?, updated_at = ? WHERE id = ?",
+                arrayOf<Any?>(node.type, node.title, node.status, node.dueAt, node.closedAt, node.priority, node.severity, attrs, localOnlyVal, node.origin, node.recurrenceRule, node.streakCurrent, node.streakBest, node.lastCompletedAt, node.updatedAt, node.id))
             restoreReminder?.let { db.execSQL("INSERT OR REPLACE INTO reminder (id, node_id, text, fire_at, tier, rrule, iteration) VALUES (?, ?, ?, ?, ?, ?, ?)", arrayOf<Any?>(it.id, it.nodeId, it.text, it.fireAtMillis, it.tier.name.lowercase(), it.rrule, it.iteration)) }
             db.execSQL("INSERT INTO raw_event (op_id, target_id, op_type, target_type, ts_utc, device_id, actor, undo_of, before_json, after_json, cause_msg_id) VALUES (?, ?, ?, ?, ?, ?, 'user', ?, ?, ?, ?)",
                 arrayOf<Any?>(event.opId, event.targetId, event.opType, event.targetType, event.tsUtc, deviceId, event.undoOf, event.beforeJson, event.afterJson, event.causeMsgId))
@@ -872,14 +905,16 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
     }
 
     override suspend fun searchMemoryFts(query: String, limit: Int): List<SearchResult> = withContext(ioDispatcher) {
-        val results = mutableListOf<SearchResult>()
-        if (query.isBlank()) return@withContext results
+        val nodeResults = mutableListOf<SearchResult>()
+        val soulResults = mutableListOf<SearchResult>()
+        val chatResults = mutableListOf<SearchResult>()
+        if (query.isBlank()) return@withContext emptyList()
         val safeLimit = limit.coerceIn(1, 20)
 
         try {
             val sanitized = query.replace(Regex("[^\\p{L}\\p{M}\\p{N}\\s]"), "").trim()
             val tokens = sanitized.split(Regex("\\s+")).filter { it.isNotBlank() }
-            if (tokens.isEmpty()) return@withContext results
+            if (tokens.isEmpty()) return@withContext emptyList()
             val matchQuery = tokens.joinToString(" AND ") { "\"$it\"*" }
 
             // B1: Strict status filtering applied natively to FTS joins
@@ -889,7 +924,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
             ).use {
                 while (it.moveToNext()) {
                     val due = if (it.isNull(4)) "" else "Due: ${it.getLong(4)}"
-                    results.add(SearchResult(it.getString(0), it.getString(1), it.getString(2), "Status: ${it.getString(3)} $due".trim()))
+                    nodeResults.add(SearchResult(it.getString(0), it.getString(1), it.getString(2), "Status: ${it.getString(3)} $due".trim()))
                 }
             }
             dbHelper.readableDatabase.query(
@@ -897,7 +932,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
                 arrayOf<Any>(matchQuery, safeLimit)
             ).use {
                 while (it.moveToNext()) {
-                    results.add(SearchResult(it.getString(0), "soul_fact", it.getString(1), it.getString(2)))
+                    soulResults.add(SearchResult(it.getString(0), "soul_fact", it.getString(1), it.getString(2)))
                 }
             }
             dbHelper.readableDatabase.query(
@@ -905,7 +940,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
                 arrayOf<Any>(matchQuery, safeLimit)
             ).use {
                 while (it.moveToNext()) {
-                    results.add(SearchResult(it.getString(0), "chat", it.getString(1), it.getString(2), it.getLong(3)))
+                    chatResults.add(SearchResult(it.getString(0), "chat", it.getString(1), it.getString(2), it.getLong(3)))
                 }
             }
         } catch (e: Exception) {
@@ -913,7 +948,14 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
             // would make the model answer "No results found." forever. Record the failure.
             logDiagError("searchMemoryFts failed for query '$query': ${e.message}")
         }
-        return@withContext results.take(safeLimit)
+        val interleaved = mutableListOf<SearchResult>()
+        val maxLen = maxOf(nodeResults.size, soulResults.size, chatResults.size)
+        for (i in 0 until maxLen) {
+            if (i < nodeResults.size) interleaved.add(nodeResults[i])
+            if (i < soulResults.size) interleaved.add(soulResults[i])
+            if (i < chatResults.size) interleaved.add(chatResults[i])
+        }
+        return@withContext interleaved.take(safeLimit)
     }
 
     override suspend fun saveEmbedding(
@@ -1366,7 +1408,8 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         val allOpen = getActiveNodes(limit = 1000)
         val todo = allOpen.filter { it.status == "active" || it.status == "paused" }.take(limitPerColumn)
         val inProgress = allOpen.filter { it.status == "in_progress" }.take(limitPerColumn)
-        val done = getRecentlyClosed(System.currentTimeMillis(), limit = limitPerColumn)
+        val doneSql = "SELECT $NODE_COLS FROM node WHERE (status = 'done' OR status = 'closed') ORDER BY coalesce(closed_at, updated_at, created_at) DESC, id ASC LIMIT CAST(? AS INTEGER)"
+        val done = queryNodes(doneSql, arrayOf(limitPerColumn.toString()))
 
         mapOf(
             "todo" to todo,

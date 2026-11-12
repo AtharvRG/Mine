@@ -76,15 +76,49 @@ object EnvelopeParser {
             replySub.replace("\\\"", "\"").replace("\\n", "\n").replace("\\\\", "\\").trim()
         } else null
 
-        val callsMatch = Regex(""""calls"\s*:\s*(\[\s*\{.*?\}\s*\])""", RegexOption.DOT_MATCHES_ALL).find(clean)
-        val extractedCalls = if (callsMatch != null) {
-            try {
-                json.decodeFromString<List<ToolCall>>(callsMatch.groupValues[1])
-            } catch (_: Exception) {
-                emptyList()
-            }
-        } else {
-            emptyList()
+        val extractedCalls = run {
+            val callsIdx = clean.indexOf("\"calls\"")
+            if (callsIdx != -1) {
+                val bracketStart = clean.indexOf('[', callsIdx)
+                if (bracketStart != -1) {
+                    var depth = 0
+                    var inString = false
+                    var escape = false
+                    var bracketEnd = -1
+                    for (i in bracketStart until clean.length) {
+                        val c = clean[i]
+                        if (escape) {
+                            escape = false
+                            continue
+                        }
+                        if (c == '\\') {
+                            escape = true
+                            continue
+                        }
+                        if (c == '"') {
+                            inString = !inString
+                            continue
+                        }
+                        if (!inString) {
+                            if (c == '[') depth++
+                            else if (c == ']') {
+                                depth--
+                                if (depth == 0) {
+                                    bracketEnd = i
+                                    break
+                                }
+                            }
+                        }
+                    }
+                    if (bracketEnd != -1) {
+                        try {
+                            json.decodeFromString<List<ToolCall>>(clean.substring(bracketStart, bracketEnd + 1))
+                        } catch (_: Exception) {
+                            emptyList()
+                        }
+                    } else emptyList()
+                } else emptyList()
+            } else emptyList()
         }
 
         if (!extractedReply.isNullOrBlank() || extractedCalls.isNotEmpty()) {

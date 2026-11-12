@@ -58,7 +58,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 val dateResolver = DateResolver(clock, is24HourFormat)
                 val embedder = com.anchor.mine.retrieval.LiteRtEmbedder(application)
                 val hybridRetriever = com.anchor.core.retrieval.HybridRetriever(loadedStorage, embedder, clock, dateResolver)
-                val gateway = Gateway(loadedStorage, Resolver(), dateResolver, clock, hybridRetriever, embedder)
+                val scheduler = AndroidAlarmScheduler(application)
+                val gateway = Gateway(loadedStorage, Resolver(), dateResolver, clock, hybridRetriever, embedder, scheduler)
                 reliabilityManager = ReliabilityManager(
                     loadedStorage, clock,
                     onAutoExportTriggered = {
@@ -118,7 +119,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 val connectivity = com.anchor.mine.provider.ConnectivityOracle(application)
                 controller = ChatController(
                     loadedStorage, orchestrator, contextBuilder,
-                    gateway, AndroidAlarmScheduler(application),
+                    gateway, scheduler,
                     viewModelScope, Dispatchers.Default, clock,
                     dateResolver = dateResolver,
                     networkCheck = { connectivity.isOnline() },

@@ -56,7 +56,8 @@ import java.io.File
 @Composable
 fun BackupScreen(
     exportManager: ExportManager?,
-    storage: com.anchor.core.storage.Storage? = null
+    storage: com.anchor.core.storage.Storage? = null,
+    onAction: ((com.anchor.core.ui.UiAction) -> Unit)? = null
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -252,8 +253,14 @@ fun BackupScreen(
                                     )
                                     return@withTempFile
                                 }
-                                if (confirmed) controller.runImport(tmp, passphrase)
-                                else controller.runVerify(tmp, passphrase)
+                                if (confirmed) {
+                                    val ok = controller.runImport(tmp, passphrase)
+                                    if (ok) {
+                                        onAction?.invoke(com.anchor.core.ui.UiAction.ReloadStorage)
+                                    }
+                                } else {
+                                    controller.runVerify(tmp, passphrase)
+                                }
                             }
                         }
                     }

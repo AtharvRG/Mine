@@ -75,15 +75,15 @@ class AmbientForegroundService : Service() {
                     val status = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1)
                     isCharging = status == BatteryManager.BATTERY_STATUS_CHARGING ||
                             status == BatteryManager.BATTERY_STATUS_FULL
-                    evaluateBlockers()
+                    serviceScope.launch { evaluateBlockers() }
                 }
                 Intent.ACTION_POWER_CONNECTED -> {
                     isCharging = true
-                    evaluateBlockers()
+                    serviceScope.launch { evaluateBlockers() }
                 }
                 Intent.ACTION_POWER_DISCONNECTED -> {
                     isCharging = false
-                    evaluateBlockers()
+                    serviceScope.launch { evaluateBlockers() }
                 }
             }
         }
@@ -102,7 +102,20 @@ class AmbientForegroundService : Service() {
         }
         registerReceiver(powerReceiver, filter)
 
-        startForeground(NOTIFICATION_ID, buildNotification(AmbientState.Listening))
+        val hasMicPermission = androidx.core.content.ContextCompat.checkSelfPermission(
+            this,
+            android.Manifest.permission.RECORD_AUDIO
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+
+        val initialState = if (hasMicPermission) AmbientState.Listening else AmbientState.Sleeping(AmbientSleepReason.MIC_BUSY)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val fgsType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && hasMicPermission) {
+                android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+            } else 0
+            startForeground(NOTIFICATION_ID, buildNotification(initialState), fgsType)
+        } else {
+            startForeground(NOTIFICATION_ID, buildNotification(initialState))
+        }
         startStateTicker()
     }
 
@@ -112,7 +125,7 @@ class AmbientForegroundService : Service() {
         when (intent.action) {
             ACTION_START -> {
                 pausedUntilMs = 0L
-                evaluateBlockers()
+                serviceScope.launch { evaluateBlockers() }
             }
             ACTION_STOP -> {
                 stopAmbientService()
@@ -127,7 +140,7 @@ class AmbientForegroundService : Service() {
             }
             ACTION_RESUME -> {
                 pausedUntilMs = 0L
-                evaluateBlockers()
+                serviceScope.launch { evaluateBlockers() }
             }
         }
 
@@ -144,7 +157,7 @@ class AmbientForegroundService : Service() {
         }
     }
 
-    private fun evaluateBlockers() {
+    private suspend fun evaluateBlockers() {
         val now = System.currentTimeMillis()
 
         // 1. Check user pause
@@ -153,18 +166,46 @@ class AmbientForegroundService : Service() {
             return
         }
 
-        // 2. Check phone call / mic busy
-        val telephonyManager = getSystemService(Context.TELEPHONY_SERVICE) as? TelephonyManager
-        isPhoneCallActive = telephonyManager?.callState != TelephonyManager.CALL_STATE_IDLE
-        if (isPhoneCallActive) {
+        // 2. Check mic permission
+        val hasMicPermission = androidx.core.content.ContextCompat.checkSelfPermission(
+            this,
+            android.Manifest.permission.RECORD_AUDIO
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        if (!hasMicPermission) {
             updateState(AmbientState.Sleeping(AmbientSleepReason.MIC_BUSY))
             return
         }
 
-        // 3. Check battery low (< 20%)
-        if (isBatteryLow) {
+        // 3. Check phone call / mic busy
+        try {
+            val telephonyManager = getSystemService(Context.TELEPHONY_SERVICE) as? TelephonyManager
+            @Suppress("DEPRECATION")
+            isPhoneCallActive = telephonyManager?.callState != TelephonyManager.CALL_STATE_IDLE
+            if (isPhoneCallActive) {
+                updateState(AmbientState.Sleeping(AmbientSleepReason.MIC_BUSY))
+                return
+            }
+        } catch (_: SecurityException) {
+            // Missing READ_PHONE_STATE, continue safely
+        }
+
+        // 4. Check battery low (< 20% and not charging)
+        if (isBatteryLow && !isCharging) {
             updateState(AmbientState.Sleeping(AmbientSleepReason.BATTERY_LOW))
             return
+        }
+
+        // 5. Check quiet hours / day window
+        val app = application as? MineApp
+        if (app != null && app.sharedStorage.isCompleted) {
+            try {
+                val storage = app.sharedStorage.await()
+                val rule = storage.getEffectiveDayRule(now)
+                if (!com.anchor.core.time.DayRollover.isInDayWindow(now, rule)) {
+                    updateState(AmbientState.Sleeping(AmbientSleepReason.OUTSIDE_WINDOW))
+                    return
+                }
+            } catch (_: Exception) {}
         }
 
         // All clear -> Listening

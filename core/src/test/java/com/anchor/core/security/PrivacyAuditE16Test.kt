@@ -133,6 +133,16 @@ class PrivacyAuditE16Test {
                 "Request #$reqNumber body leaked local_only soul fact: $body",
                 body.contains(localOnlySecretFactStatement)
             )
+
+            // Audit Guarantee 4: Raw database UUIDs must NEVER leak to provider requests
+            assertFalse(
+                "Request #$reqNumber body leaked raw database node ID: $body",
+                body.contains(rawDatabaseNodeId)
+            )
+            assertFalse(
+                "Request #$reqNumber body leaked raw database soul ID: $body",
+                body.contains(rawDatabaseSoulId)
+            )
         }
 
         // Audit Guarantee 4: In Turn 2 (tool result feedback), delimiters hold and aliasing is applied
