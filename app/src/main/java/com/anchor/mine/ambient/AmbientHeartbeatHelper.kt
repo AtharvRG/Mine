@@ -36,11 +36,12 @@ object AmbientHeartbeatHelper {
 
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return
 
-        val resumeIntent = PendingIntent.getService(
+        val resumeIntent = PendingIntent.getActivity(
             context,
             101,
-            Intent(context, AmbientForegroundService::class.java).apply {
+            Intent(context, com.anchor.mine.MainActivity::class.java).apply {
                 action = AmbientForegroundService.ACTION_START
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
             },
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )

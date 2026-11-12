@@ -25,7 +25,8 @@ import kotlin.math.sqrt
  * - Foreground only; stopped immediately on cancel or finish.
  */
 class AudioRecorderHelper(
-    private val sampleRate: Int = 16000
+    private val sampleRate: Int = 16000,
+    private val maxDurationSeconds: Int = 180
 ) {
 
     @Volatile
@@ -85,6 +86,7 @@ class AudioRecorderHelper(
 
             recordingJob = coroutineScope.launch(Dispatchers.IO) {
                 val shortBuffer = ShortArray(minBufferSize)
+                val maxSamples = sampleRate * maxDurationSeconds
                 while (isActive && isRecording) {
                     val read = record.read(shortBuffer, 0, shortBuffer.size)
                     if (read > 0) {
@@ -96,9 +98,14 @@ class AudioRecorderHelper(
                             sumSq += (f * f)
                         }
                         currentRms = sqrt(sumSq / read).toFloat()
-                        synchronized(lock) {
+                        val reachedCap = synchronized(lock) {
                             chunkList.add(floats)
                             totalSampleCount += read
+                            totalSampleCount >= maxSamples
+                        }
+                        if (reachedCap) {
+                            isRecording = false
+                            break
                         }
                     }
                 }

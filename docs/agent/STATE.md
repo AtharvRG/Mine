@@ -1,5 +1,19 @@
 # STATE (update every session; facts only)
-Updated: 2026-11-12 18:00 IST (**Mine Full Codebase Adversarial Audit #6 Remediation COMPLETE: all 4 items fixed across Android 14 FGS mic permission consent guard, duplicate proposal elimination, receipt deduping on event-logged actions, and currentStreamJob assignment inside sendMutex; :core:test 100% PASS [559/559], :app:testDebugUnitTest 100% PASS [27/27]**)
+Updated: 2026-11-12 18:45 IST (**Mine Full Codebase Adversarial Audit #7 Deep-Scan Remediation COMPLETE: all 6 items fixed across Android 14 FGS background activity resume, cross-slice duplicate proposal deduplication, 7-day fake storage TTL parity, call nudge state transition to NUDGED, post-call voice note notification handler, and 180s audio recording buffer cap; :core:test 100% PASS [560/560], :app:testDebugUnitTest 100% PASS [27/27], CallNudgeDeviceTest 100% PASS [5/5] on Moto G73 5G**)
+
+**Adversarial Audit #7 Deep-Scan Remediation Deliverables (2026-11-12):**
+- **Edge Case 1: Android 14 Background Microphone FGS Start Restriction in `AmbientHeartbeatHelper.kt`**:
+  - Replaced `PendingIntent.getService` with `PendingIntent.getActivity` targeting `MainActivity::class.java` with action `ACTION_START` and `FLAG_IMMUTABLE`. Handled in `MainActivity.onCreate` and `onNewIntent` via `AmbientForegroundService.start(this)`. Prevents Android 14 `BackgroundServiceStartNotAllowedException` when user taps notification while app is in background.
+- **Edge Case 2: Cross-Slice Duplicate Proposal Deduplication in `AmbientForegroundService.kt`**:
+  - In `startListeningLoop()`, before persisting extracted proposals, fetched `val existingSummaries = storage.getAmbientReportItems(report.id).map { it.summary.trim().lowercase() }.toSet()` and skipped inserting any proposal whose `item.summary.trim().lowercase() in existingSummaries`. Prevents repeated duplicate proposals across separate 3-second slices.
+- **Edge Case 3: `SharedFakeStorage.pruneAmbientStaging` 7-Day TTL Parity**:
+  - In `SharedFakeStorage.pruneAmbientStaging(now)`, enforced 7-day TTL cutoff (`now - 7 * 86_400_000L`) on `ambientReports.generatedAt`, removing pending proposals only for reports older than 7 days, maintaining exact behavioral parity with `AndroidStorage` SQLCipher query. Pinned by unit test `AmbientCoreComponentsTest.testPruneAmbientStaging_OnlyPrunesProposalsOlderThan7Days` (PASS).
+- **Edge Case 4: `CallNudgeActionReceiver` Call Event State Transition**:
+  - In `CallNudgeActionReceiver.kt`, added `storage.updateCallEventState(callEventId, CallNudgeState.NUDGED)` immediately after posting notification when `eval is CallNudgeDecision.ReadyToNudge`. Verified on physical Moto G73 5G via `CallNudgeDeviceTest.testCallNudgeActionReceiver_EvaluateCallNudgeUsesRealStorageState` (5/5 PASS).
+- **Edge Case 5: Post-Call Notification "Voice note" Action Handled in `MainActivity.kt`**:
+  - In `MainActivity.kt`, added `handleCallVoiceNoteIntent(intent)` in `onCreate` and `onNewIntent`: dismisses notification via `CallNudgeNotifications.dismiss(this, callEventId.hashCode())`, marks call event as `CallNudgeState.ANSWERED`, and requests composer focus via `focusComposerRequests.intValue++`.
+- **Edge Case 6: Unbounded Audio Recording Buffer Capped (Blueprint 60 §3.2 `max_record_s = 180`)**:
+  - In `AudioRecorderHelper.kt`, added `maxDurationSeconds: Int = 180` constructor parameter; capped sample collection at `maxSamples = sampleRate * maxDurationSeconds` in the background recording loop. In `MainActivity.kt`, extracted `stopAndTranscribe` lambda and added 180-second auto-stop and transcription in `LaunchedEffect(isRecording)`.
 
 **Adversarial Audit #6 Post-Fix Polish Deliverables (2026-11-12):**
 - **Bug 1: Android 14 `ForegroundServiceDidNotStartInTimeException` Prevention**:

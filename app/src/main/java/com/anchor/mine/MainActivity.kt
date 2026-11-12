@@ -70,6 +70,8 @@ class MainActivity : ComponentActivity() {
         handleShortcutIntent(intent)
         handleProviderImportIntent(intent)
         handleShareIntent(intent)
+        handleAmbientResumeIntent(intent)
+        handleCallVoiceNoteIntent(intent)
     }
 
     private fun handleShortcutIntent(intent: android.content.Intent?) {
@@ -111,6 +113,28 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun handleAmbientResumeIntent(intent: android.content.Intent?) {
+        if (intent?.action == com.anchor.mine.ambient.AmbientForegroundService.ACTION_START) {
+            com.anchor.mine.ambient.AmbientForegroundService.start(this)
+        }
+    }
+
+    private fun handleCallVoiceNoteIntent(intent: android.content.Intent?) {
+        if (intent?.action != com.anchor.mine.nudge.CallNudgeNotifications.ACTION_VOICE_NOTE) return
+        val callEventId = intent.getStringExtra(com.anchor.mine.nudge.CallNudgeNotifications.EXTRA_CALL_EVENT_ID) ?: return
+        com.anchor.mine.nudge.CallNudgeNotifications.dismiss(this, callEventId.hashCode())
+        val app = application as? MineApp
+        if (app != null) {
+            lifecycleScope.launch {
+                try {
+                    val storage = app.sharedStorage.await()
+                    storage.updateCallEventState(callEventId, com.anchor.core.nudge.CallNudgeState.ANSWERED)
+                } catch (_: Exception) {}
+            }
+        }
+        focusComposerRequests.intValue++
+    }
+
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { _ ->
@@ -133,6 +157,8 @@ class MainActivity : ComponentActivity() {
         handleShortcutIntent(intent)
         handleProviderImportIntent(intent)
         handleShareIntent(intent)
+        handleAmbientResumeIntent(intent)
+        handleCallVoiceNoteIntent(intent)
 
         setContent {
             com.anchor.mine.ui.theme.MineTheme {
@@ -527,12 +553,51 @@ fun ChatScreen(
             }
         }
 
+        val stopAndTranscribe = {
+            if (isRecording) {
+                isRecording = false
+                val samples = recorder.stopRecording()
+                scope.launch(Dispatchers.Default) {
+                    val engine = SherpaVoiceEngine.getInstance(context)
+                    if (engine == null || !engine.isSttAvailable) {
+                        withContext(Dispatchers.Main) {
+                            android.widget.Toast.makeText(
+                                context,
+                                "Offline voice model missing. Download sherpa-onnx STT model files to use voice transcription.",
+                                android.widget.Toast.LENGTH_LONG
+                            ).show()
+                        }
+                        return@launch
+                    }
+                    val transcript = engine.transcribe(samples)
+                    if (transcript.isNotBlank()) {
+                        val scrubbed = com.anchor.core.ambient.NumberScrubber.scrub(transcript)
+                        withContext(Dispatchers.Main) {
+                            onAction(UiAction.UpdateDraft(scrubbed))
+                        }
+                    } else {
+                        withContext(Dispatchers.Main) {
+                            android.widget.Toast.makeText(
+                                context,
+                                "No speech detected.",
+                                android.widget.Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    }
+                }
+            }
+        }
+
         LaunchedEffect(isRecording) {
             if (isRecording) {
                 recordingSeconds = 0
                 while (isRecording) {
                     delay(1000L)
                     recordingSeconds++
+                    if (recordingSeconds >= 180) {
+                        stopAndTranscribe()
+                        break
+                    }
                 }
             }
         }
@@ -553,33 +618,7 @@ fun ChatScreen(
                             micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
                         }
                     } else {
-                        isRecording = false
-                        val samples = recorder.stopRecording()
-                        scope.launch(Dispatchers.Default) {
-                            val engine = SherpaVoiceEngine.getInstance(context)
-                            if (engine == null || !engine.isSttAvailable) {
-                                withContext(Dispatchers.Main) {
-                                    android.widget.Toast.makeText(
-                                        context,
-                                        "Offline voice model missing. Download sherpa-onnx STT model files to use voice transcription.",
-                                        android.widget.Toast.LENGTH_LONG
-                                    ).show()
-                                }
-                                return@launch
-                            }
-                            val transcript = engine.transcribe(samples)
-                            if (transcript.isNotBlank()) {
-                                onAction(UiAction.UpdateDraft(transcript))
-                            } else {
-                                withContext(Dispatchers.Main) {
-                                    android.widget.Toast.makeText(
-                                        context,
-                                        "No speech detected.",
-                                        android.widget.Toast.LENGTH_SHORT
-                                    ).show()
-                                }
-                            }
-                        }
+                        stopAndTranscribe()
                     }
                 },
                 modifier = Modifier.testTag("micButton")

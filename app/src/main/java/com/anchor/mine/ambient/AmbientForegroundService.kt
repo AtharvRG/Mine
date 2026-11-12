@@ -386,9 +386,16 @@ class AmbientForegroundService : Service() {
                             rep
                         }
 
+                        val existingSummaries = storage.getAmbientReportItems(report.id)
+                            .map { it.summary.trim().lowercase() }
+                            .toSet()
+
                         for (item in extracted) {
                             val pNode = item.proposedNode
                             if (item.kind == "proposal" && pNode != null) {
+                                if (item.summary.trim().lowercase() in existingSummaries) {
+                                    continue
+                                }
                                 val uId = "u_${UUID.randomUUID()}"
                                 val event = RawEvent(
                                     opId = uId,

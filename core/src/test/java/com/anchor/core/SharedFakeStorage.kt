@@ -1090,7 +1090,9 @@ open class SharedFakeStorage(var clock: Clock = SystemClock()) : Storage {
         val segmentCountBefore = ambientSegments.size
         ambientSegments.removeAll { it.expiresAt < now }
         val proposalCountBefore = ambientReportItems.size
-        ambientReportItems.removeAll { it.kind == "proposal" && it.state == "pending" && it.reviewedAt == null }
+        val proposalCutoff = now - 7 * 86_400_000L
+        val expiredReportIds = ambientReports.filter { it.generatedAt < proposalCutoff }.map { it.id }.toSet()
+        ambientReportItems.removeAll { it.kind == "proposal" && it.state == "pending" && it.reportId in expiredReportIds }
         (segmentCountBefore - ambientSegments.size) + (proposalCountBefore - ambientReportItems.size)
     }
 

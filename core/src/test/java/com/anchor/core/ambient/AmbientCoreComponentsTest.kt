@@ -142,4 +142,38 @@ class AmbientCoreComponentsTest {
         // Attribution uncertain due to short / low score turn
         assertTrue(item.flags.contains("attribution_uncertain"))
     }
+
+    @Test
+    fun testPruneAmbientStaging_OnlyPrunesProposalsOlderThan7Days() = kotlinx.coroutines.runBlocking {
+        val clock = com.anchor.core.time.FakeClock(10_000_000_000L) // e.g. Day 115
+        val storage = com.anchor.core.SharedFakeStorage(clock)
+
+        val now = clock.now()
+        val eightDaysAgo = now - 8 * 86_400_000L
+        val twoDaysAgo = now - 2 * 86_400_000L
+
+        // Old report (> 7 days)
+        val oldReport = AmbientReport("rep_old", "2026-11-01", eightDaysAgo)
+        storage.saveAmbientReport(oldReport)
+        storage.saveAmbientReportItem(
+            AmbientReportItem("item_old", "rep_old", "win_1", "proposal", "Old task", "n_old", state = "pending")
+        )
+
+        // Recent report (< 7 days)
+        val recentReport = AmbientReport("rep_recent", "2026-11-10", twoDaysAgo)
+        storage.saveAmbientReport(recentReport)
+        storage.saveAmbientReportItem(
+            AmbientReportItem("item_recent", "rep_recent", "win_2", "proposal", "Recent task", "n_recent", state = "pending")
+        )
+
+        // Prune staging
+        val prunedCount = storage.pruneAmbientStaging(now)
+        assertEquals("Only items from reports > 7 days should be pruned", 1, prunedCount)
+
+        val remainingOld = storage.getAmbientReportItems("rep_old")
+        val remainingRecent = storage.getAmbientReportItems("rep_recent")
+        assertEquals("Old report items should be pruned", 0, remainingOld.size)
+        assertEquals("Recent pending proposal must NOT be pruned", 1, remainingRecent.size)
+        assertEquals("item_recent", remainingRecent.first().id)
+    }
 }

@@ -205,6 +205,9 @@ class CallNudgeDeviceTest {
         val active = notifications.find { it.id == eventId.hashCode() }
         assertNotNull("Delayed evaluation must trigger notification", active)
 
+        val updated = storage.getCallEvent(eventId)
+        assertEquals("Call event state must be transitioned to NUDGED", CallNudgeState.NUDGED, updated?.state)
+
         CallNudgeNotifications.dismiss(context, eventId.hashCode())
     }
 }

@@ -1,6 +1,25 @@
 # TASKS (one at a time, smallest first). Status: [ ] open, [~] in progress, [x] done+reviewed
 Specs for R1-R10: docs/agent/work/session1-remediation-spec.md. Read the task's section before starting.
 
+## Audit #7 Deep-Scan Edge Cases Remediation & Final Verification (2026-11-12)
+[x] Edge Case 1: Android 14 Background Microphone FGS Start Restriction in AmbientHeartbeatHelper.kt
+    [x] Replaced PendingIntent.getService with PendingIntent.getActivity targeting MainActivity::class.java with action ACTION_START and FLAG_IMMUTABLE.
+    [x] Handled in MainActivity.onCreate and onNewIntent via AmbientForegroundService.start(this).
+[x] Edge Case 2: Cross-Slice Duplicate Proposal Deduplication in AmbientForegroundService.kt
+    [x] In startListeningLoop(), fetched storage.getAmbientReportItems(report.id).map { it.summary.trim().lowercase() }.toSet().
+    [x] Skipped inserting any proposal whose normalized summary was already extracted in the current report.
+[x] Edge Case 3: SharedFakeStorage.pruneAmbientStaging 7-Day TTL Parity
+    [x] Filtered reports by proposalCutoff = now - 7 * 86_400_000L and only pruned pending proposals for expiredReportIds.
+    [x] Added unit test testPruneAmbientStaging_OnlyPrunesProposalsOlderThan7Days in AmbientCoreComponentsTest.kt (PASS).
+[x] Edge Case 4: CallNudgeActionReceiver Call Event State Transition
+    [x] Called storage.updateCallEventState(callEventId, CallNudgeState.NUDGED) upon CallNudgeDecision.ReadyToNudge.
+    [x] Added assertion in CallNudgeDeviceTest.kt verifying CallNudgeState.NUDGED on real device (5/5 PASS).
+[x] Edge Case 5: Post-Call Notification "Voice note" Action Handled in MainActivity.kt
+    [x] Handled ACTION_VOICE_NOTE in MainActivity.onCreate and onNewIntent: dismissed notification, marked call event as CallNudgeState.ANSWERED, and incremented focusComposerRequests.
+[x] Edge Case 6: Unbounded Audio Recording Buffer Capped (Blueprint 60 §3.2 max_record_s = 180)
+    [x] Added maxDurationSeconds: Int = 180 constructor parameter to AudioRecorderHelper.kt and capped sample collection in background loop.
+    [x] Added 180-second auto-stop and transcription in MainActivity.kt LaunchedEffect(isRecording).
+
 ## Audit #6 Post-Fix Verification & Final Polish (2026-11-12)
 [x] Bug 1: Android 14 ForegroundServiceDidNotStartInTimeException Prevention
     [x] In AmbientControlCard.kt, checked RECORD_AUDIO permission when user taps "I Agree" on consent dialog; launched RequestPermission() launcher and only set ambient.enabled="1" and started FGS when permission is granted.

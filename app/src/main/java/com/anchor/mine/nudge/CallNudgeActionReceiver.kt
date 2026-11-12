@@ -69,6 +69,7 @@ class CallNudgeActionReceiver : BroadcastReceiver() {
                         val eval = callEngine.evaluateCandidate(callEventId, proactiveState)
                         if (eval is CallNudgeDecision.ReadyToNudge) {
                             CallNudgeNotifications.show(appContext, callEventId)
+                            storage.updateCallEventState(callEventId, CallNudgeState.NUDGED)
                         }
                     }
                     CallNudgeNotifications.ACTION_REPLY -> {
