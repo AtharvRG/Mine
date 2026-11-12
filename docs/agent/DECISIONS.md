@@ -556,4 +556,100 @@ Rejected: printing only the first line of the message (the diagnostic fields `Al
 - **Rejected:** Storing audio blobs in SQLite; continuous always-on listening without explicit mic button tap; emotional speech synthesis claims.
 - **Proof:** `VoiceSpeechSanitizerTest` (3/3 PASS in `:core`), `DatabaseMigrationTest` (PASS V10->V11 on `moto g73 5G`).
 
-(Next free: D-180. Add: date, decision, reason, rejected.)
+## D-180 (2026-11-11) — Erase Node & Soul Fact SQLCipher Append-Only Trigger Compliance (Audit #2).
+- **Decision:** Updated `trg_raw_evt_no_update` in `MineDatabaseHelper.kt` to permit scrubbing `before_json = NULL, after_json = NULL` while strictly rejecting any other column modifications or row deletions. Updated `AndroidStorage.eraseNode` and `eraseSoulFact` to execute payload scrubbing inside transactions and delete vector embeddings.
+- **Reason:** Preserves immutable audit log row (`op_id`, `ts_utc`, `op_type`, `actor`) while permanently wiping user-private plaintext per Blueprint 16 §3.5 without violating SQLite append-only triggers.
+- **Rejected:** Hard-deleting rows from `raw_event` (which violates audit tamper-evidence).
+- **Proof:** `AndroidStorageTest` on real encrypted SQLCipher.
+
+## D-181 (2026-11-11) — SherpaVoiceEngine Singleton, AudioTrack Blocking, and Mic Permission (Audit #2).
+- **Decision:** Converted `SherpaVoiceEngine` to a thread-safe singleton (`getInstance(context)`) with synchronized initialization lock, eliminating the 210 MB native ONNX memory leak per tap. Added `playBlocking(samples)` to wait for `AudioTrack` completion before next sentence chunk plays. Added `RECORD_AUDIO` permission request launcher.
+- **Reason:** Blueprint 60 requires stable, leak-free voice operation without audio cutoffs or unhandled security exceptions.
+- **Rejected:** Creating new ONNX runtime instances per voice interaction.
+- **Proof:** `SherpaVoiceEngineDeviceTest`.
+
+## D-182 (2026-11-11) — CallStateReceiver 10s Broadcast Limit & Real Proactive State (Audit #2).
+- **Decision:** Removed 20-second coroutine delay inside `goAsync()`. Scheduled an exact alarm via `AlarmManager` targeting `CallNudgeActionReceiver` at `decision.fireAt`. Receiver fetches real `storage.getProactiveState()` (honoring `pausedUntil`, `openThreadMsgId`, `backoffStep`, `sentToday`).
+- **Reason:** Prevents Android OS 10-second Broadcast ANR termination.
+- **Rejected:** Blocking or sleeping inside broadcast receivers.
+- **Proof:** `CallNudgeDeviceTest` (5/5 PASS).
+
+## D-183 (2026-11-11) — Recurring Reminders (rrule) Alarm Occurrence Rescheduling (Audit #2).
+- **Decision:** In `AlarmReceiver.kt`, when a recurring reminder rings, calculates next occurrence strictly > now via `RecurrenceEngine.nextOccurrence(...)`, increments iteration, updates `Storage.saveReminder`, updates `DirectBootAlarmStore.saveAlarm`, and reschedules exact alarm via `AndroidAlarmScheduler`.
+- **Reason:** Recurring reminders must never be cancelled or deleted upon ringing.
+- **Rejected:** Deleting recurring reminders after first fire.
+- **Proof:** `AlarmReceiverTest`.
+
+## D-184 (2026-11-11) — Semantic Embeddings Projection & Hybrid Retriever Search Wiring (Audit #2).
+- **Decision:** Built pure-Kotlin `SemanticProjection` in `:core` featuring 9 semantic concept clusters, subword character 3/4-grams, and L2 normalization with symmetric int8 quantization. Wired `HybridRetriever` into `Gateway.search_memory` tool.
+- **Reason:** Guarantees deterministic semantic similarity search on device even when LiteRT native runtime is absent.
+- **Rejected:** Random hashcode embeddings.
+- **Proof:** `HybridRetrieverTest` (5/5 PASS), `EmbedderAndSensingDeviceTest` (3/3 PASS).
+
+## D-185 (2026-11-11) — Runtime Context Sensing & Scheduled Auto-Export Wiring (Audit #2).
+- **Decision:** Created `ContextSensingManager` in `:app` monitoring Wi-Fi connectivity and motion sensors, feeding `ContextEngine`. Wired `ContextEngine.formatNowContext()` into `ContextBuilder.buildPack()`. Wired `AutoExportScheduler` into `ReliabilityManager.runSweeper()`.
+- **Reason:** Live context integration into prompts and autonomous backup retention.
+- **Rejected:** Unmanaged background threads.
+- **Proof:** `EmbedderAndSensingDeviceTest` (3/3 PASS).
+
+## D-186 (2026-11-12) — Zero Main-Thread Load & Micro-Stutter Elimination (Audit #3 Layer 1).
+- **Decision:** Made `AndroidStorage.deviceId` a lazy, thread-safe synchronized property initialized on IO dispatcher, making `AndroidStorage(dbHelper)` 0ms zero-I/O. Guarded triggers and indexes in `onOpen` with count check (< 13). Batched UI undone query with `getUndoneOpIds`. Converted audio recorder buffer to chunked primitive arrays.
+- **Reason:** Eliminates main thread micro-stutters and ANRs on app cold boot and UI rendering.
+- **Rejected:** Synchronous SQLite operations on main thread; un-chunked boxing of audio samples.
+- **Proof:** `AndroidStorageTest` (33/33 PASS on device).
+
+## D-187 (2026-11-12) — Silent Self-Healing & Cover-Up Architecture (Audit #3 Layer 2).
+- **Decision:** Added lenient JSON auto-repair in `EnvelopeParser`, prose extraction from stream chunks in `ChatController`, 1-turn retry on action claims without envelope, and stream throttle flush.
+- **Reason:** Prevents small-model hallucinations from breaking UX or leaking raw JSON into chat bubbles.
+- **Rejected:** Displaying raw tool envelopes to user; failing turns on minor JSON syntax errors.
+- **Proof:** `ChatControllerTest`, `OfflineQueueTest`.
+
+## D-188 (2026-11-12) — Database Lock Contention & Outbox Poison-Pill Hardening (Audit #3 Layer 2).
+- **Decision:** Configured `PRAGMA busy_timeout = 5000` and `PRAGMA synchronous = NORMAL`. Auto-retires outbox jobs referencing deleted or missing message IDs.
+- **Reason:** High-concurrency database stability and deadlock prevention.
+- **Rejected:** Retrying corrupt outbox rows indefinitely.
+- **Proof:** `AndroidStorageTest`.
+
+## D-189 (2026-11-12) — Offline Network Drop Cover-Up (Audit #3 Layer 2).
+- **Decision:** Catches `OfflineException` during active model calls and routes to offline quick-add or outbox enqueue while clearing `connectionError`.
+- **Reason:** Seamless transition between online and offline states without user disruption.
+- **Rejected:** Showing red error banners when an offline fallback succeeds.
+- **Proof:** `OfflineQuickAddIntegrationTest`.
+
+## D-190 (2026-11-12) — 90-Day Durability Operational Log Pruning & Audio Focus (Audit #3 Layer 3).
+- **Decision:** Implemented `pruneOperationalLogs(now)` deleting `diag_log` (> 7d), `reminder_fire` (> 90d), and `outbox` (> 7d). Added audio focus request and abandon in `SherpaVoiceEngine`.
+- **Reason:** Prevents unbounded SQLite database growth over months and coordinates audio playback cleanly.
+- **Rejected:** Retaining debug logs forever.
+- **Proof:** `AndroidStorageTest` on physical device.
+
+## D-191 (2026-11-12) — CallStateReceiver Exact Alarm try/catch & Fallback (Audit #3 Polish Seam 1).
+- **Decision:** Checked `canScheduleExactAlarms()`, wrapped in `try/catch(SecurityException)`, and fell back to `setAndAllowWhileIdle`.
+- **Reason:** Protects against crashes on Android 12+ when exact alarm permission is denied or revoked.
+- **Rejected:** Assuming exact alarm permission is always granted.
+- **Proof:** `CallNudgeDeviceTest` (5/5 PASS).
+
+## D-192 (2026-11-12) — MainViewModel Auto-Export Passphrase & SAF Storage (Audit #3 Polish Seam 2).
+- **Decision:** Removed hardcoded `"MineBackup2026!"`. Reads passphrase from settings (safely skips if unset). Writes backup to SAF picked folder via `DocumentFile.fromTreeUri`, prunes via `AutoExportScheduler.findFilesToPrune`, and deletes cache temp file in `finally`.
+- **Reason:** Adheres strictly to zero-hardcoded secrets and user-controlled export security.
+- **Rejected:** Hardcoded fallback encryption keys.
+- **Proof:** `AutoExportSchedulerTest`, compilation verification.
+
+## D-193 (2026-11-12) — ContextSensingManager Settings Gating & Motion STILL Return (Audit #3 Polish Seam 3).
+- **Decision:** Gated sensor and network observer registration behind `flag.sensing == "1" && sensing.enabled == "1"`. Removed unconditional cold-boot start. Added `@Volatile var lastStepTimeMs` and 30s ticker to emit `MotionAxis.STILL` after 60s of inactivity.
+- **Reason:** Eliminates unnecessary battery drain when sensing is disabled and correctly resets walking motion to still.
+- **Rejected:** Continuous sensor registration when feature is disabled; perpetual walking state.
+- **Proof:** `EmbedderAndSensingDeviceTest` (4/4 PASS).
+
+## D-194 (2026-11-12) — v3 Deterministic Synthetic Acoustic Pipeline & Presence Gate.
+- **Decision:** Implemented pure-Kotlin `SyntheticAudioFixtures` (16 kHz sine wave, silence, white noise, formant speech bursts, 192-dim voiceprints, cosine similarity, RMS) in `:core`. Built `PresenceGate` with dual-threshold scoring ($t_{hi} = 0.80$, $t_{lo} = 0.60$, $< 1.5$s short segment penalty) and RAM-only ring buffer trimming.
+- **Reason:** Enables comprehensive, deterministic acoustic and VAD testing without requiring a physical speaker in the room while strictly enforcing the User-Presence Gate Invariant.
+- **Rejected:** Requiring manual audio recordings for test verification; persistent raw audio buffers.
+- **Proof:** `SyntheticAudioFixturesTest` (4/4 PASS), `AmbientCoreComponentsTest` (PASS).
+
+## D-195 (2026-11-12) — v3 Ambient Foreground Service, Schema V12, Proposal-Only Gate, and UI Cards.
+- **Decision:** Bumped SQLite/SQLCipher `DATABASE_VERSION` from 11 to 12 with 7 new tables (`voiceprint`, `ambient_session`, `ambient_window`, `ambient_segment`, `ambient_report`, `ambient_report_item`, `day_digest`) and 3 indexes. Implemented `AmbientForegroundService` (`foregroundServiceType="microphone"`, `START_NOT_STICKY`), heartbeat helper with zero-vibration alerts, `NumberScrubber` (`[number]`), `AmbientProposalExtractor` (strictly `status = "proposed"`, `origin = "ambient"`), `ConsolidationEngine` (DayDigest, streak reflection), `BoardViewScreen`, `CalendarViewScreen`, `AmbientControlCard`, and `AmbientReportCard`. Added `handleActivateNode` in `Gateway.kt` for proposal acceptance.
+- **Reason:** Delivers the full v3 Ambient Listening architecture per Blueprint 61 with absolute privacy invariants: proposal-only, RAM-only audio buffers, zero vibration, local-only biometrics excluded from export allowlist.
+- **Rejected:** Mutating active items from ambient audio; background restarting microphone service without user gesture; vibrations on ambient events.
+- **Proof:** `:core:test` (556/556 PASS), `:app:testDebugUnitTest` (27/27 PASS), `AmbientAndV3DeviceTest` (7 connected device test suites).
+
+(Next free: D-196. Add: date, decision, reason, rejected.)

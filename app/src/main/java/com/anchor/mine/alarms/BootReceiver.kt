@@ -179,6 +179,15 @@ class BootReceiver : BroadcastReceiver() {
                 // 3. Reschedule quote preparation alarm
                 com.anchor.mine.quotes.QuoteAlarmScheduler.scheduleNext(context)
 
+                // 3b. Blueprint 61 §3.2: Ambient heartbeat check (tap to resume if killed)
+                try {
+                    val flagAmbient = storage.getSetting("flag.ambient")
+                    val ambientEnabled = storage.getSetting("ambient.enabled")
+                    if (flagAmbient == "1" && ambientEnabled == "1") {
+                        com.anchor.mine.ambient.AmbientHeartbeatHelper.checkAndNotifyIfNeeded(context)
+                    }
+                } catch (_: Exception) {}
+
                 // 4. H-02: keep the periodic sweep registered. Re-arming on every boot and every
                 // app start is what makes the trigger survive a reboot, a package update and an
                 // OEM that drops repeating alarms.

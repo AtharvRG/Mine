@@ -92,7 +92,12 @@ data class UiState(
     val isAppLocked: Boolean = false,
     val relockTimeoutSec: Int = 60,
     val blockScreenshots: Boolean = false,
-    val compactMode: Boolean = false
+    val compactMode: Boolean = false,
+    // Blueprint 61 §3.8: Ambient report & proposals
+    val latestAmbientReport: com.anchor.core.ambient.AmbientReport? = null,
+    val ambientReportItems: List<com.anchor.core.ambient.AmbientReportItem> = emptyList(),
+    val ambientEnabled: Boolean = false,
+    val voiceprintEnrolled: Boolean = false
 ) {
     /** Blueprint 41 §2: the banner the user sees while messages wait. Null when nothing is queued. */
     val offlineQueuedText: String?
@@ -176,4 +181,10 @@ sealed interface UiAction {
     data class SetRelockTimeout(val seconds: Int) : UiAction
     data class SetBlockScreenshots(val enabled: Boolean) : UiAction
     data class SetCompactMode(val enabled: Boolean) : UiAction
+
+    // Blueprint 61: Ambient Listening actions
+    data class AcceptAmbientItem(val itemId: String) : UiAction
+    data class RejectAmbientItem(val itemId: String) : UiAction
+    data class AcceptAllAmbientItems(val reportId: String) : UiAction
+    data object DeleteAllAmbientData : UiAction
 }

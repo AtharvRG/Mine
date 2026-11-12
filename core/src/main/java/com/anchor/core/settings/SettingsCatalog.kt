@@ -85,9 +85,23 @@ object SettingsCatalog {
         SettingDef("checkin.evening_enabled", SettingSection.CHECKINS, "1", SettingScope.SYNCED, validator = { it.matches(BOOL_REGEX) }),
         SettingDef("checkin.weekly_enabled", SettingSection.CHECKINS, "1", SettingScope.SYNCED, validator = { it.matches(BOOL_REGEX) }),
 
-        // Section 8: Voice
+        // Section 8: Voice & Ambient (Blueprints 60, 61)
         SettingDef("voice.stt_enabled", SettingSection.VOICE, "0", SettingScope.DEVICE_LOCAL, validator = { it.matches(BOOL_REGEX) }),
         SettingDef("voice.tts_enabled", SettingSection.VOICE, "0", SettingScope.DEVICE_LOCAL, validator = { it.matches(BOOL_REGEX) }),
+        SettingDef("flag.ambient", SettingSection.VOICE, "0", SettingScope.DEVICE_LOCAL, validator = { it.matches(BOOL_REGEX) }),
+        SettingDef("ambient.enabled", SettingSection.VOICE, "0", SettingScope.DEVICE_LOCAL, validator = { it.matches(BOOL_REGEX) }),
+        SettingDef("ambient.consent_version", SettingSection.VOICE, "", SettingScope.DEVICE_LOCAL),
+        SettingDef("ambient.stt.mode", SettingSection.VOICE, "hybrid", SettingScope.DEVICE_LOCAL),
+        SettingDef("ambient.charging_only", SettingSection.VOICE, "0", SettingScope.DEVICE_LOCAL, validator = { it.matches(BOOL_REGEX) }),
+        SettingDef("ambient.min_battery_pct", SettingSection.VOICE, "20", SettingScope.DEVICE_LOCAL, validator = { it.matches(INT_REGEX) }),
+        SettingDef("ambient.thermal_pause", SettingSection.VOICE, "1", SettingScope.DEVICE_LOCAL, validator = { it.matches(BOOL_REGEX) }),
+        SettingDef("ambient.gate_user_presence", SettingSection.VOICE, "1", SettingScope.DEVICE_LOCAL, validator = { it.matches(BOOL_REGEX) }),
+        SettingDef("ambient.pause_places", SettingSection.VOICE, "", SettingScope.SYNCED),
+        SettingDef("ambient.daily_stt_cap_min", SettingSection.VOICE, "90", SettingScope.DEVICE_LOCAL, validator = { it.matches(INT_REGEX) }),
+        SettingDef("ambient.daily_listen_cap_h", SettingSection.VOICE, "10", SettingScope.DEVICE_LOCAL, validator = { it.matches(INT_REGEX) }),
+        SettingDef("ambient.transcript_ttl_h", SettingSection.VOICE, "48", SettingScope.SYNCED, validator = { it.matches(INT_REGEX) }),
+        SettingDef("ambient.proposal_ttl_d", SettingSection.VOICE, "7", SettingScope.SYNCED, validator = { it.matches(INT_REGEX) }),
+        SettingDef("ambient.scrub_numbers", SettingSection.VOICE, "1", SettingScope.SYNCED, validator = { it.matches(BOOL_REGEX) }),
 
         // Section 9: Privacy
         SettingDef("privacy.app_lock", SettingSection.PRIVACY, "0", SettingScope.DEVICE_LOCAL, validator = { it.matches(BOOL_REGEX) }),

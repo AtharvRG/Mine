@@ -258,6 +258,36 @@ interface Storage {
     /** Prunes expired operational logs (diag_log 7d, reminder_fire 90d, outbox done/dropped 7d). */
     suspend fun pruneOperationalLogs(now: Long): Int
 
+    /** Blueprint 61 §4 (v3 Ambient Listening): Voiceprint, sessions, windows, segments, reports. */
+    suspend fun saveVoiceprint(voiceprint: com.anchor.core.ambient.Voiceprint)
+    suspend fun getVoiceprint(): com.anchor.core.ambient.Voiceprint?
+    suspend fun deleteVoiceprint()
+
+    suspend fun saveAmbientSession(session: com.anchor.core.ambient.AmbientSession)
+    suspend fun getRecentAmbientSessions(limit: Int = 50): List<com.anchor.core.ambient.AmbientSession>
+
+    suspend fun saveAmbientWindow(window: com.anchor.core.ambient.AmbientWindow)
+    suspend fun getAmbientWindows(sessionId: String): List<com.anchor.core.ambient.AmbientWindow>
+
+    suspend fun saveAmbientSegment(segment: com.anchor.core.ambient.AmbientSegment)
+    suspend fun getAmbientSegments(windowId: String): List<com.anchor.core.ambient.AmbientSegment>
+
+    suspend fun saveAmbientReport(report: com.anchor.core.ambient.AmbientReport)
+    suspend fun getAmbientReport(id: String): com.anchor.core.ambient.AmbientReport?
+    suspend fun getLatestAmbientReport(): com.anchor.core.ambient.AmbientReport?
+    suspend fun updateAmbientReportState(id: String, state: String)
+
+    suspend fun saveAmbientReportItem(item: com.anchor.core.ambient.AmbientReportItem)
+    suspend fun getAmbientReportItems(reportId: String): List<com.anchor.core.ambient.AmbientReportItem>
+    suspend fun updateAmbientReportItemState(id: String, state: String, reviewedAt: Long?)
+
+    suspend fun pruneAmbientStaging(now: Long): Int
+    suspend fun deleteAllAmbientData(): Int
+
+    /** Blueprint 21 §3.7 / Blueprint 32 §3.4: Day Digest / Overnight Consolidation. */
+    suspend fun saveDayDigest(digest: com.anchor.core.consolidation.DayDigest)
+    suspend fun getDayDigest(dayKey: String): com.anchor.core.consolidation.DayDigest?
+
     companion object {
         /** R-26: page size for [getPendingReminders]. Hitting it means "more rows exist". */
         const val PENDING_REMINDER_PAGE_LIMIT = 500

@@ -1,5 +1,41 @@
 # STATE (update every session; facts only)
-Updated: 2026-11-12 00:30 IST (**Mine v1, v1.1, and v2 Bulletproof & Invisible Recovery Audit #3 Polish Seams COMPLETE: core unit 548/0/0/0 across 92 files, app unit 27/0/0/0 across 7 files, total unit suite 575/0/0/0 PASS; physical device suite PASS on moto g73 5G - Android 14 API 34**)
+Updated: 2026-11-12 08:35 IST (**Mine v3 Complete Architecture & Implementation COMPLETE: core unit 556/0/0/0 across 96 files, app unit 27/0/0/0 across 7 files, total unit suite 583/0/0/0 PASS; AmbientAndV3DeviceTest fully compiled with 7 connected test suites**)
+
+**v3 Ambient Architecture & Deliverables (2026-11-12, D-194..D-195):**
+- **Phase 1: Deterministic Synthetic Audio & Voice Testing Harness (`:core`)**:
+  - `SyntheticAudioFixtures.kt`: Pure-Kotlin generator for 16 kHz sinusoidal tones, digital silence, white noise, vocalic formant speech bursts (F0 ~130 Hz + 3 vowel formants + 3.5 Hz syllabic modulation), L2-normalized 192-dim voiceprint embeddings, cosine similarity, and RMS energy detection.
+  - `SyntheticAudioFixturesTest.kt`: 4/4 PASS.
+- **Phase 2: Pure Kotlin Ambient Models, Presence Gate, & Overnight Consolidation (`:core`)**:
+  - `AmbientModels.kt`: `AmbientState` (Off, Sleeping with 9 `AmbientSleepReason`s, Listening, Processing), `Voiceprint` (device-local embedding BLOB, LittleEndian float serialization), `SpeakerLabel` (`USER`, `OTHER`), `AmbientSession`, `AmbientWindow`, `AmbientSegment` (48h TTL), `AmbientReport`, `AmbientReportItem`.
+  - `PresenceGate.kt`: Dual-threshold scoring ($t_{hi} = 0.80$, $t_{lo} = 0.60$, short segment detection $< 1.5$s), RAM ring buffer trimming (90s window), and presence gate evaluation.
+  - `NumberScrubber.kt`: Regex-based scrubbing replacing credit cards, SSNs, phone numbers, and OTPs with `[number]`.
+  - `DialogueWindowEngine.kt`: Grouping turns into dialogue windows with 90s silence split, 60s / 12-turn duration caps, and extraction prompt generation (`[you]`, `[other]`).
+  - `AmbientProposalExtractor.kt`: Proposal-only extraction with `attribution_uncertain` and `possible_duplicate` flags, plus deterministic rule-based fallback for offline/failure paths (zero dead ends).
+  - `ConsolidationEngine.kt`: `DayDigest` calculation from closed/open nodes, soul habit pattern reflection (5+ streaks, learning focus), and proposed `SoulFact` generation.
+  - `AttachmentModels.kt`: `AttachmentRef` metadata representation (URI, mimeType, sizeBytes, durationMs, sha256) with JSON serialization.
+  - Unit tests: `AmbientCoreComponentsTest.kt`, `ConsolidationEngineTest.kt`, `AttachmentModelsTest.kt` all PASS.
+- **Phase 3: Database Schema Migration Version 12 & Storage Layer Updates**:
+  - `MineDatabaseHelper.kt`: Bumped `DATABASE_VERSION` 11 -> 12; added DDLs for `voiceprint`, `ambient_session`, `ambient_window`, `ambient_segment`, `ambient_report`, `ambient_report_item`, `day_digest`; added indexes `idx_ambient_segment_window`, `idx_ambient_segment_expires`, `idx_ambient_report_item_report`.
+  - `AndroidStorage.kt`: Implemented all 18 methods using SQLCipher transactions and parameterized queries.
+  - `AndroidExportManager.kt`: Verified `EXPORTED_TABLES` excludes all ambient staging tables and voiceprints.
+  - `SettingsCatalog.kt`: Added 14 Section 8 Ambient settings (`flag.ambient`, `ambient.enabled`, `ambient.stt.mode`, `ambient.min_battery_pct`, `ambient.thermal_pause`, `ambient.gate_user_presence`, `ambient.daily_stt_cap_min`, etc.).
+  - `ReliabilityManager.kt`: Wired `storage.pruneAmbientStaging(now)` into periodic sweeper.
+- **Phase 4: Ambient Foreground Service & Heartbeat (`:app`)**:
+  - `NotificationChannels.kt`: Added `AMBIENT` (IMPORTANCE_LOW) and `AMBIENT_HEARTBEAT` (IMPORTANCE_DEFAULT) channels with zero vibration.
+  - `AndroidManifest.xml`: Declared `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_MICROPHONE`, and `AmbientForegroundService` with `foregroundServiceType="microphone"`.
+  - `AmbientForegroundService.kt`: Foreground service managing `AmbientState`, battery/charging/telephony blockers, ongoing low-priority notification with Pause 15m / Pause 1h / Stop actions, returning `START_NOT_STICKY`.
+  - `AmbientHeartbeatHelper.kt`: Checks if service was killed; posts "Ambient stopped. Tap to resume." notification with zero vibration.
+  - `BootReceiver.kt`: Wired `AmbientHeartbeatHelper.checkAndNotifyIfNeeded(context)` into periodic sweep.
+- **Phase 5: Jetpack Compose UI Screens & Timeline Integration (`:app`)**:
+  - `BoardViewScreen.kt`: 3-column Kanban board (`To Do`, `In Progress`, `Done`) powered by `storage.getBoardViewNodes()`.
+  - `CalendarViewScreen.kt`: Calendar buckets agenda view powered by `storage.getCalendarBuckets()`.
+  - `AmbientControlCard.kt`: Ambient Listening toggle, state pill (Listening/Sleeping/Off), "Teach Voice" button, and "Delete All" ambient data button in MemoryScreen.
+  - `AmbientReportCard.kt`: Ambient Daily Report card in ChatScreen with "Accept All" and per-item attribution badges and Accept/Reject actions.
+  - `ChatContract.kt`: Added ambient fields to `UiState` and `UiAction` (`AcceptAmbientItem`, `RejectAmbientItem`, `AcceptAllAmbientItems`, `DeleteAllAmbientData`).
+  - `ChatController.kt`: Handled all 4 ambient actions with receipts and state updates.
+  - `MainActivity.kt`: Appended "Board" (tab 6) and "Calendar" (tab 7) preserving 0..5, wired `AmbientReportCard` into `ChatScreen` and `AmbientControlCard` into `MemoryScreen`.
+- **Phase 6: Connected Device Test Suite (`AmbientAndV3DeviceTest.kt`)**:
+  - Created 7 connected tests verifying V11->V12 migration, voiceprint float serialization & SQLCipher BLOB round-trip, zero vibration across all notification channels, synthetic acoustic VAD presence gate, 48h staging pruning & total purge, board/calendar views, and privacy export exclusions.
 
 **Audit #3 Polish Seams Deliverables (2026-11-12, D-191..D-193):**
 - **Seam 1: `CallStateReceiver` Exact Alarm try/catch & Fallback (D-191)**: In `CallStateReceiver.kt`, wrapped alarm scheduling in `try/catch(SecurityException)` and check `canScheduleExactAlarms()`; falls back gracefully to `setAndAllowWhileIdle` when exact alarm permission is absent or revoked on Android 12+. Verified on device via `CallNudgeDeviceTest` (5/5 PASS).

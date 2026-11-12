@@ -41,6 +41,8 @@ import com.anchor.core.ui.ChatController
 import com.anchor.core.ui.UiAction
 import com.anchor.core.ui.UiState
 import com.anchor.core.voice.VoiceSpeechSanitizer
+import com.anchor.mine.ui.AmbientControlCard
+import com.anchor.mine.ui.AmbientReportCard
 import com.anchor.mine.voice.AudioRecorderHelper
 import com.anchor.mine.voice.SherpaVoiceEngine
 import kotlinx.coroutines.Dispatchers
@@ -227,7 +229,7 @@ fun MineAppUI(
     var selectedTab by remember { mutableIntStateOf(0) }
     // "Memory" is appended, not inserted: the `when (selectedTab)` below and every existing test
     // that clicks a tab by title depend on 0..4 staying put.
-    val tabs = listOf("Chat", "Reminders", "Provider", "Backup", "Debug", "Memory")
+    val tabs = listOf("Chat", "Reminders", "Provider", "Backup", "Debug", "Memory", "Board", "Calendar")
 
     // Row 20: the viewer reads storage only when it is first opened. `memoryLoaded` is the guard —
     // UiState is a new object on every update, so keying on the tab alone would re-read on each one.
@@ -319,7 +321,9 @@ fun MineAppUI(
                 2 -> ProviderScreen(state, onImport = { payload -> onAction(UiAction.ImportProviderConfig(payload)) }) { ep, k, m -> onAction(UiAction.SaveProvider(ep, k, m)) }
                 3 -> BackupScreen(exportManager, storage)
                 4 -> DebugScreen(state, onAction)
-                5 -> MemoryScreen(state, onAction)
+                5 -> MemoryScreen(state, onAction, storage = storage)
+                6 -> com.anchor.mine.ui.BoardViewScreen(storage = storage)
+                7 -> com.anchor.mine.ui.CalendarViewScreen(storage = storage)
             }
         }
     }
@@ -468,6 +472,18 @@ fun ChatScreen(
                         Button(onClick = { onAction(UiAction.AcceptSoulFact(fact.id)) }) { Text("Yes") }
                         Button(onClick = { onAction(UiAction.RejectSoulFact(fact.id)) }) { Text("No") }
                     }
+                }
+            }
+
+            // RENDER AMBIENT DAILY REPORT
+            val ambientReport = state.latestAmbientReport
+            if (ambientReport != null && state.ambientReportItems.isNotEmpty()) {
+                item {
+                    AmbientReportCard(
+                        report = ambientReport,
+                        items = state.ambientReportItems,
+                        onAction = onAction
+                    )
                 }
             }
             
@@ -683,7 +699,11 @@ fun ProviderScreen(
  * editing and the other five areas are later slices; nothing here writes.
  */
 @Composable
-fun MemoryScreen(state: UiState, onAction: (UiAction) -> Unit = {}) {
+fun MemoryScreen(
+    state: UiState,
+    onAction: (UiAction) -> Unit = {},
+    storage: com.anchor.core.storage.Storage? = null
+) {
     Column(modifier = Modifier.testTag("memoryScreen")) {
         Text("Memory", style = MaterialTheme.typography.titleMedium)
         Spacer(modifier = Modifier.height(8.dp))
@@ -696,6 +716,13 @@ fun MemoryScreen(state: UiState, onAction: (UiAction) -> Unit = {}) {
         }
 
         LazyColumn {
+            item {
+                AmbientControlCard(
+                    storage = storage,
+                    onDeleteAllClick = { onAction(UiAction.DeleteAllAmbientData) }
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+            }
             item {
                 Spacer(modifier = Modifier.height(16.dp))
                 Text("Items (${state.memoryNodes.size})", style = MaterialTheme.typography.titleSmall)

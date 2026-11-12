@@ -227,7 +227,11 @@ class ChatController(
         isAppLocked = (storage.getSetting("privacy.app_lock") == "1") && it.isAppLocked.let { locked -> if (it.appLockEnabled) locked else true },
         relockTimeoutSec = storage.getSetting("privacy.relock_timeout_sec")?.toIntOrNull() ?: 60,
         blockScreenshots = storage.getSetting("privacy.block_screenshots") == "1",
-        compactMode = storage.getSetting("ai.compact_mode") == "1"
+        compactMode = storage.getSetting("ai.compact_mode") == "1",
+        ambientEnabled = storage.getSetting("ambient.enabled") == "1",
+        voiceprintEnrolled = storage.getVoiceprint() != null,
+        latestAmbientReport = storage.getLatestAmbientReport(),
+        ambientReportItems = storage.getLatestAmbientReport()?.let { r -> storage.getAmbientReportItems(r.id) } ?: emptyList()
     )}
     _state.update { it.copy(chatItems = ChatTimelineBuilder.build(it.chatMessages, it.receipts, it.openProposals)) }
 
@@ -995,6 +999,82 @@ class ChatController(
                 } catch (e: Exception) {
                     if (e is kotlinx.coroutines.CancellationException) throw e
                     addTransientReceipt(ReceiptState(UUID.randomUUID().toString(), "Could not update compact mode: ${e.message ?: e.javaClass.simpleName}", null, isError = true, timestamp = clock.now()))
+                    refreshUI()
+                }
+            }
+            is UiAction.AcceptAmbientItem -> coroutineScope.launch(defaultDispatcher) {
+                try {
+                    val report = storage.getLatestAmbientReport() ?: return@launch
+                    val items = storage.getAmbientReportItems(report.id)
+                    val target = items.find { it.id == action.itemId } ?: return@launch
+
+                    storage.updateAmbientReportItemState(target.id, "accepted", clock.now())
+                    if (target.nodeId != null) {
+                        gateway.handleActivateNode(target.nodeId)
+                    }
+                    val updatedItems = storage.getAmbientReportItems(report.id)
+                    _state.update { it.copy(ambientReportItems = updatedItems) }
+                    addTransientReceipt(ReceiptState(UUID.randomUUID().toString(), "Accepted: ${target.summary}", null, isError = false, timestamp = clock.now()))
+                    refreshUI()
+                } catch (e: Exception) {
+                    if (e is kotlinx.coroutines.CancellationException) throw e
+                    addTransientReceipt(ReceiptState(UUID.randomUUID().toString(), "Could not accept ambient item: ${e.message}", null, isError = true, timestamp = clock.now()))
+                    refreshUI()
+                }
+            }
+            is UiAction.RejectAmbientItem -> coroutineScope.launch(defaultDispatcher) {
+                try {
+                    val report = storage.getLatestAmbientReport() ?: return@launch
+                    val items = storage.getAmbientReportItems(report.id)
+                    val target = items.find { it.id == action.itemId } ?: return@launch
+
+                    storage.updateAmbientReportItemState(target.id, "rejected", clock.now())
+                    if (target.nodeId != null) {
+                        gateway.handleDeleteNode(target.nodeId)
+                    }
+                    val updatedItems = storage.getAmbientReportItems(report.id)
+                    _state.update { it.copy(ambientReportItems = updatedItems) }
+                    addTransientReceipt(ReceiptState(UUID.randomUUID().toString(), "Rejected: ${target.summary}", null, isError = false, timestamp = clock.now()))
+                    refreshUI()
+                } catch (e: Exception) {
+                    if (e is kotlinx.coroutines.CancellationException) throw e
+                    addTransientReceipt(ReceiptState(UUID.randomUUID().toString(), "Could not reject ambient item: ${e.message}", null, isError = true, timestamp = clock.now()))
+                    refreshUI()
+                }
+            }
+            is UiAction.AcceptAllAmbientItems -> coroutineScope.launch(defaultDispatcher) {
+                try {
+                    val items = storage.getAmbientReportItems(action.reportId)
+                    var count = 0
+                    for (item in items) {
+                        val flags = item.flags ?: ""
+                        if (!flags.contains("attribution_uncertain") && !flags.contains("possible_duplicate") && item.state == "pending") {
+                            storage.updateAmbientReportItemState(item.id, "accepted", clock.now())
+                            if (item.nodeId != null) {
+                                gateway.handleActivateNode(item.nodeId)
+                            }
+                            count++
+                        }
+                    }
+                    val updatedItems = storage.getAmbientReportItems(action.reportId)
+                    _state.update { it.copy(ambientReportItems = updatedItems) }
+                    addTransientReceipt(ReceiptState(UUID.randomUUID().toString(), "Accepted $count unflagged items", null, isError = false, timestamp = clock.now()))
+                    refreshUI()
+                } catch (e: Exception) {
+                    if (e is kotlinx.coroutines.CancellationException) throw e
+                    addTransientReceipt(ReceiptState(UUID.randomUUID().toString(), "Could not accept items: ${e.message}", null, isError = true, timestamp = clock.now()))
+                    refreshUI()
+                }
+            }
+            is UiAction.DeleteAllAmbientData -> coroutineScope.launch(defaultDispatcher) {
+                try {
+                    val count = storage.deleteAllAmbientData()
+                    _state.update { it.copy(latestAmbientReport = null, ambientReportItems = emptyList(), voiceprintEnrolled = false) }
+                    addTransientReceipt(ReceiptState(UUID.randomUUID().toString(), "Deleted all ambient data ($count records)", null, isError = false, timestamp = clock.now()))
+                    refreshUI()
+                } catch (e: Exception) {
+                    if (e is kotlinx.coroutines.CancellationException) throw e
+                    addTransientReceipt(ReceiptState(UUID.randomUUID().toString(), "Could not delete ambient data: ${e.message}", null, isError = true, timestamp = clock.now()))
                     refreshUI()
                 }
             }

@@ -1,6 +1,42 @@
 # TASKS (one at a time, smallest first). Status: [ ] open, [~] in progress, [x] done+reviewed
 Specs for R1-R10: docs/agent/work/session1-remediation-spec.md. Read the task's section before starting.
 
+## v3 Ambient Architecture & Implementation (2026-11-12)
+[x] Phase 1: Deterministic Synthetic Audio & Voice Testing Harness
+    [x] SyntheticAudioFixtures.kt in :core (16 kHz sine wave, silence, white noise, formant speech bursts, 192-dim voiceprints, cosine similarity, RMS).
+    [x] SyntheticAudioFixturesTest.kt (4/4 PASS).
+[x] Phase 2: Pure Kotlin Ambient Models, Presence Gate, & Overnight Consolidation
+    [x] AmbientModels.kt: AmbientState, Voiceprint, SpeakerLabel, AmbientSession, AmbientWindow, AmbientSegment (48h TTL), AmbientReport, AmbientReportItem.
+    [x] PresenceGate.kt: Dual-threshold scoring (t_hi=0.80, t_lo=0.60, short segment detection <1.5s), RAM ring buffer trimming (90s window), window presence gate.
+    [x] NumberScrubber.kt: Regex-based scrubbing for cards, SSNs, phone numbers, and OTPs to [number].
+    [x] DialogueWindowEngine.kt: Grouping turns with 90s silence split, 60s/12-turn duration caps, [you]/[other] prompts.
+    [x] AmbientProposalExtractor.kt: Proposal-only extraction with attribution_uncertain and possible_duplicate flags, plus rule-based offline fallback.
+    [x] ConsolidationEngine.kt: DayDigest calculation, streak reflection, and proposed SoulFact generation.
+    [x] AttachmentModels.kt: AttachmentRef representation with JSON serialization.
+    [x] Unit tests: AmbientCoreComponentsTest, ConsolidationEngineTest, AttachmentModelsTest (all PASS).
+[x] Phase 3: Database Schema Migration Version 12 & Storage Layer Updates
+    [x] MineDatabaseHelper.kt: Bumped version 11 -> 12; DDL for voiceprint, ambient_session, ambient_window, ambient_segment, ambient_report, ambient_report_item, day_digest; 3 indexes.
+    [x] AndroidStorage.kt: Implemented all 18 ambient and consolidation methods using SQLCipher transactions.
+    [x] AndroidExportManager.kt: Verified exclusion of all ambient staging and biometrics from EXPORTED_TABLES.
+    [x] SettingsCatalog.kt: Added 14 Section 8 Ambient settings.
+    [x] ReliabilityManager.kt: Wired storage.pruneAmbientStaging(now) into periodic sweeper.
+[x] Phase 4: Ambient Foreground Service & Heartbeat
+    [x] NotificationChannels.kt: Added AMBIENT (IMPORTANCE_LOW) and AMBIENT_HEARTBEAT (IMPORTANCE_DEFAULT) channels with zero vibration.
+    [x] AndroidManifest.xml: Declared FOREGROUND_SERVICE_MICROPHONE and AmbientForegroundService.
+    [x] AmbientForegroundService.kt: Foreground service managing AmbientState, battery/charging/telephony blockers, ongoing low-priority notification with Pause 15m/1h/Stop actions, returning START_NOT_STICKY.
+    [x] AmbientHeartbeatHelper.kt: Heartbeat checker and "Ambient stopped. Tap to resume." notification with zero vibration.
+    [x] BootReceiver.kt: Wired AmbientHeartbeatHelper into periodic sweep.
+[x] Phase 5: Jetpack Compose UI Screens & Timeline Integration
+    [x] BoardViewScreen.kt: 3-column Kanban board (To Do, In Progress, Done) powered by storage.getBoardViewNodes().
+    [x] CalendarViewScreen.kt: Calendar buckets agenda view powered by storage.getCalendarBuckets().
+    [x] AmbientControlCard.kt: Ambient Listening toggle, state pill, Teach Voice, and Delete All buttons.
+    [x] AmbientReportCard.kt: Ambient Daily Report card in ChatScreen with Accept All, attribution badges, and Accept/Reject actions.
+    [x] ChatContract.kt: Added ambient fields to UiState and UiAction (AcceptAmbientItem, RejectAmbientItem, AcceptAllAmbientItems, DeleteAllAmbientData).
+    [x] ChatController.kt: Handled all 4 ambient actions with receipts and state updates.
+    [x] MainActivity.kt: Appended Board (tab 6) and Calendar (tab 7) preserving 0..5, wired AmbientReportCard into ChatScreen and AmbientControlCard into MemoryScreen.
+[x] Phase 6: Connected Device Test Suite (AmbientAndV3DeviceTest.kt)
+    [x] Created 7 connected tests verifying V11->V12 migration, voiceprint float serialization & SQLCipher BLOB round-trip, zero vibration across all notification channels, synthetic acoustic VAD presence gate, 48h staging pruning & total purge, board/calendar views, and privacy export exclusions.
+
 ## Bulletproof & Invisible Recovery Audit #3 (2026-11-12)
 [x] Audit #3 Polish Seams (2026-11-12)
     [x] Seam 1: CallStateReceiver Alarm Scheduling: Wrapped alarm scheduling in try/catch(SecurityException) and falls back to setAndAllowWhileIdle when exact alarm permission is absent. Verified via CallNudgeDeviceTest.

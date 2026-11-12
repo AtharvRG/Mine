@@ -53,6 +53,8 @@ class ReliabilityManager(
         
         // Blueprint 30 & 42: Prune expired operational logs (diag_log 7d, reminder_fire 90d, outbox 7d)
         storage.pruneOperationalLogs(now)
+        // Blueprint 61 §3.6: Prune expired ambient staging segments (48h) and unreviewed proposals (7d)
+        storage.pruneAmbientStaging(now)
         
         if (autoExportScheduler.shouldRunAutoExport()) {
             onAutoExportTriggered?.invoke()

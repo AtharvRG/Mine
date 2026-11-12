@@ -1515,6 +1515,18 @@ class Gateway(
         return ToolResult.Committed("RESTORE_NODE", nodeId, "Restored: ${node.title}", uId)
     }
 
+    suspend fun handleActivateNode(nodeId: String): ToolResult {
+        val node = storage.getNode(nodeId) ?: return ToolResult.Error("Node not found")
+        val now = clock.now()
+        val beforeJson = json.encodeToString(NodeStateSnapshot(node, null))
+        val newNode = node.copy(status = "active", updatedAt = now)
+        val afterJson = json.encodeToString(NodeStateSnapshot(newNode, null))
+        val uId = "u_${UUID.randomUUID()}"
+        val event = RawEvent(uId, "ACTIVATE_NODE", "node", nodeId, beforeJson = beforeJson, afterJson = afterJson, tsUtc = now)
+        storage.updateNodeAndCommit(newNode, event, deleteReminderId = null, upsertReminder = null)
+        return ToolResult.Committed("ACTIVATE_NODE", nodeId, "Activated: ${node.title}", uId)
+    }
+
     suspend fun handleEraseNode(nodeId: String): ToolResult {
         val node = storage.getNode(nodeId) ?: return ToolResult.Error("Node not found")
         val uId = "u_${UUID.randomUUID()}"

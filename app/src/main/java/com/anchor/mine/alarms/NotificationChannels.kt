@@ -20,6 +20,8 @@ object NotificationChannels {
     const val ALARM = "mine_reminders_v3"
     const val GENTLE = "mine_gentle_reminders_v3"
     const val CALL_NUDGE = "mine_call_nudge"
+    const val AMBIENT = "mine_ambient_listening"
+    const val AMBIENT_HEARTBEAT = "mine_ambient_heartbeat"
 
     fun channelId(tier: AlarmTier): String = if (tier == AlarmTier.GENTLE) GENTLE else ALARM
 
@@ -28,6 +30,8 @@ object NotificationChannels {
         manager.createNotificationChannel(channel(GENTLE, "Gentle Reminders", NotificationManager.IMPORTANCE_DEFAULT))
         manager.createNotificationChannel(channel(ALARM, "Reminders", NotificationManager.IMPORTANCE_HIGH))
         manager.createNotificationChannel(channel(CALL_NUDGE, "Post-call Nudges", NotificationManager.IMPORTANCE_DEFAULT))
+        manager.createNotificationChannel(channel(AMBIENT, "Ambient Listening Status", NotificationManager.IMPORTANCE_LOW))
+        manager.createNotificationChannel(channel(AMBIENT_HEARTBEAT, "Ambient Listening Alerts", NotificationManager.IMPORTANCE_DEFAULT))
     }
 
     private fun channel(id: String, name: String, importance: Int) =

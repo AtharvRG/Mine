@@ -12,6 +12,9 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <!-- Blueprint 44 §2: Phone state permission for post-call nudges (detection only, zero audio, zero numbers) -->
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    <!-- Blueprint 61: Foreground Service with Microphone for Ambient Listening -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <application
         android:name=".MineApp"
         android:allowBackup="false"
@@ -87,5 +90,11 @@
                 <action android:name="com.anchor.mine.alarms.ACTION_SWEEP" />
             </intent-filter>
         </receiver>
+
+        <!-- Blueprint 61: Ambient Listening Foreground Service -->
+        <service
+            android:name=".ambient.AmbientForegroundService"
+            android:exported="false"
+            android:foregroundServiceType="microphone" />
     </application>
 </manifest>

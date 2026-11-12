@@ -2112,4 +2112,283 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         }
         pruned
     }
+
+    // Blueprint 61 §4: Ambient Listening & Blueprint 21 §3.7: Day Digest Storage
+    override suspend fun saveVoiceprint(voiceprint: com.anchor.core.ambient.Voiceprint) = withContext(ioDispatcher) {
+        dbHelper.writableDatabase.execSQL(
+            "INSERT OR REPLACE INTO voiceprint (id, embedding, model_ref, created_at) VALUES (?, ?, ?, ?)",
+            arrayOf<Any?>(voiceprint.id, voiceprint.embedding, voiceprint.modelRef, voiceprint.createdAt)
+        )
+    }
+
+    override suspend fun getVoiceprint(): com.anchor.core.ambient.Voiceprint? = withContext(ioDispatcher) {
+        dbHelper.readableDatabase.query(
+            "SELECT id, embedding, model_ref, created_at FROM voiceprint LIMIT 1"
+        ).use { c ->
+            if (c.moveToFirst()) {
+                com.anchor.core.ambient.Voiceprint(
+                    id = c.getString(0),
+                    embedding = c.getBlob(1),
+                    modelRef = c.getString(2),
+                    createdAt = c.getLong(3)
+                )
+            } else null
+        }
+    }
+
+    override suspend fun deleteVoiceprint() = withContext(ioDispatcher) {
+        dbHelper.writableDatabase.execSQL("DELETE FROM voiceprint")
+    }
+
+    override suspend fun saveAmbientSession(session: com.anchor.core.ambient.AmbientSession) = withContext(ioDispatcher) {
+        dbHelper.writableDatabase.execSQL(
+            "INSERT OR REPLACE INTO ambient_session (id, started_at, ended_at, end_reason, listen_s, speech_s, uploaded_s, segments) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            arrayOf<Any?>(session.id, session.startedAt, session.endedAt, session.endReason, session.listenSeconds, session.speechSeconds, session.uploadedSeconds, session.segmentsCount)
+        )
+    }
+
+    override suspend fun getRecentAmbientSessions(limit: Int): List<com.anchor.core.ambient.AmbientSession> = withContext(ioDispatcher) {
+        val list = mutableListOf<com.anchor.core.ambient.AmbientSession>()
+        dbHelper.readableDatabase.query(
+            "SELECT id, started_at, ended_at, end_reason, listen_s, speech_s, uploaded_s, segments FROM ambient_session ORDER BY started_at DESC LIMIT ?",
+            arrayOf(limit.toString())
+        ).use { c ->
+            while (c.moveToNext()) {
+                list.add(
+                    com.anchor.core.ambient.AmbientSession(
+                        id = c.getString(0),
+                        startedAt = c.getLong(1),
+                        endedAt = if (c.isNull(2)) null else c.getLong(2),
+                        endReason = if (c.isNull(3)) null else c.getString(3),
+                        listenSeconds = c.getInt(4),
+                        speechSeconds = c.getInt(5),
+                        uploadedSeconds = c.getInt(6),
+                        segmentsCount = c.getInt(7)
+                    )
+                )
+            }
+        }
+        list
+    }
+
+    override suspend fun saveAmbientWindow(window: com.anchor.core.ambient.AmbientWindow) = withContext(ioDispatcher) {
+        dbHelper.writableDatabase.execSQL(
+            "INSERT OR REPLACE INTO ambient_window (id, session_id, started_at, ended_at, state, gate_opened) VALUES (?, ?, ?, ?, ?, ?)",
+            arrayOf<Any?>(window.id, window.sessionId, window.startedAt, window.endedAt, window.state, if (window.gateOpened) 1 else 0)
+        )
+    }
+
+    override suspend fun getAmbientWindows(sessionId: String): List<com.anchor.core.ambient.AmbientWindow> = withContext(ioDispatcher) {
+        val list = mutableListOf<com.anchor.core.ambient.AmbientWindow>()
+        dbHelper.readableDatabase.query(
+            "SELECT id, session_id, started_at, ended_at, state, gate_opened FROM ambient_window WHERE session_id = ? ORDER BY started_at ASC",
+            arrayOf(sessionId)
+        ).use { c ->
+            while (c.moveToNext()) {
+                list.add(
+                    com.anchor.core.ambient.AmbientWindow(
+                        id = c.getString(0),
+                        sessionId = c.getString(1),
+                        startedAt = c.getLong(2),
+                        endedAt = c.getLong(3),
+                        state = c.getString(4),
+                        gateOpened = c.getInt(5) == 1
+                    )
+                )
+            }
+        }
+        list
+    }
+
+    override suspend fun saveAmbientSegment(segment: com.anchor.core.ambient.AmbientSegment) = withContext(ioDispatcher) {
+        dbHelper.writableDatabase.execSQL(
+            "INSERT OR REPLACE INTO ambient_segment (id, window_id, t_start, t_end, label, score, short, text, stt_ref, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            arrayOf<Any?>(segment.id, segment.windowId, segment.tStart, segment.tEnd, segment.label, segment.score, if (segment.isShort) 1 else 0, segment.text, segment.sttRef, segment.expiresAt)
+        )
+    }
+
+    override suspend fun getAmbientSegments(windowId: String): List<com.anchor.core.ambient.AmbientSegment> = withContext(ioDispatcher) {
+        val list = mutableListOf<com.anchor.core.ambient.AmbientSegment>()
+        dbHelper.readableDatabase.query(
+            "SELECT id, window_id, t_start, t_end, label, score, short, text, stt_ref, expires_at FROM ambient_segment WHERE window_id = ? ORDER BY t_start ASC",
+            arrayOf(windowId)
+        ).use { c ->
+            while (c.moveToNext()) {
+                list.add(
+                    com.anchor.core.ambient.AmbientSegment(
+                        id = c.getString(0),
+                        windowId = c.getString(1),
+                        tStart = c.getLong(2),
+                        tEnd = c.getLong(3),
+                        label = c.getString(4),
+                        score = if (c.isNull(5)) null else c.getFloat(5),
+                        isShort = c.getInt(6) == 1,
+                        text = if (c.isNull(7)) null else c.getString(7),
+                        sttRef = if (c.isNull(8)) null else c.getString(8),
+                        expiresAt = c.getLong(9)
+                    )
+                )
+            }
+        }
+        list
+    }
+
+    override suspend fun saveAmbientReport(report: com.anchor.core.ambient.AmbientReport) = withContext(ioDispatcher) {
+        dbHelper.writableDatabase.execSQL(
+            "INSERT OR REPLACE INTO ambient_report (id, day_key, generated_at, state) VALUES (?, ?, ?, ?)",
+            arrayOf<Any?>(report.id, report.dayKey, report.generatedAt, report.state)
+        )
+    }
+
+    override suspend fun getAmbientReport(id: String): com.anchor.core.ambient.AmbientReport? = withContext(ioDispatcher) {
+        dbHelper.readableDatabase.query(
+            "SELECT id, day_key, generated_at, state FROM ambient_report WHERE id = ?",
+            arrayOf(id)
+        ).use { c ->
+            if (c.moveToFirst()) {
+                com.anchor.core.ambient.AmbientReport(
+                    id = c.getString(0),
+                    dayKey = c.getString(1),
+                    generatedAt = c.getLong(2),
+                    state = c.getString(3)
+                )
+            } else null
+        }
+    }
+
+    override suspend fun getLatestAmbientReport(): com.anchor.core.ambient.AmbientReport? = withContext(ioDispatcher) {
+        dbHelper.readableDatabase.query(
+            "SELECT id, day_key, generated_at, state FROM ambient_report ORDER BY generated_at DESC LIMIT 1"
+        ).use { c ->
+            if (c.moveToFirst()) {
+                com.anchor.core.ambient.AmbientReport(
+                    id = c.getString(0),
+                    dayKey = c.getString(1),
+                    generatedAt = c.getLong(2),
+                    state = c.getString(3)
+                )
+            } else null
+        }
+    }
+
+    override suspend fun updateAmbientReportState(id: String, state: String) = withContext(ioDispatcher) {
+        dbHelper.writableDatabase.execSQL(
+            "UPDATE ambient_report SET state = ? WHERE id = ?",
+            arrayOf<Any?>(state, id)
+        )
+    }
+
+    override suspend fun saveAmbientReportItem(item: com.anchor.core.ambient.AmbientReportItem) = withContext(ioDispatcher) {
+        dbHelper.writableDatabase.execSQL(
+            "INSERT OR REPLACE INTO ambient_report_item (id, report_id, window_id, kind, summary, node_id, flags, state, reviewed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            arrayOf<Any?>(item.id, item.reportId, item.windowId, item.kind, item.summary, item.nodeId, item.flags, item.state, item.reviewedAt)
+        )
+    }
+
+    override suspend fun getAmbientReportItems(reportId: String): List<com.anchor.core.ambient.AmbientReportItem> = withContext(ioDispatcher) {
+        val list = mutableListOf<com.anchor.core.ambient.AmbientReportItem>()
+        dbHelper.readableDatabase.query(
+            "SELECT id, report_id, window_id, kind, summary, node_id, flags, state, reviewed_at FROM ambient_report_item WHERE report_id = ?",
+            arrayOf(reportId)
+        ).use { c ->
+            while (c.moveToNext()) {
+                list.add(
+                    com.anchor.core.ambient.AmbientReportItem(
+                        id = c.getString(0),
+                        reportId = c.getString(1),
+                        windowId = if (c.isNull(2)) null else c.getString(2),
+                        kind = c.getString(3),
+                        summary = c.getString(4),
+                        nodeId = if (c.isNull(5)) null else c.getString(5),
+                        flags = if (c.isNull(6)) null else c.getString(6),
+                        state = c.getString(7),
+                        reviewedAt = if (c.isNull(8)) null else c.getLong(8)
+                    )
+                )
+            }
+        }
+        list
+    }
+
+    override suspend fun updateAmbientReportItemState(id: String, state: String, reviewedAt: Long?) = withContext(ioDispatcher) {
+        if (reviewedAt != null) {
+            dbHelper.writableDatabase.execSQL(
+                "UPDATE ambient_report_item SET state = ?, reviewed_at = ? WHERE id = ?",
+                arrayOf<Any?>(state, reviewedAt, id)
+            )
+        } else {
+            dbHelper.writableDatabase.execSQL(
+                "UPDATE ambient_report_item SET state = ? WHERE id = ?",
+                arrayOf<Any?>(state, id)
+            )
+        }
+    }
+
+    override suspend fun pruneAmbientStaging(now: Long): Int = withContext(ioDispatcher) {
+        val db = dbHelper.writableDatabase
+        db.beginTransaction()
+        var pruned = 0
+        try {
+            db.execSQL("DELETE FROM ambient_segment WHERE expires_at < ?", arrayOf<Any?>(now))
+            val proposalCutoff = now - 7 * 86_400_000L
+            db.execSQL(
+                "DELETE FROM ambient_report_item WHERE kind = 'proposal' AND state = 'pending' AND report_id IN (SELECT id FROM ambient_report WHERE generated_at < ?)",
+                arrayOf<Any?>(proposalCutoff)
+            )
+            db.setTransactionSuccessful()
+            pruned = 1
+        } catch (_: Exception) {
+        } finally {
+            db.endTransaction()
+        }
+        pruned
+    }
+
+    override suspend fun deleteAllAmbientData(): Int = withContext(ioDispatcher) {
+        val db = dbHelper.writableDatabase
+        db.beginTransaction()
+        var deleted = 0
+        try {
+            db.execSQL("DELETE FROM ambient_segment")
+            db.execSQL("DELETE FROM ambient_report_item")
+            db.execSQL("DELETE FROM ambient_report")
+            db.execSQL("DELETE FROM ambient_window")
+            db.execSQL("DELETE FROM ambient_session")
+            db.execSQL("DELETE FROM voiceprint")
+            db.setTransactionSuccessful()
+            deleted = 1
+        } catch (_: Exception) {
+        } finally {
+            db.endTransaction()
+        }
+        deleted
+    }
+
+    override suspend fun saveDayDigest(digest: com.anchor.core.consolidation.DayDigest) = withContext(ioDispatcher) {
+        dbHelper.writableDatabase.execSQL(
+            "INSERT OR REPLACE INTO day_digest (day_key, completed_count, open_count, summary_text, open_loops, wins, generated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            arrayOf<Any?>(digest.dayKey, digest.completedCount, digest.openCount, digest.summaryText, digest.openLoops.joinToString("\n"), digest.wins.joinToString("\n"), digest.generatedAt)
+        )
+    }
+
+    override suspend fun getDayDigest(dayKey: String): com.anchor.core.consolidation.DayDigest? = withContext(ioDispatcher) {
+        dbHelper.readableDatabase.query(
+            "SELECT day_key, completed_count, open_count, summary_text, open_loops, wins, generated_at FROM day_digest WHERE day_key = ?",
+            arrayOf(dayKey)
+        ).use { c ->
+            if (c.moveToFirst()) {
+                val openLoopsStr = if (c.isNull(4)) "" else c.getString(4)
+                val winsStr = if (c.isNull(5)) "" else c.getString(5)
+                com.anchor.core.consolidation.DayDigest(
+                    dayKey = c.getString(0),
+                    completedCount = c.getInt(1),
+                    openCount = c.getInt(2),
+                    summaryText = c.getString(3),
+                    openLoops = if (openLoopsStr.isBlank()) emptyList() else openLoopsStr.split("\n"),
+                    wins = if (winsStr.isBlank()) emptyList() else winsStr.split("\n"),
+                    generatedAt = c.getLong(6)
+                )
+            } else null
+        }
+    }
 }

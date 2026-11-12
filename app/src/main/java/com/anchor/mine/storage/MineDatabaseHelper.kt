@@ -53,6 +53,13 @@ class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(DATABASE_VERSION) 
         db.execSQL(CALL_EVENT_DDL)
         db.execSQL(VOICE_JOB_DDL)
         db.execSQL(MODEL_ASSET_DDL)
+        db.execSQL(VOICEPRINT_DDL)
+        db.execSQL(AMBIENT_SESSION_DDL)
+        db.execSQL(AMBIENT_WINDOW_DDL)
+        db.execSQL(AMBIENT_SEGMENT_DDL)
+        db.execSQL(AMBIENT_REPORT_DDL)
+        db.execSQL(AMBIENT_REPORT_ITEM_DDL)
+        db.execSQL(DAY_DIGEST_DDL)
 
         createIndexes(db)
         createTriggers(db)
@@ -149,6 +156,15 @@ class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(DATABASE_VERSION) 
             db.execSQL(VOICE_JOB_DDL)
             db.execSQL(MODEL_ASSET_DDL)
         }
+        if (oldVersion < 12) {
+            db.execSQL(VOICEPRINT_DDL)
+            db.execSQL(AMBIENT_SESSION_DDL)
+            db.execSQL(AMBIENT_WINDOW_DDL)
+            db.execSQL(AMBIENT_SEGMENT_DDL)
+            db.execSQL(AMBIENT_REPORT_DDL)
+            db.execSQL(AMBIENT_REPORT_ITEM_DDL)
+            db.execSQL(DAY_DIGEST_DDL)
+        }
         // T19: an upgraded device must end up with the same indexes and triggers as a fresh
         // install. Indexes were previously created in onCreate only, so a device upgraded from v1
         // never got idx_reminder_fire - the index that makes the R-26 `ORDER BY fire_at` cheap.
@@ -177,7 +193,7 @@ class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(DATABASE_VERSION) 
     }
 
     companion object {
-        const val DATABASE_VERSION = 11
+        const val DATABASE_VERSION = 12
 
         /**
          * Blueprint 41 §4, verbatim. Shared by [onCreate] and the `oldVersion < 6` upgrade branch so
@@ -278,6 +294,82 @@ class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(DATABASE_VERSION) 
                 "state TEXT NOT NULL, " +
                 "updated_at INTEGER NOT NULL)"
 
+        /** Blueprint 61 §4: Device-local Voiceprint. */
+        private const val VOICEPRINT_DDL =
+            "CREATE TABLE IF NOT EXISTS voiceprint (" +
+                "id TEXT PRIMARY KEY, " +
+                "embedding BLOB NOT NULL, " +
+                "model_ref TEXT NOT NULL, " +
+                "created_at INTEGER NOT NULL)"
+
+        /** Blueprint 61 §4: Operational Ambient Sessions. */
+        private const val AMBIENT_SESSION_DDL =
+            "CREATE TABLE IF NOT EXISTS ambient_session (" +
+                "id TEXT PRIMARY KEY, " +
+                "started_at INTEGER NOT NULL, " +
+                "ended_at INTEGER, " +
+                "end_reason TEXT, " +
+                "listen_s INTEGER DEFAULT 0, " +
+                "speech_s INTEGER DEFAULT 0, " +
+                "uploaded_s INTEGER DEFAULT 0, " +
+                "segments INTEGER DEFAULT 0)"
+
+        /** Blueprint 61 §4: Ambient Windows. */
+        private const val AMBIENT_WINDOW_DDL =
+            "CREATE TABLE IF NOT EXISTS ambient_window (" +
+                "id TEXT PRIMARY KEY, " +
+                "session_id TEXT NOT NULL, " +
+                "started_at INTEGER NOT NULL, " +
+                "ended_at INTEGER NOT NULL, " +
+                "state TEXT NOT NULL, " +
+                "gate_opened INTEGER NOT NULL DEFAULT 0)"
+
+        /** Blueprint 61 §4: Ambient Segments (staging, 48h TTL). */
+        private const val AMBIENT_SEGMENT_DDL =
+            "CREATE TABLE IF NOT EXISTS ambient_segment (" +
+                "id TEXT PRIMARY KEY, " +
+                "window_id TEXT NOT NULL, " +
+                "t_start INTEGER NOT NULL, " +
+                "t_end INTEGER NOT NULL, " +
+                "label TEXT NOT NULL, " +
+                "score REAL, " +
+                "short INTEGER NOT NULL DEFAULT 0, " +
+                "text TEXT, " +
+                "stt_ref TEXT, " +
+                "expires_at INTEGER NOT NULL)"
+
+        /** Blueprint 61 §4: Ambient Daily Reports. */
+        private const val AMBIENT_REPORT_DDL =
+            "CREATE TABLE IF NOT EXISTS ambient_report (" +
+                "id TEXT PRIMARY KEY, " +
+                "day_key TEXT NOT NULL, " +
+                "generated_at INTEGER NOT NULL, " +
+                "state TEXT NOT NULL)"
+
+        /** Blueprint 61 §4: Ambient Report Items. */
+        private const val AMBIENT_REPORT_ITEM_DDL =
+            "CREATE TABLE IF NOT EXISTS ambient_report_item (" +
+                "id TEXT PRIMARY KEY, " +
+                "report_id TEXT NOT NULL, " +
+                "window_id TEXT, " +
+                "kind TEXT NOT NULL, " +
+                "summary TEXT NOT NULL, " +
+                "node_id TEXT, " +
+                "flags TEXT, " +
+                "state TEXT NOT NULL, " +
+                "reviewed_at INTEGER)"
+
+        /** Blueprint 21 §3.7: Day Digest / Overnight Consolidation. */
+        private const val DAY_DIGEST_DDL =
+            "CREATE TABLE IF NOT EXISTS day_digest (" +
+                "day_key TEXT PRIMARY KEY, " +
+                "completed_count INTEGER NOT NULL, " +
+                "open_count INTEGER NOT NULL, " +
+                "summary_text TEXT NOT NULL, " +
+                "open_loops TEXT, " +
+                "wins TEXT, " +
+                "generated_at INTEGER NOT NULL)"
+
         private val INDEXES = listOf(
             "CREATE INDEX IF NOT EXISTS idx_node_status_due ON node(status, due_at)",
             "CREATE INDEX IF NOT EXISTS idx_node_habit ON node(type, streak_current)",
@@ -297,7 +389,10 @@ class MineDatabaseCallback : SupportSQLiteOpenHelper.Callback(DATABASE_VERSION) 
             "CREATE INDEX IF NOT EXISTS idx_sensing_event_ts ON sensing_event(ts_utc)",
             "CREATE INDEX IF NOT EXISTS idx_place_kind ON place(kind)",
             "CREATE INDEX IF NOT EXISTS idx_call_event_ended ON call_event(ended_at)",
-            "CREATE INDEX IF NOT EXISTS idx_voice_job_state ON voice_job(state)"
+            "CREATE INDEX IF NOT EXISTS idx_voice_job_state ON voice_job(state)",
+            "CREATE INDEX IF NOT EXISTS idx_ambient_segment_window ON ambient_segment(window_id)",
+            "CREATE INDEX IF NOT EXISTS idx_ambient_segment_expires ON ambient_segment(expires_at)",
+            "CREATE INDEX IF NOT EXISTS idx_ambient_report_item_report ON ambient_report_item(report_id)"
         )
 
         /** Every trigger created by [createTriggers], in drop order. */

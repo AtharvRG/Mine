@@ -987,4 +987,117 @@ open class SharedFakeStorage(var clock: Clock = SystemClock()) : Storage {
         outbox.removeAll { it.status in listOf(OutboxJob.STATUS_DONE, OutboxJob.STATUS_DROPPED) && it.updatedAt < outboxCutoff }
         1
     }
+
+    // Ambient storage in SharedFakeStorage
+    private val voiceprints = mutableListOf<com.anchor.core.ambient.Voiceprint>()
+    private val ambientSessions = mutableListOf<com.anchor.core.ambient.AmbientSession>()
+    private val ambientWindows = mutableListOf<com.anchor.core.ambient.AmbientWindow>()
+    private val ambientSegments = mutableListOf<com.anchor.core.ambient.AmbientSegment>()
+    private val ambientReports = mutableListOf<com.anchor.core.ambient.AmbientReport>()
+    private val ambientReportItems = mutableListOf<com.anchor.core.ambient.AmbientReportItem>()
+    private val dayDigests = mutableMapOf<String, com.anchor.core.consolidation.DayDigest>()
+
+    override suspend fun saveVoiceprint(voiceprint: com.anchor.core.ambient.Voiceprint) {
+        synchronized(this) {
+            voiceprints.clear()
+            voiceprints.add(voiceprint)
+        }
+    }
+    override suspend fun getVoiceprint(): com.anchor.core.ambient.Voiceprint? = synchronized(this) {
+        voiceprints.firstOrNull()
+    }
+    override suspend fun deleteVoiceprint() {
+        synchronized(this) { voiceprints.clear() }
+    }
+
+    override suspend fun saveAmbientSession(session: com.anchor.core.ambient.AmbientSession) {
+        synchronized(this) {
+            val idx = ambientSessions.indexOfFirst { it.id == session.id }
+            if (idx != -1) ambientSessions[idx] = session else ambientSessions.add(session)
+        }
+    }
+    override suspend fun getRecentAmbientSessions(limit: Int): List<com.anchor.core.ambient.AmbientSession> = synchronized(this) {
+        ambientSessions.sortedByDescending { it.startedAt }.take(limit.coerceAtLeast(0))
+    }
+
+    override suspend fun saveAmbientWindow(window: com.anchor.core.ambient.AmbientWindow) {
+        synchronized(this) {
+            val idx = ambientWindows.indexOfFirst { it.id == window.id }
+            if (idx != -1) ambientWindows[idx] = window else ambientWindows.add(window)
+        }
+    }
+    override suspend fun getAmbientWindows(sessionId: String): List<com.anchor.core.ambient.AmbientWindow> = synchronized(this) {
+        ambientWindows.filter { it.sessionId == sessionId }
+    }
+
+    override suspend fun saveAmbientSegment(segment: com.anchor.core.ambient.AmbientSegment) {
+        synchronized(this) {
+            val idx = ambientSegments.indexOfFirst { it.id == segment.id }
+            if (idx != -1) ambientSegments[idx] = segment else ambientSegments.add(segment)
+        }
+    }
+    override suspend fun getAmbientSegments(windowId: String): List<com.anchor.core.ambient.AmbientSegment> = synchronized(this) {
+        ambientSegments.filter { it.windowId == windowId }
+    }
+
+    override suspend fun saveAmbientReport(report: com.anchor.core.ambient.AmbientReport) {
+        synchronized(this) {
+            val idx = ambientReports.indexOfFirst { it.id == report.id }
+            if (idx != -1) ambientReports[idx] = report else ambientReports.add(report)
+        }
+    }
+    override suspend fun getAmbientReport(id: String): com.anchor.core.ambient.AmbientReport? = synchronized(this) {
+        ambientReports.find { it.id == id }
+    }
+    override suspend fun getLatestAmbientReport(): com.anchor.core.ambient.AmbientReport? = synchronized(this) {
+        ambientReports.maxByOrNull { it.generatedAt }
+    }
+    override suspend fun updateAmbientReportState(id: String, state: String) {
+        synchronized(this) {
+            val idx = ambientReports.indexOfFirst { it.id == id }
+            if (idx != -1) ambientReports[idx] = ambientReports[idx].copy(state = state)
+        }
+    }
+
+    override suspend fun saveAmbientReportItem(item: com.anchor.core.ambient.AmbientReportItem) {
+        synchronized(this) {
+            val idx = ambientReportItems.indexOfFirst { it.id == item.id }
+            if (idx != -1) ambientReportItems[idx] = item else ambientReportItems.add(item)
+        }
+    }
+    override suspend fun getAmbientReportItems(reportId: String): List<com.anchor.core.ambient.AmbientReportItem> = synchronized(this) {
+        ambientReportItems.filter { it.reportId == reportId }
+    }
+    override suspend fun updateAmbientReportItemState(id: String, state: String, reviewedAt: Long?) {
+        synchronized(this) {
+            val idx = ambientReportItems.indexOfFirst { it.id == id }
+            if (idx != -1) ambientReportItems[idx] = ambientReportItems[idx].copy(state = state, reviewedAt = reviewedAt)
+        }
+    }
+
+    override suspend fun pruneAmbientStaging(now: Long): Int = synchronized(this) {
+        val segmentCountBefore = ambientSegments.size
+        ambientSegments.removeAll { it.expiresAt < now }
+        val proposalCountBefore = ambientReportItems.size
+        ambientReportItems.removeAll { it.kind == "proposal" && it.state == "pending" && it.reviewedAt == null }
+        (segmentCountBefore - ambientSegments.size) + (proposalCountBefore - ambientReportItems.size)
+    }
+
+    override suspend fun deleteAllAmbientData(): Int = synchronized(this) {
+        val count = ambientSegments.size + ambientReportItems.size + ambientReports.size + ambientWindows.size
+        ambientSegments.clear()
+        ambientReportItems.clear()
+        ambientReports.clear()
+        ambientWindows.clear()
+        ambientSessions.clear()
+        voiceprints.clear()
+        count
+    }
+
+    override suspend fun saveDayDigest(digest: com.anchor.core.consolidation.DayDigest) {
+        synchronized(this) { dayDigests[digest.dayKey] = digest }
+    }
+    override suspend fun getDayDigest(dayKey: String): com.anchor.core.consolidation.DayDigest? = synchronized(this) {
+        dayDigests[dayKey]
+    }
 }
