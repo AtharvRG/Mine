@@ -47,9 +47,10 @@ class TurnCompletionTest {
                 if (callCount == 1) {
                     emit("""data: {"choices":[{"delta":{"content":"```json\n{\"reply\":\"I see two.\",\"calls\":[{\"tool\":\"propose_change\",\"args\":{\"intent\":\"CANCEL\",\"hint\":\"the dinner\"}}]}\n```"}}]}""")
                 } else if (callCount == 2) {
-                    val pId = storage.savedProposals.first().id
+                    val pMatch = Regex("""Proposal (p_\d+)""").find(body)?.groupValues?.get(1) ?: "p_1"
+                    val nMatch = Regex("""(n_\d+): Dinner with Raj""").find(body)?.groupValues?.get(1) ?: "n_1"
                     // TASK 1 TEST: This commit should end the turn, preventing a 3rd call
-                    emit("""data: {"choices":[{"delta":{"content":"{\"reply\":\"Canceling Raj.\",\"calls\":[{\"tool\":\"confirm_change\",\"args\":{\"proposal\":\"$pId\",\"choice\":\"n_tomo\"}}]}"}}]}""")
+                    emit("""data: {"choices":[{"delta":{"content":"{\"reply\":\"Canceling Raj.\",\"calls\":[{\"tool\":\"confirm_change\",\"args\":{\"proposal\":\"$pMatch\",\"choice\":\"$nMatch\"}}]}"}}]}""")
                 } else {
                     emit("""data: {"choices":[{"delta":{"content":"{\"reply\":\"FAIL: LLM should not be called again!\",\"calls\":[]}"}}]}""")
                 }
@@ -227,5 +228,61 @@ class TurnCompletionTest {
         val messages = storage.messages
         val limitMessage = messages.find { it.content == "Loop limit reached." }
         org.junit.Assert.assertNull("Loop limit reached must NOT fire if 4th loop commits", limitMessage)
+    }
+
+    @Test
+    fun testMultiStepToolLoop_WithEmptyReply_StrictAlternatingRolesAndNoPrematureBatchDrain() = runBlocking {
+        val storage = SharedFakeStorage()
+        storage.settings["key"] = "test-key"
+        val clock = FakeClock(1000L)
+        var callCount = 0
+        var loop2Body: String? = null
+
+        val fakeTransport = object : HttpTransport {
+            override suspend fun postStream(target: Target, body: String): Flow<String> = flow {
+                callCount++
+                if (callCount == 1) {
+                    // Loop 1: search_memory tool call with empty reply
+                    emit("""data: {"choices":[{"delta":{"content":"{\"reply\":\"\",\"calls\":[{\"tool\":\"search_memory\",\"args\":{\"query\":\"dentist\"}}]}"}}]}""")
+                } else if (callCount == 2) {
+                    loop2Body = body
+                    // Loop 2: final answer after tool feedback
+                    emit("""data: {"choices":[{"delta":{"content":"{\"reply\":\"Your appointment is tomorrow at 2 PM.\",\"calls\":[]}"}}]}""")
+                }
+                emit("data: [DONE]")
+            }
+        }
+
+        val dateResolver = DateResolver(clock)
+        val checkinBuilder = com.anchor.core.nudge.CheckinBuilder(storage, clock, dateResolver)
+        val contextBuilder = ContextBuilder(storage, clock, dateResolver, checkinBuilder)
+
+        val controller = ChatController(
+            storage, ProviderOrchestrator(RateLimiter { clock.now() }, fakeTransport), contextBuilder,
+            Gateway(storage, Resolver(), dateResolver, clock),
+            object : AlarmScheduler { override val lastFiredId = MutableStateFlow<String?>(null); override fun schedule(reminder: Reminder) = com.anchor.core.alarms.ScheduleResult.Armed; override fun cancel(reminderId: String) {} },
+            TestScope(UnconfinedTestDispatcher()), UnconfinedTestDispatcher(), clock
+        )
+
+        controller.onAction(UiAction.UpdateDraft("When is my dentist appointment?"))
+        controller.onAction(UiAction.SendMessage)
+
+        assertEquals("Should execute exactly 2 loops", 2, callCount)
+        org.junit.Assert.assertNotNull("Loop 2 body must be captured", loop2Body)
+
+        // Parse roles in loop 2 request body to ensure strict alternating roles
+        val roleMatches = Regex(""""role"\s*:\s*"([^"]+)"""").findAll(loop2Body!!).map { it.groupValues[1] }.toList()
+        for (i in 0 until roleMatches.size - 1) {
+            val currentRole = roleMatches[i]
+            val nextRole = roleMatches[i + 1]
+            if (currentRole == "user" && nextRole == "user") {
+                org.junit.Assert.fail("Consecutive user roles detected at index $i and ${i + 1} in body: $roleMatches")
+            }
+        }
+
+        // Verify stored assistant messages: no empty placeholder in SQLite
+        val assistantMessages = storage.messages.filter { it.role == "assistant" }
+        assertEquals(1, assistantMessages.size)
+        assertEquals("Your appointment is tomorrow at 2 PM.", assistantMessages.first().content)
     }
 }

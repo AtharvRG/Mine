@@ -1,5 +1,14 @@
 # STATE (update every session; facts only)
-Updated: 2026-11-12 18:45 IST (**Mine Full Codebase Adversarial Audit #7 Deep-Scan Remediation COMPLETE: all 6 items fixed across Android 14 FGS background activity resume, cross-slice duplicate proposal deduplication, 7-day fake storage TTL parity, call nudge state transition to NUDGED, post-call voice note notification handler, and 180s audio recording buffer cap; :core:test 100% PASS [560/560], :app:testDebugUnitTest 100% PASS [27/27], CallNudgeDeviceTest 100% PASS [5/5] on Moto G73 5G**)
+Updated: 2026-11-13 00:15 IST (**Mine Full Codebase Adversarial Audit #8 Remediation COMPLETE: multi-step tool loop consecutive "user" role elimination, outbox premature batch drain prevention, and fake-transport body-only ID extraction in TurnCompletionTest; :core:test 100% PASS [561/561], :app:testDebugUnitTest 100% PASS [27/27]**)
+
+**Adversarial Audit #8 Code-Level Remediation Deliverables (2026-11-13):**
+- **Fix 1: Consecutive `"user"` Message Elimination in Multi-Step Tool Loops & Outbox Drain Timing (`ChatController.kt:1619-1665`)**:
+  - Evaluated `turnComplete = true` immediately if `envelope.calls.isEmpty() || hasCommitted || turnErrors.isNotEmpty()`.
+  - For terminal loops (`turnComplete == true`): persisted final assistant response to `raw_message` and called `markBatchAnswered(activeBatchIds)` only once the turn completes.
+  - For intermediate loops (`turnComplete == false`): if `finalAssistantText.isBlank()` (e.g., intermediate `search_memory` call), dropped temporary UI bubble and appended `rawBot.trim().ifBlank { ... }` as an assistant message to `pack` before appending the `"user"` `System feedback:` message. This guarantees strict alternating roles (`user` -> `assistant` -> `user`), eliminating HTTP 400/422 errors on strict OpenAI/Mistral endpoints, and deferred `markBatchAnswered` to prevent premature job claims if subsequent loops fail.
+- **Fix 2: Body-Only Proposal and Alias Extraction in `TurnCompletionTest.kt`**:
+  - Updated `TurnCompletionTest.kt:49-53` to extract `pMatch` (`Proposal p_\d+`) and `nMatch` (`n_\d+: Dinner with Raj`) from `body` using regular expressions, eliminating direct reads from `storage.savedProposals` and raw hardcoded `"n_tomo"`. Completely satisfies `fake-model-tests/SKILL.md` (fake transport reads ONLY request body).
+  - Added unit test `testMultiStepToolLoop_WithEmptyReply_StrictAlternatingRolesAndNoPrematureBatchDrain` verifying strict alternating message roles in multi-step loops and exactly one persisted assistant message in SQLite.
 
 **Adversarial Audit #7 Deep-Scan Remediation Deliverables (2026-11-12):**
 - **Edge Case 1: Android 14 Background Microphone FGS Start Restriction in `AmbientHeartbeatHelper.kt`**:

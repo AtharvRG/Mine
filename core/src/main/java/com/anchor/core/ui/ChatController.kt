@@ -1616,6 +1616,10 @@ class ChatController(
                         turnReceipts.forEach { addTransientReceipt(it.copy(timestamp = clock.now())) }
                         refreshUI()
 
+                        if (envelope.calls.isEmpty() || hasCommitted || turnErrors.isNotEmpty()) {
+                            turnComplete = true
+                        }
+
                         // Stop storing model "Done!" prose when receipts already show the change
                         val rawReply = envelope.reply.trim()
                         val isGenericDone = rawReply.lowercase().removeSuffix(".").removeSuffix("!") in setOf("done", "saved", "added", "acknowledged", "ok")
@@ -1630,26 +1634,40 @@ class ChatController(
                             else turnErrors.joinToString("\n")
                         } else baseText
 
-                        // Avoid inserting empty placeholder messages if we purely generated receipts
-                        if (finalAssistantText.isNotBlank()) {
-                            updateLastMessage(botId, finalAssistantText)
-                            val causeId = if (queuedBatch) activeBatchIds.lastOrNull() else userMsgId
-                            storage.insertRawMessage(botId, "assistant", finalAssistantText, causeMsgId = causeId)
-                            currentBotId = null
-                            pack = pack + ChatMessage(botId, "assistant", finalAssistantText)
-                            if (activeBatchIds.isNotEmpty()) markBatchAnswered(activeBatchIds)
+                        if (turnComplete) {
+                            // Avoid inserting empty placeholder messages if we purely generated receipts
+                            if (finalAssistantText.isNotBlank()) {
+                                updateLastMessage(botId, finalAssistantText)
+                                val causeId = if (queuedBatch) activeBatchIds.lastOrNull() else userMsgId
+                                storage.insertRawMessage(botId, "assistant", finalAssistantText, causeMsgId = causeId)
+                                currentBotId = null
+                                pack = pack + ChatMessage(botId, "assistant", finalAssistantText)
+                                if (activeBatchIds.isNotEmpty()) markBatchAnswered(activeBatchIds)
+                            } else {
+                                _state.update { it.copy(chatMessages = it.chatMessages.dropLast(1)) }
+                                currentBotId = null
+                                if (hasCommitted && activeBatchIds.isNotEmpty()) markBatchAnswered(activeBatchIds)
+                            }
                         } else {
-                            _state.update { it.copy(chatMessages = it.chatMessages.dropLast(1)) }
-                            currentBotId = null
-                            if (hasCommitted && activeBatchIds.isNotEmpty()) markBatchAnswered(activeBatchIds)
+                            // Multi-step tool loop: intermediate turn continuing to next loop.
+                            // Always append an assistant message to pack so the subsequent system feedback
+                            // ("user" role) never causes two consecutive user messages in strict APIs.
+                            val intermediateAssistantText = if (finalAssistantText.isNotBlank()) {
+                                updateLastMessage(botId, finalAssistantText)
+                                val causeId = if (queuedBatch) activeBatchIds.lastOrNull() else userMsgId
+                                storage.insertRawMessage(botId, "assistant", finalAssistantText, causeMsgId = causeId)
+                                currentBotId = null
+                                finalAssistantText
+                            } else {
+                                _state.update { it.copy(chatMessages = it.chatMessages.dropLast(1)) }
+                                currentBotId = null
+                                rawBot.trim().ifBlank { """{"reply":"","calls":[]}""" }
+                            }
+                            pack = pack + ChatMessage(botId, "assistant", intermediateAssistantText)
                         }
 
                         if (sysContext.isNotBlank()) {
                             pack = pack + ChatMessage("sys_${UUID.randomUUID()}", "user", "System feedback: $sysContext")
-                        }
-
-                        if (envelope.calls.isEmpty() || hasCommitted || turnErrors.isNotEmpty()) {
-                            turnComplete = true
                         }
 
                         // SEC 6: Use unique ID to prevent PK violations when loop limit is hit without completing

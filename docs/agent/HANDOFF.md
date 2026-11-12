@@ -1,3 +1,23 @@
+# HANDOFF (Adversarial Audit #8 Remediation 100% COMPLETE & VERIFIED)
+
+**Current Status**: 2026-11-13 00:15 IST
+- **Adversarial Audit #8 Core Fixes Remediated & Verified**:
+  1. **Consecutive `"user"` Message Elimination in Multi-Step Tool Loops & Outbox Drain Timing (`ChatController.kt:1619-1665`)**:
+     - Calculated `turnComplete = true` immediately if `envelope.calls.isEmpty() || hasCommitted || turnErrors.isNotEmpty()`.
+     - For terminal loops (`turnComplete == true`): persisted final assistant response to `raw_message` and called `markBatchAnswered(activeBatchIds)` only once the turn completes.
+     - For intermediate loops (`turnComplete == false`): if `finalAssistantText.isBlank()` (e.g., intermediate `search_memory` call), dropped temporary UI bubble and appended `rawBot.trim().ifBlank { ... }` as an assistant message to `pack` before appending the `"user"` `System feedback:` message. This guarantees strict alternating roles (`user` -> `assistant` -> `user`), eliminating HTTP 400/422 errors on strict OpenAI/Mistral endpoints, and deferred `markBatchAnswered` to prevent premature job claims if subsequent loops fail.
+  2. **Body-Only Proposal and Alias Extraction in `TurnCompletionTest.kt`**:
+     - Updated `TurnCompletionTest.kt:49-53` to extract `pMatch` (`Proposal p_\d+`) and `nMatch` (`n_\d+: Dinner with Raj`) from `body` using regular expressions, eliminating direct reads from `storage.savedProposals` and raw hardcoded `"n_tomo"`. Completely satisfies `fake-model-tests/SKILL.md` (fake transport reads ONLY request body).
+     - Added unit test `testMultiStepToolLoop_WithEmptyReply_StrictAlternatingRolesAndNoPrematureBatchDrain` verifying strict alternating message roles in multi-step loops and exactly one persisted assistant message in SQLite.
+- **Verification on Device & Test Suites**:
+  - `:core:test`: **561 / 561 PASS (100%)** across 96 files.
+  - `:app:testDebugUnitTest`: **27 / 27 PASS (100%)** across 7 files.
+- **Compilation**:
+  - `:core:compileKotlin`: SUCCESS.
+  - `:app:compileDebugKotlin`: SUCCESS.
+
+---
+
 # HANDOFF (Adversarial Audit #7 Deep-Scan Remediation 100% COMPLETE & VERIFIED)
 
 **Current Status**: 2026-11-12 18:45 IST

@@ -1,6 +1,15 @@
 # TASKS (one at a time, smallest first). Status: [ ] open, [~] in progress, [x] done+reviewed
 Specs for R1-R10: docs/agent/work/session1-remediation-spec.md. Read the task's section before starting.
 
+## Audit #8 Final Verification & Core Polish (2026-11-13)
+[x] Fix 1: Multi-Step Tool Loop Consecutive "user" Role Elimination & Outbox Timing
+    [x] Evaluated turnComplete before assistant message handling in ChatController.kt.
+    [x] For intermediate loops (!turnComplete), appended rawBot.trim() as assistant message to pack when finalAssistantText.isBlank(), ensuring strict alternating roles (user -> assistant -> user).
+    [x] Deferred markBatchAnswered(activeBatchIds) until turn is actually complete or loop limit reached.
+[x] Fix 2: fake-model-tests Body-Only ID Extraction in TurnCompletionTest.kt
+    [x] Extracted pMatch and nMatch from request body in TurnCompletionTest.kt via regex instead of reading storage.savedProposals directly.
+    [x] Added unit test testMultiStepToolLoop_WithEmptyReply_StrictAlternatingRolesAndNoPrematureBatchDrain verifying role alternation and SQLite persistence (PASS).
+
 ## Audit #7 Deep-Scan Edge Cases Remediation & Final Verification (2026-11-12)
 [x] Edge Case 1: Android 14 Background Microphone FGS Start Restriction in AmbientHeartbeatHelper.kt
     [x] Replaced PendingIntent.getService with PendingIntent.getActivity targeting MainActivity::class.java with action ACTION_START and FLAG_IMMUTABLE.
