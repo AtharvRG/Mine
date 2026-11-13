@@ -1,6 +1,14 @@
 # TASKS (one at a time, smallest first). Status: [ ] open, [~] in progress, [x] done+reviewed
 Specs for R1-R10: docs/agent/work/session1-remediation-spec.md. Read the task's section before starting.
 
+## v4 Standing Checks & Release Validation (2026-11-13)
+[x] Standing Checks & Release Build (Roadmap Line 58, D-200)
+    [x] Full R8 minified release build: :app:assembleRelease succeeded (app-release.apk 195MB).
+    [x] Full offline test suite verification: 614 / 614 PASS (587 core + 27 app).
+    [x] Privacy and biometric invariants verified: zero voiceprint export, zero audio to disk, number scrubbing.
+    [x] docs/ui-contract.md completely reconciled with all v1-v4 UiState, UiAction, and Storage capabilities.
+    [x] Decision D-200 recorded in DECISIONS.md.
+
 ## v4 Feature: Large-Screen Adaptive Layout & Insights Dashboard (2026-11-13)
 [x] Implement Large-Screen State Support & Insights Dashboard (Roadmap Line 52, D-199)
     [x] Branching analysis in docs/agent/work/v4-large-screen-adaptive-ui-analysis.md and Decision D-199 in DECISIONS.md.

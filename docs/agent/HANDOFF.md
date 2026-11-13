@@ -1,3 +1,22 @@
+# HANDOFF (v4 Milestone Complete & Release Certified: Standing Checks & R8 Assembly PASS)
+
+**Current Status**: 2026-11-13 17:50 IST
+- **v4 Non-Sync Scope 100% Complete & Certified (Roadmap Line 52 & 58, Decisions D-195 to D-200)**:
+  - **Feature 1**: Ambient "Remember Last 2 Minutes" Bookmark (`P-019`, Blueprint 61 §9, `D-195`).
+  - **Feature 2**: Insights & Analytics Queries & Pure Kotlin Engine (`P-007`, `P-008`, Blueprint 32 §3.5–§3.6, `D-196`).
+  - **Feature 3**: Hands-Free Continuous Voice Conversation Mode (`P-018`, Blueprint 60 §9, `D-197`).
+  - **Feature 4**: On-Device LLM Fallback (`P-010`, `D-198`).
+  - **Feature 5**: Large-Screen Adaptive Layout & Insights Dashboard UI (`D-199`).
+  - **Standing Checks (Line 58, D-200)**:
+    - Release R8 minified build completed (`app-release.apk` 195MB generated in `app/build/outputs/apk/release/`).
+    - 614 / 614 offline unit tests pass (587 `:core:test` + 27 `:app:testDebugUnitTest`).
+    - `docs/ui-contract.md` reconciled with all states, actions, and storage capabilities.
+    - Privacy and biometric invariants verified.
+- **Physical Device Status**:
+  - Moto G73 5G is currently disconnected (`adb devices` empty). All 614 tests run and pass offline. When reconnected, connected device suites (`LargeScreenAdaptiveTest`, `InsightsDeviceTest`, `AmbientAndV3DeviceTest`, `SherpaVoiceEngineDeviceTest`) can be run on target hardware.
+
+---
+
 # HANDOFF (v4 Feature: Large-Screen State Support & Insights Dashboard COMPLETE & VERIFIED)
 
 **Current Status**: 2026-11-13 10:45 IST

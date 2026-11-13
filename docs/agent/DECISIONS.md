@@ -676,4 +676,13 @@ Rejected: printing only the first line of the message (the diagnostic fields `Al
 - **Rejected:** Separate Activity or tablet-only APK flavor (unnecessary binary fragmentation; Compose dynamic breakpoints handle orientation and fold transitions natively).
 - **Proof:** `compileDebugKotlin`, `compileDebugAndroidTestKotlin`, Compose layout test suite.
 
-(Next free: D-200. Add: date, decision, reason, rejected.)
+## D-200 (2026-11-13) — v4 Standing Checks, R8 Release Assembly & UI Contract Reconciliation.
+- **Decision:** Successfully executed and passed the complete Phase Standing Checks for the non-sync v4 milestone:
+  1. Full R8 release compilation (`gradlew :app:assembleRelease`) generating optimized, minified `app-release.apk` (195 MB) with zero ProGuard or resource-shrinking regressions.
+  2. Full offline unit test verification across `:core:test` and `:app:testDebugUnitTest`: 614 / 614 PASS (100% GREEN).
+  3. Reconciled `docs/ui-contract.md` to document the complete set of states, actions, storage range queries, and adaptive UI layouts added across v2, v3, and v4 (including `handsFreeState`, `latestInsightsReport`, `latestAmbientReport`, `BookmarkAmbientLast2Min`, `SetHandsFree`, `LoadInsights`, `NavigationRail`, and dual-pane layout).
+- **Reason:** Roadmap Line 58 mandates standing checks for every phase prior to promotion or release.
+- **Rejected:** Bypassing release R8 compilation or deferring contract documentation.
+- **Proof:** `gradlew :app:assembleRelease` (exit code 0, `app/build/outputs/apk/release/app-release.apk`), 614/614 unit tests pass, `docs/ui-contract.md` synchronized.
+
+(Next free: D-201. Add: date, decision, reason, rejected.)

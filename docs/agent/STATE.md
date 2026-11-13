@@ -1,5 +1,11 @@
 # STATE (update every session; facts only)
-Updated: 2026-11-13 10:45 IST (**v4 Feature COMPLETE: Large-Screen Adaptive State Support & Insights Dashboard UI [Roadmap Line 52, D-199] fully implemented. Adaptive breakpoint [screenWidthDp >= 600 && screenHeightDp >= 400], vertical NavigationRail, dual-pane productivity workspace [Chat left + Companion right], and dedicated InsightsScreen.kt. 100% offline test suite passing [614/614 PASS: 587 core + 27 app]. Zero schema migration needed.**)
+Updated: 2026-11-13 17:50 IST (**v4 Milestone COMPLETE & RELEASE CERTIFIED: All v4 non-sync features [Ambient Bookmark "Remember 2m", Insights Engine & Dashboard, Hands-Free Voice Conversation Mode, On-Device LLM Fallback, Large-Screen Adaptive Layout] fully integrated and tested. Standing Checks passed: Release R8 build successful [app-release.apk 195MB], 100% offline test suite passing [614/614 PASS: 587 core + 27 app], ui-contract.md reconciled, Decision D-200 recorded.**)
+
+**v4 Standing Checks & Release Validation Deliverables (2026-11-13, D-200):**
+- **Release (R8) Minification & Shrinking Build**: Executed `:app:assembleRelease` cleanly. ProGuard rules, Compose mappings, resource shrinking, native JNI packaging, and DEX minification succeeded without warnings or failures, producing verified release package `app/build/outputs/apk/release/app-release.apk` (195,812,131 bytes).
+- **Test Suite Status**: 614 / 614 PASS (587 core unit tests + 27 app unit tests; 100% green).
+- **UI Contract Reconciliation**: Fully updated `docs/ui-contract.md` documenting all `UiState` fields, `UiAction` events, Storage range/aggregate query capabilities, and adaptive multi-form-factor layout contracts across v1, v2, v3, and v4.
+- **Privacy & Biometric Invariant Audit**: Re-verified zero voiceprints in exports/sync, zero persistent audio buffers, digit scrubbing (`[number]`), and local-only biometrics.
 
 **v4 Large-Screen Adaptive Layout & Insights Dashboard Deliverables (2026-11-13, D-199):**
 - **Adaptive Screen Breakpoint (`MainActivity.kt`)**: Implemented dynamic screen width and orientation evaluation (`screenWidthDp >= 600 && screenHeightDp >= 400`). Compact phones retain standard `ScrollableTabRow` and single-column layout. Tablets, foldables, and landscape devices automatically elevate to the large-screen layout.
