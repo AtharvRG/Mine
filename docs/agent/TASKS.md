@@ -1,6 +1,15 @@
 # TASKS (one at a time, smallest first). Status: [ ] open, [~] in progress, [x] done+reviewed
 Specs for R1-R10: docs/agent/work/session1-remediation-spec.md. Read the task's section before starting.
 
+## v4 Feature: Insights & Analytics Queries (2026-11-13)
+[x] Implement Insights & Analytics Queries (Blueprint 32 §3.5-§3.6 / P-007, P-008, D-196)
+    [x] Core data models for review rollups, chart cards (week_bars, goal_progress, activity_strip, streaks, mood_line) in InsightsModels.kt.
+    [x] Pure Kotlin InsightsEngine.kt: weekly/monthly review calculations, divide-by-zero protection, month-to-date handling, goal subtask rollups, habit streaks, 24h heat strip, opt-in mood.
+    [x] Range and aggregation methods in Storage.kt, AndroidStorage.kt (SQLCipher), and SharedFakeStorage.kt.
+    [x] ChatController handling UiAction.LoadInsights(days) and exposing latestInsightsReport in UiState.
+    [x] Verified in InsightsEngineTest (8/8 PASS) and full offline test suite (596/596 PASS).
+    [x] Android instrumentation test InsightsDeviceTest.kt compiled for connected verification.
+
 ## v4 Ambient Feature: "Remember the Last 2 Minutes" Bookmark (2026-11-13)
 [x] Implement "Remember the Last 2 Minutes" Ambient Bookmark (P-019 & Blueprint 61 §9)
     [x] Core Presence Gate manual override (PresenceGate.kt manualBookmark parameter).

@@ -1,3 +1,21 @@
+# HANDOFF (v4 Feature: Insights & Analytics Queries COMPLETE & VERIFIED)
+
+**Current Status**: 2026-11-13 09:05 IST
+- **v4 Insights & Analytics Queries Delivered (Blueprint 32 §3.5-§3.6 / P-007, P-008, D-196)**:
+  - **Insights Models (`InsightsModels.kt`)**: Added `@Serializable` models for `WeeklyReviewStats`, `MonthlyReviewStats`, `DayBucket` (7-day `week_bars`), `GoalProgress` (`goal_progress`), `HabitStreakSummary` (`streaks`), `ActivityHeatStrip` (24-hour heat bins from `raw_message` and `raw_event`), `MoodPoint` (`mood_line`), and `FullInsightsReport`.
+  - **Pure Kotlin Insights Engine (`InsightsEngine.kt`)**: Implemented mathematical aggregations for weekly reviews, month-to-date handling (`P-007`), goal subtask hierarchies via `part_of` edges, habit consistency streaks, 24-hour activity heat strip across the user's day, and opt-in mood extraction (`P-008`, gated behind `flag.mood_tracking == "1"`).
+  - **Storage Queries (`Storage.kt`, `AndroidStorage.kt`, `SharedFakeStorage.kt`)**: Added `getNodesCreatedBetween`, `getNodesClosedBetween`, `getCancelledEventsBetween`, `getGoalNodes`, `getHabitNodes`, `getActionTimestampsBetween`, and `getFullInsightsReport` over existing indexed SQLCipher tables with zero schema migration required.
+  - **UI Integration (`ChatContract.kt` & `ChatController.kt`)**: Exposed `latestInsightsReport` in `UiState` and added `UiAction.LoadInsights(days)` to `ChatController.onAction`.
+- **Verification Summary**:
+  - `:core:test`: **569 / 569 PASS (100%)** across 97 test suites (including `InsightsEngineTest` 8/8 PASS).
+  - `:app:testDebugUnitTest`: **27 / 27 PASS (100%)** across 7 test suites.
+  - Total offline tests: **596 / 596 PASS (100%)**.
+  - Device test compilation: `InsightsDeviceTest.kt` compiled successfully for connected verification.
+- **Next Milestone**:
+  - Hands-free conversation mode (`P-018` / Blueprint 60 & 61) or connected device execution when phone is connected.
+
+---
+
 # HANDOFF (v4 Ambient Feature: "Remember the Last 2 Minutes" Bookmark COMPLETE & VERIFIED)
 
 **Current Status**: 2026-11-13 04:10 IST

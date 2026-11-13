@@ -97,7 +97,9 @@ data class UiState(
     val latestAmbientReport: com.anchor.core.ambient.AmbientReport? = null,
     val ambientReportItems: List<com.anchor.core.ambient.AmbientReportItem> = emptyList(),
     val ambientEnabled: Boolean = false,
-    val voiceprintEnrolled: Boolean = false
+    val voiceprintEnrolled: Boolean = false,
+    // Blueprint 32 §3.5-§3.6 / P-007, P-008: Insights & Analytics report
+    val latestInsightsReport: com.anchor.core.insights.FullInsightsReport? = null
 ) {
     /** Blueprint 41 §2: the banner the user sees while messages wait. Null when nothing is queued. */
     val offlineQueuedText: String?
@@ -192,4 +194,7 @@ sealed interface UiAction {
     data class AcceptAllAmbientItems(val reportId: String) : UiAction
     data object DeleteAllAmbientData : UiAction
     data object BookmarkAmbientLast2Min : UiAction
+
+    // Blueprint 32 §3.5-§3.6 / P-007, P-008: Insights & Analytics actions
+    data class LoadInsights(val days: Int = 7) : UiAction
 }

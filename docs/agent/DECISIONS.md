@@ -652,4 +652,10 @@ Rejected: printing only the first line of the message (the diagnostic fields `Al
 - **Rejected:** Mutating active items from ambient audio; background restarting microphone service without user gesture; vibrations on ambient events.
 - **Proof:** `:core:test` (556/556 PASS), `:app:testDebugUnitTest` (27/27 PASS), `AmbientAndV3DeviceTest` (7 connected device test suites).
 
-(Next free: D-196. Add: date, decision, reason, rejected.)
+## D-196 (2026-11-13) — v4 Insights & Analytics Engine and Native Chart Data Queries (Blueprint 32 §3.5-§3.6 / P-007, P-008).
+- **Decision:** Built pure-Kotlin `InsightsEngine` in `:core` computing `WeeklyReviewStats`, `MonthlyReviewStats`, `DayBucket` (7-day `week_bars`), `GoalProgress` (`goal_progress`), `HabitStreakSummary` (`streaks`), `ActivityHeatStrip` (24-hour heat bins from `raw_message` and `raw_event`), and `MoodPoint` (`mood_line`). Gated mood extraction behind `flag.mood_tracking` (default "0" / opt-in). Implemented time-bounded range queries in `AndroidStorage` and `SharedFakeStorage`.
+- **Reason:** Powers native chart cards, weekly reviews, and month-to-date reporting without LLM hallucinations, schema migrations, or main-thread stutters.
+- **Rejected:** SQLite `strftime` aggregations (diverges from 4am logical day rollover and breaks pure-Kotlin `:core` test parity); adding a precomputed `analytics_cache` table (unnecessary schema migration and cache invalidation risk).
+- **Proof:** `InsightsEngineTest`, `AndroidStorageTest`, `ConnectedDeviceTest`.
+
+(Next free: D-197. Add: date, decision, reason, rejected.)

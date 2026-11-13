@@ -1,5 +1,12 @@
 # STATE (update every session; facts only)
-Updated: 2026-11-13 04:10 IST (**v4 Ambient Feature COMPLETE: "Remember the Last 2 Minutes" Ambient Bookmark [P-019 & Blueprint 61 §9] fully wired, tested offline [588/588 PASS] and verified on physical Moto G73 5G [8/8 PASS in AmbientAndV3DeviceTest]. Zero raw audio saved to disk/SQLite; strict proposal-only semantics; zero vibration.**)
+Updated: 2026-11-13 09:05 IST (**v4 Feature COMPLETE: Insights & Analytics Queries [Blueprint 32 §3.5-§3.6 / P-007, P-008] fully implemented in pure Kotlin :core and AndroidStorage SQLCipher; 100% offline test suite passing [596/596 PASS: 569 core + 27 app]. Zero schema migration needed; native chart cards [week_bars, goal_progress, activity_strip, streaks, mood_line] powered deterministically in code.**)
+
+**v4 Insights & Analytics Queries Deliverables (2026-11-13, D-196):**
+- **Insights Models (`InsightsModels.kt`)**: Added `@Serializable` models for `WeeklyReviewStats`, `MonthlyReviewStats`, `DayBucket` (7-day `week_bars`), `GoalProgress` (`goal_progress`), `HabitStreakSummary` (`streaks`), `ActivityHeatStrip` (24-hour heat bins from `raw_message` and `raw_event`), `MoodPoint` (`mood_line`), and `FullInsightsReport`.
+- **Pure-Kotlin Insights Engine (`InsightsEngine.kt`)**: Built business logic for weekly/monthly review completion percentages with divide-by-zero protection, month-to-date handling (`P-007`), goal subtask aggregation from `part_of` edges, habit streak rankings, 24-hour activity heat strip binning, and opt-in mood extraction (`P-008`, gated behind `flag.mood_tracking == "1"`).
+- **Storage Layer Range Queries (`Storage.kt`, `AndroidStorage.kt`, `SharedFakeStorage.kt`)**: Added `getNodesCreatedBetween`, `getNodesClosedBetween`, `getCancelledEventsBetween`, `getGoalNodes`, `getHabitNodes`, `getActionTimestampsBetween`, and `getFullInsightsReport` over existing indexed SQLCipher tables without requiring any schema migrations or bumps.
+- **UI State & Action Integration (`ChatContract.kt` & `ChatController.kt`)**: Added `latestInsightsReport` to `UiState` and `UiAction.LoadInsights(days)` to `ChatController.onAction` updating `_state`.
+- **Unit & Device Test Suites**: Added `InsightsEngineTest.kt` (8/8 PASS) and `InsightsDeviceTest.kt` (instrumentation test on SQLCipher). Total test count: 596 / 596 PASS (100% GREEN).
 
 **v4 Ambient Bookmark "Remember the Last 2 Minutes" Deliverables (2026-11-13):**
 - **Presence Gate Override (`PresenceGate.kt`)**: Added `manualBookmark: Boolean = false` to `evaluateWindowGate(...)`, forcibly opening the presence gate regardless of speaker score when `manualBookmark == true`.

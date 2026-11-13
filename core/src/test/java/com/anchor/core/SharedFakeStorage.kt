@@ -1113,4 +1113,70 @@ open class SharedFakeStorage(var clock: Clock = SystemClock()) : Storage {
     override suspend fun getDayDigest(dayKey: String): com.anchor.core.consolidation.DayDigest? = synchronized(this) {
         dayDigests[dayKey]
     }
+
+    override suspend fun getNodesCreatedBetween(startMs: Long, endMs: Long, limit: Int): List<Node> = synchronized(this) {
+        activeNodes.filter { it.createdAt in startMs..endMs && !it.localOnly }.sortedBy { it.createdAt }.take(limit)
+    }
+
+    override suspend fun getNodesClosedBetween(startMs: Long, endMs: Long, limit: Int): List<Node> = synchronized(this) {
+        activeNodes.filter { (it.closedAt ?: it.updatedAt) in startMs..endMs && it.status in listOf("done", "completed") && !it.localOnly }
+            .sortedBy { it.closedAt ?: it.updatedAt }.take(limit)
+    }
+
+    override suspend fun getCancelledEventsBetween(startMs: Long, endMs: Long, limit: Int): List<RawEvent> = synchronized(this) {
+        loggedEvents.filter { it.tsUtc in startMs..endMs && it.opType in listOf("CANCEL", "DELETE_NODE") }.sortedBy { it.tsUtc }.take(limit)
+    }
+
+    override suspend fun getGoalNodes(): List<Node> = synchronized(this) {
+        activeNodes.filter { it.type == "goal" && it.status != "archived" && !it.localOnly }
+    }
+
+    override suspend fun getHabitNodes(): List<Node> = synchronized(this) {
+        activeNodes.filter { (it.type == "habit" || it.recurrenceRule != null) && it.status != "archived" && !it.localOnly }
+            .sortedByDescending { it.streakCurrent }
+    }
+
+    override suspend fun getActionTimestampsBetween(startMs: Long, endMs: Long, limit: Int): List<Long> = synchronized(this) {
+        val msgTs = messages.filter { it.tsUtc in startMs..endMs && it.role == "user" }.map { it.tsUtc }
+        val evTs = loggedEvents.filter { it.tsUtc in startMs..endMs }.map { it.tsUtc }
+        (msgTs + evTs).sorted().take(limit)
+    }
+
+    override suspend fun getFullInsightsReport(
+        startMs: Long,
+        endMs: Long,
+        nowMs: Long,
+        includeMood: Boolean
+    ): com.anchor.core.insights.FullInsightsReport {
+        val rule = getEffectiveDayRule(nowMs)
+        val engine = com.anchor.core.insights.InsightsEngine(rule)
+        val created = getNodesCreatedBetween(startMs, endMs)
+        val closed = getNodesClosedBetween(startMs, endMs)
+        val cancelled = getCancelledEventsBetween(startMs, endMs)
+        val openBacklog = synchronized(this) {
+            activeNodes.count { it.status in listOf("active", "in_progress", "paused") && !it.localOnly }
+        }
+        val weekly = engine.buildWeeklyReview(startMs, endMs, created, closed, cancelled, openBacklog, rule)
+        val habits = getHabitNodes()
+        val monthly = engine.buildMonthlyReview(startMs, endMs, isMonthToDate = false, created, closed, cancelled, openBacklog, habits)
+        val goals = getGoalNodes()
+        val allMap = synchronized(this) { activeNodes.associateBy { it.id } }
+        val edgeList = synchronized(this) { edges.toList() }
+        val goalProgress = engine.buildGoalProgress(goals, edgeList, allMap)
+        val habitStreaks = engine.buildHabitStreaks(habits)
+        val actionTs = getActionTimestampsBetween(startMs, endMs)
+        val heatStrip = engine.buildActivityHeatStrip(actionTs, rule.tzId)
+        val moodSignals = if (includeMood) getSignals("mood", sinceUtc = startMs, limit = 1000) else emptyList()
+        val moodTrends = engine.buildMoodTrends(moodSignals, optInEnabled = includeMood, rule = rule)
+
+        return com.anchor.core.insights.FullInsightsReport(
+            generatedAt = nowMs,
+            weeklyReview = weekly,
+            monthlyReview = monthly,
+            goalProgress = goalProgress,
+            habitStreaks = habitStreaks,
+            activityHeatStrip = heatStrip,
+            moodTrends = moodTrends
+        )
+    }
 }

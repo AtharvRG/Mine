@@ -1112,6 +1112,19 @@ class ChatController(
                     refreshUI()
                 }
             }
+            is UiAction.LoadInsights -> coroutineScope.launch(defaultDispatcher) {
+                try {
+                    val now = clock.now()
+                    val spanMs = action.days.toLong() * 86_400_000L
+                    val startMs = now - spanMs
+                    val moodEnabled = storage.getSetting("flag.mood_tracking") == "1"
+                    val report = storage.getFullInsightsReport(startMs, now, now, moodEnabled)
+                    _state.update { it.copy(latestInsightsReport = report) }
+                } catch (e: Exception) {
+                    if (e is kotlinx.coroutines.CancellationException) throw e
+                    addTransientReceipt(ReceiptState(UUID.randomUUID().toString(), "Could not load insights: ${e.message}", null, isError = true, timestamp = clock.now()))
+                }
+            }
             else -> {}
         }
     }

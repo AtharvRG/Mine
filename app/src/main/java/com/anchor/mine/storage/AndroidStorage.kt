@@ -2441,4 +2441,110 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
             } else null
         }
     }
+
+    override suspend fun getNodesCreatedBetween(startMs: Long, endMs: Long, limit: Int): List<Node> = withContext(ioDispatcher) {
+        val sql = "SELECT $NODE_COLS FROM node WHERE created_at >= ? AND created_at <= ? AND deleted_at IS NULL AND local_only = 0 ORDER BY created_at ASC LIMIT ?"
+        queryNodes(sql, arrayOf(startMs.toString(), endMs.toString(), limit.toString()))
+    }
+
+    override suspend fun getNodesClosedBetween(startMs: Long, endMs: Long, limit: Int): List<Node> = withContext(ioDispatcher) {
+        val sql = "SELECT $NODE_COLS FROM node WHERE status IN ('done', 'completed') AND ((closed_at >= ? AND closed_at <= ?) OR (closed_at IS NULL AND updated_at >= ? AND updated_at <= ?)) AND deleted_at IS NULL AND local_only = 0 ORDER BY COALESCE(closed_at, updated_at) ASC LIMIT ?"
+        queryNodes(sql, arrayOf(startMs.toString(), endMs.toString(), startMs.toString(), endMs.toString(), limit.toString()))
+    }
+
+    override suspend fun getCancelledEventsBetween(startMs: Long, endMs: Long, limit: Int): List<RawEvent> = withContext(ioDispatcher) {
+        val list = mutableListOf<RawEvent>()
+        val sql = "SELECT op_id, op_type, target_type, target_id, undo_of, before_json, after_json, ts_utc, cause_msg_id FROM raw_event WHERE ts_utc >= ? AND ts_utc <= ? AND op_type IN ('CANCEL', 'DELETE_NODE') AND undo_of IS NULL ORDER BY ts_utc ASC LIMIT ?"
+        dbHelper.readableDatabase.query(sql, arrayOf(startMs.toString(), endMs.toString(), limit.toString())).use { cursor ->
+            while (cursor.moveToNext()) {
+                list.add(
+                    RawEvent(
+                        opId = cursor.getString(0),
+                        opType = cursor.getString(1),
+                        targetType = cursor.getString(2),
+                        targetId = cursor.getString(3),
+                        undoOf = if (cursor.isNull(4)) null else cursor.getString(4),
+                        beforeJson = if (cursor.isNull(5)) null else cursor.getString(5),
+                        afterJson = if (cursor.isNull(6)) null else cursor.getString(6),
+                        tsUtc = cursor.getLong(7),
+                        causeMsgId = if (cursor.isNull(8)) null else cursor.getString(8)
+                    )
+                )
+            }
+        }
+        list
+    }
+
+    override suspend fun getGoalNodes(): List<Node> = withContext(ioDispatcher) {
+        val sql = "SELECT $NODE_COLS FROM node WHERE type = 'goal' AND deleted_at IS NULL AND status != 'archived' AND local_only = 0 ORDER BY created_at ASC"
+        queryNodes(sql, emptyArray())
+    }
+
+    override suspend fun getHabitNodes(): List<Node> = withContext(ioDispatcher) {
+        val sql = "SELECT $NODE_COLS FROM node WHERE (type = 'habit' OR recurrence_rule IS NOT NULL) AND deleted_at IS NULL AND status != 'archived' AND local_only = 0 ORDER BY streak_current DESC"
+        queryNodes(sql, emptyArray())
+    }
+
+    override suspend fun getActionTimestampsBetween(startMs: Long, endMs: Long, limit: Int): List<Long> = withContext(ioDispatcher) {
+        val timestamps = mutableListOf<Long>()
+        val msgSql = "SELECT ts_utc FROM raw_message WHERE ts_utc >= ? AND ts_utc <= ? AND role = 'user' AND redacted_at IS NULL ORDER BY ts_utc ASC LIMIT ?"
+        dbHelper.readableDatabase.query(msgSql, arrayOf(startMs.toString(), endMs.toString(), limit.toString())).use { c ->
+            while (c.moveToNext()) {
+                timestamps.add(c.getLong(0))
+            }
+        }
+        val evSql = "SELECT ts_utc FROM raw_event WHERE ts_utc >= ? AND ts_utc <= ? AND actor = 'user' ORDER BY ts_utc ASC LIMIT ?"
+        dbHelper.readableDatabase.query(evSql, arrayOf(startMs.toString(), endMs.toString(), limit.toString())).use { c ->
+            while (c.moveToNext()) {
+                timestamps.add(c.getLong(0))
+            }
+        }
+        timestamps.sorted().take(limit)
+    }
+
+    override suspend fun getFullInsightsReport(
+        startMs: Long,
+        endMs: Long,
+        nowMs: Long,
+        includeMood: Boolean
+    ): com.anchor.core.insights.FullInsightsReport = withContext(ioDispatcher) {
+        val engine = com.anchor.core.insights.InsightsEngine(getEffectiveDayRule(nowMs))
+        val created = getNodesCreatedBetween(startMs, endMs)
+        val closed = getNodesClosedBetween(startMs, endMs)
+        val cancelled = getCancelledEventsBetween(startMs, endMs)
+        val openCounts = getActiveNodeCounts(nowMs)
+        val weekly = engine.buildWeeklyReview(startMs, endMs, created, closed, cancelled, openCounts.totalOpen)
+        val habits = getHabitNodes()
+        val monthly = engine.buildMonthlyReview(startMs, endMs, isMonthToDate = false, created, closed, cancelled, openCounts.totalOpen, habits)
+        val goals = getGoalNodes()
+        val edges = mutableListOf<com.anchor.core.models.Edge>()
+        for (g in goals) {
+            edges.addAll(getEdgesForDestination(g.id))
+            edges.addAll(getEdgesForSource(g.id))
+        }
+        val subtaskNodeIds = edges.map { it.srcId }.toSet() + edges.map { it.dstId }.toSet()
+        val allMap = mutableMapOf<String, Node>()
+        for (id in subtaskNodeIds) {
+            getNode(id)?.let { allMap[id] = it }
+        }
+        for (g in goals) {
+            allMap[g.id] = g
+        }
+        val goalProgress = engine.buildGoalProgress(goals, edges, allMap)
+        val habitStreaks = engine.buildHabitStreaks(habits)
+        val actionTs = getActionTimestampsBetween(startMs, endMs)
+        val heatStrip = engine.buildActivityHeatStrip(actionTs)
+        val moodSignals = if (includeMood) getSignals("mood", sinceUtc = startMs, limit = 1000) else emptyList()
+        val moodTrends = engine.buildMoodTrends(moodSignals, optInEnabled = includeMood)
+
+        com.anchor.core.insights.FullInsightsReport(
+            generatedAt = nowMs,
+            weeklyReview = weekly,
+            monthlyReview = monthly,
+            goalProgress = goalProgress,
+            habitStreaks = habitStreaks,
+            activityHeatStrip = heatStrip,
+            moodTrends = moodTrends
+        )
+    }
 }

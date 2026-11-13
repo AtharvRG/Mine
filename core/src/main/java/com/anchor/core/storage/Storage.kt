@@ -288,6 +288,15 @@ interface Storage {
     suspend fun saveDayDigest(digest: com.anchor.core.consolidation.DayDigest)
     suspend fun getDayDigest(dayKey: String): com.anchor.core.consolidation.DayDigest?
 
+    /** Blueprint 32 §3.5-§3.6 / P-007, P-008: Insights & Analytics Queries. */
+    suspend fun getNodesCreatedBetween(startMs: Long, endMs: Long, limit: Int = 1000): List<Node>
+    suspend fun getNodesClosedBetween(startMs: Long, endMs: Long, limit: Int = 1000): List<Node>
+    suspend fun getCancelledEventsBetween(startMs: Long, endMs: Long, limit: Int = 1000): List<RawEvent>
+    suspend fun getGoalNodes(): List<Node>
+    suspend fun getHabitNodes(): List<Node>
+    suspend fun getActionTimestampsBetween(startMs: Long, endMs: Long, limit: Int = 5000): List<Long>
+    suspend fun getFullInsightsReport(startMs: Long, endMs: Long, nowMs: Long, includeMood: Boolean): com.anchor.core.insights.FullInsightsReport
+
     companion object {
         /** R-26: page size for [getPendingReminders]. Hitting it means "more rows exist". */
         const val PENDING_REMINDER_PAGE_LIMIT = 500
