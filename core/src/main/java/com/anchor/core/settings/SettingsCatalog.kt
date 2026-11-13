@@ -34,6 +34,8 @@ object SettingsCatalog {
         SettingDef("provider.fallback.endpoint", SettingSection.AI_AND_PROVIDERS, "", SettingScope.DEVICE_LOCAL, description = "Fallback provider base URL"),
         SettingDef("provider.fallback.key", SettingSection.AI_AND_PROVIDERS, "", SettingScope.DEVICE_LOCAL, description = "Fallback provider API key"),
         SettingDef("provider.fallback.rpm", SettingSection.AI_AND_PROVIDERS, "20", SettingScope.DEVICE_LOCAL, validator = { it.matches(INT_REGEX) && it.toInt() in 1..50 }),
+        SettingDef("provider.ondevice.enabled", SettingSection.AI_AND_PROVIDERS, "0", SettingScope.DEVICE_LOCAL, description = "Enable on-device LLM as last fallback", validator = { it.matches(BOOL_REGEX) }),
+        SettingDef("provider.ondevice.model_path", SettingSection.AI_AND_PROVIDERS, "", SettingScope.DEVICE_LOCAL, isAdvanced = true, description = "Path to on-device LiteRT/GGUF model file"),
         SettingDef("ai.mobile_data", SettingSection.AI_AND_PROVIDERS, "1", SettingScope.DEVICE_LOCAL, validator = { it.matches(BOOL_REGEX) }),
         SettingDef("ai.compact_mode", SettingSection.AI_AND_PROVIDERS, "0", SettingScope.DEVICE_LOCAL, isAdvanced = true, description = "Low token mode for smaller models", validator = { it.matches(BOOL_REGEX) }),
 

@@ -11,7 +11,8 @@ import kotlinx.coroutines.CancellationException
 
 class ProviderOrchestrator(
     private val limiter: RateLimiter,
-    private val transport: HttpTransport
+    private val transport: HttpTransport,
+    private val onDeviceEngine: OnDeviceLlmEngine = RuleBasedLocalLlmEngine()
 ) {
     private val jsonParser = Json { ignoreUnknownKeys = true; isLenient = true }
 
@@ -20,7 +21,7 @@ class ProviderOrchestrator(
         // Declared outside the try: the catch clauses decide whether to emit Clear based on it.
         var emittedText = false
 
-        for (target in chain) {
+        for ((index, target) in chain.withIndex()) {
             if (!limiter.canRequest(target.key, target.limitRpm)) continue
 
             try {
@@ -28,15 +29,23 @@ class ProviderOrchestrator(
                 var emittedAnything = false
                 emittedText = false
 
-                // B13: Catch 5xx, Timeouts, and empty 200s, then fallback to next target!
-                normalize(transport.postStream(target, prompt)).collect { event ->
-                    emit(event)
-                    emittedAnything = true
-                    if (event is StreamEvent.TextDelta) emittedText = true
+                if (target.id.startsWith("local://")) {
+                    onDeviceEngine.generateStream(prompt).collect { event ->
+                        emit(event)
+                        emittedAnything = true
+                        if (event is StreamEvent.TextDelta) emittedText = true
+                    }
+                } else {
+                    // B13: Catch 5xx, Timeouts, and empty 200s, then fallback to next target!
+                    normalize(transport.postStream(target, prompt)).collect { event ->
+                        emit(event)
+                        emittedAnything = true
+                        if (event is StreamEvent.TextDelta) emittedText = true
+                    }
                 }
-                
+
                 if (!emittedAnything) throw Exception("Empty response from provider")
-                
+
                 return@flow // Success! Turn completes.
             } catch (e: Http429Exception) {
                 limiter.apply429Cooldown(target.key, e.retryAfterSeconds)
@@ -47,10 +56,14 @@ class ProviderOrchestrator(
                 if (!emittedText) emit(StreamEvent.Clear)
                 continue // Try next fallback target
             } catch (e: OfflineException) {
-                // Blueprint 41 §2 no_network: no target in the chain can answer without a network,
-                // so walking the rest of the chain would only multiply the timeout. Rethrow before
-                // the generic handler, which would otherwise re-wrap this into "All providers
-                // failed or in cooldown" and lose the offline signal the controller queues on.
+                // Blueprint 41 §2 no_network: check if an on-device local target is remaining in the chain
+                val hasLocalRemaining = chain.drop(index + 1).any { it.id.startsWith("local://") }
+                if (hasLocalRemaining) {
+                    lastError = e
+                    if (!emittedText) emit(StreamEvent.Clear)
+                    continue // Fall through to on-device LLM target!
+                }
+                // No local target available: rethrow so the controller queues on offline signal
                 throw e
             } catch (e: Exception) {
                 if (e is CancellationException) throw e // Never swallow coroutine cancellation

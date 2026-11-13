@@ -24,7 +24,11 @@ class MineApp : Application() {
 
     val rateLimiter: RateLimiter = RateLimiter { System.currentTimeMillis() }
     val orchestrator: ProviderOrchestrator by lazy {
-        ProviderOrchestrator(rateLimiter, AndroidHttpTransport())
+        ProviderOrchestrator(
+            rateLimiter,
+            AndroidHttpTransport(),
+            com.anchor.mine.provider.AndroidOnDeviceLlmEngine(this)
+        )
     }
 
     val contextEngine: com.anchor.core.sensing.ContextEngine by lazy {

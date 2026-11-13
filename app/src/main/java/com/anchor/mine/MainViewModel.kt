@@ -52,7 +52,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     persistence = com.anchor.core.provider.StorageRateLimitPersistence(loadedStorage),
                     monotonicClock = { android.os.SystemClock.elapsedRealtime() }
                 )
-                val orchestrator = com.anchor.core.provider.ProviderOrchestrator(rateLimiter, com.anchor.mine.provider.AndroidHttpTransport())
+                val onDeviceEngine = com.anchor.mine.provider.AndroidOnDeviceLlmEngine(application)
+                val orchestrator = com.anchor.core.provider.ProviderOrchestrator(
+                    limiter = rateLimiter,
+                    transport = com.anchor.mine.provider.AndroidHttpTransport(),
+                    onDeviceEngine = onDeviceEngine
+                )
                 val clock = SystemClock()
                 val is24HourFormat = { android.text.format.DateFormat.is24HourFormat(application) }
                 val dateResolver = DateResolver(clock, is24HourFormat)

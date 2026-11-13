@@ -1,3 +1,21 @@
+# HANDOFF (v4 Feature: On-Device LLM as Last Fallback Chain Entry COMPLETE & VERIFIED)
+
+**Current Status**: 2026-11-13 10:35 IST
+- **v4 On-Device LLM Fallback Delivered (Roadmap Line 52 / P-010, D-198)**:
+  - **OnDeviceLlmEngine & Pure Kotlin Rule Engine (`OnDeviceLlmEngine.kt`)**: Implemented `OnDeviceLlmEngine` interface and `RuleBasedLocalLlmEngine` in `:core`. Understands reminders, relative intervals ("in 5 minutes", "in 2 hours"), task additions, memory search queries, and agenda checks, emitting valid structured JSON tool calls (`propose_change`, `search_memory`) and natural language replies without network connectivity.
+  - **Orchestrator Fallthrough on Offline & 5xx (`ProviderOrchestrator.kt`)**: Enhanced `ProviderOrchestrator.chat(...)`: when `OfflineException` or server errors occur on cloud targets, it checks if a local target (`local://`) remains in the fallback chain. If present, it suppresses the abort and executes against the on-device engine.
+  - **Chat Controller & Settings Catalog (`ChatController.kt`, `SettingsCatalog.kt`)**: Added `provider.ondevice.enabled` (default "0") and `provider.ondevice.model_path`. Appends `Target("local://ondevice", "local", 120)` as the final fallback chain entry when enabled.
+  - **Android Engine Bridge (`AndroidOnDeviceLlmEngine.kt`)**: Built `:app` engine checking for LiteRT-LM `.litertlm` models on device storage with automatic graceful degradation to `RuleBasedLocalLlmEngine`.
+- **Verification Summary**:
+  - `:core:test`: **587 / 587 PASS (100%)** across 99 test suites (including `OnDeviceLlmFallbackTest` 8/8 PASS).
+  - `:app:testDebugUnitTest`: **27 / 27 PASS (100%)** across 7 test suites.
+  - Total offline tests: **614 / 614 PASS (100%)**.
+  - App and AndroidTest compilation: `compileDebugKotlin` and `compileDebugAndroidTestKotlin` both SUCCESS.
+- **Next Milestone**:
+  - Large-screen state support (tablet/foldable dual-pane adaptive layouts) and Insights dashboard UI screen.
+
+---
+
 # HANDOFF (v4 Feature: Hands-Free Continuous Voice Conversation Mode COMPLETE & VERIFIED)
 
 **Current Status**: 2026-11-13 10:20 IST

@@ -1,6 +1,17 @@
 # TASKS (one at a time, smallest first). Status: [ ] open, [~] in progress, [x] done+reviewed
 Specs for R1-R10: docs/agent/work/session1-remediation-spec.md. Read the task's section before starting.
 
+## v4 Feature: On-Device LLM as Last Fallback Chain Entry (2026-11-13)
+[x] Implement On-Device LLM Fallback (Roadmap Line 52 / P-010, D-198)
+    [x] Branching analysis in docs/agent/work/v4-ondevice-llm-fallback-analysis.md and Decision D-198 in DECISIONS.md.
+    [x] OnDeviceLlmEngine interface and pure-Kotlin RuleBasedLocalLlmEngine in :core.
+    [x] ProviderOrchestrator fallthrough on OfflineException and 5xx when local:// target is present in chain.
+    [x] SettingsCatalog definitions for provider.ondevice.enabled and provider.ondevice.model_path.
+    [x] ChatController provider chain appending Target("local://ondevice", "local", 120) when enabled.
+    [x] AndroidOnDeviceLlmEngine bridging LiteRT-LM model files with fallback in :app.
+    [x] Unit test suite OnDeviceLlmFallbackTest.kt (8/8 PASS).
+    [x] Full offline test suite (614/614 PASS) and compile checks.
+
 ## v4 Feature: Hands-Free Conversation Mode (2026-11-13)
 [x] Implement Hands-Free Continuous Voice Conversation Mode (Blueprint 60 §9 / P-018, D-197)
     [x] Branching analysis in docs/agent/work/v4-hands-free-conversation-analysis.md and Decision D-197 in DECISIONS.md.

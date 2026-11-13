@@ -1560,6 +1560,10 @@ class ChatController(
                     if (!fallbackEndpoint.isNullOrBlank() && !fallbackKey.isNullOrBlank()) {
                         chain.add(Target(fallbackEndpoint, fallbackKey, fallbackRpm))
                     }
+                    val onDeviceEnabled = storage.getSetting("provider.ondevice.enabled") == "1" || storage.getSetting("flag.ondevice_llm") == "1"
+                    if (onDeviceEnabled) {
+                        chain.add(Target("local://ondevice", "local", 120))
+                    }
                     if (chain.isEmpty()) {
                         chain.add(Target(_state.value.providerEndpoint, _state.value.providerKey, rpm))
                     }

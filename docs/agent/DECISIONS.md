@@ -664,4 +664,10 @@ Rejected: printing only the first line of the message (the diagnostic fields `Al
 - **Rejected:** Full-duplex continuous open mic with software echo cancellation (prone to acoustic leak and small-model self-talk hallucinations); UI-only polling in Compose (untestable in `:core:test`).
 - **Proof:** `HandsFreeStateMachineTest`, `OfflineQueueTest`, `:core:test`.
 
-(Next free: D-198. Add: date, decision, reason, rejected.)
+## D-198 (2026-11-13) — v4 On-Device LLM as Last Fallback Chain Entry (Roadmap Line 52 / P-010).
+- **Decision:** Built `OnDeviceLlmEngine` interface and `RuleBasedLocalLlmEngine` in `:core`. Updated `ProviderOrchestrator` to accept an optional `OnDeviceLlmEngine`: when an `OfflineException` occurs, the orchestrator does not immediately rethrow if a local target (`local://`) remains in the fallback chain; it falls through to the local on-device engine. In `ChatController`, if `provider.ondevice.enabled == "1"` (or `flag.ondevice_llm == "1"`), appends `Target(id = "local://ondevice", key = "local", limitRpm = 120)` as the final fallback target.
+- **Reason:** Guarantees offline-first resilience so users can create reminders, query agendas, and manage tasks even when disconnected from the internet or when all cloud endpoints fail.
+- **Rejected:** Hardcoding a requirement for 2GB model weights before allowing local fallback; breaking `OfflineException` queuing for cloud-only chains.
+- **Proof:** `OnDeviceLlmFallbackTest` in `:core:test`.
+
+(Next free: D-199. Add: date, decision, reason, rejected.)
