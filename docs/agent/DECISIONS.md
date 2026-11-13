@@ -658,4 +658,10 @@ Rejected: printing only the first line of the message (the diagnostic fields `Al
 - **Rejected:** SQLite `strftime` aggregations (diverges from 4am logical day rollover and breaks pure-Kotlin `:core` test parity); adding a precomputed `analytics_cache` table (unnecessary schema migration and cache invalidation risk).
 - **Proof:** `InsightsEngineTest`, `AndroidStorageTest`, `ConnectedDeviceTest`.
 
-(Next free: D-197. Add: date, decision, reason, rejected.)
+## D-197 (2026-11-13) — v4 Hands-Free Conversation Mode & Turn-Taking State Machine (Blueprint 60 §9 / P-018).
+- **Decision:** Built pure-Kotlin `HandsFreeStateMachine` in `:core` managing half-duplex turn-taking (`IDLE`, `LISTENING`, `PROCESSING`, `SPEAKING`). Built stop-word detection ("bye", "goodbye", "stop", "cancel", "that's all", "done"), 10-second silence safety timeout, and strictly gated microphone recording after TTS playback completion + acoustic decay grace. Wired completion callbacks in `NativeTtsHelper` and hands-free actions in `ChatContract`.
+- **Reason:** Enables natural continuous voice conversation without repeated manual button presses while completely eliminating acoustic echo feedback loops and unbounded battery drain.
+- **Rejected:** Full-duplex continuous open mic with software echo cancellation (prone to acoustic leak and small-model self-talk hallucinations); UI-only polling in Compose (untestable in `:core:test`).
+- **Proof:** `HandsFreeStateMachineTest`, `OfflineQueueTest`, `:core:test`.
+
+(Next free: D-198. Add: date, decision, reason, rejected.)

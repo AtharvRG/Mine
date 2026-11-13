@@ -1,5 +1,12 @@
 # STATE (update every session; facts only)
-Updated: 2026-11-13 09:05 IST (**v4 Feature COMPLETE: Insights & Analytics Queries [Blueprint 32 §3.5-§3.6 / P-007, P-008] fully implemented in pure Kotlin :core and AndroidStorage SQLCipher; 100% offline test suite passing [596/596 PASS: 569 core + 27 app]. Zero schema migration needed; native chart cards [week_bars, goal_progress, activity_strip, streaks, mood_line] powered deterministically in code.**)
+Updated: 2026-11-13 10:20 IST (**v4 Feature COMPLETE: Hands-Free Continuous Voice Conversation Mode [Blueprint 60 §9 / P-018, D-197] fully implemented in pure Kotlin :core state machine and MainActivity Compose UI with half-duplex turn-taking and 10s silence timeout. 100% offline test suite passing [606/606 PASS: 579 core + 27 app]. Zero raw audio persisted; zero vibration.**)
+
+**v4 Hands-Free Conversation Mode Deliverables (2026-11-13, D-197):**
+- **Pure-Kotlin Hands-Free State Machine (`HandsFreeModels.kt`, `HandsFreeStateMachine.kt`)**: Implemented `HandsFreeState` (`IDLE`, `LISTENING`, `PROCESSING`, `SPEAKING`), events, and effects in `:core`. Enforces half-duplex turn alternation: microphone strictly closed during TTS playback to prevent acoustic echo feedback loops. Stop-phrase interception ("bye", "goodbye", "stop", "exit", "cancel", "that's all", "done") immediately transitions to `IDLE`.
+- **UI State & ChatController Integration (`ChatContract.kt`, `ChatController.kt`)**: Added `handsFreeState: HandsFreeState` to `UiState`, along with `UiAction.SetHandsFree(Boolean)` and `UiAction.UpdateHandsFreeState(HandsFreeState)`.
+- **Speech Playback Completion Callback (`NativeTtsHelper.kt`)**: Added `onPlaybackComplete: (() -> Unit)?` and `UtteranceProgressListener` to trigger when speech playback finishes.
+- **Continuous Turn-Taking Loop & Silence Safety (`MainActivity.kt`)**: Added hands-free UI banner, composer toggle button (`🗣️` / `🛑`), 10-second silence timeout closing microphone to save battery, auto-dispatching transcription to LLM, and automatic TTS playback looping back to `LISTENING` after a 300ms acoustic grace period.
+- **Unit & Verification Suites**: Added `HandsFreeStateMachineTest.kt` (10/10 PASS). Total test count: 606 / 606 PASS (100% GREEN).
 
 **v4 Insights & Analytics Queries Deliverables (2026-11-13, D-196):**
 - **Insights Models (`InsightsModels.kt`)**: Added `@Serializable` models for `WeeklyReviewStats`, `MonthlyReviewStats`, `DayBucket` (7-day `week_bars`), `GoalProgress` (`goal_progress`), `HabitStreakSummary` (`streaks`), `ActivityHeatStrip` (24-hour heat bins from `raw_message` and `raw_event`), `MoodPoint` (`mood_line`), and `FullInsightsReport`.

@@ -18,6 +18,9 @@ object NativeTtsHelper {
     private val pendingUtterances = mutableListOf<String>()
     private val lock = Any()
 
+    @Volatile
+    var onPlaybackComplete: (() -> Unit)? = null
+
     fun init(context: Context) {
         synchronized(lock) {
             if (tts == null) {
@@ -26,6 +29,19 @@ object NativeTtsHelper {
                     synchronized(lock) {
                         if (status == TextToSpeech.SUCCESS) {
                             tts?.language = Locale.getDefault()
+                            tts?.setOnUtteranceProgressListener(object : android.speech.tts.UtteranceProgressListener() {
+                                override fun onStart(utteranceId: String?) {}
+                                override fun onDone(utteranceId: String?) {
+                                    val cb = onPlaybackComplete
+                                    onPlaybackComplete = null
+                                    cb?.invoke()
+                                }
+                                override fun onError(utteranceId: String?) {
+                                    val cb = onPlaybackComplete
+                                    onPlaybackComplete = null
+                                    cb?.invoke()
+                                }
+                            })
                             isInitialized = true
                             for (text in pendingUtterances) {
                                 tts?.speak(text, TextToSpeech.QUEUE_ADD, null, "tts_${text.hashCode()}")
@@ -38,9 +54,13 @@ object NativeTtsHelper {
         }
     }
 
-    fun speak(context: Context, text: String) {
-        if (text.isBlank()) return
+    fun speak(context: Context, text: String, onDone: (() -> Unit)? = null) {
+        if (text.isBlank()) {
+            onDone?.invoke()
+            return
+        }
         synchronized(lock) {
+            onPlaybackComplete = onDone
             if (tts == null) {
                 init(context)
             }
@@ -54,12 +74,14 @@ object NativeTtsHelper {
 
     fun stop() {
         synchronized(lock) {
+            onPlaybackComplete = null
             tts?.stop()
         }
     }
 
     fun shutdown() {
         synchronized(lock) {
+            onPlaybackComplete = null
             tts?.stop()
             tts?.shutdown()
             tts = null

@@ -1125,6 +1125,16 @@ class ChatController(
                     addTransientReceipt(ReceiptState(UUID.randomUUID().toString(), "Could not load insights: ${e.message}", null, isError = true, timestamp = clock.now()))
                 }
             }
+            is UiAction.SetHandsFree -> {
+                val nextState = if (action.enabled) com.anchor.core.voice.HandsFreeState.LISTENING else com.anchor.core.voice.HandsFreeState.IDLE
+                _state.update { it.copy(handsFreeState = nextState) }
+                if (!action.enabled) {
+                    addTransientReceipt(ReceiptState(UUID.randomUUID().toString(), "Hands-free mode stopped.", null, isError = false, timestamp = clock.now()))
+                }
+            }
+            is UiAction.UpdateHandsFreeState -> {
+                _state.update { it.copy(handsFreeState = action.state) }
+            }
             else -> {}
         }
     }

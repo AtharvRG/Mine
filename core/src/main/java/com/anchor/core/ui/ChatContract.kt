@@ -99,7 +99,9 @@ data class UiState(
     val ambientEnabled: Boolean = false,
     val voiceprintEnrolled: Boolean = false,
     // Blueprint 32 §3.5-§3.6 / P-007, P-008: Insights & Analytics report
-    val latestInsightsReport: com.anchor.core.insights.FullInsightsReport? = null
+    val latestInsightsReport: com.anchor.core.insights.FullInsightsReport? = null,
+    // Blueprint 60 §9 / P-018: Hands-Free Conversation Mode
+    val handsFreeState: com.anchor.core.voice.HandsFreeState = com.anchor.core.voice.HandsFreeState.IDLE
 ) {
     /** Blueprint 41 §2: the banner the user sees while messages wait. Null when nothing is queued. */
     val offlineQueuedText: String?
@@ -197,4 +199,8 @@ sealed interface UiAction {
 
     // Blueprint 32 §3.5-§3.6 / P-007, P-008: Insights & Analytics actions
     data class LoadInsights(val days: Int = 7) : UiAction
+
+    // Blueprint 60 §9 / P-018: Hands-Free Conversation actions
+    data class SetHandsFree(val enabled: Boolean) : UiAction
+    data class UpdateHandsFreeState(val state: com.anchor.core.voice.HandsFreeState) : UiAction
 }

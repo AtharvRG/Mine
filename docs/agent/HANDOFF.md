@@ -1,3 +1,21 @@
+# HANDOFF (v4 Feature: Hands-Free Continuous Voice Conversation Mode COMPLETE & VERIFIED)
+
+**Current Status**: 2026-11-13 10:20 IST
+- **v4 Hands-Free Conversation Mode Delivered (Blueprint 60 §9 / P-018, D-197)**:
+  - **Pure Kotlin State Machine (`HandsFreeModels.kt`, `HandsFreeStateMachine.kt`)**: Implemented `HandsFreeState` (`IDLE`, `LISTENING`, `PROCESSING`, `SPEAKING`), events, and effects in `:core`. Enforces half-duplex turn alternation: microphone is strictly closed during TTS playback to eliminate acoustic echo loops. Stop words ("bye", "goodbye", "stop", "exit", "cancel", "done", "that's all") immediately transition state to `IDLE`.
+  - **UI Integration & Chat Controller (`ChatContract.kt`, `ChatController.kt`, `MainActivity.kt`)**: Added `handsFreeState: HandsFreeState` to `UiState`, `SetHandsFree` and `UpdateHandsFreeState` actions. Added hands-free banner showing current conversational state ("Listening...", "Thinking...", "Speaking..."), composer toggle button (`🗣️` / `🛑`), and 10-second silence timeout auto-closing the microphone and resetting to `IDLE` to preserve battery.
+  - **Speech Playback & Loopback (`NativeTtsHelper.kt`)**: Added `onPlaybackComplete` callback via `UtteranceProgressListener` with 300ms acoustic grace period before re-opening the mic in `LISTENING` mode for continuous dialogue.
+  - **Sanitization & Safety**: Filtered text through `VoiceSpeechSanitizer`, zero raw audio saved to disk or SQLite, and zero vibration across transitions.
+- **Verification Summary**:
+  - `:core:test`: **579 / 579 PASS (100%)** across 98 test suites (including `HandsFreeStateMachineTest` 10/10 PASS).
+  - `:app:testDebugUnitTest`: **27 / 27 PASS (100%)** across 7 test suites.
+  - Total offline tests: **606 / 606 PASS (100%)**.
+  - App and AndroidTest compilation: `compileDebugKotlin` and `compileDebugAndroidTestKotlin` both SUCCESS.
+- **Next Milestone**:
+  - Connected device testing on Moto G73 5G when re-plugged, or next v4 roadmap feature.
+
+---
+
 # HANDOFF (v4 Feature: Insights & Analytics Queries COMPLETE & VERIFIED)
 
 **Current Status**: 2026-11-13 09:05 IST

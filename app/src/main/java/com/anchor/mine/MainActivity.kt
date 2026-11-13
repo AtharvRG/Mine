@@ -40,6 +40,8 @@ import com.anchor.core.models.AlarmTier
 import com.anchor.core.ui.ChatController
 import com.anchor.core.ui.UiAction
 import com.anchor.core.ui.UiState
+import com.anchor.core.voice.HandsFreeState
+import com.anchor.core.voice.HandsFreeStateMachine
 import com.anchor.core.voice.VoiceSpeechSanitizer
 import com.anchor.mine.ui.AmbientControlCard
 import com.anchor.mine.ui.AmbientReportCard
@@ -561,6 +563,9 @@ fun ChatScreen(
                     val engine = SherpaVoiceEngine.getInstance(context)
                     if (engine == null || !engine.isSttAvailable) {
                         withContext(Dispatchers.Main) {
+                            if (state.handsFreeState != HandsFreeState.IDLE) {
+                                onAction(UiAction.SetHandsFree(false))
+                            }
                             android.widget.Toast.makeText(
                                 context,
                                 "Offline voice model missing. Download sherpa-onnx STT model files to use voice transcription.",
@@ -572,16 +577,89 @@ fun ChatScreen(
                     val transcript = engine.transcribe(samples)
                     if (transcript.isNotBlank()) {
                         val scrubbed = com.anchor.core.ambient.NumberScrubber.scrub(transcript)
-                        withContext(Dispatchers.Main) {
-                            onAction(UiAction.UpdateDraft(scrubbed))
+                        if (state.handsFreeState != HandsFreeState.IDLE && HandsFreeStateMachine.isStopWord(scrubbed)) {
+                            withContext(Dispatchers.Main) {
+                                onAction(UiAction.SetHandsFree(false))
+                                android.widget.Toast.makeText(context, "Hands-free session ended.", android.widget.Toast.LENGTH_SHORT).show()
+                            }
+                        } else {
+                            withContext(Dispatchers.Main) {
+                                onAction(UiAction.UpdateDraft(scrubbed))
+                                if (state.handsFreeState != HandsFreeState.IDLE) {
+                                    onAction(UiAction.UpdateHandsFreeState(HandsFreeState.PROCESSING))
+                                    onAction(UiAction.SendMessage)
+                                }
+                            }
                         }
                     } else {
                         withContext(Dispatchers.Main) {
-                            android.widget.Toast.makeText(
-                                context,
-                                "No speech detected.",
-                                android.widget.Toast.LENGTH_SHORT
-                            ).show()
+                            if (state.handsFreeState != HandsFreeState.IDLE) {
+                                onAction(UiAction.UpdateHandsFreeState(HandsFreeState.LISTENING))
+                            } else {
+                                android.widget.Toast.makeText(
+                                    context,
+                                    "No speech detected.",
+                                    android.widget.Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        LaunchedEffect(state.handsFreeState) {
+            when (state.handsFreeState) {
+                HandsFreeState.LISTENING -> {
+                    if (!isRecording) {
+                        if (hasMicPermission) {
+                            val started = recorder.startRecording(scope)
+                            if (started) isRecording = true
+                        } else {
+                            micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                        }
+                    }
+                    var silenceSeconds = 0
+                    while (state.handsFreeState == HandsFreeState.LISTENING && isRecording) {
+                        delay(1000L)
+                        silenceSeconds++
+                        if (silenceSeconds >= 10) {
+                            if (isRecording) {
+                                isRecording = false
+                                recorder.stopRecording()
+                            }
+                            onAction(UiAction.SetHandsFree(false))
+                            withContext(Dispatchers.Main) {
+                                android.widget.Toast.makeText(context, "Hands-free session ended due to silence.", android.widget.Toast.LENGTH_SHORT).show()
+                            }
+                            break
+                        }
+                    }
+                }
+                HandsFreeState.IDLE -> {
+                    if (isRecording) {
+                        isRecording = false
+                        recorder.stopRecording()
+                    }
+                    com.anchor.mine.voice.NativeTtsHelper.stop()
+                }
+                else -> {}
+            }
+        }
+
+        LaunchedEffect(state.chatMessages.size, state.isChatLoading) {
+            if (state.handsFreeState == HandsFreeState.PROCESSING && !state.isChatLoading) {
+                val lastMsg = state.chatMessages.lastOrNull()
+                val assistantText = lastMsg?.content
+                if (lastMsg != null && lastMsg.role == "assistant" && !assistantText.isNullOrBlank()) {
+                    onAction(UiAction.UpdateHandsFreeState(HandsFreeState.SPEAKING))
+                    val sanitized = VoiceSpeechSanitizer.chunkSentences(assistantText).joinToString(" ")
+                    com.anchor.mine.voice.NativeTtsHelper.speak(context, sanitized) {
+                        scope.launch(Dispatchers.Main) {
+                            delay(300L)
+                            if (state.handsFreeState == HandsFreeState.SPEAKING) {
+                                onAction(UiAction.UpdateHandsFreeState(HandsFreeState.LISTENING))
+                            }
                         }
                     }
                 }
@@ -602,7 +680,56 @@ fun ChatScreen(
             }
         }
 
+        if (state.handsFreeState != HandsFreeState.IDLE) {
+            Surface(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp),
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
+                color = when (state.handsFreeState) {
+                    HandsFreeState.LISTENING -> Color(0xFFE8F5E9)
+                    HandsFreeState.PROCESSING -> Color(0xFFFFF3E0)
+                    HandsFreeState.SPEAKING -> Color(0xFFE3F2FD)
+                    HandsFreeState.IDLE -> MaterialTheme.colorScheme.surfaceVariant
+                }
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    val statusText = when (state.handsFreeState) {
+                        HandsFreeState.LISTENING -> "🎙️ Hands-Free: Listening..."
+                        HandsFreeState.PROCESSING -> "⏳ Hands-Free: Thinking..."
+                        HandsFreeState.SPEAKING -> "🔊 Hands-Free: Speaking..."
+                        HandsFreeState.IDLE -> ""
+                    }
+                    Text(statusText, style = MaterialTheme.typography.bodySmall, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                    OutlinedButton(
+                        onClick = { onAction(UiAction.SetHandsFree(false)) },
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                    ) {
+                        Text("Exit Hands-Free", style = MaterialTheme.typography.labelSmall)
+                    }
+                }
+            }
+        }
+
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            IconButton(
+                onClick = {
+                    if (state.handsFreeState == HandsFreeState.IDLE) {
+                        if (hasMicPermission) {
+                            onAction(UiAction.SetHandsFree(true))
+                        } else {
+                            micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                        }
+                    } else {
+                        onAction(UiAction.SetHandsFree(false))
+                    }
+                },
+                modifier = Modifier.testTag("handsFreeButton")
+            ) {
+                Text(if (state.handsFreeState == HandsFreeState.IDLE) "🗣️" else "🛑")
+            }
             OutlinedTextField(
                 value = state.composerDraft,
                 onValueChange = { onAction(UiAction.UpdateDraft(it)) },

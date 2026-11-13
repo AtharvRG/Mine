@@ -1,6 +1,17 @@
 # TASKS (one at a time, smallest first). Status: [ ] open, [~] in progress, [x] done+reviewed
 Specs for R1-R10: docs/agent/work/session1-remediation-spec.md. Read the task's section before starting.
 
+## v4 Feature: Hands-Free Conversation Mode (2026-11-13)
+[x] Implement Hands-Free Continuous Voice Conversation Mode (Blueprint 60 §9 / P-018, D-197)
+    [x] Branching analysis in docs/agent/work/v4-hands-free-conversation-analysis.md and Decision D-197 in DECISIONS.md.
+    [x] Pure Kotlin HandsFreeModels.kt (HandsFreeState, HandsFreeEvent, HandsFreeEffect).
+    [x] Pure Kotlin HandsFreeStateMachine.kt with half-duplex turn-taking, stop-phrase interception ("bye", "stop", "exit", "cancel", "done", "that's all"), silence timeout, and continuous playback-to-listening loop.
+    [x] UiState and UiAction in ChatContract.kt and ChatController.kt handling SetHandsFree and UpdateHandsFreeState.
+    [x] NativeTtsHelper utterance progress listener and onPlaybackComplete callback with acoustic decay grace.
+    [x] MainActivity.kt UI banner, composer toggle button, and auto-dispatch loop.
+    [x] Unit tests in HandsFreeStateMachineTest.kt (10/10 PASS).
+    [x] Full offline and compilation verification.
+
 ## v4 Feature: Insights & Analytics Queries (2026-11-13)
 [x] Implement Insights & Analytics Queries (Blueprint 32 §3.5-§3.6 / P-007, P-008, D-196)
     [x] Core data models for review rollups, chart cards (week_bars, goal_progress, activity_strip, streaks, mood_line) in InsightsModels.kt.
