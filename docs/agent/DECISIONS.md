@@ -670,4 +670,10 @@ Rejected: printing only the first line of the message (the diagnostic fields `Al
 - **Rejected:** Hardcoding a requirement for 2GB model weights before allowing local fallback; breaking `OfflineException` queuing for cloud-only chains.
 - **Proof:** `OnDeviceLlmFallbackTest` in `:core:test`.
 
-(Next free: D-199. Add: date, decision, reason, rejected.)
+## D-199 (2026-11-13) — v4 Large-Screen State Support, Adaptive Dual-Pane Layout & Insights Dashboard UI (Roadmap Line 52).
+- **Decision:** Built adaptive Compose layouts in `:app`: on compact displays (<600dp width), retains the single-column view and `ScrollableTabRow`. On medium/expanded screens (>=600dp width, tablets, foldables, landscape), displays a vertical `NavigationRail` and an adaptive dual-pane layout (`Row` with `ChatScreen` on the left and Companion screen on the right). Built `InsightsScreen` component natively rendering the 5 visual analytics cards (`WeekBarsCard`, `GoalProgressCard`, `StreaksCard`, `ActivityHeatStripCard`, `MoodLineCard`) from `UiState.latestInsightsReport`.
+- **Reason:** Satisfies the v4 large-screen requirement, transforming Mine into a responsive multi-form-factor productivity tool without breaking phone portrait ergonomics or test tags.
+- **Rejected:** Separate Activity or tablet-only APK flavor (unnecessary binary fragmentation; Compose dynamic breakpoints handle orientation and fold transitions natively).
+- **Proof:** `compileDebugKotlin`, `compileDebugAndroidTestKotlin`, Compose layout test suite.
+
+(Next free: D-200. Add: date, decision, reason, rejected.)

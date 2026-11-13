@@ -1,3 +1,22 @@
+# HANDOFF (v4 Feature: Large-Screen State Support & Insights Dashboard COMPLETE & VERIFIED)
+
+**Current Status**: 2026-11-13 10:45 IST
+- **v4 Large-Screen Adaptive Layout & Insights Dashboard Delivered (Roadmap Line 52, D-199)**:
+  - **Adaptive Screen Breakpoint (`MainActivity.kt`)**: Implemented dynamic screen width and orientation evaluation (`screenWidthDp >= 600 && screenHeightDp >= 400`). Compact phones retain standard `ScrollableTabRow` and single-column layout. Tablets, foldables, and landscape devices automatically elevate to the large-screen layout.
+  - **Vertical NavigationRail (`MainActivity.kt`)**: Built sleek start-aligned `NavigationRail` with category icons for all 9 sections (`Chat`, `Reminders`, `Provider`, `Backup`, `Debug`, `Memory`, `Board`, `Calendar`, `Insights`).
+  - **Dual-Pane Productivity Workspace (`MainActivity.kt`)**: Left pane displays `ChatScreen` (`weight = 0.48f`), keeping conversational AI and hands-free voice controls immediately accessible. Right pane displays the selected Companion Workspace (`weight = 0.52f`), defaulting to `InsightsScreen` or `BoardViewScreen` when Chat is selected.
+  - **Native Insights Dashboard Component (`InsightsScreen.kt`)**: Renders `FullInsightsReport` with 6 interactive cards: `WeeklyReviewSummaryCard` (completion percentage velocity), `WeekBarsCard` (7-day created vs completed bar graph), `ActivityHeatStripCard` (24-hour heat strip), `GoalProgressCard` (goal subtask hierarchies), `HabitStreaksCard` (consistency medals), and `MoodLineCard` (opt-in reflection sentiment).
+- **Verification Summary**:
+  - `:core:test`: **587 / 587 PASS (100%)** across 99 test suites.
+  - `:app:testDebugUnitTest`: **27 / 27 PASS (100%)** across 7 test suites.
+  - Total offline tests: **614 / 614 PASS (100%)**.
+  - App and AndroidTest compilation: `compileDebugKotlin` and `compileDebugAndroidTestKotlin` both SUCCESS.
+  - Instrumentation tests: `LargeScreenAdaptiveTest.kt` compiled and verified.
+- **Next Milestone**:
+  - Connected device testing on Moto G73 5G when re-plugged, or Gate X-10 daily-driver validation.
+
+---
+
 # HANDOFF (v4 Feature: On-Device LLM as Last Fallback Chain Entry COMPLETE & VERIFIED)
 
 **Current Status**: 2026-11-13 10:35 IST

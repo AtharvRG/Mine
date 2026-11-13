@@ -16,6 +16,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
@@ -258,7 +260,7 @@ fun MineAppUI(
     var selectedTab by remember { mutableIntStateOf(0) }
     // "Memory" is appended, not inserted: the `when (selectedTab)` below and every existing test
     // that clicks a tab by title depend on 0..4 staying put.
-    val tabs = listOf("Chat", "Reminders", "Provider", "Backup", "Debug", "Memory", "Board", "Calendar")
+    val tabs = listOf("Chat", "Reminders", "Provider", "Backup", "Debug", "Memory", "Board", "Calendar", "Insights")
 
     // Row 20: the viewer reads storage only when it is first opened. `memoryLoaded` is the guard —
     // UiState is a new object on every update, so keying on the tab alone would re-read on each one.
@@ -323,36 +325,111 @@ fun MineAppUI(
         return
     }
 
-    Column(modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars)) {
-        // H-11 (R-15): shown on every tab, because a reminder that cannot notify is a lost
-        // reminder no matter which screen the user is on.
-        if (state.notificationsBlocked) {
-            Text(
-                text = "Notifications are off for Mine. Reminders will be scheduled but cannot alert you until you allow notifications in system settings.",
-                color = MaterialTheme.colorScheme.onErrorContainer,
-                modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.errorContainer).padding(8.dp).testTag("notificationsBlockedBanner")
-            )
-        }
-        PrimaryScrollableTabRow(selectedTabIndex = selectedTab, edgePadding = 16.dp) {
-            tabs.forEachIndexed { index, title ->
-                Tab(selected = selectedTab == index, onClick = { selectedTab = index }, text = { Text(title) })
+    val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+    val isLargeScreen = configuration.screenWidthDp >= 600 && configuration.screenHeightDp >= 400
+
+    if (isLargeScreen) {
+        Column(modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars)) {
+            if (state.notificationsBlocked) {
+                Text(
+                    text = "Notifications are off for Mine. Reminders will be scheduled but cannot alert you until you allow notifications in system settings.",
+                    color = MaterialTheme.colorScheme.onErrorContainer,
+                    modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.errorContainer).padding(8.dp).testTag("notificationsBlockedBanner")
+                )
+            }
+            Row(modifier = Modifier.weight(1f).fillMaxWidth().testTag("largeScreenLayout")) {
+                NavigationRail(
+                    modifier = Modifier.fillMaxHeight().testTag("navigationRail"),
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                ) {
+                    Column(
+                        modifier = Modifier.fillMaxHeight().verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        tabs.forEachIndexed { index, title ->
+                            val iconText = when (index) {
+                                0 -> "💬"
+                                1 -> "⏰"
+                                2 -> "⚙️"
+                                3 -> "💾"
+                                4 -> "🛠️"
+                                5 -> "🧠"
+                                6 -> "📋"
+                                7 -> "📅"
+                                else -> "📊"
+                            }
+                            NavigationRailItem(
+                                selected = selectedTab == index,
+                                onClick = { selectedTab = index },
+                                icon = { Text(iconText, style = MaterialTheme.typography.titleMedium) },
+                                label = { Text(title, style = MaterialTheme.typography.labelSmall) }
+                            )
+                        }
+                    }
+                }
+
+                Row(modifier = Modifier.weight(1f).fillMaxHeight().padding(12.dp).testTag("dualPaneLayout")) {
+                    Box(modifier = Modifier.weight(0.48f).fillMaxHeight()) {
+                        ChatScreen(state, onAction, focusComposerRequests = focusComposerRequests)
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .width(1.dp)
+                            .fillMaxHeight()
+                            .padding(horizontal = 8.dp)
+                            .background(MaterialTheme.colorScheme.outlineVariant)
+                    )
+
+                    Box(modifier = Modifier.weight(0.52f).fillMaxHeight()) {
+                        when (if (selectedTab == 0) 8 else selectedTab) {
+                            1 -> RemindersScreen(state, onAction)
+                            2 -> ProviderScreen(state, onImport = { payload -> onAction(UiAction.ImportProviderConfig(payload)) }) { ep, k, m -> onAction(UiAction.SaveProvider(ep, k, m)) }
+                            3 -> BackupScreen(exportManager, storage, onAction = onAction)
+                            4 -> DebugScreen(state, onAction)
+                            5 -> MemoryScreen(state, onAction, storage = storage)
+                            6 -> com.anchor.mine.ui.BoardViewScreen(storage = storage, stateVersion = state.receipts.size, onActionClick = { id, status -> onAction(UiAction.UpdateNodeStatus(id, status)) })
+                            7 -> com.anchor.mine.ui.CalendarViewScreen(storage = storage)
+                            8 -> com.anchor.mine.ui.InsightsScreen(state = state, onAction = onAction)
+                            else -> com.anchor.mine.ui.InsightsScreen(state = state, onAction = onAction)
+                        }
+                    }
+                }
             }
         }
+    } else {
+        Column(modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars)) {
+            // H-11 (R-15): shown on every tab, because a reminder that cannot notify is a lost
+            // reminder no matter which screen the user is on.
+            if (state.notificationsBlocked) {
+                Text(
+                    text = "Notifications are off for Mine. Reminders will be scheduled but cannot alert you until you allow notifications in system settings.",
+                    color = MaterialTheme.colorScheme.onErrorContainer,
+                    modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.errorContainer).padding(8.dp).testTag("notificationsBlockedBanner")
+                )
+            }
+            PrimaryScrollableTabRow(selectedTabIndex = selectedTab, edgePadding = 16.dp) {
+                tabs.forEachIndexed { index, title ->
+                    Tab(selected = selectedTab == index, onClick = { selectedTab = index }, text = { Text(title) })
+                }
+            }
 
-        Box(modifier = Modifier.weight(1f).padding(16.dp)) {
-            when (selectedTab) {
-                0 -> ChatScreen(state, onAction, focusComposerRequests = focusComposerRequests)
-                1 -> RemindersScreen(state, onAction)
-                        // O-2: no key() here. The key remounted ProviderScreen on every config change,
-                // and a remount mid-edit re-seeded the fields from the old state, which is how a
-                // save produced the old value concatenated with the new one. ProviderScreen
-                // already follows `state` through a LaunchedEffect.
-                2 -> ProviderScreen(state, onImport = { payload -> onAction(UiAction.ImportProviderConfig(payload)) }) { ep, k, m -> onAction(UiAction.SaveProvider(ep, k, m)) }
-                3 -> BackupScreen(exportManager, storage, onAction = onAction)
-                4 -> DebugScreen(state, onAction)
-                5 -> MemoryScreen(state, onAction, storage = storage)
-                6 -> com.anchor.mine.ui.BoardViewScreen(storage = storage, stateVersion = state.receipts.size, onActionClick = { id, status -> onAction(UiAction.UpdateNodeStatus(id, status)) })
-                7 -> com.anchor.mine.ui.CalendarViewScreen(storage = storage)
+            Box(modifier = Modifier.weight(1f).padding(16.dp)) {
+                when (selectedTab) {
+                    0 -> ChatScreen(state, onAction, focusComposerRequests = focusComposerRequests)
+                    1 -> RemindersScreen(state, onAction)
+                            // O-2: no key() here. The key remounted ProviderScreen on every config change,
+                    // and a remount mid-edit re-seeded the fields from the old state, which is how a
+                    // save produced the old value concatenated with the new one. ProviderScreen
+                    // already follows `state` through a LaunchedEffect.
+                    2 -> ProviderScreen(state, onImport = { payload -> onAction(UiAction.ImportProviderConfig(payload)) }) { ep, k, m -> onAction(UiAction.SaveProvider(ep, k, m)) }
+                    3 -> BackupScreen(exportManager, storage, onAction = onAction)
+                    4 -> DebugScreen(state, onAction)
+                    5 -> MemoryScreen(state, onAction, storage = storage)
+                    6 -> com.anchor.mine.ui.BoardViewScreen(storage = storage, stateVersion = state.receipts.size, onActionClick = { id, status -> onAction(UiAction.UpdateNodeStatus(id, status)) })
+                    7 -> com.anchor.mine.ui.CalendarViewScreen(storage = storage)
+                    8 -> com.anchor.mine.ui.InsightsScreen(state = state, onAction = onAction)
+                }
             }
         }
     }

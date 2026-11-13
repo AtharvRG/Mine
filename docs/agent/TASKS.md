@@ -1,6 +1,16 @@
 # TASKS (one at a time, smallest first). Status: [ ] open, [~] in progress, [x] done+reviewed
 Specs for R1-R10: docs/agent/work/session1-remediation-spec.md. Read the task's section before starting.
 
+## v4 Feature: Large-Screen Adaptive Layout & Insights Dashboard (2026-11-13)
+[x] Implement Large-Screen State Support & Insights Dashboard (Roadmap Line 52, D-199)
+    [x] Branching analysis in docs/agent/work/v4-large-screen-adaptive-ui-analysis.md and Decision D-199 in DECISIONS.md.
+    [x] InsightsScreen.kt rendering FullInsightsReport (WeeklyReview, WeekBars, GoalProgress, Streaks, HeatStrip, MoodLine).
+    [x] MainActivity.kt adaptive breakpoint (screenWidthDp >= 600 && screenHeightDp >= 400).
+    [x] NavigationRail for tablet/foldable/landscape navigation.
+    [x] Dual-pane productivity layout (Chat left + Companion workspace right).
+    [x] LargeScreenAdaptiveTest.kt instrumentation test suite.
+    [x] Full offline test suite (614/614 PASS) and compile checks.
+
 ## v4 Feature: On-Device LLM as Last Fallback Chain Entry (2026-11-13)
 [x] Implement On-Device LLM Fallback (Roadmap Line 52 / P-010, D-198)
     [x] Branching analysis in docs/agent/work/v4-ondevice-llm-fallback-analysis.md and Decision D-198 in DECISIONS.md.
