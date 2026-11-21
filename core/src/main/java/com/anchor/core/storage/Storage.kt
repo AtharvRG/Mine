@@ -53,11 +53,11 @@ interface Storage {
     suspend fun getActiveNodes(limit: Int, cursor: String? = null): List<Node>
     suspend fun findActiveNodeByTitle(title: String): Node?
     suspend fun findActiveNodesByTitle(title: String): List<Node>
-    suspend fun getNodesDueBetween(startMs: Long, endMs: Long, limit: Int): List<Node>
+    suspend fun getNodesDueBetween(startMs: Long, endMs: Long, limit: Int, includeLocalOnly: Boolean = false): List<Node>
     suspend fun getOverdueNodes(beforeMs: Long, limit: Int): List<Node>
     suspend fun getRankedCandidates(now: Long, staleCutoffMs: Long, perTierLimit: Int = 25): List<Node>
-    suspend fun getActiveNodeCounts(now: Long, staleCutoffMs: Long = 30L * 24 * 3600 * 1000L): NodeCounts
-    suspend fun getStaleNodes(now: Long, cutoffMs: Long = 30L * 24 * 3600 * 1000L): List<Node>
+    suspend fun getActiveNodeCounts(now: Long, staleCutoffMs: Long = 30L * 24 * 3600 * 1000L, includeLocalOnly: Boolean = false): NodeCounts
+    suspend fun getStaleNodes(now: Long, cutoffMs: Long = 30L * 24 * 3600 * 1000L, includeLocalOnly: Boolean = false): List<Node>
     /** Blueprint 51 §3.1 / §3.9 (Gate E-12): Returns cancelled nodes from the last 30 days. */
     suspend fun getTrashNodes(now: Long, limit: Int = 100): List<Node>
     /** Blueprint 51 §3.1 / §3.9 (Gate E-12): Permanently scrubs and erases a node, its reminder, edges, and event tombstones. */
@@ -120,6 +120,7 @@ interface Storage {
     suspend fun hasUndo(token: String): Boolean
     suspend fun getUndoneOpIds(sinceUtc: Long = 0L): Set<String>
     suspend fun getRecentEvents(limit: Int): List<RawEvent>
+    suspend fun insertRawEvent(event: RawEvent)
 
     suspend fun getProactiveState(): com.anchor.core.models.ProactiveState
     suspend fun saveProactiveState(state: com.anchor.core.models.ProactiveState)
@@ -129,7 +130,7 @@ interface Storage {
     suspend fun recordReminderFire(fire: com.anchor.core.models.ReminderFire)
 
     suspend fun getOpenProposals(): List<Proposal>
-    suspend fun getUrgentNodes(): List<Node>
+    suspend fun getUrgentNodes(includeLocalOnly: Boolean = false): List<Node>
 
     // P1-D 20 (D-121): Home queries. Ranking is code-side (Kotlin), not SQL.
     suspend fun getHomePriorityList(now: Long, limit: Int = 5): List<Node>
@@ -216,7 +217,7 @@ interface Storage {
     /** Every `pending` job of [jobType], highest priority first — what the UI marks as queued. */
     suspend fun getPendingOutbox(jobType: String): List<OutboxJob>
     suspend fun markOutboxDone(id: String, now: Long)
-    suspend fun markOutboxFailed(id: String, now: Long, nextTryAt: Long, error: String)
+    suspend fun markOutboxFailed(id: String, now: Long, nextTryAt: Long, error: String, status: String = OutboxJob.STATUS_PENDING)
     /** Blueprint 41 §3.3 / §3.5: Marks pending outbox jobs past their deadline as dropped. Returns count. */
     suspend fun dropStaleOutbox(now: Long): Int
 
@@ -258,6 +259,9 @@ interface Storage {
     /** Prunes expired operational logs (diag_log 7d, reminder_fire 90d, outbox done/dropped 7d). */
     suspend fun pruneOperationalLogs(now: Long): Int
 
+    /** Rebuilds FTS5 full-text search indexes for node_fts, soul_fts, and msg_chunk_fts. */
+    suspend fun rebuildFtsIndexes() {}
+
     /** Blueprint 61 §4 (v3 Ambient Listening): Voiceprint, sessions, windows, segments, reports. */
     suspend fun saveVoiceprint(voiceprint: com.anchor.core.ambient.Voiceprint)
     suspend fun getVoiceprint(): com.anchor.core.ambient.Voiceprint?
@@ -296,6 +300,43 @@ interface Storage {
     suspend fun getHabitNodes(): List<Node>
     suspend fun getActionTimestampsBetween(startMs: Long, endMs: Long, limit: Int = 5000): List<Long>
     suspend fun getFullInsightsReport(startMs: Long, endMs: Long, nowMs: Long, includeMood: Boolean): com.anchor.core.insights.FullInsightsReport
+
+    /** Blueprint 50 §3.3: Day blocks for timeline grouping. */
+    suspend fun saveDayBlock(block: com.anchor.core.models.DayBlock) {}
+    suspend fun getDayBlocks(dayKey: String): List<com.anchor.core.models.DayBlock> = emptyList()
+
+    /** Blueprint 15 §4: Export log auditing. */
+    suspend fun saveExportLog(record: com.anchor.core.models.ExportLogRecord) {}
+    suspend fun getRecentExportLogs(limit: Int = 10): List<com.anchor.core.models.ExportLogRecord> = emptyList()
+
+    /** Blueprint 32 §4: Check-in delivery state. */
+    suspend fun saveCheckinState(record: com.anchor.core.models.CheckinStateRecord) {}
+    suspend fun getCheckinState(kind: String, dayKey: String): com.anchor.core.models.CheckinStateRecord? = null
+
+    /** Blueprint 31 §4: Nudge delivery and gate auditing. */
+    suspend fun saveNudgeLog(record: com.anchor.core.models.NudgeLogRecord) {}
+    suspend fun getRecentNudgeLogs(limit: Int = 50): List<com.anchor.core.models.NudgeLogRecord> = emptyList()
+
+    /** Companion Brain / v4: Topic Notes with living markdown bullets. */
+    suspend fun saveTopicNote(note: com.anchor.core.models.TopicNote)
+    suspend fun getTopicNote(id: String): com.anchor.core.models.TopicNote?
+    suspend fun getTopicNoteByTopic(topic: String): com.anchor.core.models.TopicNote?
+    suspend fun getAllTopicNotes(): List<com.anchor.core.models.TopicNote>
+    suspend fun searchTopicNotes(query: String, limit: Int = 10): List<com.anchor.core.models.TopicNote>
+    suspend fun deleteTopicNote(id: String)
+
+    /** Companion Brain / v4: Bidirectional Note References. */
+    suspend fun linkNoteReference(ref: com.anchor.core.models.NoteReference)
+    suspend fun getReferencesForNote(noteId: String): List<com.anchor.core.models.NoteReference>
+    suspend fun getReferencesForNode(nodeId: String): List<com.anchor.core.models.NoteReference>
+    suspend fun deleteNoteReference(id: String)
+
+    /** Companion Brain / v4: Secret Agent Self-Alarms. */
+    suspend fun saveAgentWakeup(wakeup: com.anchor.core.models.AgentWakeup)
+    suspend fun getPendingAgentWakeups(upToMillis: Long): List<com.anchor.core.models.AgentWakeup>
+    suspend fun markAgentWakeupState(id: String, state: String)
+    suspend fun getAgentWakeup(id: String): com.anchor.core.models.AgentWakeup?
+    suspend fun unstickRunningWakeups(olderThanMillis: Long): Int
 
     companion object {
         /** R-26: page size for [getPendingReminders]. Hitting it means "more rows exist". */

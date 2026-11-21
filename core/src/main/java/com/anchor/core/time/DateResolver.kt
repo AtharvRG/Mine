@@ -18,18 +18,44 @@ sealed class DateResolution {
 
 class DateResolver(
     private val clock: Clock,
-    private val is24HourFormat: () -> Boolean = { false },
-    val timeZone: TimeZone = TimeZone.getDefault()
+    val is24HourFormat: () -> Boolean = { false },
+    timeZone: TimeZone? = null
 ) {
-    constructor(clock: Clock, is24HourFormat: () -> Boolean) : this(clock, is24HourFormat, TimeZone.getDefault())
+    private val explicitTimeZone: TimeZone? = timeZone
+    val timeZone: TimeZone
+        get() = explicitTimeZone ?: TimeZone.getDefault()
+
+    constructor(clock: Clock, is24HourFormat: () -> Boolean) : this(clock, is24HourFormat, null)
     companion object {
         private val PREFIX_RE = Regex("""^(?:in|after|within)\s+""")
-        private val UNIT_RE = Regex("""(\d+)\s*(seconds?|secs?|minutes?|mins?|hours?|hrs?|days?|s|m|h|d)\b""")
+        private val UNIT_RE = Regex("""(\d+)\s*(seconds?|secs?|minutes?|mins?|hours?|hrs?|days?|weeks?|wks?|s|m|h|d|w)\b""")
         private val AM_PM_REGEX = Regex("""^(?:at\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)$""")
         private val DAY_PART_REGEX = Regex("""^(?:at\s+)?(\d{1,2})(?::(\d{2}))?\s*(?:in the\s+|at\s+)?(morning|afternoon|evening|night)$""")
         private val H_REGEX = Regex("""^(?:at\s+)?(\d{1,2})h(\d{2})?$""")
         private val COLON_REGEX = Regex("""^(?:at\s+)?(\d{1,2}):(\d{2})$""")
         private val BARE_HOUR_REGEX = Regex("""^(?:at\s+)?(\d{1,2})$""")
+
+        private val MONTHS = mapOf(
+            "jan" to Calendar.JANUARY, "january" to Calendar.JANUARY,
+            "feb" to Calendar.FEBRUARY, "february" to Calendar.FEBRUARY,
+            "mar" to Calendar.MARCH, "march" to Calendar.MARCH,
+            "apr" to Calendar.APRIL, "april" to Calendar.APRIL,
+            "may" to Calendar.MAY,
+            "jun" to Calendar.JUNE, "june" to Calendar.JUNE,
+            "jul" to Calendar.JULY, "july" to Calendar.JULY,
+            "aug" to Calendar.AUGUST, "august" to Calendar.AUGUST,
+            "sep" to Calendar.SEPTEMBER, "september" to Calendar.SEPTEMBER,
+            "oct" to Calendar.OCTOBER, "october" to Calendar.OCTOBER,
+            "nov" to Calendar.NOVEMBER, "november" to Calendar.NOVEMBER,
+            "dec" to Calendar.DECEMBER, "december" to Calendar.DECEMBER
+        )
+        private val ISO_DATE_REGEX = Regex("""^(\d{4})-(\d{1,2})-(\d{1,2})(?:\s+(?:at\s+)?(.+))?$""")
+        private val MONTH_FIRST_REGEX = Regex(
+            """^(jan|january|feb|february|mar|march|apr|april|may|jun|june|jul|july|aug|august|sep|september|oct|october|nov|november|dec|december)\s+(\d{1,2})(?:st|nd|rd|th)?(?:\s+(\d{4}))?(?:\s+(?:at\s+)?(.+))?$"""
+        )
+        private val DAY_FIRST_REGEX = Regex(
+            """^(\d{1,2})(?:st|nd|rd|th)?\s+(?:of\s+)?(jan|january|feb|february|mar|march|apr|april|may|jun|june|jul|july|aug|august|sep|september|oct|october|nov|november|dec|december)(?:\s+(\d{4}))?(?:\s+(?:at\s+)?(.+))?$"""
+        )
 
         private val WEEKDAYS = mapOf(
             "sunday" to Calendar.SUNDAY, "sun" to Calendar.SUNDAY,
@@ -55,6 +81,7 @@ class DateResolver(
         if (normalized == "in an hour" || normalized == "in 1 hr" || normalized == "in 1 hour" || normalized == "an hour") return 3_600_000L
         if (normalized == "in half an hour" || normalized == "in a half hour" || normalized == "half an hour" || normalized == "in 30 mins") return 1_800_000L
         if (normalized == "in a day" || normalized == "in 1 day" || normalized == "a day") return 86_400_000L
+        if (normalized == "in a week" || normalized == "in 1 week" || normalized == "a week") return 7 * 86_400_000L
 
         var body = normalized
         var hasPrefix = false
@@ -69,7 +96,7 @@ class DateResolver(
             val amount = m.groupValues[1].toLongOrNull() ?: return null
             if (amount > 100_000L) return null
             total += amount * when (unit[0]) {
-                's' -> 1_000L; 'm' -> 60_000L; 'h' -> 3_600_000L; else -> 86_400_000L
+                's' -> 1_000L; 'm' -> 60_000L; 'h' -> 3_600_000L; 'w' -> 7 * 86_400_000L; else -> 86_400_000L
             }
         }
         return if (total in 1..366L * 86_400_000L) total else null
@@ -162,6 +189,15 @@ class DateResolver(
             tomCal.set(Calendar.SECOND, 0)
             tomCal.set(Calendar.MILLISECOND, 0)
             return DateResolution.Exact(tomCal.timeInMillis)
+        }
+        if (normalized == "next week") {
+            val nwCal = absCal.clone() as Calendar
+            nwCal.add(Calendar.DAY_OF_YEAR, 7)
+            nwCal.set(Calendar.HOUR_OF_DAY, 9)
+            nwCal.set(Calendar.MINUTE, 0)
+            nwCal.set(Calendar.SECOND, 0)
+            nwCal.set(Calendar.MILLISECOND, 0)
+            return DateResolution.Exact(nwCal.timeInMillis)
         }
         if (normalized == "tonight") {
             val (hr, min) = resolveDayPartWindow("night", severity) ?: Pair(21, 0)
@@ -334,6 +370,68 @@ class DateResolver(
             }
         }
 
+        // 2b. Explicit Calendar Dates (ISO 8601 & Month-Day)
+        val isoMatch = ISO_DATE_REGEX.find(normalized)
+        val monthFirstMatch = if (isoMatch == null) MONTH_FIRST_REGEX.find(normalized) else null
+        val dayFirstMatch = if (isoMatch == null && monthFirstMatch == null) DAY_FIRST_REGEX.find(normalized) else null
+
+        if (isoMatch != null || monthFirstMatch != null || dayFirstMatch != null) {
+            val targetCal = absCal.clone() as Calendar
+            val yearGroup: String?
+            val monthNum: Int
+            val dayNum: Int
+            val timePart: String?
+
+            if (isoMatch != null) {
+                yearGroup = isoMatch.groupValues[1]
+                monthNum = (isoMatch.groupValues[2].toIntOrNull() ?: 1) - 1
+                dayNum = isoMatch.groupValues[3].toIntOrNull() ?: 1
+                timePart = isoMatch.groupValues[4].takeIf { it.isNotBlank() }
+            } else if (monthFirstMatch != null) {
+                monthNum = MONTHS[monthFirstMatch.groupValues[1].lowercase(Locale.US)] ?: 0
+                dayNum = monthFirstMatch.groupValues[2].toIntOrNull() ?: 1
+                yearGroup = monthFirstMatch.groupValues[3].takeIf { it.isNotBlank() }
+                timePart = monthFirstMatch.groupValues[4].takeIf { it.isNotBlank() }
+            } else {
+                dayNum = dayFirstMatch!!.groupValues[1].toIntOrNull() ?: 1
+                monthNum = MONTHS[dayFirstMatch.groupValues[2].lowercase(Locale.US)] ?: 0
+                yearGroup = dayFirstMatch.groupValues[3].takeIf { it.isNotBlank() }
+                timePart = dayFirstMatch.groupValues[4].takeIf { it.isNotBlank() }
+            }
+
+            val curYear = absCal.get(Calendar.YEAR)
+            val resolvedYear = yearGroup?.toIntOrNull() ?: curYear
+            targetCal.set(Calendar.YEAR, resolvedYear)
+            targetCal.set(Calendar.MONTH, monthNum)
+            targetCal.set(Calendar.DAY_OF_MONTH, dayNum)
+
+            if (timePart == null) {
+                targetCal.set(Calendar.HOUR_OF_DAY, 9)
+                targetCal.set(Calendar.MINUTE, 0)
+                targetCal.set(Calendar.SECOND, 0)
+                targetCal.set(Calendar.MILLISECOND, 0)
+                if (yearGroup == null && targetCal.timeInMillis < now) {
+                    targetCal.set(Calendar.YEAR, curYear + 1)
+                }
+                return if (targetCal.timeInMillis < now) DateResolution.PastTime else DateResolution.Exact(targetCal.timeInMillis)
+            } else {
+                val parsed = parseTimePart(timePart, severity = severity) ?: return DateResolution.Failed
+                if (yearGroup == null) {
+                    val testCal = targetCal.clone() as Calendar
+                    when (val res = resolveTargetTime(parsed, testCal, now, allowPastRollForward = false, timeZone = effectiveTz)) {
+                        is DateResolution.Exact -> {
+                            if (res.timeMillis < now) targetCal.set(Calendar.YEAR, curYear + 1)
+                        }
+                        is DateResolution.NeedsClarification -> {
+                            if (res.candidateMillis.all { it < now }) targetCal.set(Calendar.YEAR, curYear + 1)
+                        }
+                        else -> {}
+                    }
+                }
+                return resolveTargetTime(parsed, targetCal, now, allowPastRollForward = false, timeZone = effectiveTz)
+            }
+        }
+
         // 3. Day prefix handling
         when {
             normalized.startsWith("tomorrow at ") || normalized.startsWith("tomorrow ") -> {
@@ -357,7 +455,7 @@ class DateResolver(
                 if (isLateNight) {
                     logicalCal.add(Calendar.DAY_OF_YEAR, 1)
                 }
-                if (parsed.hour == 0) {
+                if (parsed.hour == 0 || (parsed.hour < 5 && absCal.get(Calendar.HOUR_OF_DAY) >= 12)) {
                     logicalCal.add(Calendar.DAY_OF_YEAR, 1)
                 }
                 val allowRoll = parsed.isAmbiguousBare12

@@ -9,9 +9,15 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <!-- Blueprint 44 §2: Phone state permission for post-call nudges (detection only, zero audio, zero numbers) -->
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    <!-- Blueprint 43 §3: Activity recognition and location for motion and Wi-Fi sensing -->
+    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <!-- Blueprint 61: Foreground Service with Microphone for Ambient Listening -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
@@ -30,6 +36,8 @@
             android:name=".MainActivity"
             android:exported="true"
             android:launchMode="singleTop"
+            android:windowSoftInputMode="adjustResize"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden"
             android:theme="@style/Theme.Mine">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -61,6 +69,7 @@
             android:name=".alarms.AlarmReceiver"
             android:exported="false"
             android:directBootAware="true" />
+        <receiver android:name=".alarms.ReminderActionReceiver" android:exported="false" />
         <!-- Blueprint 50 §3.14: inline reply on a reminder notification. Not exported: the
              PendingIntent that targets it is created by this app and is the only caller. -->
         <receiver android:name=".capture.QuickCaptureReceiver" android:exported="false" />
@@ -68,6 +77,7 @@
         <!-- Blueprint 44: Post-call nudge receivers -->
         <receiver
             android:name=".nudge.CallStateReceiver"
+            android:permission="android.permission.READ_PHONE_STATE"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.PHONE_STATE" />
@@ -81,13 +91,10 @@
             <intent-filter>
                 <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.USER_UNLOCKED" />
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
                 <action android:name="android.intent.action.TIME_SET" />
                 <action android:name="android.intent.action.TIMEZONE_CHANGED" />
-                <!-- H-03 (R-03): self-sent retry after storage failed at boot. -->
-                <action android:name="com.anchor.mine.alarms.ACTION_STORAGE_RETRY" />
-                <!-- H-02 (R-02): periodic sweep so a miss is reported without the app opening. -->
-                <action android:name="com.anchor.mine.alarms.ACTION_SWEEP" />
             </intent-filter>
         </receiver>
 
@@ -96,5 +103,35 @@
             android:name=".ambient.AmbientForegroundService"
             android:exported="false"
             android:foregroundServiceType="microphone" />
+
+        <!-- Notification reading while ambient listening is on. Bound by the system only after the
+             user grants Notification access to Mine in Settings; it reads nothing on its own. -->
+        <service
+            android:name=".notifications.MineNotificationListener"
+            android:exported="true"
+            android:label="Mine — read notifications aloud"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.service.notification.default_filter_types"
+                android:value="conversations|alerting" />
+            <meta-data
+                android:name="android.service.notification.disabled_filter_types"
+                android:value="ongoing|silent" />
+        </service>
+
+        <!-- Blueprint 50 / Roadmap P1.1-05: Home Screen Widget Provider -->
+        <receiver
+            android:name=".widget.MineAppWidgetProvider"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/mine_tasks_widget_info" />
+        </receiver>
     </application>
 </manifest>

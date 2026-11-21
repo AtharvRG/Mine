@@ -56,31 +56,40 @@ class DbKeyProvider(private val context: Context) {
             return rawKey
         }
 
-        // Unwrap existing
-        try {
-            val bytes = keyFile.readBytes()
-            if (bytes.isEmpty()) {
-                throw IllegalStateException("KEYSTORE_LOST")
-            }
-            val ivSize = bytes[0].toInt()
-            if (ivSize <= 0 || bytes.size < 1 + ivSize) {
-                throw IllegalStateException("KEYSTORE_LOST")
-            }
-            val iv = bytes.copyOfRange(1, 1 + ivSize)
-            val encrypted = bytes.copyOfRange(1 + ivSize, bytes.size)
+        // Unwrap existing with retry backoff for transient Keystore daemon delays
+        var lastException: Exception? = null
+        for (attempt in 1..3) {
+            try {
+                val bytes = keyFile.readBytes()
+                if (bytes.isEmpty()) {
+                    throw IllegalStateException("KEYSTORE_LOST")
+                }
+                val ivSize = bytes[0].toInt()
+                if (ivSize <= 0 || bytes.size < 1 + ivSize) {
+                    throw IllegalStateException("KEYSTORE_LOST")
+                }
+                val iv = bytes.copyOfRange(1, 1 + ivSize)
+                val encrypted = bytes.copyOfRange(1 + ivSize, bytes.size)
 
-            val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-            val secretKey = (keyStore.getKey(ALIAS, null) as? SecretKey)
-                ?: throw IllegalStateException("KEYSTORE_LOST")
-            cipher.init(Cipher.DECRYPT_MODE, secretKey, GCMParameterSpec(128, iv))
-            return cipher.doFinal(encrypted)
-        } catch (e: IllegalStateException) {
-            throw e
-        } catch (_: Exception) {
-            // A8: If keystore is wiped or the file is corrupted, we cannot recover.
-            // We must throw specifically so the ViewModel offers a Reset.
-            throw IllegalStateException("KEYSTORE_LOST")
+                val ks = KeyStore.getInstance(KEYSTORE).apply { load(null) }
+                val secretKey = (ks.getKey(ALIAS, null) as? SecretKey)
+                    ?: throw IllegalStateException("KEYSTORE_LOST")
+                val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+                cipher.init(Cipher.DECRYPT_MODE, secretKey, GCMParameterSpec(128, iv))
+                return cipher.doFinal(encrypted)
+            } catch (e: Exception) {
+                lastException = e
+                if (attempt < 3) {
+                    try {
+                        Thread.sleep(50L * attempt)
+                    } catch (_: InterruptedException) {
+                        Thread.currentThread().interrupt()
+                        break
+                    }
+                }
+            }
         }
+        throw IllegalStateException("KEYSTORE_LOST", lastException)
     }
 
     private fun ensureKeystoreKey(keyStore: KeyStore) {

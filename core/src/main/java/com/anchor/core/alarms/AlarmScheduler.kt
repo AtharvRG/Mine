@@ -29,4 +29,6 @@ interface AlarmScheduler {
     fun schedule(reminder: Reminder): ScheduleResult
     fun cancel(reminderId: String)
     fun checkHealth(): ScheduleResult = ScheduleResult.Armed
+    fun scheduleAgentWakeup(wakeupId: String, fireAtMillis: Long): ScheduleResult = ScheduleResult.Armed
+    fun cancelAgentWakeup(wakeupId: String) {}
 }

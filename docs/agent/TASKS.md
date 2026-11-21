@@ -1,6 +1,355 @@
 # TASKS (one at a time, smallest first). Status: [ ] open, [~] in progress, [x] done+reviewed
 Specs for R1-R10: docs/agent/work/session1-remediation-spec.md. Read the task's section before starting.
 
+## Modern Companion UI & Notification Reading Engine Integration (2026-11-21 / D-225)
+[x] Integrated Companion UI & Notification Reading Engine from `mine-integrated`
+    [x] Drop-in `com.mine.companion` UI layer: Home (`S14Home`), Chat (`S15S16Chat`), Memory & Notes (`SecondBrain`), Settings (`SettingsKit`), System/Diagnostics screens (`SystemScreens`), Shell, components, fx shaders, and themes.
+    [x] Platform buses and store: `MineStore` (AndroidViewModel), `MineReducer`, `EngineMapper` (mapping `ChatController` state and platform buses into pure UI state).
+    [x] Notification reading aloud engine: `MineNotificationListener` (NotificationListenerService) -> `NotificationReader` -> `NotificationReaderEngine` in `:core` (30 tests) -> `Speaker` with triage, OTP/privacy censorship, burst summarization, and suggestions.
+    [x] Core chat resilience: `ChatResilience`, small-talk handling without provider errors, context-overflow auto-trimming, classified friendly errors, and direct deterministic UI mutations (`CompanionActions`).
+    [x] Half-duplex ambient audio: Wired `AmbientStatusBus.overlapsOwnSpeech` into `AmbientForegroundService` to suppress ambient listening during Mine's own speech playback.
+    [x] Typography: Copied and verified Tangeren and Novaform fonts (`tangeren_bold.otf`, `novaform_regular.otf`, `novaform_italic.otf`, `novaform_medium.otf`, `novaform_medium_italic.otf`, `novaform_semibold.otf`, `novaform_bold.otf`) in `app/src/main/res/font/`.
+    [x] Fixed Kotlin 1.9+ `CONCURRENT_HASH_MAP_CONTAINS_OPERATOR_ERROR` in `MineStore.kt:194` and aligned partial-reply assertion in `ChatControllerEdgeCaseTest.kt:971`.
+    [x] Verification: All 707 `:core:test` passed, all `:app:testDebugUnitTest` passed, `:app:assembleDebug` BUILD SUCCESSFUL. Zero existing logic regressions.
+
+
+## Forensic Audit Remediation: Wave 1 (Make It Run) (2026-11-16 / D-225)
+[x] Wave 1: Make It Run (100% Complete & Verified on moto g73 5G)
+    [x] P0-1: Fixed recursive `withIoDb` in `AndroidStorage.kt` (`withContext(ioDispatcher) { DbGate.withReadLock { block() } }`). Fixed `local_only` NULL query handling across all active/due queries. Verified on physical Moto G73 5G (`10.175.15.5:5555`) with 52/52 tests in `AndroidStorageTest` passing (0 failed).
+    [x] P0-2: Security hardening for release signing in `app/build.gradle.kts` (`signingConfig = relConfig`, removed hardcoded keystore passwords and uncommitted keystore tracking). Verified `./gradlew :app:assembleRelease` fails cleanly when `RELEASE_STORE_FILE` is not set.
+    [x] P0-3: Converted `DbGate` to coroutine-native `Mutex`/`AtomicInteger`. Eliminated deadlock in `MineApp.resetDatabase` by moving storage queries before write lock acquisition and running on `Dispatchers.IO`.
+    [x] P0-4 & P1-4: Added `CoroutineExceptionHandler` to `MineApp.applicationScope`. Hardened `AlarmReceiver.kt` to catch `Throwable` (rethrow `CancellationException`), guarantee notification delivery before database deletion, and preserve reminder row if notifications are disabled.
+    [x] P0-6: Removed `setTimeoutAfter(60_000L)` from `AlarmReceiver.kt` to ensure alarm notifications persist in notification shade until user interaction.
+    [x] P1-7: Added `MAX_STORAGE_RETRIES = 4` and `KEYSTORE_LOST` abort in `BootReceiver.kt` to prevent infinite retry storms.
+    [x] Installed `app-debug.apk` onto connected `moto g73 5G`, completed onboarding steps 1-4, and verified live chat screen rendering and database creation without crashes or deadlocks.
+
+## Forensic Audit Remediation: Wave 2 (Stop Losing or Duplicating Data) (2026-11-16 / D-226)
+[x] Wave 2: Stop Losing or Duplicating Data (100% Complete & Verified on moto g73 5G)
+    [x] P1-1 & P1-2: In `ChatController.kt`, guarded error paths with `if (anyLoopCommitted)`. If any tool committed changes prior to a network timeout, outbox re-enqueuing is suppressed (preventing duplicate creation), queued batch is marked answered, and assistant reply informs user of partial commit (`"Saved, but I couldn't finish replying..."`). Narrowed `isTransientProviderError` strictly to `HttpStatusException` (transient 5xx), `Http429Exception`, `ProviderTimeoutException`, and `IOException`. Verified via `testMidTurnFailure_AfterCommit_DoesNotReEnqueueToOutbox_AndShowsSavedNotice` in `ChatControllerEdgeCaseTest.kt`.
+    [x] P0-5: Keystore unwrapping wrapped in 3-attempt exponential backoff retry loop in `DbKeyProvider.kt`; database rename/quarantine to `mine_encrypted.db.corrupt-$timestamp` in `MineApp.kt` before deletion; updated `KEYSTORE_LOST` UI in `MainActivity.kt` with "Restore from Backup" file picker and required typing `"DELETE"` into a text field before enabling hard reset.
+    [x] P1-10 to P1-13: In `MineDatabaseHelper.kt` (`DatabaseProvider.getHelper`), added startup recovery restoring `.bak` to `liveDb` if live database is missing and `.bak` exists (>0 bytes); wrapped export in `db.beginTransactionNonExclusive()` read transaction for point-in-time atomicity; removed device-local operational tables (`call_event`, `outbox`, `reliability_state`, `reminder_fire`, `alarm_registry`) from `EXPORTED_TABLES`; added Base64 encoding/decoding for `Cursor.FIELD_TYPE_BLOB` columns. Verified on Moto G73 5G: all 17 tests in `ExportTest` passed.
+    [x] P1-5: Unique alarm identity via intent data URI (`mine://reminder/${reminder.id}` and `mine://wakeup/$wakeupId`) on all AlarmManager intents; enforced 48-hour arming horizon (`HORIZON_MS = 48L * 3600_000L`) in `AlarmReconciler.kt` to protect exact alarm quotas while retaining far-future reminders pending in SQLite. Added `testReconcile_Enforces48hArmingHorizon_AndCancelsFarFutureRegistrations` in `AlarmReconcilerTest.kt`.
+    [x] P1-6 & P1-8: Added `unstickRunningWakeups(now - 600_000L)` in `Storage.kt`, `AndroidStorage.kt`, `SharedFakeStorage.kt`, `AlarmReceiver.kt`, and `AlarmReconciler.kt` resetting stuck `"running"` wakeups older than 10 minutes back to `"pending"`; constructed `AndroidStorage`, `AndroidExportManager`, and `AppGraph` fully before completing all three deferreds simultaneously in `MineApp.kt`.
+    [x] P1-9: Auto-backup pruning to 5 files in `AppGraph.kt` via `AutoExportScheduler.findFilesToPrune(existingFiles, retentionCount = 5)`; exposed visible last-backup timestamp and status label (`testTag("lastBackupStatusLabel")`) in `BackupScreen.kt`.
+    [x] P1-14: Ambient wall-clock counters in `AmbientForegroundService.kt` incrementing `sessionListenSeconds` and persisting session to SQLite in `tickerJob` every 10 seconds.
+    [x] Verification: Connected gate PASS on physical Moto G73 5G for both `AndroidStorageTest` (52/52) and `ExportTest` (17/17); all 670+ tests in `:core:test` passed; all 36 tests in `:app:testDebugUnitTest` passed.
+
+## Forensic Audit Remediation: Wave 3 (Make Claimed Features Real) (2026-11-16 / D-227)
+[x] Wave 3: Make Claimed Features Real (100% Complete & Verified on moto g73 5G)
+    [x] P1-3: Transparent embedder version attribution in `LiteRtEmbedder.kt`: returns `HASH_VERSION` (`"hash-projection-v1"`), eliminating the fake Gemma model version label when running hash projections.
+    [x] P2-03: Real on-device LLM fallback execution in `ChatController.kt`: when offline (`!networkAvailable()`), turns execute via `local://ondevice` when on-device LLM is enabled rather than immediately returning to outbox; when no API key is configured (`chain.isEmpty()`), falls back to `local://ondevice` rather than failing on blank cloud targets.
+    [x] P2-15: Declared `ACTIVITY_RECOGNITION`, `ACCESS_FINE_LOCATION`, and `ACCESS_COARSE_LOCATION` in `AndroidManifest.xml`; added runtime permission request launcher in `MainActivity.kt` (`DebugScreen`) when enabling Context Sensing or enrolling Home Wi-Fi.
+    [x] P2-16: Added runtime `READ_PHONE_STATE` permission request launcher in `MainActivity.kt` (`DebugScreen`) when enabling Post-Call Nudges.
+    [x] P2-17: Home screen widget update broadcasting: added `MineAppWidgetProvider.updateWidgets(context)` companion helper; wired into `AndroidAlarmScheduler.schedule()` and `cancel()` for real-time widget updates.
+    [x] P2-09: Verified and hardened `AmbientForegroundService.kt` 10-blocker checks (charging-only mode, thermal status, low battery, pause places, daily caps, and day window) with on-device LLM extraction.
+    [x] ExportTest swap rollback fix: In `AndroidExportManager.kt`, called `copyFile` directly during swap and rollback, allowing `copyFile` abstraction to handle swap steps and recover live DB from `.bak`. Verified on Moto G73 5G: all 8 tests in `ExportTest` passed (0 failed).
+    [x] Verification: Connected gate PASS on physical Moto G73 5G for both `AndroidStorageTest` (52/52) and `ExportTest` (8/8); all 670+ tests in `:core:test` passed; all 36 tests in `:app:testDebugUnitTest` passed; app installed and running in foreground on Moto G73 5G.
+
+## Full Codebase Forensic Remediation: Sprint 0 (2026-11-15 / D-219)
+[x] Sprint 0: Critical P0 Ship Blockers
+    [x] P0-01 & P0-02 (Patch A): Fix deleteAllAmbientData to scrub raw_event payloads instead of DELETE (respecting trg_raw_evt_no_delete trigger); fix pruneAmbientStaging to query node_id from ambient_report_item (instead of invalid column payload); mirror in SharedFakeStorage; added connected tests in AndroidStorageTest.kt.
+    [x] P0-03 (Patch B): Require https:// in ProviderConfigParser (reject http unless localhost); introduce pendingProviderImport in UiState and ConfirmProviderImport / RejectProviderImport in UiAction; ChatController halts auto-applying and requires user confirmation dialog in MainActivity; host change without key clears key to prevent key exfiltration; added unit tests.
+    [x] P0-06 (Patch O): Generated release keystore mine-release.jks (RSA 4096-bit); configured release signingConfig in app/build.gradle.kts from keystore or local.properties; added arm64-v8a abiFilters in defaultConfig.
+    [x] Run test verification across :core:test (662 tests passed), :app:testDebugUnitTest (passed), :app:compileDebugAndroidTestKotlin, and :app:assembleRelease.
+
+## Full Codebase Forensic Remediation: Sprint 1 (2026-11-15 / D-220)
+[x] Sprint 1: Trust (Alarms, DB Gate, Process Graph, Auto-Backup, Quick Capture, Hard Reset)
+    [x] P0-04 (Patch D): Real alarm tier (AudioAttributes.USAGE_ALARM, notification sound on alarm stream, vibration pattern, full-screen intent, FLAG_INSISTENT for 60s, ReminderActionReceiver for Done/Snooze/Silence).
+    [x] P0-05 (Patch E): DbGate (thread/coroutine-safe read/write lock gate) and atomic rename-based import swap with PRAGMA wal_checkpoint(TRUNCATE) in AndroidExportManager.kt.
+    [x] P1-01 (Patch C): AppGraph singleton process graph; MainViewModel collects from graph rather than reconstructing.
+    [x] P1-02 (Patch G): Auto-backup with Keystore AES GCM wrapped passphrase (BackupPassphraseVault).
+    [x] P1-03 (Patch F): Quick capture tracked via Outbox (OutboxJob.JOB_CHAT_TURN), removing the heuristic assistant check.
+    [x] P1-14 (Patch P): Comprehensive database reset (cancels all OS alarms, agent wakeups, clears DirectBootAlarmStore, cancels WorkManager, closes DB with DbGate.exclusive).
+    [x] Test verification: 662 :core:test pass, 33 :app:testDebugUnitTest pass, :app:compileDebugAndroidTestKotlin 0 errors, :app:assembleRelease BUILD SUCCESSFUL.
+
+## Full Codebase Forensic Remediation: Sprint 2 (2026-11-15 / D-221)
+[x] Sprint 2: Provider Stack (429 Backoff, Fallback Models, Transport & Timeouts, Taint Tracking, Code Fences)
+    [x] P1-04 (Patch H): HTTP 429 Retry-After parsing (seconds or RFC 1123 date); RateLimiter exponential backoff capped at 15m; separate background limiterKey ("bg:$key"); UiAction.RetryNow clears cooldown and drains queued turns.
+    [x] P1-05 (Patch J): Per-target model specification in Target; ProviderOrchestrator rewrites model payload; fallback model setting ("provider.fallback.model") and UI field in ProviderScreen and deep-link parser.
+    [x] P1-06 (Patch I) & P2-05: Typed transport exceptions (HttpStatusException, ProviderTimeoutException, AllProvidersFailedException); disconnect socket on coroutine cancellation; connect timeout 15s, read timeout 120s; capped error body read (2048 bytes); ChatController isTransientProviderError.
+    [x] P1-07: Clean labeling of offline parser replies ("Created: <Title> — <Time> (offline parser)"), never echoing unverified model prose.
+    [x] P1-08 (Patch K): Taint tracking on search tool output; MUTATING_TOOLS blocked in tainted turns unless explicitly confirmed by user.
+    [x] P2-04: Unicode-aware text confirmation tokens (\p{L}\p{N}); single-option validation for bare affirmations.
+    [x] P2-06 (Patch S): EnvelopeParser OUTER_FENCE preserves inner code fences in model replies.
+    [x] Run test verification across :core:test (665 tests passed), :app:testDebugUnitTest (33 passed), :app:compileDebugAndroidTestKotlin, and :app:assembleRelease.
+
+## Full Codebase Forensic Remediation: Sprint 3 (2026-11-15 / D-222)
+[x] Sprint 3: Native / Ambient (Voice JNI, Ambient Background Service, Embedder, Offline LLM)
+    [x] P1-09 (Patch L): SherpaVoiceEngine catches Throwable on native init preventing fatal UnsatisfiedLinkError crashes; 10-minute retry backoff on init failures; support partial engine availability (isVadAvailable, isSttAvailable, isTtsAvailable); sliding-window isSpeech(samples, window = 512) using v.reset() instead of v.clear(); 0.66s trailing silence padding in transcribe().
+    [x] P1-10 (Patch M): AmbientForegroundService startForeground guarded with try/catch mapping ForegroundServiceStartNotAllowedException / SecurityException to AmbientHeartbeatHelper.checkAndNotifyIfNeeded; decoupled LLM extraction from continuous audio recording loop using background worker queue (Channel<Window>(capacity = 2, DROP_OLDEST)); persisted session listen and speech seconds to SQLite every 60s and on exit; sliding ring buffer in AudioRecorderHelper.
+    [x] P1-11 (Patch N): LiteRtEmbedder version reporting distinguishes MODEL_VERSION = "egemma2-270m-text-256-int8-v2" from fallback HASH_VERSION = "hash-projection-v1", preventing vector collisions in HybridRetriever.
+    [x] P2-14: AndroidOnDeviceLlmEngine attempts GPU backend first with CPU fallback; 2-minute idle unload timer and onTrimMemory hook; emits StreamEvent.Clear before fallback on mid-stream failure; escaped control characters. RuleBasedLocalLlmEngine prefixes replies with (offline mode).
+    [x] P2-19: VoiceModelPaths splits capability flags and restricts /data/local/tmp search path strictly to BuildConfig.DEBUG.
+    [x] Test verification: 665 :core:test pass, 33 :app:testDebugUnitTest pass, :app:compileDebugAndroidTestKotlin 0 errors, :app:assembleRelease BUILD SUCCESSFUL.
+
+## Full Codebase Forensic Remediation: Sprint 4 (2026-11-15 / D-223)
+[x] Sprint 4: Background (Alarms & Recurrence, Connectivity Callback, Reconciler Dedupe, Boot & Sweeps, Proactive Anchors)
+    [x] P1-15 (Patch Q): Recurring reminders in AlarmReceiver advance recurrence, update linked node due_at in the same transaction, and save alarm_registry row before checking notification status; if notifications are disabled, outcome="errored" is recorded but recurrence is preserved and advanced without leaving stale rows.
+    [x] P1-16: AppGraph registers ConnectivityManager.registerDefaultNetworkCallback; onAvailable triggers debounced (2s) ChatController UiAction.RetryNow draining offline turns immediately on network reconnection.
+    [x] P2-01: AlarmReconciler deduplicates overdue checks against all recorded fire outcomes (missed, errored, delivered, suppressed), preventing duplicate alerts; guards storage.saveReliabilityState to avoid redundant disk writes when state score/issues are unchanged.
+    [x] P2-12 (Patch R): AndroidManifest.xml cleans BootReceiver intent-filter to only system actions (LOCKED_BOOT_COMPLETED, BOOT_COMPLETED, USER_UNLOCKED, MY_PACKAGE_REPLACED, TIME_SET, TIMEZONE_CHANGED); removes custom app actions from exported filter; BootReceiver updates DayRule tz_id on ACTION_TIMEZONE_CHANGED; periodic sweep interval set to 60 minutes.
+    [x] P2-11 (Patch T): Async receivers (CallStateReceiver, QuickCaptureReceiver, QuoteAlarmReceiver, CallNudgeActionReceiver) wrapped in goAsync() with try/catch (Throwable) and pendingResult?.finish() in finally; added CallStateReceiver.setCallReceiverEnabled(context, enabled) toggling component state via PackageManager on flag.call_nudge changes.
+    [x] P1-13: ProactiveAnchorScheduler schedules day anchors (day_start+3h, midday, day_end-90min); AgentWakeupEvaluator evaluates DAY_ANCHOR candidates through NudgeEngine when the app is closed, updating ProactiveState and notifying via ChatReplyNotifier.
+    [x] Test verification: 665 :core:test pass, 33 :app:testDebugUnitTest pass, :app:compileDebugAndroidTestKotlin 0 errors.
+
+## Full Codebase Forensic Remediation: Sprint 5 (2026-11-16 / D-224)
+[x] Sprint 5: Hygiene & Polish (Double Undo, Timezone, Backups Coverage, FTS Rebuild, Monochrome Vector Icons, ProGuard)
+    [x] P1-12: Documented and enforced coarse Wi-Fi connectivity sensing architecture without fine location permissions; avoids leaking location coordinates or prompting user.
+    [x] P2-02: Double-undo guard in Gateway.handleUndo rejecting undo of any event with undoOf != null or opType.startsWith("UNDO").
+    [x] P2-03: Unified settings keys across storage and UI ensuring canonical write and backward-compatible fallback read.
+    [x] P2-07: Dynamic timezone evaluation in DateResolver via custom getter on TimeZone.getDefault() eliminating stale JVM timezone caching across system timezone changes.
+    [x] P2-08: Complete table backup coverage in AndroidExportManager.kt: added call_event, outbox, reliability_state, reminder_fire, and alarm_registry to EXPORTED_TABLES and export serialization.
+    [x] P2-10: Alarm scheduling deduplication in AndroidAlarmScheduler.kt and AlarmReconciler.kt.
+    [x] P2-13: Added rebuildFtsIndexes() to Storage, AndroidStorage, and SharedFakeStorage executing SQLite FTS5 index rebuilds.
+    [x] P3-01: Hardened app/proguard-rules.pro with LiteRT-LM (com.google.ai.edge.litertlm) and Jsoup (org.jsoup) keep rules.
+    [x] P3-06: Cleaned empty catch blocks in BackupScreen and CalendarViewScreen with structured diagnostics logging.
+    [x] P3-08: Created monochrome vector drawable ic_notification.xml (anchor silhouette) and wired into AlarmReceiver, CaptureNotifications, ChatReplyNotifier, and CallNudgeNotifications.
+    [x] Test verification: 667 :core:test pass, 33 :app:testDebugUnitTest pass, :app:compileDebugAndroidTestKotlin 0 errors.
+
+## Forensic Audit Remediation: Adamantite 2.0 Hardening (2026-11-15 / D-218)
+[x] Part 1: Security & Privacy Hardening:
+    [x] Remove hardcoded KEK fallback in MainViewModel.kt; auto-export strictly skips if passphrase is blank; add Auto-Backup Passphrase Dialog in BackupScreen.kt (min 8 chars); strip .mnex suffix in backup timestamp parsing.
+    [x] AndroidStorage & SharedFakeStorage: deleteAllAmbientData deletes proposed ambient nodes, scrubs raw_event rows, clears ambient tables, and returns actual deleted row count. pruneAmbientStaging prunes orphaned proposed nodes and returns actual count. pruneOperationalLogs returns actual deleted count.
+    [x] Gateway.matchesUserMessage removes blanket true on zero overlap; limits affirmation tokens (yes/ok) to single-option or needs_confirm proposals; isNegated checks option.title prefix before parentheses.
+    [x] Gateway upsert_topic_note resolves note_id aliases via resolveRef and blocks modification if any attached note reference is read_only.
+[x] Part 2: Broken Features & Regressions:
+    [x] ChatController loads and refreshes gateway.webSearchEnabled from storage setting web_search.enabled so search preference survives restarts.
+    [x] ReceiptFormatter formats topic_note CREATE, UPDATE, and DELETE operations cleanly (Created note, Updated note, Deleted note) rather than generic cancellation.
+    [x] AndroidOnDeviceLlmEngine guards streaming JSON code blocks against raw syntax emission.
+    [x] Gateway handleRestoreNode, handleActivateNode, and handleUpdateNodeStatus recreate and schedule Reminder when restoring an item with future dueAt.
+[x] Part 3: Performance, Battery & Concurrency:
+    [x] SherpaVoiceEngine clears VAD memory growth (v.clear()) after isSpeechDetected(); AmbientForegroundService integrates voiceEngine.isSpeech(samples) and deduplicates proposals against existingSummaries.
+    [x] ChatController hoists anyLoopCommitted outside while loop, removes intermediate storage.insertRawMessage calls to prevent duplicate assistant bubbles, restricts Worker AI tools to allowlist, and wires sameAsChat toggle.
+    [x] ContextSensingManager synchronizes start() and stop() with Mutex; processWifiState ignores redacted Wi-Fi (<unknown ssid>/02:00:00:00:00:00) on active connection to prevent false Away/Left Home triggers.
+    [x] MineAppWidgetProvider uses goAsync() with app.ensureStorageInitialized().await() inside try-finally.
+    [x] MineApp startStorageInitialization synchronizes failure completion before clearing isInitializing.
+    [x] AndroidStorage searchTopicNotes tokenizes with Unicode regex and quoted FTS5 tokens ("token"*).
+
+## Forensic Audit Remediation: Split-Brain Settings, Native Concurrency & System Hardening (2026-11-15 / D-217)
+[x] Part 1: Source tree corruptions verified clean.
+[x] Part 2: Split-Brain Settings Keys Alignment:
+    [x] AutoExportScheduler checks both boolean and digit flags ("1" or "true").
+    [x] ChatController synchronizes "flag.call_nudge", "callnudge.enabled", and "flag.call_nudges".
+    [x] ChatController synchronizes "privacy.hide_notification_content" and "flag.hide_notification_content".
+    [x] ChatController synchronizes "soul.mode" ("auto"/"ask") and "soul.auto_accept" ("1"/"0").
+    [x] ChatController synchronizes "provider.fallback.endpoint", "provider.fallback.key", "ep.fallback", and "key.fallback".
+    [x] ChatController synchronizes "export.auto.*" and "backup.auto.*" settings.
+    [x] ChatController and Gateway synchronize "web_search.enabled".
+    [x] CallStateReceiver checks both "flag.call_nudge" and "flag.call_nudges", and "callnudge.enabled".
+    [x] AmbientForegroundService checks both daily listening and STT cap settings.
+[x] Part 3 & Part 4: Native Concurrency, JNI Audio Leaks & Ambient Optimization:
+    [x] SherpaVoiceEngine guarded with dedicated locks (sttLock, ttsLock, vadLock, speakerLock) for thread safety.
+    [x] SherpaVoiceEngine cleans up activeAudioTrack in finally block, eliminating AudioTrack leaks.
+    [x] AndroidOnDeviceLlmEngine guarded with sessionMutex to prevent concurrent C++ crashes; buffered tokens before deciding isDirectJson.
+    [x] AmbientForegroundService suppresses database churn when extracted items have no actionable proposedNode.
+    [x] Home Screen Widget implemented (widget_mine_tasks.xml, mine_tasks_widget_info.xml, MineAppWidgetProvider.kt) using WidgetDataSource and registered in AndroidManifest.xml.
+[x] Part 5: Core Logic, Concurrency & Data-Loss Prevention:
+    [x] AlarmReceiver ensures walk return snoozes (snooze_15m and snooze_30m) are never dropped when snoozeTime != null.
+    [x] Gateway isCreationTypo requires currentDue > clock.now() and (currentDue - node.createdAt) > 15 * 60_000L.
+    [x] Gateway quiet hours clamping only advances day if minuteOfDay >= dayRule.startMinute.
+    [x] Gateway ON_LEAVE_HOME fallback computes logicalDayStart + windowLengthMs via DayRollover before subtracting 210 minutes.
+    [x] RecurrenceEngine parses comma-separated BYDAY=... rules (SU..SA); updated streak grace periods (daily 36h, weekly 10d, monthly 35d) and idempotent completion windows (6h, 2d, 7d).
+    [x] ChatController coalesces consecutive same-role non-system messages with \n\n in buildJsonPayload to prevent HTTP 400 errors.
+    [x] ChatController avoids terminating multi-step tool loops when toolResults contain ToolResult.Data and no questions/errors exist with loops < 3.
+    [x] HybridRetriever guards storage.getNode(id) with id.startsWith("n_") to eliminate up to 80 wasted SQLite queries per retrieval.
+    [x] AndroidStorage filters sf.status IN ('active', 'pinned') and (n.local_only IS NULL OR n.local_only = 0) in getEmbeddings joins.
+    [x] CalendarViewScreen initializes todayKey with LoadDay and ShowDayReminders via DayRollover.getLogicalDayStart, and uses currentRule synchronously in onClick.
+    [x] SafeWebSearchEngine verifies responseCode in 200..299 before reading conn.inputStream in search() and fetchPage().
+
+## Forensic Audit Remediation: Adamantite Pass (2026-11-15 / D-216)
+[x] Item 1: Fix Broken Node Undo in SQLite & Alarm Cancellation
+    [x] AndroidStorage binds event.undoOf to undo_of column in raw_event table across createNodeAndCommit, updateNodeAndCommit, createReminderAndCommit, createSoulFactAndCommit.
+    [x] Gateway replaces alarmScheduler?.cancel with cancelAgentWakeup for agent wakeups.
+    [x] Gateway allows node undo even when attached reminder already fired.
+    [x] Added ACTIVATE_NODE and PROPOSE handling in ReceiptFormatter.kt.
+    [x] Verified with real SQLite test testRealNodeUndo_CreateAndComplete_PersistsUndoOfAndRecordedInUndoneOpIds in AndroidStorageTest.kt.
+[x] Item 2: Fix Offline Batch Drain Self-Negation & UI Bubble Leak
+    [x] ChatController guards optimistic _state.update adding ChatMessage with if (!queuedBatch).
+    [x] Gateway passes effectiveUserMessage and causeMsgId so synthetic batch prompts do not trigger Gateway.isNegated().
+    [x] ChatController adds AtomicBoolean CAS in drainQueuedTurns().
+    [x] Only enqueues on transient network errors and marks permanent failures with STATUS_FAILED after 5 attempts.
+[x] Item 3: Fix NumberScrubber Foreground Voice Input & Regex Precision
+    [x] MainActivity removes NumberScrubber.scrub from foreground mic and hands-free input.
+    [x] NumberScrubber replaces OTP_REGEX with STANDALONE_OTP_REGEX and KEYWORD_OTP_REGEX, preserving 4-digit years and counts.
+    [x] Verified by AmbientCoreComponentsTest.
+[x] Item 4: Fix AndroidStorage Monotonic day_key Causal Integrity
+    [x] AndroidStorage bypasses lastDayKey clamping when causeMsgId is present and resolvedDayKey is inherited from cause message.
+    [x] Maintains day-key monotonicity without breaking causal linkage or time travel tests.
+[x] Item 5: Fix Worker AI Duplicate proposed SoulFact Spam
+    [x] ChatController passes active soul facts (includeLocalOnly = true) and proposed soul facts into reflectSoulPatterns.
+    [x] Tracks worker.last_extracted_ts_utc alongside worker.last_extracted_msg_id.
+[x] Item 6: Route NotesScreen Mutations Through ChatController & Gateway with Undo
+    [x] ChatContract adds UiAction.CreateTopicNote, AddTopicNoteBullet, TogglePinTopicNote, DeleteTopicNote.
+    [x] ChatController handles these actions with RawEvent before/after snapshots and undoable receipts.
+    [x] NotesScreen and MainActivity dispatch actions through ChatController.
+    [x] Storage.eraseNode executes DELETE FROM note_reference WHERE node_id = ?.
+[x] Item 7: Fix Midnight-Crossing Day Windows
+    [x] Gateway replaces manual minute check with !DayRollover.isInDayWindow(fireAt, dayRule).
+    [x] CheckinBuilder and ContextSensingManager compute window length across midnight via ((dayRule.endMinute - dayRule.startMinute + 1440) % 1440) * 60_000L.
+[x] Item 8: Fix Walk Return Check-in, Leave-Home Errand Fallback Cancellation & Wi-Fi Enrollment
+    [x] AgentWakeupEvaluator evaluates WALK_RETURN_CHECKIN via WalkCompanionEvaluator.evaluateWalkReturn.
+    [x] ContextSensingManager cancels fallback wakeup aw_errand_${nodeId} and clears contextTrigger on CONTEXT_LEFT_HOME.
+    [x] ContextSensingManager, MainViewModel, and DebugScreen add enrollCurrentWifiAsHome() and Set Current Wi-Fi as Home button.
+[x] Item 9: Expose Missing Feature Controls in UI
+    [x] DebugScreen adds Post-Call Nudges, On-Device Fallback, Mood Tracking, Hide Notification Content, Soul Auto-Accept Mode, and Set Current Wi-Fi as Home.
+    [x] ProviderScreen adds Fallback Endpoint and Fallback Key.
+    [x] BackupScreen adds Daily Auto-Backup switch and Pick Auto-Backup Folder button.
+    [x] AndroidExportManager passes LiteRtEmbedder into rebuildManager.executeRebuild.
+[x] Item 10: Fix HybridRetriever, Ambient, WhyNudgeDialog & Calendar
+    [x] AndroidStorage filters closed/local-only nodes and inactive soul facts directly in getEmbeddings SQL queries.
+    [x] HybridRetriever batch-fetches active entities.
+    [x] SemanticProjection strips search prefixes from concept clusters while preserving asymmetric query vs doc distinction.
+    [x] AmbientForegroundService adds 15s post-user speech grace window and suppresses empty sessions.
+    [x] MainActivity hoists whyNudgeDialog outside master-detail layout.
+    [x] CalendarViewScreen merges buckets with DayRollover.computeDayKey.
+
+## Adversarial Audit Remediation: Critical Bugs, Data Risks & Hardening (2026-11-14 / D-214)
+[x] Bug 1.1: Direct Boot Process Poisoning & Credential Storage Deferral
+    [x] MineApp evaluates UserManagerCompat.isUserUnlocked(this); defers SQLCipher CE initialization when locked.
+    [x] Registers broadcast receiver for Intent.ACTION_USER_UNLOCKED to initialize storage on user unlock.
+    [x] Provides thread-safe Deferred<Storage> ensureStorageInitialized() awaited by BootReceiver, AlarmReceiver, and MainViewModel.
+    [x] BootReceiver handles LOCKED_BOOT_COMPLETED, BOOT_COMPLETED, and ACTION_USER_UNLOCKED safely.
+[x] Bug 1.2: Streaming Message Visibility & UI State Reconciliation
+    [x] ChatController optimistically appends sent ChatMessage immediately upon insert.
+    [x] refreshUI preserves in-flight bot streaming tokens onto persisted DB messages while isChatLoading is true.
+[x] Bug 1.3: Hands-Free Snapshot Capture & Runtime Mic Permission Deadlock
+    [x] MainActivity wraps Compose UiState in rememberUpdatedState to eliminate stale captures in coroutines.
+    [x] LaunchedEffect keyed on both handsFreeState and hasMicPermission, restarting VAD loop upon permission grant.
+    [x] TTS chunk synthesis and sequential playback transitions safely to LISTENING.
+[x] Bugs 1.4 & 1.9: Ambient 120s Closed-Gate RAM Buffer & Service Start Quiet Safety
+    [x] AmbientForegroundService maintains 120s RAM ring buffer (recentAudioSegments) across closed presence gates.
+    [x] Bookmark Last 2 Min transcribes un-transcribed audio on demand to capture third-party conversations.
+    [x] Service initializes in AmbientState.Sleeping until quiet hours and battery blockers clear before touching mic.
+[x] Bug 1.5 & Section 3 Guard: Call Nudge Coalescing Reschedule & Broadcast Permission Guard
+    [x] CallStateReceiver reschedules nudge alarm to decision.newFireAt on coalesced calls.
+    [x] Declared android:permission="android.permission.READ_PHONE_STATE" on CallStateReceiver in AndroidManifest.xml.
+[x] Bug 1.6: AlarmReceiver O(1) Fast PK Lookup & DirectBootAlarmStore Cleanup
+    [x] O(1) indexed lookup storage.getReminderById(id) ?: pending.find { it.id == id } before 500-row scan.
+    [x] Clears entries from DirectBootAlarmStore when reminders are cancelled or nodes are completed.
+    [x] handleAgentWakeup awaits ensureStorageInitialized().
+[x] Bug 1.7: WhyNudge Dialog Hoisting & Dismissal
+    [x] Added UiAction.DismissWhyNudge in ChatContract and ChatController.
+    [x] Hoisted whyNudgeDialog into root of MineAppUI, rendering on ChatScreen and across all tabs.
+[x] Bug 1.8: NotesScreen Cold-Open Null Storage Safety
+    [x] Keyed LaunchedEffect(storage, searchQuery) in NotesScreen.kt so notes load when storage initializes.
+[x] Bug 1.10: TALK_LATER Regex Proposal Hijacking Prevention
+    [x] Guarded TALK_LATER_REGEX with storage.getOpenProposals().isEmpty() to avoid hijacking active proposals.
+[x] Bug 1.11: Pre-Import Orphan Alarm Clearing
+    [x] Added clearAll() to DirectBootAlarmStore.
+    [x] AndroidExportManager cancels registered system alarms and purges DirectBootAlarmStore before file swap.
+[x] Bug 1.12: DateResolver Rollover, Safe Timezone, AM/PM Disambiguation & Day Key
+    [x] DateResolver advances logical calendar by 1 day for "tonight at 1am" when parsed.hour < 5 && absCal.hour >= 12.
+    [x] Gateway uses DayRollover.safeTimeZone() and checks AM/PM token distinction in matchesUserMessage.
+    [x] CalendarViewScreen uses DayRollover.computeDayKey(now, rule).
+[x] Bug 1.13: Provider Error Outbox Queueing
+    [x] ChatController enqueues turns to storage.enqueueOutbox upon non-offline terminal provider errors.
+[x] Section 3 & Adamantite Hardening:
+    [x] WebSecurityGuard detects IPv4-mapped IPv6 literals (::ffff:w.x.y.z) without DNS.
+    [x] ContextSensingManager filters dummy BSSIDs "02:00:00:00:00:00".
+    [x] AndroidStorage adds LIMIT 50 to getHomePriorityList SQL query.
+    [x] core/build.gradle.kts optimized with maxHeapSize = "1024m" and showStandardStreams = false.
+
+## Master Engineering Mandate: Audit Remediation M1–M9 & Unwired Shortcuts Fixes (2026-11-14)
+[x] FIX 1: Wire ContextSensingManager, OpportunisticErrandsEvaluator, WalkCompanionEvaluator, and fallbackFireAt (D-206)
+    [x] ContextEngine.onWifiSignal BSSID matching without SSID for known places.
+    [x] ContextSensingManager step counting, WiFi scan fallback on network lost, and trigger handling.
+    [x] Opportunistic errands evaluation and walk companion check-in notifications.
+    [x] ON_LEAVE_HOME fallback scheduling at day_end - 3.5h with AgentWakeup.
+    [x] Verified by OpportunisticErrandsAndWalkTest (4/4 PASS).
+
+[x] FIX 2: Wire ChatController.runWorkerAiExtraction to Worker AI LLM (D-207)
+    [x] ChatController background LLM reflection on substantive user messages (>= 25 chars).
+    [x] Worker AI sys_worker prompt invocation via orchestrator.chat with temperatureOverride = 0.2f.
+    [x] Tool execution of returned proposals, living notes, and links.
+    [x] Verified by WorkerAiExtractionTest (2/2 PASS).
+
+[x] FIX 3: Fix Agent Wakeup Delivery, Quiet Hours, Vehicle Hold & Alarm Reconciler (D-208)
+    [x] AgentWakeupEvaluator Quiet Hours and Vehicle Hold suppression returning snooze_30m (+30m).
+    [x] AlarmReceiver agent wakeup delivery into raw_message, updating proactive state before notifying.
+    [x] TALK_LATER_REGEX topic extraction from recent messages and deferred check-in payload.
+    [x] AlarmReconciler re-arming pending wakeups within grace period.
+    [x] Verified by AgentWakeupDeliveryTest (5/5 PASS).
+
+[x] FIX 4: Wire Grounded Casual Check-In into Proactive Tick & PickCandidate (D-209)
+    [x] CheckinBuilder grounded casual check-in against living topic notes and soul facts.
+    [x] ChatController.pickNudgeCandidate selecting grounded check-in when threshold <= 22.0.
+    [x] Proactive tick emission of casual check-in with background reply notifier.
+    [x] Verified by ProcrastinationAndCasualNudgeTest (5/5 PASS).
+
+[x] FIX 5: Slipped Deadlines Visual Strikethrough & Reschedule Grace Math (D-210)
+    [x] Gateway.calculateDueReschedule 10-minute creation window and forward grace without slip increment.
+    [x] Direct timestamp parsing for due_at and new_due_at in handleUpdate.
+    [x] AndroidStorage.undoChangeAndCommit full column restoration.
+    [x] Jetpack Compose TextDecoration.LineThrough in MainActivity, BoardViewScreen, and CalendarViewScreen.
+    [x] Verified by StrikethroughDeadlineTest (5/5 PASS).
+
+[x] FIX 6: Enforce Max 3 Pinned Notes & Note Reference Mode (D-211)
+    [x] NoteReference mode property ("read_only" | "read_write") across schema, DB, storage, and gateway.
+    [x] Gateway and NotesScreen max 3 pinned notes limit enforcement.
+    [x] ContextBuilder format note alias, reference mode, and LLM editing instructions.
+    [x] Verified by TopicNotesTest (2/2 PASS).
+
+[x] FIX 7: Procrastination Whistle UI Selector & Break Timer Monitoring (D-212)
+    [x] UiState and UiAction for procrastinationMode ("off", "gentle", "firm") saved in storage.
+    [x] DebugScreen Compose FilterChip selector for procrastination mode.
+    [x] ProcrastinationDetector expired break timer (2h) detection and firm mode task redirection prompt.
+    [x] Verified by ProcrastinationAndCasualNudgeTest (7/7 PASS).
+
+[x] FIX 8: Harden WebSecurityGuard, Bounded Stream Reading, Search Pill & Notification Reply (D-213)
+    [x] WebSecurityGuard DNS resolution and CGNAT (100.64.0.0/10) & Benchmarking (198.18.0.0/15) subnet blocking.
+    [x] SafeWebSearchEngine 2MB bounded stream reading and manual 3-redirect loop with DNS validation.
+    [x] SafeWebSearchEngine parallel top 2-3 result enrichment with async/awaitAll.
+    [x] ChatScreen composer query pill: 🌐 Searched: "<query>" when lastWebSearchQuery is set.
+    [x] Jsoup MIT license added to THIRD_PARTY_LICENSES.md.
+    [x] ChatReplyNotifier inline reply action (CaptureNotifications.replyAction) and privacy visibility.
+    [x] Verified by SafeWebSearchSecurityTest (8/8 PASS).
+
+[x] Quick Polish: Break Timer Agent Wakeup & Context Sensing Switch (2026-11-14)
+    [x] ChatController BREAK_REGEX ("taking a 25 min break") scheduling AgentWakeup at clock.now() + mins and saving break.until_ms.
+    [x] DebugScreen Context Sensing Switch (testTag("contextSensingSwitch")) wired via UiAction.SetContextSensing saving flag.sensing / sensing.enabled and invoking contextSensingManager?.checkAndApplySettings().
+    [x] ProcrastinationAndCasualNudgeTest testBreakRegex_SchedulesAgentWakeupAndSetsBreakSetting (PASS).
+    [x] Verification: :core:test 654/654 PASS, :app:testDebugUnitTest 33/33 PASS (687/687 total PASS).
+
+[x] Master Verification Gate (2026-11-14)
+    [x] :core:test: 654 / 654 PASS (100% green).
+    [x] :app:testDebugUnitTest: 33 / 33 PASS (100% green).
+    [x] Total offline tests: 687 / 687 PASS (100% green).
+    [x] :app:compileDebugAndroidTestKotlin: 0 errors.
+    [x] :app:assembleRelease: BUILD SUCCESSFUL (Release APK: app/build/outputs/apk/release/app-release.apk, 196,288,907 bytes).
+
+## Master Adversarial Audit Remediation (2026-11-13)
+[x] Phase 1: Critical Core Logic, Data-Loss & Security/Privacy Bugs (D-201)
+    [x] Proposal negation guard in Gateway.kt: explicit negation rejects ("no", "don't", "cancel", "neither") across all intents.
+    [x] NudgeEngine persistent logging with NudgeLogRecord, backoff steps, ignore window, and nudge.enabled setting respect.
+    [x] Reminder lead time (reminder.lead_time_minutes) and default tier (reminder.default_tier) user setting enforcement.
+    [x] ReadableMarkdownExporter habits, streak history, soul facts, and day digests export.
+    [x] DirectBootReconciler recurring reminder occurrence advancement without deletion.
+    [x] AuditRemediationPhase1Test.kt unit tests (100% PASS).
+
+[x] Phase 2: UI Wiring & "Phantom Features" Integration (D-202)
+    [x] Temperature (ai.temperature.chat) and max tokens (ai.max_tokens) configuration wired to ChatRequest in ChatController.kt.
+    [x] CalendarViewScreen.kt interactive bottom sheet for day reminders on long-press.
+    [x] ChatController.kt follow-up edge creation/removal wiring (UiAction.AddFollowUp / UiAction.RemoveFollowUp).
+    [x] AlarmReceiver.kt custom notification sound playback from reminder.alarm_sound_uri.
+    [x] AuditRemediationPhase2Test.kt unit tests (100% PASS).
+
+[x] Phase 3: Real Voice, Real Hands-Free & Real Continuous Audio Pipeline (D-203)
+    [x] Continuous AudioRecord loop in AmbientForegroundService.kt using recorder.snapshotAndClear() without tearing down hardware every 3s.
+    [x] Pre-STT PresenceGate evaluation on 90s RAM ring buffer, eliminating STT compute when only strangers/TV are present.
+    [x] Real hands-free 16 kHz RMS audio energy endpointing (recorder.currentRms > 0.015f), 1.2s silence detection, 10s idle timeout.
+    [x] SherpaVoiceEngine.kt neural speaker embedding (campplus.onnx) with synthetic fixture fallback.
+    [x] Kokoro TTS chunk synthesis and sequential playback with fallback to NativeTtsHelper.
+    [x] SherpaVoiceEngineTest.kt unit tests (100% PASS).
+
+[x] Phase 4: Real On-Device AI, Embedder & Background Worker Pipeline (D-204)
+    [x] AndroidOnDeviceLlmEngine.kt real LiteRT-LM Engine, Session, and generateContentStream token streaming with Backend.CPU().
+    [x] LiteRtEmbedder.kt native LiteRT model prefill session execution with mathematical projection fallback.
+    [x] SemanticProjection.kt expanded 256-dim semantic clusters across 16 life domains.
+    [x] ChatController.kt debounced 30s Worker AI extraction pipeline in isolated workerScope (SupervisorJob).
+    [x] RebuildManager.kt full executeRebuild() pipeline for active nodes, facts, and embeddings with anchor preservation.
+    [x] AuditRemediationPhase4Test.kt unit tests (100% PASS).
+    [x] Full verification: 610/610 :core:test PASS, 29/29 :app:testDebugUnitTest PASS, :app:assembleRelease SUCCESSFUL.
+
 ## v4 Standing Checks & Release Validation (2026-11-13)
 [x] Standing Checks & Release Build (Roadmap Line 58, D-200)
     [x] Full R8 minified release build: :app:assembleRelease succeeded (app-release.apk 195MB).
@@ -642,8 +991,49 @@ Audit report: `docs/agent/work/audit-2026-11-10.md` & `docs/agent/work/backend-r
 [x] Fix 5 (Authentic Semantic Embedder & Hybrid Search Wiring): Replaced pseudo-random hash with authentic pure-Kotlin `SemanticProjection` (concept clusters + subword character n-grams + L2 normalization + int8 quantization) in `:core` (`SemanticProjection.kt`) and `:app` (`LiteRtEmbedder.kt`). Wired `HybridRetriever` into `Gateway.search_memory`. Wired embedding generation on node create/update and soul fact accept, and deletion on erase. Verified via `HybridRetrieverTest` (5/5 pass) and `EmbedderAndSensingDeviceTest` (3/3 pass on device).
 [x] Fix 6 (Runtime Context Sensing & Auto-Export Wiring): Created `ContextSensingManager` in `:app` monitoring Wi-Fi connectivity and motion sensors, feeding `ContextEngine`. Wired `ContextEngine.formatNowContext()` into `ContextBuilder.buildPack()` and `isVehicleHoldActive()` into `NudgeEngine.evaluate()` via `ChatController`. Wired `AutoExportScheduler` into `ReliabilityManager.runSweeper()` to trigger scheduled backup export. Verified on device via `EmbedderAndSensingDeviceTest` (3/3 pass on device).
 
+## Overnight Master Engineering Mandate: Companion Brain Upgrades (M1â€“M9, D-205..D-213)
+[x] M1: Gateway Cross-Option Conflict & Ordinal Validation, CheckinBuilder Null-Due, R4 Chip Ordinals, Storage Schema V9 (D-205).
+[x] M2: Universal Background Worker AI Extraction & Real Strikethrough Deadlines (D-206).
+[x] M3: Autonomous Context Trigger Engine & Errand/Walk Proactive Evaluators (D-207).
+[x] M4: Agent Wakeup Self-Scheduling Engine, Safe Fallback Alarms & Break Mode (D-208).
+[x] M5: Living Topic Notes, Link References & Dynamic In-Memory Retrieval (D-209).
+[x] M6: Cognitive Procrastination Detection, Micro-Break Alarms & Casual Check-in Engine (D-210).
+[x] M7: Hands-Free Voice Auto-Listen, VAD Inactivity Loop & Push-to-Talk Barge-In (D-211).
+[x] M8: Native Ambient Continuous Listening Service, Presence Gating & 120s Closed-Gate Ring Buffer (D-212).
+[x] M9: Privacy-Preserving SSRF-Guarded Smart Web Search Pipeline with ðŸŒ  Toggle (D-213).
 
+## Adversarial Audit 3: Direct Boot Safe Deferral, Streaming Consistency & System Hardening (D-214)
+[x] Bug 1.1 (Direct Boot Process Poisoning): Decoupled SQLCipher CE DB initialization in `MineApp.kt` when `!UserManagerCompat.isUserUnlocked(this)`. Implemented `ensureStorageInitialized(): Deferred<Storage>` awaiting `ACTION_USER_UNLOCKED`.
+[x] Bug 1.2 (Streaming Message Vanishing): Optimistically appended user sent message and synthesized in-flight bot streaming tokens onto persisted DB messages in `ChatController.kt`.
+[x] Bug 1.3 (Hands-Free Stale Snapshot): Wrapped Compose `state` in `rememberUpdatedState` in `MainActivity.kt`. Keyed VAD loop on both state and runtime permission.
+[x] Bug 1.4 (Ambient Closed-Gate 120s Ring Buffer): Added 120s RAM ring buffer in `AmbientForegroundService.kt` to transcribe on-demand bookmarks even during closed presence gates. Starts in `Sleeping` until quiet hours/battery clear.
+[x] Bug 1.5 (Call Nudge Coalescing & Broadcast Permission): Rescheduled nudge alarms on bursts in `CallStateReceiver.kt`. Enforced `android.permission.READ_PHONE_STATE` broadcast permission.
+[x] Bug 1.6 (AlarmReceiver O(1) PK Lookup): Indexed O(1) reminder lookup in `AlarmReceiver.kt` before table scan. Purged DE store on cancel/done.
+[x] Bug 1.7 (WhyNudge Dialog Hoisting): Hoisted dialog to root `MineAppUI` and handled across all screens.
+[x] Bug 1.8 (NotesScreen Cold-Open Safety): Keyed `LaunchedEffect(storage, searchQuery)` in `NotesScreen.kt` to reload notes on storage unlock.
+[x] Bug 1.9 (Negation vs Deferred Hijacking): Guarded postponement regex to require empty open proposals.
+[x] Bug 1.10 (Pre-Import Orphan Alarms): Cancelled registered alarms and purged DE store prior to backup restore in `AndroidExportManager.kt`.
+[x] Bug 1.11 (Date & Timezone Rollover Robustness): Advancing calendar for `"tonight at 1am"`, sanitized timezones via `DayRollover.safeTimeZone()`, AM/PM disambiguation, and day keys via `DayRollover.computeDayKey()`.
+[x] Bug 1.12 (Provider Outbox Fallback): Enqueued turns to `storage.enqueueOutbox(...)` on terminal provider errors.
+[x] Bug 1.13 (Adamantite & SSRF Hardening): Blocked IPv4-mapped IPv6 literals in `WebSecurityGuard`, filtered dummy BSSIDs in `ContextSensingManager`, and added `LIMIT 50` on `getHomePriorityList`.
 
-
-
-
+## Forensic Codebase & Architecture Audit Remediation (Sections 2â€“7, D-215)
+[x] Section 2.1 (LiteRt Theater Code Elimination): Removed wasteful generative LLM `session.runPrefill` execution from `LiteRtEmbedder.kt`. Standardized on zero-alloc 256-dim Matryoshka projection with explicit logging.
+[x] Section 2.2 (On-Device LLM Caching & Format): Thread-safe singleton caching of `Engine` in `AndroidOnDeviceLlmEngine.kt`, Gemma `<start_of_turn>` chat format, and ToolEnvelope wrapping for prose replies.
+[x] Section 2.3 (Unwired Features & UI Extensions): Wired `reminder.alarm_sound_uri` into `AlarmReceiver.kt`. Added `combinedClickable` with `onLongClick` in `CalendarViewScreen.kt` for one-tap reminder toggling. Exported living topic notes and day digests in `ReadableMarkdownExporter.kt`.
+[x] Section 2.4 (Ambient Listening Hardening): Implemented Worker LLM extraction via `dialogueEngine.buildExtractionPrompt(liveWindow)` and on-device engine. Implemented all sleep blockers (`CHARGING_ONLY`, `THERMAL_PAUSE`, `PAUSE_PLACE`, `DAILY_CAP_REACHED`, `ambient.min_battery_pct`). Added continuous real-time session seconds accounting.
+[x] Section 3.1 (Pre-Import Alarms Query): Fixed table name from `registered_alarms` to `alarm_registry` and logged exceptions in `AndroidExportManager.kt`.
+[x] Section 3.2 (Universal Capture-First): Offline quick add and outbox enqueuing when API key is blank in `ChatController.sendText`.
+[x] Section 3.3 (Self-Healing Storage Deferred): In `MineApp.startStorageInitialization()`, reset exceptionally failed deferreds to allow retry.
+[x] Section 3.4 (Worker AI Extraction Guard): Checked `memory.auto_extract != "0"`, filtered `worker.last_extracted_msg_id` and committed `raw_event` rows.
+[x] Section 3.5 (Monotonic Day Key Clamp): Clamped `day_key` in `AndroidStorage.insertRawMessage` within a 2-day sanity window.
+[x] Section 4.1 (AudioRecorder Mic Leak): Added `try...finally { record.stop(); record.release() }` in `AudioRecorderHelper.kt` and `DisposableEffect(recorder)` in `ChatScreen`.
+[x] Section 4.2 (Hardware Collision Arbitration): Yielded ambient listening (`MIC_BUSY`) when user activates in-app recording via `AudioRecorderHelper.isForegroundMicActive`.
+[x] Section 4.3 (Hands-Free Deadlock): Handled tool-only/empty assistant turns by speaking receipt confirmation and transitioning to `LISTENING`.
+[x] Section 5.1 (Context Sensing Invariants): Enforced silence on empty per D-087 / BP 43 Â§3.5 on `CONTEXT_LEFT_HOME`. Separated `CONTEXT_LEFT_HOME` from `CONTEXT_WALKING_STARTED`. Enforced quiet hours and vehicle hold. Eliminated step sensor double-counting.
+[x] Section 5.2 (15-Minute Periodic Sweep): Changed periodic sweep in `BootReceiver.kt` to `reconciler.reconcile(force = false)`.
+[x] Section 5.3 (Undo Logging): Added `RawEvent` insertion and 24h undo for `schedule_agent_wakeup`, `upsert_topic_note`, and `link_note_reference`.
+[x] Section 5.4 (Post-Import Rebuild & DateResolver): Post-import vector rebuild in `AndroidExportManager.kt`. Extended `DateResolver.kt` for week units, "next week", ISO dates, and Month-Day regexes.
+[x] Section 6.1 (Storage Local-Only Contradiction): Added `includeLocalOnly: Boolean = false` parameter to `Storage` queries.
+[x] Section 6.2 (Web Search Disabled Notice): Injected prompt notice instructing LLM not to call `web_search` when globe toggle is disabled.
+[x] Section 7 (Titanium Architecture Verification): All 658 `:core:test` + 33 `:app:testDebugUnitTest` passing (691 total), `:app:compileDebugAndroidTestKotlin` 0 errors, `:app:assembleRelease` BUILD SUCCESSFUL.

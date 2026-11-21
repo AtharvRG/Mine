@@ -37,21 +37,21 @@ class AlarmReceiverTest {
     fun testAlarmReceiver_ValidReminder_FiresAndDeletesRow() = runBlocking {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val storage = (context.applicationContext as MineApp).sharedStorage.await()
-        
+
         val rId = "r_valid_test"
         val scheduledFor = System.currentTimeMillis() - 1000
         storage.saveReminder(Reminder(rId, "Test", scheduledFor))
-        
+
         val receiver = AlarmReceiver()
         val intent = Intent().apply { putExtra("EXTRA_ID", rId) }
         receiver.onReceive(context, intent)
-        
+
         var elapsed = 0
         while (AlarmReceiver.lastFiredId != rId && elapsed < 5000) {
             kotlinx.coroutines.delay(250)
             elapsed += 250
         }
-        
+
         assertEquals(rId, AlarmReceiver.lastFiredId)
         assertNull("Row must be deleted after firing", storage.getPendingReminders().find { it.id == rId })
 
@@ -66,14 +66,14 @@ class AlarmReceiverTest {
     @Test
     fun testAlarmReceiver_CancelledReminder_DoesNotFire() = runBlocking {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
-        
+
         val rId = "r_cancelled_test"
         // Intentionally NOT saving to DB to simulate a cancelled/deleted reminder
-        
+
         val receiver = AlarmReceiver()
         val intent = Intent().apply { putExtra("EXTRA_ID", rId) }
         receiver.onReceive(context, intent)
-        
+
         kotlinx.coroutines.delay(1000) // Wait to ensure it doesn't fire
 
         assertNull("Must not fire if reminder row is missing", AlarmReceiver.lastFiredId)
@@ -105,7 +105,7 @@ class AlarmReceiverTest {
         val notificationManager = context.getSystemService(android.content.Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
         val channel = notificationManager.getNotificationChannel("mine_reminders_v3")
         org.junit.Assert.assertNotNull("Channel must exist", channel)
-        org.junit.Assert.assertFalse("Notification channel must NOT vibrate", channel!!.shouldVibrate())
+        org.junit.Assert.assertTrue("Notification channel must vibrate for real alarms", channel!!.shouldVibrate())
 
         var active: android.service.notification.StatusBarNotification? = null
         var notifElapsed = 0

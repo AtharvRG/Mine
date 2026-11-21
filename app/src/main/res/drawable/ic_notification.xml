@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Part of Mine. Monochrome status bar notification icon (anchor symbol). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="#FFFFFFFF">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M12,2A3,3 0 0,0 9,5A3,3 0 0,0 11,7.82V9H9A1,1 0 0,0 8,10V11A1,1 0 0,0 9,12H11V19.92C7.62,19.44 5,16.53 5,13H3C3,17.97 7.03,22 12,22C16.97,22 21,17.97 21,13H19C19,16.53 16.38,19.44 13,19.92V12H15A1,1 0 0,0 16,11V10A1,1 0 0,0 15,9H13V7.82A3,3 0 0,0 15,5A3,3 0 0,0 12,2M12,4A1,1 0 0,1 13,5A1,1 0 0,1 12,6A1,1 0 0,1 11,5A1,1 0 0,1 12,4Z" />
+</vector>

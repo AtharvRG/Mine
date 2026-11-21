@@ -89,5 +89,6 @@ data class ContextState(
 enum class ContextTrigger {
     CONTEXT_LEFT_HOME,
     CONTEXT_ARRIVED,
-    CONTEXT_HOME_AGAIN
+    CONTEXT_HOME_AGAIN,
+    CONTEXT_WALKING_STARTED
 }

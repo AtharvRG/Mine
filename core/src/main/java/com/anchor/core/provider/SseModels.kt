@@ -11,7 +11,9 @@ import kotlinx.serialization.Serializable
 data class ChatRequest(
     val model: String,
     val stream: Boolean,
-    val messages: List<RequestMessage>
+    val messages: List<RequestMessage>,
+    val temperature: Double? = null,
+    val max_tokens: Int? = null
 )
 
 @Serializable

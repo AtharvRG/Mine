@@ -9,6 +9,7 @@ import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import androidx.core.app.NotificationCompat
 import com.anchor.core.models.AlarmTier
 import com.anchor.core.models.ReminderFire
@@ -24,6 +25,8 @@ import java.util.UUID
 
 class AlarmReceiver : BroadcastReceiver() {
     companion object {
+        const val ACTION_AGENT_WAKEUP = "com.anchor.mine.ACTION_AGENT_WAKEUP"
+
         @androidx.annotation.VisibleForTesting
         @Volatile
         var lastFiredId: String? = null
@@ -45,6 +48,10 @@ class AlarmReceiver : BroadcastReceiver() {
     }
 
     override fun onReceive(context: Context, intent: Intent) {
+        if (intent.action == ACTION_AGENT_WAKEUP || intent.hasExtra("EXTRA_WAKEUP_ID")) {
+            handleAgentWakeup(context, intent)
+            return
+        }
         val id = intent.getStringExtra("EXTRA_ID") ?: return
         val text = intent.getStringExtra("EXTRA_TEXT") ?: "Reminder"
         val tierStr = intent.getStringExtra("EXTRA_TIER") ?: "ALARM"
@@ -73,14 +80,32 @@ class AlarmReceiver : BroadcastReceiver() {
                     NotificationChannels.ensureCreated(context)
 
                     val notificationText = if (isMissed) "Missed: Reminder" else (deAlarm?.label ?: "Reminder")
-                    val notification = NotificationCompat.Builder(context, channelId)
-                        .setSmallIcon(android.R.drawable.ic_dialog_info)
+                    val directBootBuilder = NotificationCompat.Builder(context, channelId)
+                        .setSmallIcon(com.anchor.mine.R.drawable.ic_notification)
                         .setContentTitle("Mine")
                         .setContentText(notificationText)
                         .setPriority(priority)
                         .setCategory(if (notifyTier == AlarmTier.ALARM) NotificationCompat.CATEGORY_ALARM else NotificationCompat.CATEGORY_REMINDER)
                         .setAutoCancel(true)
-                        .build()
+
+                    if (notifyTier == AlarmTier.ALARM) {
+                        val silenceIntent = Intent(context, ReminderActionReceiver::class.java).apply {
+                            action = ReminderActionReceiver.ACTION_SILENCE
+                            putExtra(ReminderActionReceiver.EXTRA_NOTIFICATION_ID, id.hashCode())
+                        }
+                        val silencePending = PendingIntent.getBroadcast(
+                            context,
+                            id.hashCode() + 4,
+                            silenceIntent,
+                            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                        )
+                        directBootBuilder.addAction(android.R.drawable.ic_menu_close_clear_cancel, "Silence", silencePending)
+                    }
+
+                    val notification = directBootBuilder.build()
+                    if (notifyTier == AlarmTier.ALARM && !isMissed) {
+                        notification.flags = notification.flags or android.app.Notification.FLAG_INSISTENT
+                    }
 
                     manager.notify(id.hashCode(), notification)
                     deStore.removeAlarm(id)
@@ -102,11 +127,9 @@ class AlarmReceiver : BroadcastReceiver() {
                 val app = context.applicationContext as? MineApp ?: return@launch
                 val storage = app.sharedStorage.await()
 
-                // R-26: the pending read is paged, so it cannot be trusted to contain this row.
-                // A reminder outside the page would otherwise fire with the intent's stale text.
-                // The by-id lookup is the fallback; the page is the fast path for the common case.
-                val rem = storage.getPendingReminders().find { it.id == id }
-                    ?: storage.getReminderById(id)
+                // Fast-path: indexed primary key lookup on reminders table
+                val rem = storage.getReminderById(id)
+                    ?: storage.getPendingReminders().find { it.id == id }
                 if (rem == null && !isMissed) return@launch
 
                 // Blueprint 30 §3.7: Fire-time guards & transformations
@@ -116,6 +139,9 @@ class AlarmReceiver : BroadcastReceiver() {
                     // Suppress when done, cancelled, paused, or archived
                     if (shouldSuppressForNodeStatus(linkedNode.status)) {
                         storage.deleteReminder(id)
+                        try {
+                            DirectBootAlarmStore(context).removeAlarm(id)
+                        } catch (_: Exception) {}
                         lastFiredId = id
                         AndroidAlarmScheduler.notifyFired(id)
                         storage.recordReminderFire(
@@ -154,22 +180,143 @@ class AlarmReceiver : BroadcastReceiver() {
                 val openIntent = Intent(context, MainActivity::class.java).apply { flags = Intent.FLAG_ACTIVITY_NEW_TASK }
                 val pendingOpen = PendingIntent.getActivity(context, id.hashCode(), openIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
 
-                val notification = NotificationCompat.Builder(context, channelId)
-                    .setSmallIcon(android.R.drawable.ic_dialog_info)
+                val hideContent = storage.getSetting("privacy.hide_notification_content") == "1"
+                val customSoundUri = storage.getSetting("reminder.alarm_sound_uri")?.takeIf { it.isNotBlank() }
+                val builder = NotificationCompat.Builder(context, channelId)
+                    .setSmallIcon(com.anchor.mine.R.drawable.ic_notification)
                     .setContentTitle("Mine")
                     .setContentText(safeText)
                     .setPriority(priority)
                     .setCategory(if (tier == AlarmTier.ALARM) NotificationCompat.CATEGORY_ALARM else NotificationCompat.CATEGORY_REMINDER)
                     .setContentIntent(pendingOpen)
-                    // Blueprint 50 §3.14: reply straight from the reminder. The action's request
-                    // code is this notification's id, so two armed reminders never share one.
-                    .addAction(com.anchor.mine.capture.CaptureNotifications.replyAction(context, id.hashCode()))
                     .setAutoCancel(true)
-                    .build()
+
+                if (tier == AlarmTier.ALARM) {
+                    val fullScreenIntent = Intent(context, MainActivity::class.java).apply {
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                        putExtra("EXTRA_REMINDER_ID", id)
+                    }
+                    val fullScreenPending = PendingIntent.getActivity(
+                        context,
+                        id.hashCode() + 1,
+                        fullScreenIntent,
+                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                    )
+                    builder.setFullScreenIntent(fullScreenPending, true)
+
+                    val doneIntent = Intent(context, ReminderActionReceiver::class.java).apply {
+                        action = ReminderActionReceiver.ACTION_DONE
+                        putExtra(ReminderActionReceiver.EXTRA_REMINDER_ID, id)
+                        putExtra(ReminderActionReceiver.EXTRA_NODE_ID, linkedNodeId)
+                        putExtra(ReminderActionReceiver.EXTRA_NOTIFICATION_ID, id.hashCode())
+                    }
+                    val donePending = PendingIntent.getBroadcast(
+                        context,
+                        id.hashCode() + 2,
+                        doneIntent,
+                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                    )
+                    builder.addAction(android.R.drawable.checkbox_on_background, "Done", donePending)
+
+                    val snoozeIntent = Intent(context, ReminderActionReceiver::class.java).apply {
+                        action = ReminderActionReceiver.ACTION_SNOOZE
+                        putExtra(ReminderActionReceiver.EXTRA_REMINDER_ID, id)
+                        putExtra(ReminderActionReceiver.EXTRA_NOTIFICATION_ID, id.hashCode())
+                        putExtra(ReminderActionReceiver.EXTRA_TEXT, safeText)
+                    }
+                    val snoozePending = PendingIntent.getBroadcast(
+                        context,
+                        id.hashCode() + 3,
+                        snoozeIntent,
+                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                    )
+                    builder.addAction(android.R.drawable.ic_lock_idle_alarm, "Snooze 10m", snoozePending)
+
+                    val silenceIntent = Intent(context, ReminderActionReceiver::class.java).apply {
+                        action = ReminderActionReceiver.ACTION_SILENCE
+                        putExtra(ReminderActionReceiver.EXTRA_NOTIFICATION_ID, id.hashCode())
+                    }
+                    val silencePending = PendingIntent.getBroadcast(
+                        context,
+                        id.hashCode() + 4,
+                        silenceIntent,
+                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                    )
+                    builder.addAction(android.R.drawable.ic_menu_close_clear_cancel, "Silence", silencePending)
+                } else {
+                    builder.addAction(com.anchor.mine.capture.CaptureNotifications.replyAction(context, id.hashCode()))
+                }
+
+                if (customSoundUri != null) {
+                    try {
+                        builder.setSound(Uri.parse(customSoundUri))
+                    } catch (e: Throwable) {
+                        android.util.Log.w("AlarmReceiver", "Failed to parse custom alarm sound URI: $customSoundUri", e)
+                    }
+                }
+
+                if (hideContent) {
+                    val publicNotification = NotificationCompat.Builder(context, channelId)
+                        .setSmallIcon(com.anchor.mine.R.drawable.ic_notification)
+                        .setContentTitle("Mine")
+                        .setContentText("Reminder")
+                        .setPriority(priority)
+                        .build()
+                    builder.setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+                    builder.setPublicVersion(publicNotification)
+                }
+
+                val notification = builder.build()
+                if (tier == AlarmTier.ALARM && !isMissed) {
+                    notification.flags = notification.flags or android.app.Notification.FLAG_INSISTENT
+                }
+
+                // P1-15 (Patch Q): Advance recurrence or retire single reminder BEFORE checking notification state
+                val firedAt = System.currentTimeMillis()
+                val scheduledFor = rem?.fireAtMillis ?: firedAt
+                val notifsEnabled = androidx.core.app.NotificationManagerCompat.from(context).areNotificationsEnabled()
+
+                if (!notifsEnabled) {
+                    // P1-4: Notifications blocked: keep the reminder row so it is NOT lost silently!
+                    storage.recordReminderFire(
+                        ReminderFire(
+                            id = "f_${UUID.randomUUID()}",
+                            reminderId = id,
+                            firedAt = firedAt,
+                            scheduledFor = scheduledFor,
+                            latencyMs = (firedAt - scheduledFor).coerceAtLeast(0L).toInt(),
+                            outcome = "errored"
+                        )
+                    )
+                    lastFiredId = id
+                    AndroidAlarmScheduler.notifyFired(id)
+                    try {
+                        storage.insertRawMessage("m_${UUID.randomUUID()}", "assistant", "Reminder could not alert you (notifications are disabled in Android Settings): $safeText")
+                    } catch (_: Throwable) {}
+                    return@launch
+                }
+
+                // P1-4: User-visible effect FIRST: post notification before deleting or mutating rows!
                 manager.notify(id.hashCode(), notification)
 
+                // D-124: durable write precedes completion signal
+                lastFiredId = id
+                AndroidAlarmScheduler.notifyFired(id)
+
+                storage.recordReminderFire(
+                    ReminderFire(
+                        id = "f_${UUID.randomUUID()}",
+                        reminderId = id,
+                        firedAt = firedAt,
+                        scheduledFor = scheduledFor,
+                        latencyMs = (firedAt - scheduledFor).coerceAtLeast(0L).toInt(),
+                        outcome = "delivered"
+                    )
+                )
+
+                // Cleanup/advance recurrence LAST (after notification is posted)
                 val rrule = rem?.rrule
-                if (!rrule.isNullOrBlank() && rem != null) {
+                if (rem != null && !rrule.isNullOrBlank()) {
                     val now = System.currentTimeMillis()
                     val nextFireAt = com.anchor.core.recurrence.RecurrenceEngine.nextOccurrence(rrule, rem.fireAtMillis, now)
                     val nextRem = rem.copy(
@@ -184,38 +331,48 @@ class AlarmReceiver : BroadcastReceiver() {
                             tier = nextRem.tier,
                             label = "Reminder"
                         )
-                    } catch (_: Exception) {}
+                    } catch (_: Throwable) {}
                     AndroidAlarmScheduler(context).schedule(nextRem)
+                    val expectedApi = if (nextRem.tier == AlarmTier.GENTLE) "rtc_wakeup" else "alarm_clock"
+                    try {
+                        storage.saveRegisteredAlarm(nextRem.id, nextRem.id.hashCode(), nextRem.fireAtMillis, expectedApi)
+                    } catch (_: Throwable) {}
+
+                    if (linkedNode != null) {
+                        try {
+                            val updatedNode = linkedNode.copy(
+                                dueAt = nextFireAt,
+                                updatedAt = now
+                            )
+                            val event = com.anchor.core.models.RawEvent(
+                                opId = "e_${UUID.randomUUID()}",
+                                opType = "UPDATE_NODE",
+                                targetType = "node",
+                                targetId = updatedNode.id,
+                                tsUtc = now
+                            )
+                            storage.updateNodeAndCommit(
+                                node = updatedNode,
+                                event = event,
+                                deleteReminderId = null,
+                                upsertReminder = nextRem
+                            )
+                        } catch (e: Throwable) {
+                            android.util.Log.w("AlarmReceiver", "Failed to update node dueAt for recurring reminder", e)
+                        }
+                    }
                 } else {
-                    storage.deleteReminder(id) // Mark done
+                    storage.deleteReminder(id) // Mark done only after notification delivered
                     try {
                         DirectBootAlarmStore(context).removeAlarm(id)
-                    } catch (_: Exception) {}
+                    } catch (_: Throwable) {}
+                    try {
+                        storage.deleteRegisteredAlarm(id)
+                    } catch (_: Throwable) {}
                 }
-
-                // D-124: the completion signal follows the durable write, so "fired" means
-                // "delivered and row retired or rescheduled", never "attempted". A caller that observes
-                // lastFiredId can now rely on the state transition already being durable.
-                lastFiredId = id
-                AndroidAlarmScheduler.notifyFired(id)
-
-                // Blueprints 30/42: every delivery records its own latency. Without this only
-                // the missed path (ReliabilityManager.runSweeper) produced a reminder_fire row,
-                // so a late-but-delivered alarm left no trace to diagnose.
-                val firedAt = System.currentTimeMillis()
-                val scheduledFor = rem?.fireAtMillis ?: firedAt
-                storage.recordReminderFire(
-                    ReminderFire(
-                        id = "f_${UUID.randomUUID()}",
-                        reminderId = id,
-                        firedAt = firedAt,
-                        scheduledFor = scheduledFor,
-                        latencyMs = (firedAt - scheduledFor).coerceAtLeast(0L).toInt(),
-                        outcome = "delivered"
-                    )
-                )
-            } catch (_: Exception) {
-                // A4: If storage fails (locked out, crash), do NOT fail silent.
+            } catch (t: Throwable) {
+                if (t is kotlinx.coroutines.CancellationException) throw t
+                // P0-4: If storage fails (locked out, crash, StackOverflowError, etc), do NOT fail silent.
                 // Fall back to a blind notification instantly so the user doesn't miss the alarm.
                 val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
                 val channelId = NotificationChannels.channelId(fallbackTier)
@@ -223,28 +380,42 @@ class AlarmReceiver : BroadcastReceiver() {
                 NotificationChannels.ensureCreated(context)
 
                 val fallbackText = if (isMissed) "Missed: $text" else text
-                val notification = NotificationCompat.Builder(context, channelId)
-                    .setSmallIcon(android.R.drawable.ic_dialog_info)
+                val fallbackBuilder = NotificationCompat.Builder(context, channelId)
+                    .setSmallIcon(com.anchor.mine.R.drawable.ic_notification)
                     .setContentTitle("Mine (Fallback)")
                     .setContentText(fallbackText)
                     .setPriority(priority)
                     .setCategory(if (fallbackTier == AlarmTier.ALARM) NotificationCompat.CATEGORY_ALARM else NotificationCompat.CATEGORY_REMINDER)
-                    // Blueprint 50 §3.14: the fallback is the notification a user is most likely
-                    // to see when storage is broken, so it must be able to capture too. The reply
-                    // path opens its own storage; if that also fails it reports "Saved" only when
-                    // the row was actually written.
-                    .addAction(com.anchor.mine.capture.CaptureNotifications.replyAction(context, id.hashCode()))
                     .setAutoCancel(true)
-                    .build()
 
+                if (fallbackTier == AlarmTier.ALARM) {
+                    val silenceIntent = Intent(context, ReminderActionReceiver::class.java).apply {
+                        action = ReminderActionReceiver.ACTION_SILENCE
+                        putExtra(ReminderActionReceiver.EXTRA_NOTIFICATION_ID, id.hashCode())
+                    }
+                    val silencePending = PendingIntent.getBroadcast(
+                        context,
+                        id.hashCode() + 4,
+                        silenceIntent,
+                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                    )
+                    fallbackBuilder.addAction(android.R.drawable.ic_menu_close_clear_cancel, "Silence", silencePending)
+                } else {
+                    fallbackBuilder.addAction(com.anchor.mine.capture.CaptureNotifications.replyAction(context, id.hashCode()))
+                }
+
+                val notification = fallbackBuilder.build()
+                if (fallbackTier == AlarmTier.ALARM && !isMissed) {
+                    notification.flags = notification.flags or android.app.Notification.FLAG_INSISTENT
+                }
+
+                // POST NOTIFICATION FIRST! Before touching storage!
                 manager.notify(id.hashCode(), notification)
+                lastFiredId = id
+                AndroidAlarmScheduler.notifyFired(id)
 
-                // R-54: the fallback used to leave no trace at all, and the row stays pending
-                // (deliberately — a flaky storage must not lose the reminder). So the next sweeper
-                // saw no "missed" fire for this instance and emitted a SECOND notification for the
-                // same fire. Record "errored" against the reminder's own fireAtMillis so the
-                // sweeper's dedupe recognises this instance as already handled.
-                // Uses a fresh open, not sharedStorage: that deferred is what just failed.
+                // R-54: the fallback used to leave no trace at all, and the row stays pending.
+                // Record "errored" against the reminder's fireAtMillis so sweeper dedupes.
                 try {
                     val key = DbKeyProvider(context).getOrGenerateKey()
                     val db = DatabaseProvider.getHelper(context, key, "mine_encrypted.db")
@@ -262,9 +433,72 @@ class AlarmReceiver : BroadcastReceiver() {
                     } finally {
                         db.close()
                     }
-                } catch (_: Exception) {
+                } catch (_: Throwable) {
                     // Storage is the thing that failed; nothing more can be recorded.
                 }
+            } finally {
+                pendingResult?.finish()
+            }
+        }
+    }
+
+    private fun handleAgentWakeup(context: Context, intent: Intent) {
+        val wakeupId = intent.getStringExtra("EXTRA_WAKEUP_ID")
+        val pendingResult = try { goAsync() } catch (_: Exception) { null }
+        val app = context.applicationContext as? MineApp
+        val scope = app?.applicationScope ?: CoroutineScope(Dispatchers.IO)
+
+        scope.launch {
+            try {
+                val storage = if (app != null) {
+                    app.ensureStorageInitialized().await()
+                } else {
+                    val key = DbKeyProvider(context).getOrGenerateKey()
+                    val db = DatabaseProvider.getHelper(context, key, "mine_encrypted.db")
+                    AndroidStorage(db)
+                }
+
+                val now = System.currentTimeMillis()
+                // P1-6: Unstick wakeups stuck in 'running' older than 10 minutes
+                storage.unstickRunningWakeups(now - 600_000L)
+
+                val wakeups = if (wakeupId != null) {
+                    val single = storage.getAgentWakeup(wakeupId)
+                    if (single != null && single.state == "pending") listOf(single) else emptyList()
+                } else {
+                    storage.getPendingAgentWakeups(now)
+                }
+
+                for (w in wakeups) {
+                    storage.markAgentWakeupState(w.id, "running")
+                    val eval = com.anchor.core.agent.AgentWakeupEvaluator.evaluate(w, storage, now, app?.contextEngine)
+                    val snoozeTime = eval.snoozeUntilMs
+                    if (snoozeTime != null) {
+                        storage.saveAgentWakeup(w.copy(fireAt = snoozeTime, state = "pending"))
+                        AndroidAlarmScheduler(context).scheduleAgentWakeup(w.id, snoozeTime)
+                        continue
+                    }
+                    val text = eval.notificationText
+                    if (eval.shouldNotify && !text.isNullOrBlank()) {
+                        val msgId = "a_${UUID.randomUUID()}"
+                        storage.insertRawMessage(msgId, "assistant", text)
+                        val pState = storage.getProactiveState()
+                        val dayRule = storage.getEffectiveDayRule(now)
+                        val dayKey = com.anchor.core.time.DayRollover.computeDayKey(now, dayRule)
+                        val nudgeEngine = com.anchor.core.nudge.NudgeEngine(object : com.anchor.core.time.Clock {
+                            override fun now() = now
+                        })
+                        storage.saveProactiveState(nudgeEngine.onNudgeSent(pState, msgId, now, dayKey))
+                        com.anchor.mine.notifications.ChatReplyNotifier.notify(context, text)
+                        storage.markAgentWakeupState(w.id, "fired")
+                    } else {
+                        val finalState = if (eval.actionTaken.startsWith("suppressed_")) "cancelled" else "fired"
+                        storage.markAgentWakeupState(w.id, finalState)
+                    }
+                }
+                ProactiveAnchorScheduler.scheduleNextAnchors(context, storage)
+            } catch (t: Throwable) {
+                android.util.Log.e("AlarmReceiver", "Agent wakeup execution failed: ${t.message}", t)
             } finally {
                 pendingResult?.finish()
             }

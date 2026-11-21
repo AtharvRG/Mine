@@ -11,6 +11,7 @@ import com.anchor.core.storage.ProposalAlreadyResolvedException
 import com.anchor.core.storage.Storage
 import com.anchor.core.time.DayRollover
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
@@ -22,6 +23,12 @@ import java.util.UUID
 
 class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : Storage {
     override val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
+
+    private suspend fun <T> withIoDb(block: suspend CoroutineScope.() -> T): T = withContext(ioDispatcher) {
+        DbGate.withReadLock {
+            block()
+        }
+    }
 
     fun rebind(newHelper: SupportSQLiteOpenHelper) {
         this.dbHelper = newHelper
@@ -37,14 +44,16 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
             cachedDeviceId?.let { return it }
             var id = ""
             try {
-                dbHelper.readableDatabase.query("SELECT value FROM app_meta WHERE \"key\" = 'device_id'").use {
-                    if (it.moveToFirst()) id = it.getString(0)
-                }
-                if (id.isEmpty()) {
-                    id = java.util.UUID.randomUUID().toString()
-                    dbHelper.writableDatabase.execSQL(
-                        "INSERT INTO app_meta (\"key\", value) VALUES ('device_id', ?)", arrayOf(id)
-                    )
+                DbGate.withReadLockSync {
+                    dbHelper.readableDatabase.query("SELECT value FROM app_meta WHERE \"key\" = 'device_id'").use {
+                        if (it.moveToFirst()) id = it.getString(0)
+                    }
+                    if (id.isEmpty()) {
+                        id = java.util.UUID.randomUUID().toString()
+                        dbHelper.writableDatabase.execSQL(
+                            "INSERT INTO app_meta (\"key\", value) VALUES ('device_id', ?)", arrayOf(id)
+                        )
+                    }
                 }
             } catch (_: Exception) {
                 id = java.util.UUID.randomUUID().toString()
@@ -66,14 +75,15 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         content: String,
         causeMsgId: String?,
         dayKey: String?
-    ) = withContext(ioDispatcher) {
+    ) = withIoDb {
         val ts = System.currentTimeMillis()
         val rule = getEffectiveDayRule(ts)
         val tz = DayRollover.safeTimeZone(rule.tzId)
         val tzOffset = tz.getOffset(ts) / 60000
 
         var resolvedDayKey = dayKey
-        if (resolvedDayKey == null && causeMsgId != null) {
+        val inheritedFromCause = (resolvedDayKey == null && causeMsgId != null)
+        if (inheritedFromCause) {
             dbHelper.readableDatabase.query("SELECT day_key FROM raw_message WHERE id = ? LIMIT 1", arrayOf(causeMsgId)).use {
                 if (it.moveToFirst() && !it.isNull(0)) {
                     resolvedDayKey = it.getString(0)
@@ -83,8 +93,11 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
 
         if (resolvedDayKey == null) {
             resolvedDayKey = DayRollover.computeDayKey(ts, rule)
+        }
 
-            // BP 11: day_key is monotonic (never earlier than the previous message's day_key)
+        // BP 11 & BP 50 §3.13: day_key is strictly monotonic when auto-computed (clock moving backward clamps to lastDayKey).
+        // Do NOT overwrite if explicitly passed or inherited from cause message.
+        if (dayKey == null && !inheritedFromCause) {
             dbHelper.readableDatabase.query("SELECT day_key FROM raw_message ORDER BY ts_utc DESC, rowid DESC LIMIT 1", emptyArray<Any?>()).use {
                 if (it.moveToFirst() && !it.isNull(0)) {
                     val lastDayKey = it.getString(0)
@@ -114,35 +127,35 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         }
     }
 
-    override suspend fun redactMessage(id: String) = withContext(ioDispatcher) {
+    override suspend fun redactMessage(id: String) = withIoDb {
         val db = dbHelper.writableDatabase
         db.beginTransaction()
         try {
             db.execSQL("UPDATE raw_message SET content = NULL, redacted_at = ? WHERE id = ?", arrayOf<Any>(System.currentTimeMillis(), id))
             db.execSQL("INSERT INTO raw_event (op_id, target_id, op_type, target_type, ts_utc, device_id, actor) VALUES (?, ?, 'REDACT', 'message', ?, ?, 'user')",
                 arrayOf<Any>(java.util.UUID.randomUUID().toString(), id, System.currentTimeMillis(), deviceId))
-            
+
             // B17: Delete any derived msg_chunk containing this message.
             // The FTS5 AFTER DELETE trigger will automatically scrub the FTS index!
             db.execSQL("DELETE FROM msg_chunk WHERE msg_ids LIKE ?", arrayOf("%\"$id\"%"))
-            
+
             db.setTransactionSuccessful()
         } finally { db.endTransaction() }
     }
 
-    override suspend fun getRawMessage(id: String): String? = withContext(ioDispatcher) {
+    override suspend fun getRawMessage(id: String): String? = withIoDb {
         dbHelper.readableDatabase.query("SELECT content FROM raw_message WHERE id = ?", arrayOf(id)).use {
             if (it.moveToFirst()) if (it.isNull(0)) null else it.getString(0) else null
         }
     }
 
-    override suspend fun hasRawMessage(id: String): Boolean = withContext(ioDispatcher) {
+    override suspend fun hasRawMessage(id: String): Boolean = withIoDb {
         dbHelper.readableDatabase.query("SELECT 1 FROM raw_message WHERE id = ?", arrayOf(id)).use {
             it.moveToFirst()
         }
     }
 
-    override suspend fun getRecentMessages(limit: Int): List<ChatMessage> = withContext(ioDispatcher) {
+    override suspend fun getRecentMessages(limit: Int): List<ChatMessage> = withIoDb {
         val list = mutableListOf<ChatMessage>()
         // rowid breaks a ts_utc tie: two captures stored in the same millisecond would otherwise
         // come back in an arbitrary order, and QuickCapture.pending() reads this order as the
@@ -158,17 +171,17 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         list.reversed()
     }
 
-    override suspend fun getSetting(key: String): String? = withContext(ioDispatcher) {
+    override suspend fun getSetting(key: String): String? = withIoDb {
         dbHelper.readableDatabase.query("SELECT value FROM app_meta WHERE \"key\" = ?", arrayOf(key)).use {
             if (it.moveToFirst()) it.getString(0) else null
         }
     }
 
-    override suspend fun saveSetting(key: String, value: String) = withContext(ioDispatcher) {
+    override suspend fun saveSetting(key: String, value: String) = withIoDb {
         dbHelper.writableDatabase.execSQL("INSERT OR REPLACE INTO app_meta (\"key\", value) VALUES (?, ?)", arrayOf(key, value))
     }
 
-    override suspend fun saveSettings(values: Map<String, String>) = withContext(ioDispatcher) {
+    override suspend fun saveSettings(values: Map<String, String>) = withIoDb {
         val db = dbHelper.writableDatabase
         db.beginTransaction()
         try {
@@ -181,7 +194,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         }
     }
 
-    override suspend fun getEffectiveDayRule(tsUtc: Long): DayRule = withContext(ioDispatcher) {
+    override suspend fun getEffectiveDayRule(tsUtc: Long): DayRule = withIoDb {
         dbHelper.readableDatabase.query(
             "SELECT id, effective_from, start_minute, end_minute, tz_id, created_at FROM day_rule WHERE effective_from <= ? ORDER BY effective_from DESC LIMIT 1",
             arrayOf<Any>(tsUtc)
@@ -201,7 +214,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         }
     }
 
-    override suspend fun saveDayRule(rule: DayRule) = withContext(ioDispatcher) {
+    override suspend fun saveDayRule(rule: DayRule) = withIoDb {
         dbHelper.writableDatabase.execSQL(
             "INSERT OR REPLACE INTO day_rule (id, effective_from, start_minute, end_minute, tz_id, created_at) VALUES (?, ?, ?, ?, ?, ?)",
             arrayOf<Any>(rule.id, rule.effectiveFrom, rule.startMinute, rule.endMinute, rule.tzId, rule.createdAt)
@@ -209,7 +222,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
     }
 
     private companion object {
-        const val NODE_COLS = "id, type, title, status, due_at, created_at, updated_at, closed_at, priority, severity, attrs, local_only, recurrence_rule, streak_current, streak_best, last_completed_at, origin"
+        const val NODE_COLS = "id, type, title, status, due_at, created_at, updated_at, closed_at, priority, severity, attrs, local_only, recurrence_rule, streak_current, streak_best, last_completed_at, origin, original_due_at, due_history_json, slip_count, context_trigger, fallback_fire_at"
         const val REMINDER_COLS = "id, text, fire_at, node_id, tier, rrule, iteration"
         const val OUTBOX_COLUMNS =
             "id, job_type, priority, payload_json, idem_key, status, attempts, next_try_at, deadline_at, " +
@@ -273,13 +286,41 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
                 val streakBest = if (it.columnCount > 14 && !it.isNull(14)) it.getInt(14) else 0
                 val lastCompletedAt = if (it.columnCount > 15 && !it.isNull(15)) it.getLong(15) else null
                 val origin = if (it.columnCount > 16 && !it.isNull(16)) it.getString(16) else "user_edit"
-                list.add(Node(id, type, title, status, dueAt, createdAt, updatedAt, closedAt, priority, severity, pinned, localOnly = localOnly, origin = origin, recurrenceRule = recurrenceRule, streakCurrent = streakCurrent, streakBest = streakBest, lastCompletedAt = lastCompletedAt))
+                val originalDueAt = if (it.columnCount > 17 && !it.isNull(17)) it.getLong(17) else null
+                val dueHistoryJson = if (it.columnCount > 18 && !it.isNull(18)) it.getString(18) else null
+                val slipCount = if (it.columnCount > 19 && !it.isNull(19)) it.getInt(19) else 0
+                val contextTrigger = if (it.columnCount > 20 && !it.isNull(20)) it.getString(20) else null
+                val fallbackFireAt = if (it.columnCount > 21 && !it.isNull(21)) it.getLong(21) else null
+                list.add(Node(
+                    id = id,
+                    type = type,
+                    title = title,
+                    status = status,
+                    dueAt = dueAt,
+                    createdAt = createdAt,
+                    updatedAt = updatedAt,
+                    closedAt = closedAt,
+                    priority = priority,
+                    severity = severity,
+                    pinned = pinned,
+                    localOnly = localOnly,
+                    origin = origin,
+                    recurrenceRule = recurrenceRule,
+                    streakCurrent = streakCurrent,
+                    streakBest = streakBest,
+                    lastCompletedAt = lastCompletedAt,
+                    originalDueAt = originalDueAt,
+                    dueHistoryJson = dueHistoryJson,
+                    slipCount = slipCount,
+                    contextTrigger = contextTrigger,
+                    fallbackFireAt = fallbackFireAt
+                ))
             }
         }
         return list
     }
 
-    override suspend fun getActiveNodes(limit: Int, cursor: String?): List<Node> = withContext(ioDispatcher) {
+    override suspend fun getActiveNodes(limit: Int, cursor: String?): List<Node> = withIoDb {
         val queryBuilder = StringBuilder()
         val args = mutableListOf<String>()
 
@@ -307,27 +348,28 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         queryNodes(queryBuilder.toString(), args.toTypedArray())
     }
 
-    override suspend fun findActiveNodeByTitle(title: String): Node? = withContext(ioDispatcher) {
+    override suspend fun findActiveNodeByTitle(title: String): Node? = withIoDb {
         findActiveNodesByTitle(title).firstOrNull()
     }
 
-    override suspend fun findActiveNodesByTitle(title: String): List<Node> = withContext(ioDispatcher) {
+    override suspend fun findActiveNodesByTitle(title: String): List<Node> = withIoDb {
         val trimmed = title.trim()
         val sql = "SELECT $NODE_COLS FROM node WHERE (status = 'active' OR status = 'in_progress' OR status = 'paused') AND TRIM(title) = ? COLLATE NOCASE ORDER BY due_at IS NULL, due_at ASC, id ASC"
         queryNodes(sql, arrayOf(trimmed))
     }
 
-    override suspend fun getNodesDueBetween(startMs: Long, endMs: Long, limit: Int): List<Node> = withContext(ioDispatcher) {
-        val sql = "SELECT $NODE_COLS FROM node WHERE (status = 'active' OR status = 'in_progress' OR status = 'paused') AND (local_only IS NULL OR local_only = 0) AND due_at IS NOT NULL AND due_at >= CAST(? AS INTEGER) AND due_at < CAST(? AS INTEGER) ORDER BY due_at ASC, id ASC LIMIT CAST(? AS INTEGER)"
+    override suspend fun getNodesDueBetween(startMs: Long, endMs: Long, limit: Int, includeLocalOnly: Boolean): List<Node> = withIoDb {
+        val localFilter = if (includeLocalOnly) "" else "AND (local_only IS NULL OR local_only = 0) "
+        val sql = "SELECT $NODE_COLS FROM node WHERE (status = 'active' OR status = 'in_progress' OR status = 'paused' OR status = 'done') $localFilter AND due_at IS NOT NULL AND due_at >= CAST(? AS INTEGER) AND due_at < CAST(? AS INTEGER) ORDER BY due_at ASC, id ASC LIMIT CAST(? AS INTEGER)"
         queryNodes(sql, arrayOf(startMs.toString(), endMs.toString(), limit.toString()))
     }
 
-    override suspend fun getOverdueNodes(beforeMs: Long, limit: Int): List<Node> = withContext(ioDispatcher) {
+    override suspend fun getOverdueNodes(beforeMs: Long, limit: Int): List<Node> = withIoDb {
         val sql = "SELECT $NODE_COLS FROM node WHERE (status = 'active' OR status = 'in_progress' OR status = 'paused') AND (local_only IS NULL OR local_only = 0) AND due_at IS NOT NULL AND due_at < CAST(? AS INTEGER) ORDER BY due_at ASC, id ASC LIMIT CAST(? AS INTEGER)"
         queryNodes(sql, arrayOf(beforeMs.toString(), limit.toString()))
     }
 
-    override suspend fun getRankedCandidates(now: Long, staleCutoffMs: Long, perTierLimit: Int): List<Node> = withContext(ioDispatcher) {
+    override suspend fun getRankedCandidates(now: Long, staleCutoffMs: Long, perTierLimit: Int): List<Node> = withIoDb {
         val cutoff = now - staleCutoffMs
         val nonStaleCond = "((due_at IS NOT NULL AND due_at > CAST(? AS INTEGER)) OR created_at = 0 OR (CASE WHEN updated_at > created_at THEN updated_at ELSE created_at END) >= CAST(? AS INTEGER))"
         val activeCond = "(status = 'active' OR status = 'in_progress' OR status = 'paused') AND (local_only IS NULL OR local_only = 0) AND $nonStaleCond"
@@ -368,9 +410,10 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         union.values.toList()
     }
 
-    override suspend fun getActiveNodeCounts(now: Long, staleCutoffMs: Long): NodeCounts = withContext(ioDispatcher) {
+    override suspend fun getActiveNodeCounts(now: Long, staleCutoffMs: Long, includeLocalOnly: Boolean): NodeCounts = withIoDb {
         val cutoff = now - staleCutoffMs
-        val sql = "SELECT COUNT(*), COUNT(CASE WHEN due_at IS NOT NULL AND due_at < CAST(? AS INTEGER) THEN 1 END) FROM node WHERE (status = 'active' OR status = 'in_progress' OR status = 'paused') AND (local_only IS NULL OR local_only = 0) AND ((due_at IS NOT NULL AND due_at > CAST(? AS INTEGER)) OR created_at = 0 OR (CASE WHEN updated_at > created_at THEN updated_at ELSE created_at END) >= CAST(? AS INTEGER))"
+        val localFilter = if (includeLocalOnly) "" else "AND (local_only IS NULL OR local_only = 0) "
+        val sql = "SELECT COUNT(*), COUNT(CASE WHEN due_at IS NOT NULL AND due_at < CAST(? AS INTEGER) THEN 1 END) FROM node WHERE (status = 'active' OR status = 'in_progress' OR status = 'paused') $localFilter AND ((due_at IS NOT NULL AND due_at > CAST(? AS INTEGER)) OR created_at = 0 OR (CASE WHEN updated_at > created_at THEN updated_at ELSE created_at END) >= CAST(? AS INTEGER))"
         dbHelper.readableDatabase.query(sql, arrayOf(now.toString(), now.toString(), cutoff.toString())).use {
             if (it.moveToFirst()) {
                 NodeCounts(it.getInt(0), it.getInt(1))
@@ -380,15 +423,14 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         }
     }
 
-    override suspend fun getStaleNodes(now: Long, cutoffMs: Long): List<Node> = withContext(ioDispatcher) {
+    override suspend fun getStaleNodes(now: Long, cutoffMs: Long, includeLocalOnly: Boolean): List<Node> = withIoDb {
         val cutoff = now - cutoffMs
-        // D-03: local_only nodes are excluded here for the same reason every other recall
-        // path excludes them; SharedFakeStorage already did, so only the device leaked.
-        val sql = "SELECT $NODE_COLS FROM node WHERE (status = 'active' OR status = 'in_progress' OR status = 'paused') AND (local_only IS NULL OR local_only = 0) AND (created_at > 0 OR updated_at > 0) AND (CASE WHEN updated_at > created_at THEN updated_at ELSE created_at END) < CAST(? AS INTEGER) AND (due_at IS NULL OR due_at <= CAST(? AS INTEGER)) ORDER BY created_at DESC"
+        val localFilter = if (includeLocalOnly) "" else "AND (local_only IS NULL OR local_only = 0) "
+        val sql = "SELECT $NODE_COLS FROM node WHERE (status = 'active' OR status = 'in_progress' OR status = 'paused') $localFilter AND (created_at > 0 OR updated_at > 0) AND (CASE WHEN updated_at > created_at THEN updated_at ELSE created_at END) < CAST(? AS INTEGER) AND (due_at IS NULL OR due_at <= CAST(? AS INTEGER)) ORDER BY created_at DESC"
         queryNodes(sql, arrayOf(cutoff.toString(), now.toString()))
     }
 
-    override suspend fun getTrashNodes(now: Long, limit: Int): List<Node> = withContext(ioDispatcher) {
+    override suspend fun getTrashNodes(now: Long, limit: Int): List<Node> = withIoDb {
         val thirtyDaysAgo = now - (30L * 24 * 3600 * 1000L)
         val sql = "SELECT $NODE_COLS FROM node " +
             "WHERE status = 'cancelled' AND ((closed_at IS NOT NULL AND closed_at >= ?) OR (updated_at IS NOT NULL AND updated_at >= ?)) " +
@@ -396,7 +438,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         queryNodes(sql, arrayOf(thirtyDaysAgo.toString(), thirtyDaysAgo.toString(), limit.toString()))
     }
 
-    override suspend fun eraseNode(nodeId: String) = withContext(ioDispatcher) {
+    override suspend fun eraseNode(nodeId: String) = withIoDb {
         val db = dbHelper.writableDatabase
         db.beginTransaction()
         try {
@@ -410,6 +452,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
             )
             db.execSQL("DELETE FROM reminder WHERE node_id = ?", arrayOf<Any>(nodeId))
             db.execSQL("DELETE FROM edge WHERE src_id = ? OR dst_id = ?", arrayOf<Any>(nodeId, nodeId))
+            db.execSQL("DELETE FROM note_reference WHERE node_id = ?", arrayOf<Any>(nodeId))
             db.execSQL("DELETE FROM node WHERE id = ?", arrayOf<Any>(nodeId))
             db.setTransactionSuccessful()
         } finally {
@@ -417,7 +460,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         }
     }
 
-    override suspend fun eraseSoulFact(factId: String) = withContext(ioDispatcher) {
+    override suspend fun eraseSoulFact(factId: String) = withIoDb {
         val db = dbHelper.writableDatabase
         db.beginTransaction()
         try {
@@ -429,7 +472,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         }
     }
 
-    override suspend fun isSoulFactSuppressed(statement: String): Boolean = withContext(ioDispatcher) {
+    override suspend fun isSoulFactSuppressed(statement: String): Boolean = withIoDb {
         dbHelper.readableDatabase.query(
             "SELECT 1 FROM soul_fact WHERE LOWER(TRIM(statement)) = LOWER(TRIM(?)) AND status = 'rejected' LIMIT 1",
             arrayOf(statement)
@@ -441,7 +484,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
     // R-26: bounded and in fire order, so the Home list shows the soonest reminders first and the
     // read cost is capped. The bound is far above any list a person reads; it exists so the query
     // terminates on a pathological history, not to shape the product.
-    override suspend fun getActiveReminders(now: Long, limit: Int): List<Reminder> = withContext(ioDispatcher) {
+    override suspend fun getActiveReminders(now: Long, limit: Int): List<Reminder> = withIoDb {
         val list = mutableListOf<Reminder>()
         dbHelper.readableDatabase.query("SELECT $REMINDER_COLS FROM reminder WHERE fire_at > ? ORDER BY fire_at ASC LIMIT ?", arrayOf(now.toString(), limit.toString())).use {
             while (it.moveToNext()) {
@@ -453,7 +496,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
 
     // R-26: ORDER BY fire_at walks idx_reminder_fire instead of sorting the whole table, and the
     // LIMIT means the cost of a sweep no longer grows with reminder history.
-    override suspend fun getPendingReminders(limit: Int): List<Reminder> = withContext(ioDispatcher) {
+    override suspend fun getPendingReminders(limit: Int): List<Reminder> = withIoDb {
         val list = mutableListOf<Reminder>()
         dbHelper.readableDatabase.query("SELECT $REMINDER_COLS FROM reminder ORDER BY fire_at ASC LIMIT ?", arrayOf(limit.toString())).use {
             while (it.moveToNext()) {
@@ -463,13 +506,13 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         list
     }
 
-    override suspend fun saveProposal(proposal: Proposal) = withContext(ioDispatcher) {
+    override suspend fun saveProposal(proposal: Proposal) = withIoDb {
         val optsJson = kotlinx.serialization.json.Json.encodeToString(proposal.options)
         dbHelper.writableDatabase.execSQL("INSERT OR REPLACE INTO proposal (id, kind, intent, options, status, created_at, payload) VALUES (?, ?, ?, ?, ?, ?, ?)",
             arrayOf<Any?>(proposal.id, proposal.kind, proposal.intent.name, optsJson, proposal.status, System.currentTimeMillis(), proposal.payload))
     }
 
-    override suspend fun getProposal(id: String): Proposal? = withContext(ioDispatcher) {
+    override suspend fun getProposal(id: String): Proposal? = withIoDb {
         val expiryThreshold = System.currentTimeMillis() - (24 * 3600 * 1000L)
         // B5: Enforce 24-hour expiry directly at the read level. If it's old, it doesn't exist to the Gateway.
         dbHelper.readableDatabase.query("SELECT kind, intent, options, status, payload FROM proposal WHERE id = ? AND created_at > ?", arrayOf<Any>(id, expiryThreshold)).use {
@@ -485,15 +528,15 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         }
     }
 
-    override suspend fun consumeProposal(id: String) = withContext(ioDispatcher) {
+    override suspend fun consumeProposal(id: String) = withIoDb {
         dbHelper.writableDatabase.execSQL("UPDATE proposal SET status = 'consumed' WHERE id = ?", arrayOf(id))
     }
 
-    override suspend fun updateProposalStatus(id: String, status: String) = withContext(ioDispatcher) {
+    override suspend fun updateProposalStatus(id: String, status: String) = withIoDb {
         dbHelper.writableDatabase.execSQL("UPDATE proposal SET status = ? WHERE id = ?", arrayOf(status, id))
     }
 
-    override suspend fun reopenProposal(id: String): Boolean = withContext(ioDispatcher) {
+    override suspend fun reopenProposal(id: String): Boolean = withIoDb {
         val stmt = dbHelper.writableDatabase.compileStatement("UPDATE proposal SET status = 'open' WHERE id = ? AND status = 'consumed'")
         try {
             stmt.bindString(1, id)
@@ -516,7 +559,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         }
     }
 
-    override suspend fun consumeProposalCas(id: String): Boolean = withContext(ioDispatcher) {
+    override suspend fun consumeProposalCas(id: String): Boolean = withIoDb {
         val stmt = dbHelper.writableDatabase.compileStatement("UPDATE proposal SET status = 'consumed' WHERE id = ? AND status = 'open'")
         try {
             stmt.bindString(1, id)
@@ -526,7 +569,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         }
     }
 
-    override suspend fun getOpenProposals(): List<Proposal> = withContext(ioDispatcher) {
+    override suspend fun getOpenProposals(): List<Proposal> = withIoDb {
         val list = mutableListOf<Proposal>()
         val expiryThreshold = System.currentTimeMillis() - (24 * 3600 * 1000L)
         dbHelper.readableDatabase.query("SELECT id, kind, intent, options, status, payload FROM proposal WHERE status = 'open' AND created_at > ?", arrayOf(expiryThreshold)).use {
@@ -543,27 +586,28 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         list
     }
 
-    override suspend fun getUrgentNodes(): List<Node> = withContext(ioDispatcher) {
+    override suspend fun getUrgentNodes(includeLocalOnly: Boolean): List<Node> = withIoDb {
+        val localFilter = if (includeLocalOnly) "" else "AND (local_only IS NULL OR local_only = 0) "
         // ORDER BY due_at IS NULL ensures nulls drop to the bottom in standard SQLite
-        queryNodes("SELECT $NODE_COLS FROM node WHERE status IN ('active', 'in_progress') AND (local_only IS NULL OR local_only = 0) ORDER BY due_at IS NULL, due_at ASC LIMIT 3", emptyArray())
+        queryNodes("SELECT $NODE_COLS FROM node WHERE status IN ('active', 'in_progress') $localFilter ORDER BY due_at IS NULL, due_at ASC LIMIT 3", emptyArray())
     }
 
     // P1-D 20 (D-121): Home queries. Ranking itself is code-side via rankHomeNodes (D-121).
-    override suspend fun getHomePriorityList(now: Long, limit: Int): List<Node> = withContext(ioDispatcher) {
+    override suspend fun getHomePriorityList(now: Long, limit: Int): List<Node> = withIoDb {
         val cutoff = now - 30L * 24 * 3600 * 1000L
-        val sql = "SELECT $NODE_COLS FROM node WHERE (status = 'active' OR status = 'in_progress' OR status = 'paused') AND (local_only IS NULL OR local_only = 0) AND ((due_at IS NOT NULL AND due_at > CAST(? AS INTEGER)) OR created_at = 0 OR (CASE WHEN updated_at > created_at THEN updated_at ELSE created_at END) >= CAST(? AS INTEGER))"
+        val sql = "SELECT $NODE_COLS FROM node WHERE (status = 'active' OR status = 'in_progress' OR status = 'paused') AND (local_only IS NULL OR local_only = 0) AND ((due_at IS NOT NULL AND due_at > CAST(? AS INTEGER)) OR created_at = 0 OR (CASE WHEN updated_at > created_at THEN updated_at ELSE created_at END) >= CAST(? AS INTEGER)) LIMIT 50"
         val fresh = queryNodes(sql, arrayOf(now.toString(), cutoff.toString()))
         // Cap the candidate pool before code-side ranking (parity with SharedFakeStorage).
         com.anchor.core.storage.rankHomeNodes(fresh, now).take(limit)
     }
 
-    override suspend fun getRecentlyClosed(now: Long, limit: Int): List<Node> = withContext(ioDispatcher) {
+    override suspend fun getRecentlyClosed(now: Long, limit: Int): List<Node> = withIoDb {
         val cutoff = now - 24L * 3600 * 1000L
         val sql = "SELECT $NODE_COLS FROM node WHERE (status = 'done' OR status = 'cancelled') AND closed_at IS NOT NULL AND closed_at >= CAST(? AS INTEGER) AND closed_at <= CAST(? AS INTEGER) ORDER BY closed_at DESC, id ASC LIMIT CAST(? AS INTEGER)"
         queryNodes(sql, arrayOf(cutoff.toString(), now.toString(), limit.toString()))
     }
 
-    override suspend fun getLatestEventForTarget(targetType: String, targetId: String): RawEvent? = withContext(ioDispatcher) {
+    override suspend fun getLatestEventForTarget(targetType: String, targetId: String): RawEvent? = withIoDb {
         dbHelper.readableDatabase.query(
             "SELECT op_id, op_type, target_type, target_id, undo_of, before_json, after_json, ts_utc, cause_msg_id FROM raw_event WHERE target_type = ? AND target_id = ? ORDER BY ts_utc DESC, rowid DESC LIMIT 1",
             arrayOf(targetType, targetId)
@@ -582,7 +626,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         }
     }
 
-    override suspend fun getActiveSoulFacts(includeLocalOnly: Boolean): List<SoulFact> = withContext(ioDispatcher) {
+    override suspend fun getActiveSoulFacts(includeLocalOnly: Boolean): List<SoulFact> = withIoDb {
         val list = mutableListOf<SoulFact>()
         val sql = if (includeLocalOnly) {
             "SELECT id, category, statement, confidence, source, origin, status, created_at, local_only, sensitive FROM soul_fact WHERE (status = 'active' OR status = 'pinned')"
@@ -599,7 +643,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         list
     }
 
-    override suspend fun getProposedSoulFacts(): List<SoulFact> = withContext(ioDispatcher) {
+    override suspend fun getProposedSoulFacts(): List<SoulFact> = withIoDb {
         val list = mutableListOf<SoulFact>()
         dbHelper.readableDatabase.query("SELECT id, category, statement, confidence, source, origin, status, created_at, local_only, sensitive FROM soul_fact WHERE status = 'proposed'").use {
             while (it.moveToNext()) {
@@ -611,11 +655,11 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         list
     }
 
-    override suspend fun updateSoulFactStatus(id: String, status: String) = withContext(ioDispatcher) {
+    override suspend fun updateSoulFactStatus(id: String, status: String) = withIoDb {
         dbHelper.writableDatabase.execSQL("UPDATE soul_fact SET status = ? WHERE id = ?", arrayOf(status, id))
     }
 
-    override suspend fun updateSoulFactStatusAndCommit(id: String, status: String, event: RawEvent) = withContext(ioDispatcher) {
+    override suspend fun updateSoulFactStatusAndCommit(id: String, status: String, event: RawEvent) = withIoDb {
         val db = dbHelper.writableDatabase
         db.beginTransaction()
         try {
@@ -626,15 +670,15 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         } finally { db.endTransaction() }
     }
 
-    override suspend fun saveReminder(reminder: Reminder) = withContext(ioDispatcher) {
+    override suspend fun saveReminder(reminder: Reminder) = withIoDb {
         dbHelper.writableDatabase.execSQL("INSERT OR REPLACE INTO reminder (id, node_id, text, fire_at, tier, rrule, iteration) VALUES (?, ?, ?, ?, ?, ?, ?)", arrayOf<Any?>(reminder.id, reminder.nodeId, reminder.text, reminder.fireAtMillis, reminder.tier.name.lowercase(), reminder.rrule, reminder.iteration))
     }
 
-    override suspend fun deleteReminder(id: String) = withContext(ioDispatcher) {
+    override suspend fun deleteReminder(id: String) = withIoDb {
         dbHelper.writableDatabase.execSQL("DELETE FROM reminder WHERE id = ?", arrayOf(id))
     }
 
-    override suspend fun getDebugStats(): Map<String, String> = withContext(ioDispatcher) {
+    override suspend fun getDebugStats(): Map<String, String> = withIoDb {
         val stats = mutableMapOf<String, String>()
         val db = dbHelper.readableDatabase
         val tables = listOf("raw_message", "raw_event", "node", "edge", "reminder")
@@ -646,11 +690,11 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         stats
     }
 
-    override suspend fun getNode(id: String): Node? = withContext(ioDispatcher) {
+    override suspend fun getNode(id: String): Node? = withIoDb {
         queryNodes("SELECT $NODE_COLS FROM node WHERE id = ?", arrayOf(id)).firstOrNull()
     }
 
-    override suspend fun getEvent(opId: String): RawEvent? = withContext(ioDispatcher) {
+    override suspend fun getEvent(opId: String): RawEvent? = withIoDb {
         // B16: Query ts_utc to enforce the 24-hour undo window
         dbHelper.readableDatabase.query("SELECT op_type, target_type, target_id, undo_of, before_json, after_json, ts_utc, cause_msg_id FROM raw_event WHERE op_id = ?", arrayOf(opId)).use {
             if (it.moveToFirst()) RawEvent(
@@ -667,13 +711,13 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         }
     }
 
-    override suspend fun hasUndo(token: String): Boolean = withContext(ioDispatcher) {
+    override suspend fun hasUndo(token: String): Boolean = withIoDb {
         dbHelper.readableDatabase.query("SELECT COUNT(*) FROM raw_event WHERE undo_of = ?", arrayOf(token)).use {
             if (it.moveToFirst()) it.getInt(0) > 0 else false
         }
     }
 
-    override suspend fun getUndoneOpIds(sinceUtc: Long): Set<String> = withContext(ioDispatcher) {
+    override suspend fun getUndoneOpIds(sinceUtc: Long): Set<String> = withIoDb {
         val result = mutableSetOf<String>()
         val cursor = if (sinceUtc > 0L) {
             dbHelper.readableDatabase.query(
@@ -694,9 +738,9 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         result
     }
 
-    override suspend fun getRecentEvents(limit: Int): List<RawEvent> = withContext(ioDispatcher) {
+    override suspend fun getRecentEvents(limit: Int): List<RawEvent> = withIoDb {
         val list = mutableListOf<RawEvent>()
-        val sql = "SELECT op_id, op_type, target_type, target_id, undo_of, before_json, after_json, ts_utc, cause_msg_id FROM raw_event WHERE undo_of IS NULL AND op_type IN ('CREATE', 'CANCEL', 'COMPLETE', 'RESCHEDULE', 'UPDATE', 'SCHEDULE', 'KEEP_STALE', 'CANCEL_STALE', 'DELETE', 'CONFIRM', 'ACCEPT', 'REJECT', 'LINK', 'UNLINK', 'UPDATE_STATUS', 'ARCHIVE_NODE', 'DELETE_NODE', 'RESTORE_NODE') ORDER BY ts_utc DESC, rowid DESC LIMIT ?"
+        val sql = "SELECT op_id, op_type, target_type, target_id, undo_of, before_json, after_json, ts_utc, cause_msg_id FROM raw_event WHERE undo_of IS NULL AND op_type IN ('CREATE', 'CANCEL', 'COMPLETE', 'RESCHEDULE', 'UPDATE', 'SCHEDULE', 'KEEP_STALE', 'CANCEL_STALE', 'DELETE', 'CONFIRM', 'ACCEPT', 'REJECT', 'LINK', 'UNLINK', 'UPDATE_STATUS', 'ARCHIVE_NODE', 'DELETE_NODE', 'RESTORE_NODE', 'SCHEDULE_WAKEUP', 'UPSERT_TOPIC_NOTE', 'LINK_NOTE_REFERENCE') ORDER BY ts_utc DESC, rowid DESC LIMIT ?"
         dbHelper.readableDatabase.query(sql, arrayOf(limit)).use { cursor ->
             while (cursor.moveToNext()) {
                 list.add(
@@ -717,14 +761,39 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         list.reversed()
     }
 
-    override suspend fun createNodeAndCommit(node: Node, event: RawEvent, reminder: Reminder?, edge: Edge?, edgeEvent: RawEvent?, consumeProposalId: String?) = withContext(ioDispatcher) {
+    override suspend fun insertRawEvent(event: RawEvent) = withIoDb {
+        val db = dbHelper.writableDatabase
+        db.beginTransaction()
+        try {
+            db.execSQL(
+                "INSERT INTO raw_event (op_id, target_id, op_type, target_type, ts_utc, device_id, actor, undo_of, before_json, after_json, cause_msg_id) VALUES (?, ?, ?, ?, ?, ?, 'chat_ai', ?, ?, ?, ?)",
+                arrayOf<Any?>(
+                    event.opId,
+                    event.targetId,
+                    event.opType,
+                    event.targetType,
+                    event.tsUtc,
+                    deviceId,
+                    event.undoOf,
+                    event.beforeJson,
+                    event.afterJson,
+                    event.causeMsgId
+                )
+            )
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
+    }
+
+    override suspend fun createNodeAndCommit(node: Node, event: RawEvent, reminder: Reminder?, edge: Edge?, edgeEvent: RawEvent?, consumeProposalId: String?) = withIoDb {
         val db = dbHelper.writableDatabase
         db.beginTransaction()
         try {
             val attrs = if (node.pinned) "{\"pinned\":true}" else null
             val localOnlyVal = if (node.localOnly) 1 else 0
-            db.execSQL("INSERT INTO node (id, device_id, type, title, status, due_at, priority, severity, attrs, local_only, origin, hlc, created_at, updated_at, recurrence_rule, streak_current, streak_best, last_completed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '', ?, ?, ?, ?, ?, ?)",
-                arrayOf<Any?>(node.id, deviceId, node.type, node.title, node.status, node.dueAt, node.priority, node.severity, attrs, localOnlyVal, node.origin, node.createdAt, node.updatedAt, node.recurrenceRule, node.streakCurrent, node.streakBest, node.lastCompletedAt))
+            db.execSQL("INSERT INTO node (id, device_id, type, title, status, due_at, priority, severity, attrs, local_only, origin, hlc, created_at, updated_at, recurrence_rule, streak_current, streak_best, last_completed_at, original_due_at, due_history_json, slip_count, context_trigger, fallback_fire_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                arrayOf<Any?>(node.id, deviceId, node.type, node.title, node.status, node.dueAt, node.priority, node.severity, attrs, localOnlyVal, node.origin, node.createdAt, node.updatedAt, node.recurrenceRule, node.streakCurrent, node.streakBest, node.lastCompletedAt, node.originalDueAt, node.dueHistoryJson, node.slipCount, node.contextTrigger, node.fallbackFireAt))
             reminder?.let { db.execSQL("INSERT OR REPLACE INTO reminder (id, node_id, text, fire_at, tier, rrule, iteration) VALUES (?, ?, ?, ?, ?, ?, ?)", arrayOf<Any?>(it.id, it.nodeId, it.text, it.fireAtMillis, it.tier.name.lowercase(), it.rrule, it.iteration)) }
             edge?.let {
                 db.execSQL(
@@ -741,8 +810,8 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
             consumeProposalId?.let {
                 consumeProposalInTx(db, it)
             }
-            db.execSQL("INSERT INTO raw_event (op_id, target_id, op_type, target_type, ts_utc, device_id, actor, before_json, after_json, cause_msg_id) VALUES (?, ?, ?, ?, ?, ?, 'chat_ai', ?, ?, ?)",
-                arrayOf<Any?>(event.opId, event.targetId, event.opType, event.targetType, event.tsUtc, deviceId, event.beforeJson, event.afterJson, event.causeMsgId))
+            db.execSQL("INSERT INTO raw_event (op_id, target_id, op_type, target_type, ts_utc, device_id, actor, undo_of, before_json, after_json, cause_msg_id) VALUES (?, ?, ?, ?, ?, ?, 'chat_ai', ?, ?, ?, ?)",
+                arrayOf<Any?>(event.opId, event.targetId, event.opType, event.targetType, event.tsUtc, deviceId, event.undoOf, event.beforeJson, event.afterJson, event.causeMsgId))
             edgeEvent?.let {
                 db.execSQL("INSERT INTO raw_event (op_id, target_id, op_type, target_type, ts_utc, device_id, actor, before_json, after_json, cause_msg_id) VALUES (?, ?, ?, ?, ?, ?, 'chat_ai', ?, ?, ?)",
                     arrayOf<Any?>(it.opId, it.targetId, it.opType, it.targetType, it.tsUtc, deviceId, it.beforeJson, it.afterJson, it.causeMsgId))
@@ -751,7 +820,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         } finally { db.endTransaction() }
     }
 
-    override suspend fun updateNodeAndCommit(node: Node, event: RawEvent, deleteReminderId: String?, upsertReminder: Reminder?, consumeProposalId: String?, softDeleteEdgeIds: List<String>) = withContext(ioDispatcher) {
+    override suspend fun updateNodeAndCommit(node: Node, event: RawEvent, deleteReminderId: String?, upsertReminder: Reminder?, consumeProposalId: String?, softDeleteEdgeIds: List<String>) = withIoDb {
         val db = dbHelper.writableDatabase
         db.beginTransaction()
         try {
@@ -777,7 +846,12 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
             val closedAt = node.closedAt
             val lastCompletedAt = node.lastCompletedAt
             val recurrenceRule = node.recurrenceRule
-            val updated = db.compileStatement("UPDATE node SET type = ?, title = ?, status = ?, due_at = ?, closed_at = ?, priority = ?, severity = ?, attrs = ?, local_only = ?, origin = ?, recurrence_rule = ?, streak_current = ?, streak_best = ?, last_completed_at = ?, updated_at = ? WHERE id = ?").use { stmt ->
+            val originalDueAt = node.originalDueAt
+            val dueHistoryJson = node.dueHistoryJson
+            val slipCount = node.slipCount
+            val contextTrigger = node.contextTrigger
+            val fallbackFireAt = node.fallbackFireAt
+            val updated = db.compileStatement("UPDATE node SET type = ?, title = ?, status = ?, due_at = ?, closed_at = ?, priority = ?, severity = ?, attrs = ?, local_only = ?, origin = ?, recurrence_rule = ?, streak_current = ?, streak_best = ?, last_completed_at = ?, updated_at = ?, original_due_at = ?, due_history_json = ?, slip_count = ?, context_trigger = ?, fallback_fire_at = ? WHERE id = ?").use { stmt ->
                 stmt.bindString(1, node.type)
                 stmt.bindString(2, node.title)
                 stmt.bindString(3, node.status)
@@ -793,7 +867,12 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
                 stmt.bindLong(13, node.streakBest.toLong())
                 if (lastCompletedAt == null) stmt.bindNull(14) else stmt.bindLong(14, lastCompletedAt)
                 stmt.bindLong(15, node.updatedAt)
-                stmt.bindString(16, node.id)
+                if (originalDueAt == null) stmt.bindNull(16) else stmt.bindLong(16, originalDueAt)
+                if (dueHistoryJson == null) stmt.bindNull(17) else stmt.bindString(17, dueHistoryJson)
+                stmt.bindLong(18, slipCount.toLong())
+                if (contextTrigger == null) stmt.bindNull(19) else stmt.bindString(19, contextTrigger)
+                if (fallbackFireAt == null) stmt.bindNull(20) else stmt.bindLong(20, fallbackFireAt)
+                stmt.bindString(21, node.id)
                 stmt.executeUpdateDelete()
             }
             if (updated != 1) throw IllegalStateException("updateNodeAndCommit: no row for node ${node.id}")
@@ -813,14 +892,14 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
                 db.execSQL("UPDATE edge SET deleted_at = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL", arrayOf<Any?>(node.updatedAt, node.updatedAt, edgeId))
             }
 
-            db.execSQL("INSERT INTO raw_event (op_id, target_id, op_type, target_type, ts_utc, device_id, actor, before_json, after_json, cause_msg_id) VALUES (?, ?, ?, ?, ?, ?, 'chat_ai', ?, ?, ?)",
-                arrayOf<Any?>(event.opId, event.targetId, event.opType, event.targetType, event.tsUtc, deviceId, event.beforeJson, event.afterJson, event.causeMsgId))
+            db.execSQL("INSERT INTO raw_event (op_id, target_id, op_type, target_type, ts_utc, device_id, actor, undo_of, before_json, after_json, cause_msg_id) VALUES (?, ?, ?, ?, ?, ?, 'chat_ai', ?, ?, ?, ?)",
+                arrayOf<Any?>(event.opId, event.targetId, event.opType, event.targetType, event.tsUtc, deviceId, event.undoOf, event.beforeJson, event.afterJson, event.causeMsgId))
 
             db.setTransactionSuccessful()
         } finally { db.endTransaction() }
     }
 
-    override suspend fun undoChangeAndCommit(node: Node, event: RawEvent, restoreReminder: Reminder?) = withContext(ioDispatcher) {
+    override suspend fun undoChangeAndCommit(node: Node, event: RawEvent, restoreReminder: Reminder?) = withIoDb {
         val db = dbHelper.writableDatabase
         db.beginTransaction()
         try {
@@ -835,8 +914,8 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
             }
             val attrs = mergePinnedAttr(existingAttrs, node.pinned)
             val localOnlyVal = if (node.localOnly) 1 else 0
-            db.execSQL("UPDATE node SET type = ?, title = ?, status = ?, due_at = ?, closed_at = ?, priority = ?, severity = ?, attrs = ?, local_only = ?, origin = ?, recurrence_rule = ?, streak_current = ?, streak_best = ?, last_completed_at = ?, updated_at = ? WHERE id = ?",
-                arrayOf<Any?>(node.type, node.title, node.status, node.dueAt, node.closedAt, node.priority, node.severity, attrs, localOnlyVal, node.origin, node.recurrenceRule, node.streakCurrent, node.streakBest, node.lastCompletedAt, node.updatedAt, node.id))
+            db.execSQL("UPDATE node SET type = ?, title = ?, status = ?, due_at = ?, closed_at = ?, priority = ?, severity = ?, attrs = ?, local_only = ?, origin = ?, recurrence_rule = ?, streak_current = ?, streak_best = ?, last_completed_at = ?, updated_at = ?, original_due_at = ?, due_history_json = ?, slip_count = ?, context_trigger = ?, fallback_fire_at = ? WHERE id = ?",
+                arrayOf<Any?>(node.type, node.title, node.status, node.dueAt, node.closedAt, node.priority, node.severity, attrs, localOnlyVal, node.origin, node.recurrenceRule, node.streakCurrent, node.streakBest, node.lastCompletedAt, node.updatedAt, node.originalDueAt, node.dueHistoryJson, node.slipCount, node.contextTrigger, node.fallbackFireAt, node.id))
             restoreReminder?.let { db.execSQL("INSERT OR REPLACE INTO reminder (id, node_id, text, fire_at, tier, rrule, iteration) VALUES (?, ?, ?, ?, ?, ?, ?)", arrayOf<Any?>(it.id, it.nodeId, it.text, it.fireAtMillis, it.tier.name.lowercase(), it.rrule, it.iteration)) }
             db.execSQL("INSERT INTO raw_event (op_id, target_id, op_type, target_type, ts_utc, device_id, actor, undo_of, before_json, after_json, cause_msg_id) VALUES (?, ?, ?, ?, ?, ?, 'user', ?, ?, ?, ?)",
                 arrayOf<Any?>(event.opId, event.targetId, event.opType, event.targetType, event.tsUtc, deviceId, event.undoOf, event.beforeJson, event.afterJson, event.causeMsgId))
@@ -844,7 +923,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         } finally { db.endTransaction() }
     }
 
-    override suspend fun createReminderAndCommit(reminder: Reminder, event: RawEvent, consumeProposalId: String?) = withContext(ioDispatcher) {
+    override suspend fun createReminderAndCommit(reminder: Reminder, event: RawEvent, consumeProposalId: String?) = withIoDb {
         val db = dbHelper.writableDatabase
         db.beginTransaction()
         try {
@@ -852,13 +931,13 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
             consumeProposalId?.let {
                 consumeProposalInTx(db, it)
             }
-            db.execSQL("INSERT INTO raw_event (op_id, target_id, op_type, target_type, ts_utc, device_id, actor, before_json, after_json, cause_msg_id) VALUES (?, ?, ?, ?, ?, ?, 'chat_ai', ?, ?, ?)",
-                arrayOf<Any?>(event.opId, event.targetId, event.opType, event.targetType, event.tsUtc, deviceId, event.beforeJson, event.afterJson, event.causeMsgId))
+            db.execSQL("INSERT INTO raw_event (op_id, target_id, op_type, target_type, ts_utc, device_id, actor, undo_of, before_json, after_json, cause_msg_id) VALUES (?, ?, ?, ?, ?, ?, 'chat_ai', ?, ?, ?, ?)",
+                arrayOf<Any?>(event.opId, event.targetId, event.opType, event.targetType, event.tsUtc, deviceId, event.undoOf, event.beforeJson, event.afterJson, event.causeMsgId))
             db.setTransactionSuccessful()
         } finally { db.endTransaction() }
     }
 
-    override suspend fun deleteReminderAndCommit(reminderId: String, event: RawEvent) = withContext(ioDispatcher) {
+    override suspend fun deleteReminderAndCommit(reminderId: String, event: RawEvent) = withIoDb {
         val db = dbHelper.writableDatabase
         db.beginTransaction()
         try {
@@ -895,33 +974,33 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         }
     }
 
-    override suspend fun saveSoulFact(fact: SoulFact) = withContext(ioDispatcher) {
+    override suspend fun saveSoulFact(fact: SoulFact) = withIoDb {
         val db = dbHelper.writableDatabase
         saveSoulFactInternal(db, fact)
     }
 
-    override suspend fun createSoulFactAndCommit(fact: SoulFact, event: RawEvent) = withContext(ioDispatcher) {
+    override suspend fun createSoulFactAndCommit(fact: SoulFact, event: RawEvent) = withIoDb {
         val db = dbHelper.writableDatabase
         db.beginTransaction()
         try {
             saveSoulFactInternal(db, fact)
-            db.execSQL("INSERT INTO raw_event (op_id, target_id, op_type, target_type, ts_utc, device_id, actor, before_json, after_json, cause_msg_id) VALUES (?, ?, ?, ?, ?, ?, 'chat_ai', ?, ?, ?)",
-                arrayOf<Any?>(event.opId, event.targetId, event.opType, event.targetType, event.tsUtc, deviceId, event.beforeJson, event.afterJson, event.causeMsgId))
+            db.execSQL("INSERT INTO raw_event (op_id, target_id, op_type, target_type, ts_utc, device_id, actor, undo_of, before_json, after_json, cause_msg_id) VALUES (?, ?, ?, ?, ?, ?, 'chat_ai', ?, ?, ?, ?)",
+                arrayOf<Any?>(event.opId, event.targetId, event.opType, event.targetType, event.tsUtc, deviceId, event.undoOf, event.beforeJson, event.afterJson, event.causeMsgId))
             db.setTransactionSuccessful()
         } finally { db.endTransaction() }
     }
 
-    override suspend fun searchMemoryFts(query: String, limit: Int): List<SearchResult> = withContext(ioDispatcher) {
+    override suspend fun searchMemoryFts(query: String, limit: Int): List<SearchResult> = withIoDb {
         val nodeResults = mutableListOf<SearchResult>()
         val soulResults = mutableListOf<SearchResult>()
         val chatResults = mutableListOf<SearchResult>()
-        if (query.isBlank()) return@withContext emptyList()
+        if (query.isBlank()) return@withIoDb emptyList()
         val safeLimit = limit.coerceIn(1, 20)
 
         try {
             val sanitized = query.replace(Regex("[^\\p{L}\\p{M}\\p{N}\\s]"), "").trim()
             val tokens = sanitized.split(Regex("\\s+")).filter { it.isNotBlank() }
-            if (tokens.isEmpty()) return@withContext emptyList()
+            if (tokens.isEmpty()) return@withIoDb emptyList()
             val matchQuery = tokens.joinToString(" AND ") { "\"$it\"*" }
 
             // B1: Strict status filtering applied natively to FTS joins
@@ -962,7 +1041,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
             if (i < soulResults.size) interleaved.add(soulResults[i])
             if (i < chatResults.size) interleaved.add(chatResults[i])
         }
-        return@withContext interleaved.take(safeLimit)
+        return@withIoDb interleaved.take(safeLimit)
     }
 
     override suspend fun saveEmbedding(
@@ -970,7 +1049,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         ownerId: String,
         modelVersion: String,
         vector: com.anchor.core.retrieval.QuantVector
-    ) = withContext(ioDispatcher) {
+    ) = withIoDb {
         dbHelper.writableDatabase.execSQL(
             "INSERT OR REPLACE INTO embedding (owner_type, owner_id, model_version, dim, scale, vec, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
             arrayOf<Any?>(ownerType, ownerId, modelVersion, vector.dim, vector.scale, vector.bytes, System.currentTimeMillis())
@@ -980,12 +1059,15 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
     override suspend fun getEmbeddings(
         ownerType: String,
         modelVersion: String
-    ): List<Pair<String, com.anchor.core.retrieval.QuantVector>> = withContext(ioDispatcher) {
+    ): List<Pair<String, com.anchor.core.retrieval.QuantVector>> = withIoDb {
         val list = mutableListOf<Pair<String, com.anchor.core.retrieval.QuantVector>>()
-        dbHelper.readableDatabase.query(
-            "SELECT owner_id, scale, vec FROM embedding WHERE owner_type = ? AND model_version = ?",
-            arrayOf(ownerType, modelVersion)
-        ).use { cursor ->
+        val sql = when (ownerType) {
+            "node" -> "SELECT e.owner_id, e.scale, e.vec FROM embedding e JOIN node n ON e.owner_id = n.id WHERE e.owner_type = 'node' AND e.model_version = ? AND n.status NOT IN ('archived', 'cancelled', 'done') AND (n.local_only IS NULL OR n.local_only = 0)"
+            "soul_fact" -> "SELECT e.owner_id, e.scale, e.vec FROM embedding e JOIN soul_fact sf ON e.owner_id = sf.id WHERE e.owner_type = 'soul_fact' AND e.model_version = ? AND sf.status IN ('active', 'pinned') AND (sf.local_only IS NULL OR sf.local_only = 0)"
+            else -> "SELECT owner_id, scale, vec FROM embedding WHERE owner_type = ? AND model_version = ?"
+        }
+        val args = if (ownerType == "node" || ownerType == "soul_fact") arrayOf(modelVersion) else arrayOf(ownerType, modelVersion)
+        dbHelper.readableDatabase.query(sql, args).use { cursor ->
             val idIdx = cursor.getColumnIndexOrThrow("owner_id")
             val scaleIdx = cursor.getColumnIndexOrThrow("scale")
             val vecIdx = cursor.getColumnIndexOrThrow("vec")
@@ -999,7 +1081,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         list
     }
 
-    override suspend fun deleteEmbedding(ownerType: String, ownerId: String) = withContext(ioDispatcher) {
+    override suspend fun deleteEmbedding(ownerType: String, ownerId: String) = withIoDb {
         dbHelper.writableDatabase.execSQL(
             "DELETE FROM embedding WHERE owner_type = ? AND owner_id = ?",
             arrayOf(ownerType, ownerId)
@@ -1012,15 +1094,15 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
      * Redacted rows are excluded twice over: redaction NULLs raw_message.content and deletes
      * the chunk, and the join below re-checks raw_message so a stale chunk can never leak.
      */
-    override suspend fun searchHistory(query: String, limit: Int): List<SearchResult> = withContext(ioDispatcher) {
+    override suspend fun searchHistory(query: String, limit: Int): List<SearchResult> = withIoDb {
         val results = mutableListOf<SearchResult>()
-        if (query.isBlank()) return@withContext results
+        if (query.isBlank()) return@withIoDb results
         val safeLimit = limit.coerceIn(1, 10)
 
         try {
             val sanitized = query.replace(Regex("[^\\p{L}\\p{M}\\p{N}\\s]"), "").trim()
             val tokens = sanitized.split(Regex("\\s+")).filter { it.isNotBlank() }
-            if (tokens.isEmpty()) return@withContext results
+            if (tokens.isEmpty()) return@withIoDb results
             val matchQuery = tokens.joinToString(" AND ") { "\"$it\"*" }
 
             // Join through msg_chunk explicitly. A correlated subquery on msg_chunk_fts.rowid
@@ -1045,7 +1127,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
             // R-23: a broken index must not look like "no such conversation".
             logDiagError("searchHistory failed for query '$query': ${e.message}")
         }
-        return@withContext results
+        return@withIoDb results
     }
 
     /**
@@ -1070,7 +1152,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         }
     }
 
-    override suspend fun getProactiveState(): ProactiveState = withContext(ioDispatcher) {
+    override suspend fun getProactiveState(): ProactiveState = withIoDb {
         dbHelper.readableDatabase.query("SELECT open_thread_msg_id, thread_opened_at, backoff_step, last_sent_at, last_contact_at, paused_until, silent_days, sent_today, fuse_tripped_at, day_key FROM proactive_state WHERE id = 1").use {
             if (it.moveToFirst()) {
                 ProactiveState(
@@ -1089,14 +1171,14 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         }
     }
 
-    override suspend fun saveProactiveState(state: ProactiveState) = withContext(ioDispatcher) {
+    override suspend fun saveProactiveState(state: ProactiveState) = withIoDb {
         dbHelper.writableDatabase.execSQL(
             "INSERT OR REPLACE INTO proactive_state (id, open_thread_msg_id, thread_opened_at, backoff_step, last_sent_at, last_contact_at, paused_until, silent_days, sent_today, fuse_tripped_at, day_key) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             arrayOf<Any?>(state.openThreadMsgId, state.threadOpenedAt, state.backoffStep, state.lastSentAt, state.lastContactAt, state.pausedUntil, state.silentDays, state.sentToday, state.fuseTrippedAt, state.dayKey)
         )
     }
 
-    override suspend fun getReliabilityState(): ReliabilityState = withContext(ioDispatcher) {
+    override suspend fun getReliabilityState(): ReliabilityState = withIoDb {
         dbHelper.readableDatabase.query("SELECT last_check_at, score, issues_json, sweeper_heartbeat, p95_latency_ms FROM reliability_state WHERE id = 1").use {
             if (it.moveToFirst()) {
                 ReliabilityState(
@@ -1110,7 +1192,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         }
     }
 
-    override suspend fun saveReliabilityState(state: ReliabilityState) = withContext(ioDispatcher) {
+    override suspend fun saveReliabilityState(state: ReliabilityState) = withIoDb {
         val db = dbHelper.writableDatabase
         val lca = state.lastCheckAt
         val sc = state.score
@@ -1136,14 +1218,14 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         }
     }
 
-    override suspend fun recordReminderFire(fire: ReminderFire) = withContext(ioDispatcher) {
+    override suspend fun recordReminderFire(fire: ReminderFire) = withIoDb {
         dbHelper.writableDatabase.execSQL(
             "INSERT INTO reminder_fire (id, reminder_id, fired_at, scheduled_for, latency_ms, outcome) VALUES (?, ?, ?, ?, ?, ?)",
             arrayOf<Any?>(fire.id, fire.reminderId, fire.firedAt, fire.scheduledFor, fire.latencyMs, fire.outcome)
         )
     }
 
-    override suspend fun getRegisteredAlarms(): List<Pair<String, Long>> = withContext(ioDispatcher) {
+    override suspend fun getRegisteredAlarms(): List<Pair<String, Long>> = withIoDb {
         val list = mutableListOf<Pair<String, Long>>()
         dbHelper.readableDatabase.query("SELECT reminder_id, registered_for FROM alarm_registry").use {
             while (it.moveToNext()) {
@@ -1153,7 +1235,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         list
     }
 
-    override suspend fun getRegisteredAlarmRecords(): List<com.anchor.core.models.RegisteredAlarm> = withContext(ioDispatcher) {
+    override suspend fun getRegisteredAlarmRecords(): List<com.anchor.core.models.RegisteredAlarm> = withIoDb {
         val list = mutableListOf<com.anchor.core.models.RegisteredAlarm>()
         dbHelper.readableDatabase.query("SELECT reminder_id, registered_for, api FROM alarm_registry").use {
             while (it.moveToNext()) {
@@ -1164,40 +1246,40 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         list
     }
 
-    override suspend fun saveRegisteredAlarm(reminderId: String, requestCode: Int, registeredFor: Long, api: String) = withContext(ioDispatcher) {
+    override suspend fun saveRegisteredAlarm(reminderId: String, requestCode: Int, registeredFor: Long, api: String) = withIoDb {
         dbHelper.writableDatabase.execSQL(
             "INSERT OR REPLACE INTO alarm_registry (reminder_id, request_code, api, registered_for, registered_at) VALUES (?, ?, ?, ?, ?)",
             arrayOf<Any>(reminderId, requestCode, api, registeredFor, System.currentTimeMillis())
         )
     }
 
-    override suspend fun deleteRegisteredAlarm(reminderId: String) = withContext(ioDispatcher) {
+    override suspend fun deleteRegisteredAlarm(reminderId: String) = withIoDb {
         dbHelper.writableDatabase.execSQL("DELETE FROM alarm_registry WHERE reminder_id = ?", arrayOf(reminderId))
     }
 
-    override suspend fun getReminderByNodeId(nodeId: String): Reminder? = withContext(ioDispatcher) {
+    override suspend fun getReminderByNodeId(nodeId: String): Reminder? = withIoDb {
         dbHelper.readableDatabase.query("SELECT $REMINDER_COLS FROM reminder WHERE node_id = ?", arrayOf(nodeId)).use {
             if (it.moveToFirst()) parseReminder(it) else null
         }
     }
 
-    override suspend fun getReminderById(id: String): Reminder? = withContext(ioDispatcher) {
+    override suspend fun getReminderById(id: String): Reminder? = withIoDb {
         dbHelper.readableDatabase.query("SELECT $REMINDER_COLS FROM reminder WHERE id = ?", arrayOf(id)).use {
             if (it.moveToFirst()) parseReminder(it) else null
         }
     }
-    
-    override suspend fun clearAlarmRegistry() = withContext(ioDispatcher) {
+
+    override suspend fun clearAlarmRegistry() = withIoDb {
         dbHelper.writableDatabase.execSQL("DELETE FROM alarm_registry")
     }
 
-    override suspend fun hasReminderFire(reminderId: String, outcome: String): Boolean = withContext(ioDispatcher) {
+    override suspend fun hasReminderFire(reminderId: String, outcome: String): Boolean = withIoDb {
         dbHelper.readableDatabase.query("SELECT 1 FROM reminder_fire WHERE reminder_id = ? AND outcome = ?", arrayOf(reminderId, outcome)).use {
             it.moveToFirst()
         }
     }
 
-    override suspend fun getReminderFire(reminderId: String, outcome: String): ReminderFire? = withContext(ioDispatcher) {
+    override suspend fun getReminderFire(reminderId: String, outcome: String): ReminderFire? = withIoDb {
         dbHelper.readableDatabase.query(
             "SELECT id, reminder_id, fired_at, scheduled_for, latency_ms, outcome FROM reminder_fire WHERE reminder_id = ? AND outcome = ? ORDER BY fired_at DESC LIMIT 1",
             arrayOf(reminderId, outcome)
@@ -1215,7 +1297,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         }
     }
 
-    override suspend fun getRecentReminderFires(limit: Int): List<ReminderFire> = withContext(ioDispatcher) {
+    override suspend fun getRecentReminderFires(limit: Int): List<ReminderFire> = withIoDb {
         val list = mutableListOf<ReminderFire>()
         dbHelper.readableDatabase.query(
             "SELECT id, reminder_id, fired_at, scheduled_for, latency_ms, outcome FROM reminder_fire ORDER BY fired_at DESC LIMIT ?",
@@ -1237,7 +1319,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         list
     }
 
-    override suspend fun saveEdge(edge: Edge) = withContext(ioDispatcher) {
+    override suspend fun saveEdge(edge: Edge) = withIoDb {
         dbHelper.writableDatabase.execSQL(
             """
             INSERT OR REPLACE INTO edge (
@@ -1264,7 +1346,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         )
     }
 
-    override suspend fun getEdge(id: String): Edge? = withContext(ioDispatcher) {
+    override suspend fun getEdge(id: String): Edge? = withIoDb {
         dbHelper.readableDatabase.query(
             "SELECT id, src_id, dst_id, dst_kind, type, weight, source, origin, source_msg_ids, attrs, hlc, created_at, updated_at, deleted_at FROM edge WHERE id = ? AND deleted_at IS NULL",
             arrayOf(id)
@@ -1275,7 +1357,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         }
     }
 
-    override suspend fun getEdgesForSource(srcId: String, type: String?): List<Edge> = withContext(ioDispatcher) {
+    override suspend fun getEdgesForSource(srcId: String, type: String?): List<Edge> = withIoDb {
         val list = mutableListOf<Edge>()
         val sql = if (type == null) {
             "SELECT id, src_id, dst_id, dst_kind, type, weight, source, origin, source_msg_ids, attrs, hlc, created_at, updated_at, deleted_at FROM edge WHERE src_id = ? AND deleted_at IS NULL ORDER BY created_at ASC"
@@ -1291,7 +1373,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         list
     }
 
-    override suspend fun getEdgesForDestination(dstId: String, type: String?): List<Edge> = withContext(ioDispatcher) {
+    override suspend fun getEdgesForDestination(dstId: String, type: String?): List<Edge> = withIoDb {
         val list = mutableListOf<Edge>()
         val sql = if (type == null) {
             "SELECT id, src_id, dst_id, dst_kind, type, weight, source, origin, source_msg_ids, attrs, hlc, created_at, updated_at, deleted_at FROM edge WHERE dst_id = ? AND deleted_at IS NULL ORDER BY created_at ASC"
@@ -1307,7 +1389,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         list
     }
 
-    override suspend fun deleteEdge(id: String) = withContext(ioDispatcher) {
+    override suspend fun deleteEdge(id: String) = withIoDb {
         val now = System.currentTimeMillis()
         dbHelper.writableDatabase.execSQL(
             "UPDATE edge SET deleted_at = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL",
@@ -1315,7 +1397,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         )
     }
 
-    override suspend fun createEdgeAndCommit(edge: Edge, event: RawEvent) = withContext(ioDispatcher) {
+    override suspend fun createEdgeAndCommit(edge: Edge, event: RawEvent) = withIoDb {
         val db = dbHelper.writableDatabase
         db.beginTransaction()
         try {
@@ -1353,7 +1435,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         }
     }
 
-    override suspend fun deleteEdgeAndCommit(edgeId: String, event: RawEvent) = withContext(ioDispatcher) {
+    override suspend fun deleteEdgeAndCommit(edgeId: String, event: RawEvent) = withIoDb {
         val db = dbHelper.writableDatabase
         val now = event.tsUtc
         db.beginTransaction()
@@ -1372,7 +1454,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         }
     }
 
-    override suspend fun getGraphNeighborhood(nodeId: String, maxHops: Int, cap: Int): List<Node> = withContext(ioDispatcher) {
+    override suspend fun getGraphNeighborhood(nodeId: String, maxHops: Int, cap: Int): List<Node> = withIoDb {
         val visitedNodeIds = mutableSetOf<String>()
         var currentFrontier = setOf(nodeId)
         val resultNodes = mutableListOf<Node>()
@@ -1391,7 +1473,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
                         val node = getNode(neighborId)
                         if (node != null && node.status != "archived" && node.status != "cancelled") {
                             resultNodes.add(node)
-                            if (resultNodes.size >= cap) return@withContext resultNodes
+                            if (resultNodes.size >= cap) return@withIoDb resultNodes
                         }
                     }
                 }
@@ -1402,7 +1484,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         resultNodes
     }
 
-    override suspend fun getCalendarBuckets(startMs: Long, endMs: Long): Map<String, List<Node>> = withContext(ioDispatcher) {
+    override suspend fun getCalendarBuckets(startMs: Long, endMs: Long): Map<String, List<Node>> = withIoDb {
         val rule = getEffectiveDayRule(startMs)
         val matchingNodes = getNodesDueBetween(startMs, endMs, limit = 1000)
             .filter { it.status != "archived" && it.status != "cancelled" }
@@ -1411,7 +1493,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         }
     }
 
-    override suspend fun getBoardViewNodes(limitPerColumn: Int): Map<String, List<Node>> = withContext(ioDispatcher) {
+    override suspend fun getBoardViewNodes(limitPerColumn: Int): Map<String, List<Node>> = withIoDb {
         val allOpen = getActiveNodes(limit = 1000)
         val todo = allOpen.filter { it.status == "active" || it.status == "paused" }.take(limitPerColumn)
         val inProgress = allOpen.filter { it.status == "in_progress" }.take(limitPerColumn)
@@ -1444,7 +1526,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         )
     }
 
-    override suspend fun getDaysWithMessages(startDayKey: String, endDayKey: String): Set<String> = withContext(ioDispatcher) {
+    override suspend fun getDaysWithMessages(startDayKey: String, endDayKey: String): Set<String> = withIoDb {
         val days = mutableSetOf<String>()
         dbHelper.readableDatabase.query(
             "SELECT DISTINCT day_key FROM raw_message WHERE day_key >= ? AND day_key <= ? AND content IS NOT NULL ORDER BY day_key ASC",
@@ -1459,7 +1541,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         days
     }
 
-    override suspend fun getHeatMapCounts(startDayKey: String, endDayKey: String): Map<String, Int> = withContext(ioDispatcher) {
+    override suspend fun getHeatMapCounts(startDayKey: String, endDayKey: String): Map<String, Int> = withIoDb {
         val map = mutableMapOf<String, Int>()
         dbHelper.readableDatabase.query(
             "SELECT day_key, COUNT(*) FROM raw_message WHERE day_key >= ? AND day_key <= ? GROUP BY day_key",
@@ -1474,7 +1556,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         map
     }
 
-    override suspend fun getMessagesForDay(dayKey: String): List<ChatMessage> = withContext(ioDispatcher) {
+    override suspend fun getMessagesForDay(dayKey: String): List<ChatMessage> = withIoDb {
         val list = mutableListOf<ChatMessage>()
         dbHelper.readableDatabase.query(
             "SELECT id, role, content, day_key, ts_utc FROM raw_message WHERE day_key = ? ORDER BY ts_utc ASC",
@@ -1494,7 +1576,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
 
     // R-26: the range predicate bounds the rows scanned; the LIMIT bounds the rows returned. A day
     // or week never approaches it — reaching it means the range itself was wrong.
-    override suspend fun getRemindersBetween(startMs: Long, endMs: Long, limit: Int): List<Reminder> = withContext(ioDispatcher) {
+    override suspend fun getRemindersBetween(startMs: Long, endMs: Long, limit: Int): List<Reminder> = withIoDb {
         val list = mutableListOf<Reminder>()
         dbHelper.readableDatabase.query(
             "SELECT $REMINDER_COLS FROM reminder WHERE fire_at >= ? AND fire_at <= ? ORDER BY fire_at ASC LIMIT ?",
@@ -1510,7 +1592,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
     override suspend fun getRemindersForDay(startOfDayMs: Long, endOfDayMs: Long, limit: Int): List<Reminder> =
         getRemindersBetween(startOfDayMs, endOfDayMs, limit)
 
-    override suspend fun getQuoteSlot(slot: QuoteSlot, dayKey: String): Quote? = withContext(ioDispatcher) {
+    override suspend fun getQuoteSlot(slot: QuoteSlot, dayKey: String): Quote? = withIoDb {
         dbHelper.readableDatabase.query(
             "SELECT slot, day_key, text, generated_at, state_hash, source, regen_count FROM quote_slot WHERE slot = ? AND day_key = ?",
             arrayOf(slot.name, dayKey)
@@ -1529,7 +1611,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         }
     }
 
-    override suspend fun saveQuoteSlot(quote: Quote) = withContext(ioDispatcher) {
+    override suspend fun saveQuoteSlot(quote: Quote) = withIoDb {
         dbHelper.writableDatabase.execSQL(
             """
             INSERT OR REPLACE INTO quote_slot (
@@ -1548,7 +1630,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         )
     }
 
-    override suspend fun getCompletedTodayCount(startOfDayMs: Long, endOfDayMs: Long): Int = withContext(ioDispatcher) {
+    override suspend fun getCompletedTodayCount(startOfDayMs: Long, endOfDayMs: Long): Int = withIoDb {
         dbHelper.readableDatabase.query(
             "SELECT COUNT(*) FROM node WHERE status = 'done' AND closed_at IS NOT NULL AND closed_at >= CAST(? AS INTEGER) AND closed_at < CAST(? AS INTEGER)",
             arrayOf(startOfDayMs.toString(), endOfDayMs.toString())
@@ -1559,7 +1641,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
 
     // Offline outbox (blueprint 41 §4, audit §6 item 6)
 
-    override suspend fun enqueueOutbox(job: OutboxJob) = withContext(ioDispatcher) {
+    override suspend fun enqueueOutbox(job: OutboxJob) = withIoDb {
         // idem_key is UNIQUE: re-enqueueing the same logical job must not create a second turn.
         dbHelper.writableDatabase.execSQL(
             "INSERT OR IGNORE INTO outbox (id, job_type, priority, payload_json, idem_key, status, attempts, " +
@@ -1571,14 +1653,14 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         )
     }
 
-    override suspend fun claimOutbox(id: String, nextTryAt: Long, now: Long) = withContext(ioDispatcher) {
+    override suspend fun claimOutbox(id: String, nextTryAt: Long, now: Long) = withIoDb {
         dbHelper.writableDatabase.execSQL(
             "UPDATE outbox SET next_try_at = ?, updated_at = ? WHERE id = ?",
             arrayOf<Any>(nextTryAt, now, id)
         )
     }
 
-    override suspend fun getDueOutbox(jobType: String, now: Long): List<OutboxJob> = withContext(ioDispatcher) {
+    override suspend fun getDueOutbox(jobType: String, now: Long): List<OutboxJob> = withIoDb {
         queryOutbox(
             "SELECT $OUTBOX_COLUMNS FROM outbox WHERE job_type = ? AND status = ? AND next_try_at <= ? " +
                 "ORDER BY priority ASC, created_at ASC, id ASC",
@@ -1586,7 +1668,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         )
     }
 
-    override suspend fun getPendingOutbox(jobType: String): List<OutboxJob> = withContext(ioDispatcher) {
+    override suspend fun getPendingOutbox(jobType: String): List<OutboxJob> = withIoDb {
         queryOutbox(
             "SELECT $OUTBOX_COLUMNS FROM outbox WHERE job_type = ? AND status = ? " +
                 "ORDER BY priority ASC, created_at ASC, id ASC",
@@ -1594,24 +1676,24 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         )
     }
 
-    override suspend fun markOutboxDone(id: String, now: Long) = withContext(ioDispatcher) {
+    override suspend fun markOutboxDone(id: String, now: Long) = withIoDb {
         dbHelper.writableDatabase.execSQL(
             "UPDATE outbox SET status = ?, updated_at = ? WHERE id = ?",
             arrayOf<Any>(OutboxJob.STATUS_DONE, now, id)
         )
     }
 
-    override suspend fun markOutboxFailed(id: String, now: Long, nextTryAt: Long, error: String) = withContext(ioDispatcher) {
+    override suspend fun markOutboxFailed(id: String, now: Long, nextTryAt: Long, error: String, status: String) = withIoDb {
         // attempts counts how many times this job has been tried; next_try_at is the caller's
         // backoff decision (blueprint 41 §3.4), not a constant here.
         dbHelper.writableDatabase.execSQL(
             "UPDATE outbox SET status = ?, attempts = attempts + 1, next_try_at = ?, updated_at = ?, " +
                 "last_error = ? WHERE id = ?",
-            arrayOf<Any>(OutboxJob.STATUS_PENDING, nextTryAt, now, error, id)
+            arrayOf<Any>(status, nextTryAt, now, error, id)
         )
     }
 
-    override suspend fun dropStaleOutbox(now: Long): Int = withContext(ioDispatcher) {
+    override suspend fun dropStaleOutbox(now: Long): Int = withIoDb {
         val db = dbHelper.writableDatabase
         db.compileStatement(
             "UPDATE outbox SET status = ?, updated_at = ? WHERE status = ? AND deadline_at IS NOT NULL AND deadline_at < ?"
@@ -1647,7 +1729,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
     )
 
     // Learning & Behavioral Preferences (Blueprint 25)
-    override suspend fun recordSignal(signal: com.anchor.core.models.SignalLog) = withContext(ioDispatcher) {
+    override suspend fun recordSignal(signal: com.anchor.core.models.SignalLog) = withIoDb {
         dbHelper.writableDatabase.execSQL(
             "INSERT INTO signal_log (id, ts_utc, kind, subject, value, attrs) VALUES (?,?,?,?,?,?)",
             arrayOf<Any?>(
@@ -1659,7 +1741,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         )
     }
 
-    override suspend fun getSignals(kind: String?, sinceUtc: Long, limit: Int): List<com.anchor.core.models.SignalLog> = withContext(ioDispatcher) {
+    override suspend fun getSignals(kind: String?, sinceUtc: Long, limit: Int): List<com.anchor.core.models.SignalLog> = withIoDb {
         val sql = if (kind != null) {
             "SELECT id, ts_utc, kind, subject, value, attrs FROM signal_log WHERE kind = ? AND ts_utc >= ? ORDER BY ts_utc ASC LIMIT ?"
         } else {
@@ -1688,7 +1770,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         }
     }
 
-    override suspend fun getLearnedPref(key: String, scope: String): com.anchor.core.models.LearnedPref? = withContext(ioDispatcher) {
+    override suspend fun getLearnedPref(key: String, scope: String): com.anchor.core.models.LearnedPref? = withIoDb {
         dbHelper.readableDatabase.query(
             "SELECT \"key\", scope, value_json, samples, confidence, locked, updated_at FROM learned_pref WHERE \"key\" = ? AND scope = ?",
             arrayOf(key, scope)
@@ -1707,7 +1789,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         }
     }
 
-    override suspend fun getAllLearnedPrefs(): List<com.anchor.core.models.LearnedPref> = withContext(ioDispatcher) {
+    override suspend fun getAllLearnedPrefs(): List<com.anchor.core.models.LearnedPref> = withIoDb {
         dbHelper.readableDatabase.query(
             "SELECT \"key\", scope, value_json, samples, confidence, locked, updated_at FROM learned_pref ORDER BY \"key\" ASC, scope ASC"
         ).use { c ->
@@ -1729,7 +1811,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         }
     }
 
-    override suspend fun saveLearnedPref(pref: com.anchor.core.models.LearnedPref) = withContext(ioDispatcher) {
+    override suspend fun saveLearnedPref(pref: com.anchor.core.models.LearnedPref) = withIoDb {
         dbHelper.writableDatabase.execSQL(
             "INSERT OR REPLACE INTO learned_pref (\"key\", scope, value_json, samples, confidence, locked, updated_at) VALUES (?,?,?,?,?,?,?)",
             arrayOf<Any>(
@@ -1740,7 +1822,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         )
     }
 
-    override suspend fun resetLearning(preserveLocked: Boolean) = withContext(ioDispatcher) {
+    override suspend fun resetLearning(preserveLocked: Boolean) = withIoDb {
         if (preserveLocked) {
             dbHelper.writableDatabase.execSQL("DELETE FROM learned_pref WHERE locked = 0")
         } else {
@@ -1749,7 +1831,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
     }
 
     // Blueprint 43: Context Sensing (Places and Signals)
-    override suspend fun savePlace(place: com.anchor.core.sensing.Place, signal: com.anchor.core.sensing.PlaceSignal?) = withContext(ioDispatcher) {
+    override suspend fun savePlace(place: com.anchor.core.sensing.Place, signal: com.anchor.core.sensing.PlaceSignal?) = withIoDb {
         val db = dbHelper.writableDatabase
         db.beginTransaction()
         try {
@@ -1769,7 +1851,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         }
     }
 
-    override suspend fun getPlaces(): List<com.anchor.core.sensing.Place> = withContext(ioDispatcher) {
+    override suspend fun getPlaces(): List<com.anchor.core.sensing.Place> = withIoDb {
         val list = mutableListOf<com.anchor.core.sensing.Place>()
         dbHelper.readableDatabase.query(
             "SELECT id, node_id, kind, label, updated_at, deleted_at, hlc FROM place WHERE deleted_at IS NULL ORDER BY updated_at DESC"
@@ -1791,7 +1873,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         list
     }
 
-    override suspend fun getPlace(id: String): com.anchor.core.sensing.Place? = withContext(ioDispatcher) {
+    override suspend fun getPlace(id: String): com.anchor.core.sensing.Place? = withIoDb {
         dbHelper.readableDatabase.query(
             "SELECT id, node_id, kind, label, updated_at, deleted_at, hlc FROM place WHERE id = ? AND deleted_at IS NULL",
             arrayOf(id)
@@ -1810,7 +1892,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         }
     }
 
-    override suspend fun getPlaceSignals(): List<Pair<com.anchor.core.sensing.Place, com.anchor.core.sensing.PlaceSignal>> = withContext(ioDispatcher) {
+    override suspend fun getPlaceSignals(): List<Pair<com.anchor.core.sensing.Place, com.anchor.core.sensing.PlaceSignal>> = withIoDb {
         val list = mutableListOf<Pair<com.anchor.core.sensing.Place, com.anchor.core.sensing.PlaceSignal>>()
         dbHelper.readableDatabase.query(
             "SELECT p.id, p.node_id, p.kind, p.label, p.updated_at, p.deleted_at, p.hlc, " +
@@ -1841,14 +1923,14 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         list
     }
 
-    override suspend fun deletePlace(id: String, deletedAt: Long) = withContext(ioDispatcher) {
+    override suspend fun deletePlace(id: String, deletedAt: Long) = withIoDb {
         dbHelper.writableDatabase.execSQL(
             "UPDATE place SET deleted_at = ?, updated_at = ? WHERE id = ?",
             arrayOf<Any>(deletedAt, deletedAt, id)
         )
     }
 
-    override suspend fun recordSensingEvent(event: com.anchor.core.sensing.SensingEvent) = withContext(ioDispatcher) {
+    override suspend fun recordSensingEvent(event: com.anchor.core.sensing.SensingEvent) = withIoDb {
         dbHelper.writableDatabase.execSQL(
             "INSERT INTO sensing_event (id, ts_utc, axis, from_state, to_state, place_id, confidence, source, attrs) VALUES (?,?,?,?,?,?,?,?,?)",
             arrayOf<Any?>(
@@ -1865,7 +1947,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         )
     }
 
-    override suspend fun getRecentSensingEvents(limit: Int): List<com.anchor.core.sensing.SensingEvent> = withContext(ioDispatcher) {
+    override suspend fun getRecentSensingEvents(limit: Int): List<com.anchor.core.sensing.SensingEvent> = withIoDb {
         val list = mutableListOf<com.anchor.core.sensing.SensingEvent>()
         dbHelper.readableDatabase.query(
             "SELECT id, ts_utc, axis, from_state, to_state, place_id, confidence, source, attrs FROM sensing_event ORDER BY ts_utc DESC LIMIT ?",
@@ -1890,7 +1972,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         list
     }
 
-    override suspend fun pruneSensingEvents(olderThanUtc: Long): Int = withContext(ioDispatcher) {
+    override suspend fun pruneSensingEvents(olderThanUtc: Long): Int = withIoDb {
         val db = dbHelper.writableDatabase
         var count = 0
         db.query("SELECT COUNT(*) FROM sensing_event WHERE ts_utc < ?", arrayOf(olderThanUtc.toString())).use { c ->
@@ -1903,7 +1985,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
     }
 
     // Blueprint 44: Call Nudge (Call Events)
-    override suspend fun saveCallEvent(callEvent: com.anchor.core.nudge.CallEvent) = withContext(ioDispatcher) {
+    override suspend fun saveCallEvent(callEvent: com.anchor.core.nudge.CallEvent) = withIoDb {
         dbHelper.writableDatabase.execSQL(
             "INSERT OR REPLACE INTO call_event (id, started_at, ended_at, duration_s, direction, contact_ref, nudge_id, state, created_at) VALUES (?,?,?,?,?,?,?,?,?)",
             arrayOf<Any?>(
@@ -1920,7 +2002,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         )
     }
 
-    override suspend fun getCallEvent(id: String): com.anchor.core.nudge.CallEvent? = withContext(ioDispatcher) {
+    override suspend fun getCallEvent(id: String): com.anchor.core.nudge.CallEvent? = withIoDb {
         dbHelper.readableDatabase.query(
             "SELECT id, started_at, ended_at, duration_s, direction, contact_ref, nudge_id, state, created_at FROM call_event WHERE id = ?",
             arrayOf(id)
@@ -1941,7 +2023,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         }
     }
 
-    override suspend fun getRecentCallEvents(limit: Int): List<com.anchor.core.nudge.CallEvent> = withContext(ioDispatcher) {
+    override suspend fun getRecentCallEvents(limit: Int): List<com.anchor.core.nudge.CallEvent> = withIoDb {
         val list = mutableListOf<com.anchor.core.nudge.CallEvent>()
         dbHelper.readableDatabase.query(
             "SELECT id, started_at, ended_at, duration_s, direction, contact_ref, nudge_id, state, created_at FROM call_event ORDER BY ended_at DESC, created_at DESC LIMIT ?",
@@ -1966,7 +2048,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         list
     }
 
-    override suspend fun getCallEventsBetween(startUtc: Long, endUtc: Long): List<com.anchor.core.nudge.CallEvent> = withContext(ioDispatcher) {
+    override suspend fun getCallEventsBetween(startUtc: Long, endUtc: Long): List<com.anchor.core.nudge.CallEvent> = withIoDb {
         val list = mutableListOf<com.anchor.core.nudge.CallEvent>()
         dbHelper.readableDatabase.query(
             "SELECT id, started_at, ended_at, duration_s, direction, contact_ref, nudge_id, state, created_at FROM call_event WHERE ended_at BETWEEN ? AND ? ORDER BY ended_at ASC",
@@ -1991,7 +2073,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         list
     }
 
-    override suspend fun updateCallEventState(id: String, state: com.anchor.core.nudge.CallNudgeState, nudgeId: String?) = withContext(ioDispatcher) {
+    override suspend fun updateCallEventState(id: String, state: com.anchor.core.nudge.CallNudgeState, nudgeId: String?) = withIoDb {
         if (nudgeId != null) {
             dbHelper.writableDatabase.execSQL(
                 "UPDATE call_event SET state = ?, nudge_id = ? WHERE id = ?",
@@ -2005,7 +2087,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         }
     }
 
-    override suspend fun pruneCallEvents(olderThanUtc: Long): Int = withContext(ioDispatcher) {
+    override suspend fun pruneCallEvents(olderThanUtc: Long): Int = withIoDb {
         val db = dbHelper.writableDatabase
         var count = 0
         db.query("SELECT COUNT(*) FROM call_event WHERE ended_at < ?", arrayOf(olderThanUtc.toString())).use { c ->
@@ -2018,14 +2100,14 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
     }
 
     // Blueprint 60: Voice (Voice Jobs & Model Assets)
-    override suspend fun saveVoiceJob(job: com.anchor.core.voice.VoiceJob) = withContext(ioDispatcher) {
+    override suspend fun saveVoiceJob(job: com.anchor.core.voice.VoiceJob) = withIoDb {
         dbHelper.writableDatabase.execSQL(
             "INSERT OR REPLACE INTO voice_job (id, kind, state, msg_id, audio_path, target_ref, attempts, created_at, updated_at, error) VALUES (?,?,?,?,?,?,?,?,?,?)",
             arrayOf<Any?>(job.id, job.kind.wire, job.state.wire, job.msgId, job.audioPath, job.targetRef, job.attempts, job.createdAt, job.updatedAt, job.error)
         )
     }
 
-    override suspend fun getVoiceJob(id: String): com.anchor.core.voice.VoiceJob? = withContext(ioDispatcher) {
+    override suspend fun getVoiceJob(id: String): com.anchor.core.voice.VoiceJob? = withIoDb {
         dbHelper.readableDatabase.query(
             "SELECT id, kind, state, msg_id, audio_path, target_ref, attempts, created_at, updated_at, error FROM voice_job WHERE id = ?",
             arrayOf(id)
@@ -2047,7 +2129,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         }
     }
 
-    override suspend fun getRecentVoiceJobs(limit: Int): List<com.anchor.core.voice.VoiceJob> = withContext(ioDispatcher) {
+    override suspend fun getRecentVoiceJobs(limit: Int): List<com.anchor.core.voice.VoiceJob> = withIoDb {
         val list = mutableListOf<com.anchor.core.voice.VoiceJob>()
         dbHelper.readableDatabase.query(
             "SELECT id, kind, state, msg_id, audio_path, target_ref, attempts, created_at, updated_at, error FROM voice_job ORDER BY updated_at DESC LIMIT ?",
@@ -2073,7 +2155,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         list
     }
 
-    override suspend fun updateVoiceJobState(id: String, state: com.anchor.core.voice.VoiceJobState, error: String?) = withContext(ioDispatcher) {
+    override suspend fun updateVoiceJobState(id: String, state: com.anchor.core.voice.VoiceJobState, error: String?) = withIoDb {
         val now = System.currentTimeMillis()
         if (error != null) {
             dbHelper.writableDatabase.execSQL(
@@ -2088,14 +2170,14 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         }
     }
 
-    override suspend fun saveModelAsset(asset: com.anchor.core.voice.ModelAsset) = withContext(ioDispatcher) {
+    override suspend fun saveModelAsset(asset: com.anchor.core.voice.ModelAsset) = withIoDb {
         dbHelper.writableDatabase.execSQL(
             "INSERT OR REPLACE INTO model_asset (id, kind, name, version, size_bytes, sha256, license_ref, path, state, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
             arrayOf<Any?>(asset.id, asset.kind.wire, asset.name, asset.version, asset.sizeBytes, asset.sha256, asset.licenseRef, asset.path, asset.state.wire, asset.updatedAt)
         )
     }
 
-    override suspend fun getModelAssets(): List<com.anchor.core.voice.ModelAsset> = withContext(ioDispatcher) {
+    override suspend fun getModelAssets(): List<com.anchor.core.voice.ModelAsset> = withIoDb {
         val list = mutableListOf<com.anchor.core.voice.ModelAsset>()
         dbHelper.readableDatabase.query(
             "SELECT id, kind, name, version, size_bytes, sha256, license_ref, path, state, updated_at FROM model_asset ORDER BY name ASC"
@@ -2120,7 +2202,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         list
     }
 
-    override suspend fun getModelAsset(id: String): com.anchor.core.voice.ModelAsset? = withContext(ioDispatcher) {
+    override suspend fun getModelAsset(id: String): com.anchor.core.voice.ModelAsset? = withIoDb {
         dbHelper.readableDatabase.query(
             "SELECT id, kind, name, version, size_bytes, sha256, license_ref, path, state, updated_at FROM model_asset WHERE id = ?",
             arrayOf(id)
@@ -2142,7 +2224,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         }
     }
 
-    override suspend fun pruneOperationalLogs(now: Long): Int = withContext(ioDispatcher) {
+    override suspend fun pruneOperationalLogs(now: Long): Int = withIoDb {
         val diagCutoff = now - 7 * 86_400_000L
         val fireCutoff = now - 90 * 86_400_000L
         val outboxCutoff = now - 7 * 86_400_000L
@@ -2151,11 +2233,19 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         val db = dbHelper.writableDatabase
         db.beginTransaction()
         try {
-            db.execSQL("DELETE FROM diag_log WHERE ts < ?", arrayOf(diagCutoff))
-            db.execSQL("DELETE FROM reminder_fire WHERE fired_at < ?", arrayOf(fireCutoff))
-            db.execSQL("DELETE FROM outbox WHERE status IN ('done', 'dropped') AND updated_at < ?", arrayOf(outboxCutoff))
+            val stmt1 = db.compileStatement("DELETE FROM diag_log WHERE ts < ?")
+            stmt1.bindLong(1, diagCutoff)
+            pruned += stmt1.executeUpdateDelete()
+
+            val stmt2 = db.compileStatement("DELETE FROM reminder_fire WHERE fired_at < ?")
+            stmt2.bindLong(1, fireCutoff)
+            pruned += stmt2.executeUpdateDelete()
+
+            val stmt3 = db.compileStatement("DELETE FROM outbox WHERE status IN ('done', 'dropped') AND updated_at < ?")
+            stmt3.bindLong(1, outboxCutoff)
+            pruned += stmt3.executeUpdateDelete()
+
             db.setTransactionSuccessful()
-            pruned = 1
         } catch (_: Exception) {
         } finally {
             db.endTransaction()
@@ -2163,15 +2253,26 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         pruned
     }
 
+    override suspend fun rebuildFtsIndexes(): Unit = withIoDb {
+        val db = dbHelper.writableDatabase
+        try {
+            db.execSQL("INSERT INTO node_fts(node_fts) VALUES('rebuild')")
+            db.execSQL("INSERT INTO soul_fts(soul_fts) VALUES('rebuild')")
+            db.execSQL("INSERT INTO msg_chunk_fts(msg_chunk_fts) VALUES('rebuild')")
+        } catch (t: Throwable) {
+            android.util.Log.w("AndroidStorage", "Failed to rebuild FTS indexes: ${t.message}")
+        }
+    }
+
     // Blueprint 61 §4: Ambient Listening & Blueprint 21 §3.7: Day Digest Storage
-    override suspend fun saveVoiceprint(voiceprint: com.anchor.core.ambient.Voiceprint) = withContext(ioDispatcher) {
+    override suspend fun saveVoiceprint(voiceprint: com.anchor.core.ambient.Voiceprint) = withIoDb {
         dbHelper.writableDatabase.execSQL(
             "INSERT OR REPLACE INTO voiceprint (id, embedding, model_ref, created_at) VALUES (?, ?, ?, ?)",
             arrayOf<Any?>(voiceprint.id, voiceprint.embedding, voiceprint.modelRef, voiceprint.createdAt)
         )
     }
 
-    override suspend fun getVoiceprint(): com.anchor.core.ambient.Voiceprint? = withContext(ioDispatcher) {
+    override suspend fun getVoiceprint(): com.anchor.core.ambient.Voiceprint? = withIoDb {
         dbHelper.readableDatabase.query(
             "SELECT id, embedding, model_ref, created_at FROM voiceprint LIMIT 1"
         ).use { c ->
@@ -2186,18 +2287,18 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         }
     }
 
-    override suspend fun deleteVoiceprint() = withContext(ioDispatcher) {
+    override suspend fun deleteVoiceprint() = withIoDb {
         dbHelper.writableDatabase.execSQL("DELETE FROM voiceprint")
     }
 
-    override suspend fun saveAmbientSession(session: com.anchor.core.ambient.AmbientSession) = withContext(ioDispatcher) {
+    override suspend fun saveAmbientSession(session: com.anchor.core.ambient.AmbientSession) = withIoDb {
         dbHelper.writableDatabase.execSQL(
             "INSERT OR REPLACE INTO ambient_session (id, started_at, ended_at, end_reason, listen_s, speech_s, uploaded_s, segments) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             arrayOf<Any?>(session.id, session.startedAt, session.endedAt, session.endReason, session.listenSeconds, session.speechSeconds, session.uploadedSeconds, session.segmentsCount)
         )
     }
 
-    override suspend fun getRecentAmbientSessions(limit: Int): List<com.anchor.core.ambient.AmbientSession> = withContext(ioDispatcher) {
+    override suspend fun getRecentAmbientSessions(limit: Int): List<com.anchor.core.ambient.AmbientSession> = withIoDb {
         val list = mutableListOf<com.anchor.core.ambient.AmbientSession>()
         dbHelper.readableDatabase.query(
             "SELECT id, started_at, ended_at, end_reason, listen_s, speech_s, uploaded_s, segments FROM ambient_session ORDER BY started_at DESC LIMIT ?",
@@ -2221,14 +2322,14 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         list
     }
 
-    override suspend fun saveAmbientWindow(window: com.anchor.core.ambient.AmbientWindow) = withContext(ioDispatcher) {
+    override suspend fun saveAmbientWindow(window: com.anchor.core.ambient.AmbientWindow) = withIoDb {
         dbHelper.writableDatabase.execSQL(
             "INSERT OR REPLACE INTO ambient_window (id, session_id, started_at, ended_at, state, gate_opened) VALUES (?, ?, ?, ?, ?, ?)",
             arrayOf<Any?>(window.id, window.sessionId, window.startedAt, window.endedAt, window.state, if (window.gateOpened) 1 else 0)
         )
     }
 
-    override suspend fun getAmbientWindows(sessionId: String): List<com.anchor.core.ambient.AmbientWindow> = withContext(ioDispatcher) {
+    override suspend fun getAmbientWindows(sessionId: String): List<com.anchor.core.ambient.AmbientWindow> = withIoDb {
         val list = mutableListOf<com.anchor.core.ambient.AmbientWindow>()
         dbHelper.readableDatabase.query(
             "SELECT id, session_id, started_at, ended_at, state, gate_opened FROM ambient_window WHERE session_id = ? ORDER BY started_at ASC",
@@ -2250,14 +2351,14 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         list
     }
 
-    override suspend fun saveAmbientSegment(segment: com.anchor.core.ambient.AmbientSegment) = withContext(ioDispatcher) {
+    override suspend fun saveAmbientSegment(segment: com.anchor.core.ambient.AmbientSegment) = withIoDb {
         dbHelper.writableDatabase.execSQL(
             "INSERT OR REPLACE INTO ambient_segment (id, window_id, t_start, t_end, label, score, short, text, stt_ref, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             arrayOf<Any?>(segment.id, segment.windowId, segment.tStart, segment.tEnd, segment.label, segment.score, if (segment.isShort) 1 else 0, segment.text, segment.sttRef, segment.expiresAt)
         )
     }
 
-    override suspend fun getAmbientSegments(windowId: String): List<com.anchor.core.ambient.AmbientSegment> = withContext(ioDispatcher) {
+    override suspend fun getAmbientSegments(windowId: String): List<com.anchor.core.ambient.AmbientSegment> = withIoDb {
         val list = mutableListOf<com.anchor.core.ambient.AmbientSegment>()
         dbHelper.readableDatabase.query(
             "SELECT id, window_id, t_start, t_end, label, score, short, text, stt_ref, expires_at FROM ambient_segment WHERE window_id = ? ORDER BY t_start ASC",
@@ -2283,14 +2384,14 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         list
     }
 
-    override suspend fun saveAmbientReport(report: com.anchor.core.ambient.AmbientReport) = withContext(ioDispatcher) {
+    override suspend fun saveAmbientReport(report: com.anchor.core.ambient.AmbientReport) = withIoDb {
         dbHelper.writableDatabase.execSQL(
             "INSERT OR REPLACE INTO ambient_report (id, day_key, generated_at, state) VALUES (?, ?, ?, ?)",
             arrayOf<Any?>(report.id, report.dayKey, report.generatedAt, report.state)
         )
     }
 
-    override suspend fun getAmbientReport(id: String): com.anchor.core.ambient.AmbientReport? = withContext(ioDispatcher) {
+    override suspend fun getAmbientReport(id: String): com.anchor.core.ambient.AmbientReport? = withIoDb {
         dbHelper.readableDatabase.query(
             "SELECT id, day_key, generated_at, state FROM ambient_report WHERE id = ?",
             arrayOf(id)
@@ -2306,7 +2407,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         }
     }
 
-    override suspend fun getLatestAmbientReport(): com.anchor.core.ambient.AmbientReport? = withContext(ioDispatcher) {
+    override suspend fun getLatestAmbientReport(): com.anchor.core.ambient.AmbientReport? = withIoDb {
         dbHelper.readableDatabase.query(
             "SELECT id, day_key, generated_at, state FROM ambient_report ORDER BY generated_at DESC LIMIT 1"
         ).use { c ->
@@ -2321,21 +2422,21 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         }
     }
 
-    override suspend fun updateAmbientReportState(id: String, state: String) = withContext(ioDispatcher) {
+    override suspend fun updateAmbientReportState(id: String, state: String) = withIoDb {
         dbHelper.writableDatabase.execSQL(
             "UPDATE ambient_report SET state = ? WHERE id = ?",
             arrayOf<Any?>(state, id)
         )
     }
 
-    override suspend fun saveAmbientReportItem(item: com.anchor.core.ambient.AmbientReportItem) = withContext(ioDispatcher) {
+    override suspend fun saveAmbientReportItem(item: com.anchor.core.ambient.AmbientReportItem) = withIoDb {
         dbHelper.writableDatabase.execSQL(
             "INSERT OR REPLACE INTO ambient_report_item (id, report_id, window_id, kind, summary, node_id, flags, state, reviewed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             arrayOf<Any?>(item.id, item.reportId, item.windowId, item.kind, item.summary, item.nodeId, item.flags, item.state, item.reviewedAt)
         )
     }
 
-    override suspend fun getAmbientReportItems(reportId: String): List<com.anchor.core.ambient.AmbientReportItem> = withContext(ioDispatcher) {
+    override suspend fun getAmbientReportItems(reportId: String): List<com.anchor.core.ambient.AmbientReportItem> = withIoDb {
         val list = mutableListOf<com.anchor.core.ambient.AmbientReportItem>()
         dbHelper.readableDatabase.query(
             "SELECT id, report_id, window_id, kind, summary, node_id, flags, state, reviewed_at FROM ambient_report_item WHERE report_id = ?",
@@ -2360,7 +2461,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         list
     }
 
-    override suspend fun updateAmbientReportItemState(id: String, state: String, reviewedAt: Long?) = withContext(ioDispatcher) {
+    override suspend fun updateAmbientReportItemState(id: String, state: String, reviewedAt: Long?) = withIoDb {
         if (reviewedAt != null) {
             dbHelper.writableDatabase.execSQL(
                 "UPDATE ambient_report_item SET state = ?, reviewed_at = ? WHERE id = ?",
@@ -2374,54 +2475,77 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         }
     }
 
-    override suspend fun pruneAmbientStaging(now: Long): Int = withContext(ioDispatcher) {
+    override suspend fun pruneAmbientStaging(now: Long): Int = withIoDb {
         val db = dbHelper.writableDatabase
-        db.beginTransaction()
+        val cutoff = now - 7 * 86_400_000L
+        // Expired, never-reviewed ambient proposals. The node id lives in ambient_report_item.node_id.
+        val expired = "SELECT id FROM node WHERE origin = 'ambient' AND status = 'proposed' AND (created_at < ? OR id IN " +
+            "(SELECT node_id FROM ambient_report_item WHERE node_id IS NOT NULL AND kind = 'proposal' AND state = 'pending' " +
+            "AND report_id IN (SELECT id FROM ambient_report WHERE generated_at < ?)))"
         var pruned = 0
+        var failure: Exception? = null
+        db.beginTransaction()
         try {
-            db.execSQL("DELETE FROM ambient_segment WHERE expires_at < ?", arrayOf<Any?>(now))
-            val proposalCutoff = now - 7 * 86_400_000L
-            db.execSQL(
-                "DELETE FROM ambient_report_item WHERE kind = 'proposal' AND state = 'pending' AND report_id IN (SELECT id FROM ambient_report WHERE generated_at < ?)",
-                arrayOf<Any?>(proposalCutoff)
-            )
+            pruned += db.compileStatement("DELETE FROM ambient_segment WHERE expires_at < ?").use {
+                it.bindLong(1, now); it.executeUpdateDelete()
+            }
+            // raw_event is append-only: scrub payloads (allowed by trg_raw_evt_no_update), never DELETE.
+            db.execSQL("UPDATE raw_event SET before_json = NULL, after_json = NULL WHERE target_type = 'node' AND target_id IN ($expired)", arrayOf<Any?>(cutoff, cutoff))
+            db.execSQL("DELETE FROM embedding WHERE owner_type = 'node' AND owner_id IN ($expired)", arrayOf<Any?>(cutoff, cutoff))
+            pruned += db.compileStatement("DELETE FROM node WHERE id IN ($expired)").use {
+                it.bindLong(1, cutoff); it.bindLong(2, cutoff); it.executeUpdateDelete()
+            }
+            pruned += db.compileStatement(
+                "DELETE FROM ambient_report_item WHERE kind = 'proposal' AND state = 'pending' AND report_id IN (SELECT id FROM ambient_report WHERE generated_at < ?)"
+            ).use { it.bindLong(1, cutoff); it.executeUpdateDelete() }
             db.setTransactionSuccessful()
-            pruned = 1
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            failure = e
         } finally {
             db.endTransaction()
         }
+        // Logged AFTER endTransaction: a diag row written inside the failed transaction would be rolled back too.
+        failure?.let { logDiagError("pruneAmbientStaging failed: ${it.javaClass.simpleName}: ${it.message}"); throw it }
         pruned
     }
 
-    override suspend fun deleteAllAmbientData(): Int = withContext(ioDispatcher) {
+    override suspend fun deleteAllAmbientData(): Int = withIoDb {
         val db = dbHelper.writableDatabase
+        val proposed = "SELECT id FROM node WHERE origin = 'ambient' AND status = 'proposed'"
+        var total = 0
+        var failure: Exception? = null
         db.beginTransaction()
-        var deleted = 0
         try {
-            db.execSQL("DELETE FROM ambient_segment")
-            db.execSQL("DELETE FROM ambient_report_item")
-            db.execSQL("DELETE FROM ambient_report")
-            db.execSQL("DELETE FROM ambient_window")
-            db.execSQL("DELETE FROM ambient_session")
-            db.execSQL("DELETE FROM voiceprint")
+            db.execSQL(
+                "UPDATE raw_event SET before_json = NULL, after_json = NULL WHERE (target_type = 'node' AND target_id IN ($proposed)) " +
+                    "OR target_type IN ('ambient_report', 'ambient_report_item', 'voiceprint')"
+            )
+            db.execSQL("DELETE FROM embedding WHERE owner_type = 'node' AND owner_id IN ($proposed)")
+            for (sql in listOf(
+                "DELETE FROM node WHERE origin = 'ambient' AND status = 'proposed'",
+                "DELETE FROM ambient_segment", "DELETE FROM ambient_report_item", "DELETE FROM ambient_report",
+                "DELETE FROM ambient_window", "DELETE FROM ambient_session", "DELETE FROM voiceprint"
+            )) total += db.compileStatement(sql).use { it.executeUpdateDelete() }
             db.setTransactionSuccessful()
-            deleted = 1
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            failure = e
         } finally {
             db.endTransaction()
         }
-        deleted
+        failure?.let { logDiagError("deleteAllAmbientData failed: ${it.javaClass.simpleName}"); throw it }
+        // secure_delete is ON; also fold the WAL so freed pages are not left in the -wal file.
+        runCatching { db.query("PRAGMA wal_checkpoint(TRUNCATE)").use { it.moveToFirst() } }
+        total
     }
 
-    override suspend fun saveDayDigest(digest: com.anchor.core.consolidation.DayDigest) = withContext(ioDispatcher) {
+    override suspend fun saveDayDigest(digest: com.anchor.core.consolidation.DayDigest) = withIoDb {
         dbHelper.writableDatabase.execSQL(
             "INSERT OR REPLACE INTO day_digest (day_key, completed_count, open_count, summary_text, open_loops, wins, generated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
             arrayOf<Any?>(digest.dayKey, digest.completedCount, digest.openCount, digest.summaryText, digest.openLoops.joinToString("\n"), digest.wins.joinToString("\n"), digest.generatedAt)
         )
     }
 
-    override suspend fun getDayDigest(dayKey: String): com.anchor.core.consolidation.DayDigest? = withContext(ioDispatcher) {
+    override suspend fun getDayDigest(dayKey: String): com.anchor.core.consolidation.DayDigest? = withIoDb {
         dbHelper.readableDatabase.query(
             "SELECT day_key, completed_count, open_count, summary_text, open_loops, wins, generated_at FROM day_digest WHERE day_key = ?",
             arrayOf(dayKey)
@@ -2442,17 +2566,17 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         }
     }
 
-    override suspend fun getNodesCreatedBetween(startMs: Long, endMs: Long, limit: Int): List<Node> = withContext(ioDispatcher) {
-        val sql = "SELECT $NODE_COLS FROM node WHERE created_at >= ? AND created_at <= ? AND deleted_at IS NULL AND local_only = 0 ORDER BY created_at ASC LIMIT ?"
+    override suspend fun getNodesCreatedBetween(startMs: Long, endMs: Long, limit: Int): List<Node> = withIoDb {
+        val sql = "SELECT $NODE_COLS FROM node WHERE created_at >= ? AND created_at <= ? AND deleted_at IS NULL ORDER BY created_at ASC LIMIT ?"
         queryNodes(sql, arrayOf(startMs.toString(), endMs.toString(), limit.toString()))
     }
 
-    override suspend fun getNodesClosedBetween(startMs: Long, endMs: Long, limit: Int): List<Node> = withContext(ioDispatcher) {
-        val sql = "SELECT $NODE_COLS FROM node WHERE status IN ('done', 'completed') AND ((closed_at >= ? AND closed_at <= ?) OR (closed_at IS NULL AND updated_at >= ? AND updated_at <= ?)) AND deleted_at IS NULL AND local_only = 0 ORDER BY COALESCE(closed_at, updated_at) ASC LIMIT ?"
+    override suspend fun getNodesClosedBetween(startMs: Long, endMs: Long, limit: Int): List<Node> = withIoDb {
+        val sql = "SELECT $NODE_COLS FROM node WHERE status IN ('done', 'completed') AND ((closed_at >= ? AND closed_at <= ?) OR (closed_at IS NULL AND updated_at >= ? AND updated_at <= ?)) AND deleted_at IS NULL ORDER BY COALESCE(closed_at, updated_at) ASC LIMIT ?"
         queryNodes(sql, arrayOf(startMs.toString(), endMs.toString(), startMs.toString(), endMs.toString(), limit.toString()))
     }
 
-    override suspend fun getCancelledEventsBetween(startMs: Long, endMs: Long, limit: Int): List<RawEvent> = withContext(ioDispatcher) {
+    override suspend fun getCancelledEventsBetween(startMs: Long, endMs: Long, limit: Int): List<RawEvent> = withIoDb {
         val list = mutableListOf<RawEvent>()
         val sql = "SELECT op_id, op_type, target_type, target_id, undo_of, before_json, after_json, ts_utc, cause_msg_id FROM raw_event WHERE ts_utc >= ? AND ts_utc <= ? AND op_type IN ('CANCEL', 'DELETE_NODE') AND undo_of IS NULL ORDER BY ts_utc ASC LIMIT ?"
         dbHelper.readableDatabase.query(sql, arrayOf(startMs.toString(), endMs.toString(), limit.toString())).use { cursor ->
@@ -2475,17 +2599,17 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         list
     }
 
-    override suspend fun getGoalNodes(): List<Node> = withContext(ioDispatcher) {
-        val sql = "SELECT $NODE_COLS FROM node WHERE type = 'goal' AND deleted_at IS NULL AND status != 'archived' AND local_only = 0 ORDER BY created_at ASC"
+    override suspend fun getGoalNodes(): List<Node> = withIoDb {
+        val sql = "SELECT $NODE_COLS FROM node WHERE type = 'goal' AND deleted_at IS NULL AND status != 'archived' ORDER BY created_at ASC"
         queryNodes(sql, emptyArray())
     }
 
-    override suspend fun getHabitNodes(): List<Node> = withContext(ioDispatcher) {
-        val sql = "SELECT $NODE_COLS FROM node WHERE (type = 'habit' OR recurrence_rule IS NOT NULL) AND deleted_at IS NULL AND status != 'archived' AND local_only = 0 ORDER BY streak_current DESC"
+    override suspend fun getHabitNodes(): List<Node> = withIoDb {
+        val sql = "SELECT $NODE_COLS FROM node WHERE (type = 'habit' OR recurrence_rule IS NOT NULL) AND deleted_at IS NULL AND status != 'archived' ORDER BY streak_current DESC"
         queryNodes(sql, emptyArray())
     }
 
-    override suspend fun getActionTimestampsBetween(startMs: Long, endMs: Long, limit: Int): List<Long> = withContext(ioDispatcher) {
+    override suspend fun getActionTimestampsBetween(startMs: Long, endMs: Long, limit: Int): List<Long> = withIoDb {
         val timestamps = mutableListOf<Long>()
         val msgSql = "SELECT ts_utc FROM raw_message WHERE ts_utc >= ? AND ts_utc <= ? AND role = 'user' AND redacted_at IS NULL ORDER BY ts_utc ASC LIMIT ?"
         dbHelper.readableDatabase.query(msgSql, arrayOf(startMs.toString(), endMs.toString(), limit.toString())).use { c ->
@@ -2507,7 +2631,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         endMs: Long,
         nowMs: Long,
         includeMood: Boolean
-    ): com.anchor.core.insights.FullInsightsReport = withContext(ioDispatcher) {
+    ): com.anchor.core.insights.FullInsightsReport = withIoDb {
         val engine = com.anchor.core.insights.InsightsEngine(getEffectiveDayRule(nowMs))
         val created = getNodesCreatedBetween(startMs, endMs)
         val closed = getNodesClosedBetween(startMs, endMs)
@@ -2546,5 +2670,390 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
             activityHeatStrip = heatStrip,
             moodTrends = moodTrends
         )
+    }
+
+    override suspend fun saveDayBlock(block: com.anchor.core.models.DayBlock) = withIoDb {
+        dbHelper.writableDatabase.execSQL(
+            "INSERT OR REPLACE INTO day_block (day_key, idx, start_msg_id, start_ts, end_ts, msg_count, part_of_day) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            arrayOf<Any?>(block.dayKey, block.idx, block.startMsgId, block.startTs, block.endTs, block.msgCount, block.partOfDay)
+        )
+    }
+
+    override suspend fun getDayBlocks(dayKey: String): List<com.anchor.core.models.DayBlock> = withIoDb {
+        val list = mutableListOf<com.anchor.core.models.DayBlock>()
+        dbHelper.readableDatabase.query(
+            "SELECT day_key, idx, start_msg_id, start_ts, end_ts, msg_count, part_of_day FROM day_block WHERE day_key = ? ORDER BY idx ASC",
+            arrayOf(dayKey)
+        ).use { cursor ->
+            while (cursor.moveToNext()) {
+                list.add(
+                    com.anchor.core.models.DayBlock(
+                        dayKey = cursor.getString(0),
+                        idx = cursor.getInt(1),
+                        startMsgId = cursor.getString(2),
+                        startTs = cursor.getLong(3),
+                        endTs = cursor.getLong(4),
+                        msgCount = cursor.getInt(5),
+                        partOfDay = cursor.getString(6)
+                    )
+                )
+            }
+        }
+        list
+    }
+
+    override suspend fun saveExportLog(record: com.anchor.core.models.ExportLogRecord) = withIoDb {
+        dbHelper.writableDatabase.execSQL(
+            "INSERT OR REPLACE INTO export_log (id, ts, kind, options_json, counts_json, bytes, verified, note) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            arrayOf<Any?>(record.id, record.ts, record.kind, record.optionsJson, record.countsJson, record.bytes, if (record.verified) 1 else 0, record.note)
+        )
+    }
+
+    override suspend fun getRecentExportLogs(limit: Int): List<com.anchor.core.models.ExportLogRecord> = withIoDb {
+        val list = mutableListOf<com.anchor.core.models.ExportLogRecord>()
+        dbHelper.readableDatabase.query(
+            "SELECT id, ts, kind, options_json, counts_json, bytes, verified, note FROM export_log ORDER BY ts DESC LIMIT ?",
+            arrayOf(limit.toString())
+        ).use { cursor ->
+            while (cursor.moveToNext()) {
+                list.add(
+                    com.anchor.core.models.ExportLogRecord(
+                        id = cursor.getString(0),
+                        ts = cursor.getLong(1),
+                        kind = cursor.getString(2),
+                        optionsJson = cursor.getString(3),
+                        countsJson = cursor.getString(4),
+                        bytes = if (cursor.isNull(5)) null else cursor.getLong(5),
+                        verified = cursor.getInt(6) == 1,
+                        note = cursor.getString(7)
+                    )
+                )
+            }
+        }
+        list
+    }
+
+    override suspend fun saveCheckinState(record: com.anchor.core.models.CheckinStateRecord) = withIoDb {
+        dbHelper.writableDatabase.execSQL(
+            "INSERT OR REPLACE INTO checkin_state (kind, day_key, status, msg_id, scheduled_for, delivered_at) VALUES (?, ?, ?, ?, ?, ?)",
+            arrayOf<Any?>(record.kind, record.dayKey, record.status, record.msgId, record.scheduledFor, record.deliveredAt)
+        )
+    }
+
+    override suspend fun getCheckinState(kind: String, dayKey: String): com.anchor.core.models.CheckinStateRecord? = withIoDb {
+        dbHelper.readableDatabase.query(
+            "SELECT kind, day_key, status, msg_id, scheduled_for, delivered_at FROM checkin_state WHERE kind = ? AND day_key = ? LIMIT 1",
+            arrayOf(kind, dayKey)
+        ).use { cursor ->
+            if (cursor.moveToFirst()) {
+                com.anchor.core.models.CheckinStateRecord(
+                    kind = cursor.getString(0),
+                    dayKey = cursor.getString(1),
+                    status = cursor.getString(2),
+                    msgId = cursor.getString(3),
+                    scheduledFor = if (cursor.isNull(4)) null else cursor.getLong(4),
+                    deliveredAt = if (cursor.isNull(5)) null else cursor.getLong(5)
+                )
+            } else null
+        }
+    }
+
+    override suspend fun saveNudgeLog(record: com.anchor.core.models.NudgeLogRecord) = withIoDb {
+        dbHelper.writableDatabase.execSQL(
+            "INSERT OR REPLACE INTO nudge_log (id, ts_utc, trigger_type, subject_refs, score, threshold, gates_json, decision, delivery, msg_id, text_source, outcome, latency_ms, reason_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            arrayOf<Any?>(record.id, record.tsUtc, record.triggerType, record.subjectRefs, record.score, record.threshold, record.gatesJson, record.decision, record.delivery, record.msgId, record.textSource, record.outcome, record.latencyMs, record.reasonJson)
+        )
+    }
+
+    override suspend fun getRecentNudgeLogs(limit: Int): List<com.anchor.core.models.NudgeLogRecord> = withIoDb {
+        val list = mutableListOf<com.anchor.core.models.NudgeLogRecord>()
+        dbHelper.readableDatabase.query(
+            "SELECT id, ts_utc, trigger_type, subject_refs, score, threshold, gates_json, decision, delivery, msg_id, text_source, outcome, latency_ms, reason_json FROM nudge_log ORDER BY ts_utc DESC LIMIT ?",
+            arrayOf(limit.toString())
+        ).use { cursor ->
+            while (cursor.moveToNext()) {
+                list.add(
+                    com.anchor.core.models.NudgeLogRecord(
+                        id = cursor.getString(0),
+                        tsUtc = cursor.getLong(1),
+                        triggerType = cursor.getString(2),
+                        subjectRefs = cursor.getString(3),
+                        score = if (cursor.isNull(4)) null else cursor.getDouble(4),
+                        threshold = if (cursor.isNull(5)) null else cursor.getDouble(5),
+                        gatesJson = cursor.getString(6),
+                        decision = cursor.getString(7),
+                        delivery = cursor.getString(8),
+                        msgId = cursor.getString(9),
+                        textSource = cursor.getString(10),
+                        outcome = cursor.getString(11),
+                        latencyMs = if (cursor.isNull(12)) null else cursor.getLong(12),
+                        reasonJson = cursor.getString(13)
+                    )
+                )
+            }
+        }
+        list
+    }
+
+    // --- Companion Brain / v4: Topic Notes ---
+    override suspend fun saveTopicNote(note: com.anchor.core.models.TopicNote) = withIoDb {
+        val db = dbHelper.writableDatabase
+        val pinnedVal = if (note.pinned) 1 else 0
+        db.execSQL(
+            "INSERT OR REPLACE INTO topic_note (id, topic, content, bullets_json, pinned, last_edited_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            arrayOf<Any?>(note.id, note.topic, note.content, note.bulletsJson, pinnedVal, note.lastEditedAt, note.createdAt)
+        )
+    }
+
+    override suspend fun getTopicNote(id: String): com.anchor.core.models.TopicNote? = withIoDb {
+        dbHelper.readableDatabase.query(
+            "SELECT id, topic, content, bullets_json, pinned, last_edited_at, created_at FROM topic_note WHERE id = ?",
+            arrayOf(id)
+        ).use { cursor ->
+            if (cursor.moveToNext()) {
+                com.anchor.core.models.TopicNote(
+                    id = cursor.getString(0),
+                    topic = cursor.getString(1),
+                    content = cursor.getString(2),
+                    bulletsJson = cursor.getString(3),
+                    pinned = cursor.getInt(4) == 1,
+                    lastEditedAt = cursor.getLong(5),
+                    createdAt = cursor.getLong(6)
+                )
+            } else null
+        }
+    }
+
+    override suspend fun getTopicNoteByTopic(topic: String): com.anchor.core.models.TopicNote? = withIoDb {
+        dbHelper.readableDatabase.query(
+            "SELECT id, topic, content, bullets_json, pinned, last_edited_at, created_at FROM topic_note WHERE topic = ? COLLATE NOCASE LIMIT 1",
+            arrayOf(topic.trim())
+        ).use { cursor ->
+            if (cursor.moveToNext()) {
+                com.anchor.core.models.TopicNote(
+                    id = cursor.getString(0),
+                    topic = cursor.getString(1),
+                    content = cursor.getString(2),
+                    bulletsJson = cursor.getString(3),
+                    pinned = cursor.getInt(4) == 1,
+                    lastEditedAt = cursor.getLong(5),
+                    createdAt = cursor.getLong(6)
+                )
+            } else null
+        }
+    }
+
+    override suspend fun getAllTopicNotes(): List<com.anchor.core.models.TopicNote> = withIoDb {
+        val list = mutableListOf<com.anchor.core.models.TopicNote>()
+        dbHelper.readableDatabase.query(
+            "SELECT id, topic, content, bullets_json, pinned, last_edited_at, created_at FROM topic_note ORDER BY pinned DESC, last_edited_at DESC",
+            emptyArray()
+        ).use { cursor ->
+            while (cursor.moveToNext()) {
+                list.add(
+                    com.anchor.core.models.TopicNote(
+                        id = cursor.getString(0),
+                        topic = cursor.getString(1),
+                        content = cursor.getString(2),
+                        bulletsJson = cursor.getString(3),
+                        pinned = cursor.getInt(4) == 1,
+                        lastEditedAt = cursor.getLong(5),
+                        createdAt = cursor.getLong(6)
+                    )
+                )
+            }
+        }
+        list
+    }
+
+    override suspend fun searchTopicNotes(query: String, limit: Int): List<com.anchor.core.models.TopicNote> = withIoDb {
+        val list = mutableListOf<com.anchor.core.models.TopicNote>()
+        val cleanQ = query.trim()
+        if (cleanQ.isEmpty()) return@withIoDb getAllTopicNotes().take(limit)
+
+        // Match using FTS table with prefix wildcards
+        val sanitized = cleanQ.replace(Regex("[^\\p{L}\\p{M}\\p{N}\\s]"), "").trim()
+        val tokens = sanitized.split(Regex("\\s+")).filter { it.isNotBlank() }
+        val ftsMatch = if (tokens.isNotEmpty()) tokens.joinToString(" AND ") { "\"$it\"*" } else ""
+        val sql = if (ftsMatch.isNotBlank()) {
+            "SELECT t.id, t.topic, t.content, t.bullets_json, t.pinned, t.last_edited_at, t.created_at " +
+            "FROM topic_note t JOIN topic_note_fts f ON t.rowid = f.rowid " +
+            "WHERE topic_note_fts MATCH ? " +
+            "ORDER BY t.pinned DESC, rank LIMIT ?"
+        } else {
+            "SELECT id, topic, content, bullets_json, pinned, last_edited_at, created_at FROM topic_note WHERE topic LIKE ? OR content LIKE ? ORDER BY pinned DESC, last_edited_at DESC LIMIT ?"
+        }
+        val args = if (ftsMatch.isNotBlank()) arrayOf(ftsMatch, limit.toString()) else arrayOf("%$cleanQ%", "%$cleanQ%", limit.toString())
+
+        try {
+            dbHelper.readableDatabase.query(sql, args).use { cursor ->
+                while (cursor.moveToNext()) {
+                    list.add(
+                        com.anchor.core.models.TopicNote(
+                            id = cursor.getString(0),
+                            topic = cursor.getString(1),
+                            content = cursor.getString(2),
+                            bulletsJson = cursor.getString(3),
+                            pinned = cursor.getInt(4) == 1,
+                            lastEditedAt = cursor.getLong(5),
+                            createdAt = cursor.getLong(6)
+                        )
+                    )
+                }
+            }
+        } catch (e: Exception) {
+            // Fallback to LIKE query
+            dbHelper.readableDatabase.query(
+                "SELECT id, topic, content, bullets_json, pinned, last_edited_at, created_at FROM topic_note WHERE topic LIKE ? OR content LIKE ? ORDER BY pinned DESC, last_edited_at DESC LIMIT ?",
+                arrayOf("%$cleanQ%", "%$cleanQ%", limit.toString())
+            ).use { cursor ->
+                while (cursor.moveToNext()) {
+                    list.add(
+                        com.anchor.core.models.TopicNote(
+                            id = cursor.getString(0),
+                            topic = cursor.getString(1),
+                            content = cursor.getString(2),
+                            bulletsJson = cursor.getString(3),
+                            pinned = cursor.getInt(4) == 1,
+                            lastEditedAt = cursor.getLong(5),
+                            createdAt = cursor.getLong(6)
+                        )
+                    )
+                }
+            }
+        }
+        list
+    }
+
+    override suspend fun deleteTopicNote(id: String) = withIoDb {
+        val db = dbHelper.writableDatabase
+        db.beginTransaction()
+        try {
+            db.execSQL("DELETE FROM note_reference WHERE note_id = ?", arrayOf(id))
+            db.execSQL("DELETE FROM topic_note WHERE id = ?", arrayOf(id))
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
+    }
+
+    // --- Note References ---
+    override suspend fun linkNoteReference(ref: com.anchor.core.models.NoteReference) = withIoDb {
+        dbHelper.writableDatabase.execSQL(
+            "INSERT OR REPLACE INTO note_reference (id, note_id, node_id, created_at, mode) VALUES (?, ?, ?, ?, ?)",
+            arrayOf<Any?>(ref.id, ref.noteId, ref.nodeId, ref.createdAt, ref.mode)
+        )
+    }
+
+    override suspend fun getReferencesForNote(noteId: String): List<com.anchor.core.models.NoteReference> = withIoDb {
+        val list = mutableListOf<com.anchor.core.models.NoteReference>()
+        dbHelper.readableDatabase.query(
+            "SELECT id, note_id, node_id, created_at, mode FROM note_reference WHERE note_id = ? ORDER BY created_at DESC",
+            arrayOf(noteId)
+        ).use { cursor ->
+            while (cursor.moveToNext()) {
+                val mode = if (cursor.columnCount > 4 && !cursor.isNull(4)) cursor.getString(4) else "read_write"
+                list.add(
+                    com.anchor.core.models.NoteReference(
+                        id = cursor.getString(0),
+                        noteId = cursor.getString(1),
+                        nodeId = cursor.getString(2),
+                        createdAt = cursor.getLong(3),
+                        mode = mode
+                    )
+                )
+            }
+        }
+        list
+    }
+
+    override suspend fun getReferencesForNode(nodeId: String): List<com.anchor.core.models.NoteReference> = withIoDb {
+        val list = mutableListOf<com.anchor.core.models.NoteReference>()
+        dbHelper.readableDatabase.query(
+            "SELECT id, note_id, node_id, created_at, mode FROM note_reference WHERE node_id = ? ORDER BY created_at DESC",
+            arrayOf(nodeId)
+        ).use { cursor ->
+            while (cursor.moveToNext()) {
+                val mode = if (cursor.columnCount > 4 && !cursor.isNull(4)) cursor.getString(4) else "read_write"
+                list.add(
+                    com.anchor.core.models.NoteReference(
+                        id = cursor.getString(0),
+                        noteId = cursor.getString(1),
+                        nodeId = cursor.getString(2),
+                        createdAt = cursor.getLong(3),
+                        mode = mode
+                    )
+                )
+            }
+        }
+        list
+    }
+
+    override suspend fun deleteNoteReference(id: String) = withIoDb {
+        dbHelper.writableDatabase.execSQL("DELETE FROM note_reference WHERE id = ?", arrayOf(id))
+    }
+
+    // --- Agent Wakeup Self-Alarms ---
+    override suspend fun saveAgentWakeup(wakeup: com.anchor.core.models.AgentWakeup) = withIoDb {
+        dbHelper.writableDatabase.execSQL(
+            "INSERT OR REPLACE INTO agent_wakeup (id, fire_at, reason, payload_json, state, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+            arrayOf<Any?>(wakeup.id, wakeup.fireAt, wakeup.reason, wakeup.payloadJson, wakeup.state, wakeup.createdAt)
+        )
+    }
+
+    override suspend fun getPendingAgentWakeups(upToMillis: Long): List<com.anchor.core.models.AgentWakeup> = withIoDb {
+        val list = mutableListOf<com.anchor.core.models.AgentWakeup>()
+        dbHelper.readableDatabase.query(
+            "SELECT id, fire_at, reason, payload_json, state, created_at FROM agent_wakeup WHERE state = 'pending' AND fire_at <= ? ORDER BY fire_at ASC",
+            arrayOf(upToMillis.toString())
+        ).use { cursor ->
+            while (cursor.moveToNext()) {
+                list.add(
+                    com.anchor.core.models.AgentWakeup(
+                        id = cursor.getString(0),
+                        fireAt = cursor.getLong(1),
+                        reason = cursor.getString(2),
+                        payloadJson = if (cursor.isNull(3)) null else cursor.getString(3),
+                        state = cursor.getString(4),
+                        createdAt = cursor.getLong(5)
+                    )
+                )
+            }
+        }
+        list
+    }
+
+    override suspend fun markAgentWakeupState(id: String, state: String) = withIoDb {
+        dbHelper.writableDatabase.execSQL(
+            "UPDATE agent_wakeup SET state = ? WHERE id = ?",
+            arrayOf(state, id)
+        )
+    }
+
+    override suspend fun getAgentWakeup(id: String): com.anchor.core.models.AgentWakeup? = withIoDb {
+        dbHelper.readableDatabase.query(
+            "SELECT id, fire_at, reason, payload_json, state, created_at FROM agent_wakeup WHERE id = ?",
+            arrayOf(id)
+        ).use { cursor ->
+            if (cursor.moveToNext()) {
+                com.anchor.core.models.AgentWakeup(
+                    id = cursor.getString(0),
+                    fireAt = cursor.getLong(1),
+                    reason = cursor.getString(2),
+                    payloadJson = if (cursor.isNull(3)) null else cursor.getString(3),
+                    state = cursor.getString(4),
+                    createdAt = cursor.getLong(5)
+                )
+            } else null
+        }
+    }
+
+    override suspend fun unstickRunningWakeups(olderThanMillis: Long): Int = withIoDb {
+        val db = dbHelper.writableDatabase
+        db.execSQL(
+            "UPDATE agent_wakeup SET state = 'pending' WHERE state = 'running' AND fire_at <= ?",
+            arrayOf(olderThanMillis.toString())
+        )
+        0
     }
 }

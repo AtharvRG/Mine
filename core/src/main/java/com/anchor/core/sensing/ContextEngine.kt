@@ -25,13 +25,18 @@ class ContextEngine(
         val motionMinMs: Long = 45_000L,
         val unknownTimeoutMs: Long = 30 * 60_000L,
         val triggerCooldownMs: Long = 30 * 60_000L,
-        val homeReturnMinAwayMs: Long = 2 * 3600_000L
+        val homeReturnMinAwayMs: Long = 2 * 3600_000L,
+        val minWalkingSteps: Int = 40,
+        val stepWindowMs: Long = 5 * 60_000L
     )
 
     private var currentPlace: PlaceAxis = PlaceAxis.Unknown
     private var currentMotion: MotionAxis = MotionAxis.UNKNOWN
     private var placeSinceUtc: Long = clock.now()
     private var motionSinceUtc: Long = clock.now()
+
+    // Step history for 5G indoor guard
+    private val stepHistory = mutableListOf<Pair<Long, Long>>() // (tsUtc, cumulativeSteps)
 
     // Pending candidates and timers
     private var pendingPlace: PlaceAxis? = null
@@ -65,6 +70,22 @@ class ContextEngine(
     fun isVehicleHoldActive(): Boolean = currentMotion == MotionAxis.VEHICLE
 
     @Synchronized
+    fun onStepCountSignal(cumulativeSteps: Long, tsUtc: Long = clock.now()): List<ContextTrigger> {
+        lastSignalUtc = tsUtc
+        stepHistory.add(tsUtc to cumulativeSteps)
+        stepHistory.removeAll { it.first < tsUtc - 30 * 60_000L }
+        return checkTimeouts(tsUtc)
+    }
+
+    private fun getRecentStepsDelta(tsUtc: Long, windowMs: Long): Long {
+        if (stepHistory.size < 2) return 0L
+        val windowStart = tsUtc - windowMs
+        val earliestInWindow = stepHistory.firstOrNull { it.first >= windowStart } ?: stepHistory.first()
+        val latest = stepHistory.last()
+        return maxOf(0L, latest.second - earliestInWindow.second)
+    }
+
+    @Synchronized
     fun onWifiSignal(
         ssid: String?,
         bssids: List<String>,
@@ -73,18 +94,16 @@ class ContextEngine(
     ): List<ContextTrigger> {
         lastSignalUtc = tsUtc
 
-        val matchedPlace = if (!ssid.isNullOrBlank()) {
-            knownPlaces.firstOrNull { (_, signal) ->
-                val wifi = signal.wifiJson
-                if (wifi != null) {
-                    val ssidMatch = wifi.contains("\"ssid\":\"$ssid\"", ignoreCase = true)
-                    val bssidMatch = bssids.isNotEmpty() && bssids.any { bssid ->
-                        wifi.contains(bssid, ignoreCase = true)
-                    }
-                    ssidMatch || bssidMatch
-                } else false
-            }?.first
-        } else null
+        val matchedPlace = knownPlaces.firstOrNull { (_, signal) ->
+            val wifi = signal.wifiJson
+            if (wifi != null) {
+                val ssidMatch = !ssid.isNullOrBlank() && wifi.contains("\"ssid\":\"$ssid\"", ignoreCase = true)
+                val bssidMatch = bssids.isNotEmpty() && bssids.any { bssid ->
+                    wifi.contains(bssid, ignoreCase = true)
+                }
+                ssidMatch || bssidMatch
+            } else false
+        }?.first
 
         val targetPlace = when {
             matchedPlace != null && matchedPlace.kind == "home" -> PlaceAxis.Home
@@ -169,6 +188,17 @@ class ContextEngine(
                     source = "sensor",
                     tsUtc = tsUtc
                 )
+
+                // Walking started trigger
+                if (from != MotionAxis.WALKING.name && pMotion == MotionAxis.WALKING) {
+                    val stepsDelta = getRecentStepsDelta(tsUtc, config.stepWindowMs)
+                    if (stepHistory.isEmpty() || stepsDelta >= config.minWalkingSteps) {
+                        if (isCooldownPassed(ContextTrigger.CONTEXT_WALKING_STARTED, tsUtc)) {
+                            triggers.add(ContextTrigger.CONTEXT_WALKING_STARTED)
+                            lastTriggerTime[ContextTrigger.CONTEXT_WALKING_STARTED] = tsUtc
+                        }
+                    }
+                }
             }
         }
 
@@ -180,7 +210,13 @@ class ContextEngine(
             } else 0L
 
             val wifiLostElapsed = tsUtc - wifiLostSinceUtc!!
-            if (wifiLostElapsed >= config.fastPathMotionMs && motionElapsed >= config.fastPathMotionMs) {
+            val stepsDelta = getRecentStepsDelta(tsUtc, config.stepWindowMs)
+            val hasEnoughSteps = stepHistory.isEmpty() || stepsDelta >= config.minWalkingSteps
+
+            // 5G Indoor Guard: reject false walking transitions if step counter hasn't moved
+            if (currentMotion == MotionAxis.WALKING && !hasEnoughSteps) {
+                // Held by 5G indoor guard
+            } else if (wifiLostElapsed >= config.fastPathMotionMs && motionElapsed >= config.fastPathMotionMs) {
                 // Fast path confirmed Away!
                 triggers.addAll(applyPlaceTransition(PlaceAxis.Away, tsUtc, source = "fast_path"))
                 pendingPlace = null
@@ -203,6 +239,14 @@ class ContextEngine(
                 PlaceAxis.Home, is PlaceAxis.SavedPlace -> config.homeConfirmMs
                 PlaceAxis.Away -> config.awayConfirmMs
                 PlaceAxis.Unknown -> config.awayConfirmMs
+            }
+
+            // 5G Indoor Guard: hold at Home if steps didn't change and motion is not vehicle
+            if (pPlace == PlaceAxis.Away && currentPlace == PlaceAxis.Home) {
+                val stepsDelta = getRecentStepsDelta(tsUtc, config.stepWindowMs)
+                if (stepHistory.isNotEmpty() && stepsDelta < config.minWalkingSteps && currentMotion != MotionAxis.VEHICLE) {
+                    return triggers
+                }
             }
 
             if (tsUtc - pendingPlaceSinceUtc >= requiredWait) {

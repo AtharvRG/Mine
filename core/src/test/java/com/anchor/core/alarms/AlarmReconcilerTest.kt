@@ -15,6 +15,7 @@ import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 class AlarmReconcilerTest {
@@ -250,6 +251,29 @@ class AlarmReconcilerTest {
     }
 
     @Test
+    fun testReconcile_DeliveredOrSuppressedInstance_IsNotReportedOverdue() = runBlocking {
+        val clock = FakeClock(1_000_000L)
+        val storage = SharedFakeStorage()
+        val scheduler = RecordingScheduler()
+        storage.saveReminder(Reminder("r1", "Task 1", 400_000L))
+        storage.saveReminder(Reminder("r2", "Task 2", 450_000L))
+
+        // r1 was already delivered for 400_000L
+        storage.recordReminderFire(
+            com.anchor.core.models.ReminderFire("f_del", "r1", 400_050L, 400_000L, 50, "delivered")
+        )
+        // r2 was suppressed for 450_000L
+        storage.recordReminderFire(
+            com.anchor.core.models.ReminderFire("f_sup", "r2", 450_010L, 450_000L, 10, "suppressed")
+        )
+
+        val reconciler = AlarmReconciler(storage, scheduler, clock)
+        val results = reconciler.reconcile(force = false)
+
+        assertEquals("Neither delivered nor suppressed fire instance should be reported overdue", 0, results.count { it is ScheduleResult.Overdue })
+    }
+
+    @Test
     fun testReconcile_SchedulerFailed_UpdatesReliabilityState() = runBlocking {
         val clock = FakeClock(1000L)
         val storage = SharedFakeStorage()
@@ -387,5 +411,34 @@ class AlarmReconcilerTest {
             results.any { it is ScheduleResult.Failed && it.reason == AlarmReconciler.ISSUE_PENDING_TRUNCATED }
         )
         assertEquals(1, scheduler.scheduled.size)
+    }
+
+    @Test
+    fun testReconcile_Enforces48hArmingHorizon_AndCancelsFarFutureRegistrations() = runBlocking {
+        val clock = FakeClock(100_000L)
+        val storage = SharedFakeStorage()
+        val scheduler = RecordingScheduler()
+
+        // 1. Within 48h horizon: 2 hours from now
+        val rNear = Reminder("r_near", "Near task", clock.now() + 2 * 3600_000L, tier = AlarmTier.ALARM)
+        // 2. Beyond 48h horizon: 72 hours from now
+        val rFar = Reminder("r_far", "Far task", clock.now() + 72 * 3600_000L, tier = AlarmTier.ALARM)
+        storage.saveReminder(rNear)
+        storage.saveReminder(rFar)
+
+        // Simulate pre-existing registration for rFar
+        storage.saveRegisteredAlarm("r_far", 123, rFar.fireAtMillis, "alarm_clock")
+
+        val results = AlarmReconciler(storage, scheduler, clock).reconcile(force = false)
+
+        // rNear is scheduled
+        assertTrue("Near reminder must be armed", scheduler.scheduled.any { it.id == "r_near" })
+        // rFar is NOT scheduled
+        assertFalse("Far reminder must NOT be armed in AlarmManager", scheduler.scheduled.any { it.id == "r_far" })
+        // rFar pre-existing registration is cancelled from scheduler and deleted from registry
+        assertTrue("Far reminder pre-existing registration must be cancelled", scheduler.canceled.contains("r_far"))
+        assertNull("Far reminder registry record must be deleted", storage.getRegisteredAlarmRecords().find { it.reminderId == "r_far" })
+        // rFar remains pending in storage
+        assertEquals("Both reminders must remain pending in SQLite", 2, storage.getPendingReminders().size)
     }
 }

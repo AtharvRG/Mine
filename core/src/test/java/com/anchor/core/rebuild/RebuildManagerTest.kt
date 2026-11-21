@@ -127,4 +127,35 @@ class RebuildManagerTest {
         manager.discardRebuild()
         assertEquals(RebuildStatus.IDLE, manager.getProgress().status)
     }
+
+    @Test
+    fun testExecuteRebuild_PreservesAnchors_ReEmbedsNodes_AndMarksDone() = runBlocking {
+        val anchorNode = Node("n1", "task", "Anchor Task", "active", origin = "approved")
+        val extractedNode = Node("n2", "task", "Doctor appointment", "active", origin = "extracted")
+        storage.createNodeAndCommit(anchorNode, RawEvent("e1", "CREATE", "node", "n1", tsUtc = clock.now()), null)
+        storage.createNodeAndCommit(extractedNode, RawEvent("e2", "CREATE", "node", "n2", tsUtc = clock.now()), null)
+
+        storage.insertRawMessage("m1", "user", "Message 1")
+        storage.insertRawMessage("m2", "assistant", "Message 2")
+
+        val embedder = com.anchor.core.retrieval.PureKotlinEmbedder()
+        val plan = manager.planRebuild(RebuildTarget.EMBEDDINGS)
+
+        val progress = manager.executeRebuild(plan, embedder)
+        assertEquals(RebuildStatus.COMPLETED, progress.status)
+        assertEquals(2, progress.processedMessages)
+        assertEquals(2, progress.totalMessages)
+
+        // Verify vectors were saved for nodes
+        val embeddings = storage.getEmbeddings("node", embedder.version)
+        assertTrue("Embeddings must be saved during rebuild", embeddings.isNotEmpty())
+        assertTrue("Anchor node must have embedding", embeddings.any { it.first == "n1" })
+        assertTrue("Extracted node must have embedding", embeddings.any { it.first == "n2" })
+
+        // Verify anchor was preserved
+        val retrievedAnchor = storage.getNode("n1")
+        assertNotNull(retrievedAnchor)
+        assertEquals("Anchor Task", retrievedAnchor?.title)
+        assertEquals("approved", retrievedAnchor?.origin)
+    }
 }

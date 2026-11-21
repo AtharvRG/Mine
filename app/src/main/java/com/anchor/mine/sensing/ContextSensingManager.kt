@@ -18,14 +18,26 @@ import android.net.wifi.WifiManager
 import android.os.Build
 import android.util.Log
 import com.anchor.core.sensing.ContextEngine
+import com.anchor.core.sensing.ContextTrigger
 import com.anchor.core.sensing.MotionAxis
+import com.anchor.core.sensing.OpportunisticErrandsEvaluator
+import com.anchor.core.sensing.WalkCompanionEvaluator
 import com.anchor.core.storage.Storage
+import com.anchor.core.time.SystemClock
+import com.anchor.mine.alarms.AndroidAlarmScheduler
+import com.anchor.mine.notifications.ChatReplyNotifier
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.UUID
 
 /**
  * Android Context Sensing Manager bridging system Wi-Fi and motion sensor signals
@@ -41,7 +53,11 @@ class ContextSensingManager(
     private val scope = CoroutineScope(Dispatchers.IO)
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
     private var sensorListener: SensorEventListener? = null
+    private var stepCounterListener: SensorEventListener? = null
     private var timeoutTickerJob: Job? = null
+    private var cumulativeSteps: Long = 0L
+
+    private val lifecycleMutex = Mutex()
 
     @Volatile
     private var isStarted = false
@@ -50,24 +66,26 @@ class ContextSensingManager(
     var lastStepTimeMs: Long = 0L
 
     fun start(force: Boolean = false) {
-        if (isStarted) return
         scope.launch {
-            if (!force) {
-                val storage = storageProvider()
-                if (storage != null) {
-                    val flagSensing = storage.getSetting("flag.sensing") == "1"
-                    val sensingEnabled = storage.getSetting("sensing.enabled") == "1"
-                    if (!flagSensing || !sensingEnabled) {
-                        Log.i(TAG, "Context sensing disabled in settings (flag.sensing=$flagSensing, sensing.enabled=$sensingEnabled); skipping sensor/network registration")
-                        return@launch
+            lifecycleMutex.withLock {
+                if (isStarted && !force) return@withLock
+                if (!force) {
+                    val storage = storageProvider()
+                    if (storage != null) {
+                        val flagSensing = storage.getSetting("flag.sensing") == "1"
+                        val sensingEnabled = storage.getSetting("sensing.enabled") == "1"
+                        if (!flagSensing || !sensingEnabled) {
+                            Log.i(TAG, "Context sensing disabled in settings (flag.sensing=$flagSensing, sensing.enabled=$sensingEnabled); skipping sensor/network registration")
+                            return@withLock
+                        }
                     }
                 }
+                isStarted = true
+                registerWifiObserver()
+                registerMotionObserver()
+                startTimeoutTicker()
+                Log.i(TAG, "ContextSensingManager started")
             }
-            isStarted = true
-            registerWifiObserver()
-            registerMotionObserver()
-            startTimeoutTicker()
-            Log.i(TAG, "ContextSensingManager started")
         }
     }
 
@@ -77,22 +95,26 @@ class ContextSensingManager(
             val flagSensing = storage?.getSetting("flag.sensing") == "1"
             val sensingEnabled = storage?.getSetting("sensing.enabled") == "1"
             if (flagSensing && sensingEnabled) {
-                if (!isStarted) start(force = true)
+                start(force = true)
             } else {
-                if (isStarted) stop()
+                stop()
             }
         }
     }
 
     fun stop() {
-        if (!isStarted) return
-        isStarted = false
+        scope.launch {
+            lifecycleMutex.withLock {
+                if (!isStarted) return@withLock
+                isStarted = false
 
-        unregisterWifiObserver()
-        unregisterMotionObserver()
-        timeoutTickerJob?.cancel()
-        timeoutTickerJob = null
-        Log.i(TAG, "ContextSensingManager stopped")
+                unregisterWifiObserver()
+                unregisterMotionObserver()
+                timeoutTickerJob?.cancel()
+                timeoutTickerJob = null
+                Log.i(TAG, "ContextSensingManager stopped")
+            }
+        }
     }
 
     private fun registerWifiObserver() {
@@ -115,11 +137,21 @@ class ContextSensingManager(
                     scope.launch {
                         val storage = storageProvider()
                         val knownPlaces = storage?.getPlaceSignals() ?: emptyList()
-                        contextEngine.onWifiSignal(
+                        val wm = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
+                        val scannedBssids = try {
+                            wm?.scanResults?.mapNotNull { cleanBssid(it.BSSID) } ?: emptyList()
+                        } catch (_: SecurityException) {
+                            emptyList()
+                        } catch (_: Throwable) {
+                            emptyList()
+                        }
+                        val now = System.currentTimeMillis()
+                        val triggers = contextEngine.onWifiSignal(
                             ssid = null,
-                            bssids = emptyList(),
+                            bssids = scannedBssids,
                             knownPlaces = knownPlaces
                         )
+                        handleTriggers(triggers, now)
                     }
                 }
             }
@@ -153,7 +185,7 @@ class ContextSensingManager(
                     val wifiInfo = capabilities?.transportInfo as? WifiInfo
                     if (wifiInfo != null) {
                         ssid = cleanSsid(wifiInfo.ssid)
-                        bssid = wifiInfo.bssid
+                        bssid = cleanBssid(wifiInfo.bssid)
                     }
                 }
 
@@ -162,7 +194,7 @@ class ContextSensingManager(
                     val info = wm?.connectionInfo
                     if (info != null) {
                         ssid = cleanSsid(info.ssid)
-                        bssid = info.bssid
+                        bssid = cleanBssid(info.bssid)
                     }
                 }
 
@@ -170,11 +202,20 @@ class ContextSensingManager(
                 val knownPlaces = storage?.getPlaceSignals() ?: emptyList()
                 val bssids = if (!bssid.isNullOrBlank()) listOf(bssid) else emptyList()
 
-                contextEngine.onWifiSignal(
+                // If Wi-Fi is available/connected but SSID and BSSID were redacted (<unknown ssid>/02:00:00:00:00:00),
+                // do not call onWifiSignal with null which would falsely mark the device as PlaceAxis.Away.
+                if (ssid.isNullOrBlank() && bssids.isEmpty()) {
+                    Log.d(TAG, "Wi-Fi is connected but SSID/BSSID are redacted; retaining place state")
+                    return@launch
+                }
+
+                val now = System.currentTimeMillis()
+                val triggers = contextEngine.onWifiSignal(
                     ssid = ssid,
                     bssids = bssids,
                     knownPlaces = knownPlaces
                 )
+                handleTriggers(triggers, now)
             } catch (e: Throwable) {
                 Log.w(TAG, "Error processing Wi-Fi state: ${e.message}")
             }
@@ -188,24 +229,58 @@ class ContextSensingManager(
         return cleaned
     }
 
+    private fun cleanBssid(rawBssid: String?): String? {
+        if (rawBssid.isNullOrBlank()) return null
+        val cleaned = rawBssid.trim().lowercase(java.util.Locale.US)
+        if (cleaned == "02:00:00:00:00:00" || cleaned == "00:00:00:00:00:00") return null
+        return rawBssid.trim()
+    }
+
     private fun registerMotionObserver() {
         try {
             val sm = context.getSystemService(Context.SENSOR_SERVICE) as? SensorManager ?: return
-            val stepSensor = sm.getDefaultSensor(Sensor.TYPE_STEP_DETECTOR)
-                ?: sm.getDefaultSensor(Sensor.TYPE_SIGNIFICANT_MOTION)
 
-            if (stepSensor != null) {
-                val listener = object : SensorEventListener {
+            // Cumulative step counter
+            val stepCounter = sm.getDefaultSensor(Sensor.TYPE_STEP_COUNTER)
+            if (stepCounter != null) {
+                val counterListener = object : SensorEventListener {
                     override fun onSensorChanged(event: SensorEvent?) {
+                        val totalSteps = event?.values?.getOrNull(0)?.toLong() ?: return
                         val now = System.currentTimeMillis()
                         lastStepTimeMs = now
-                        contextEngine.onMotionSignal(MotionAxis.WALKING, confidence = 0.9f)
+                        scope.launch {
+                            val triggers1 = contextEngine.onMotionSignal(MotionAxis.WALKING, confidence = 0.9f)
+                            val triggers2 = contextEngine.onStepCountSignal(totalSteps, now)
+                            handleTriggers(triggers1 + triggers2, now)
+                        }
                     }
-
                     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) = Unit
                 }
-                sensorListener = listener
-                sm.registerListener(listener, stepSensor, SensorManager.SENSOR_DELAY_NORMAL)
+                stepCounterListener = counterListener
+                sm.registerListener(counterListener, stepCounter, SensorManager.SENSOR_DELAY_NORMAL)
+            } else {
+                // Fallback to step detector / significant motion only if step counter is absent
+                val stepSensor = sm.getDefaultSensor(Sensor.TYPE_STEP_DETECTOR)
+                    ?: sm.getDefaultSensor(Sensor.TYPE_SIGNIFICANT_MOTION)
+
+                if (stepSensor != null) {
+                    val listener = object : SensorEventListener {
+                        override fun onSensorChanged(event: SensorEvent?) {
+                            val now = System.currentTimeMillis()
+                            lastStepTimeMs = now
+                            cumulativeSteps++
+                            scope.launch {
+                                val triggers1 = contextEngine.onMotionSignal(MotionAxis.WALKING, confidence = 0.9f)
+                                val triggers2 = contextEngine.onStepCountSignal(cumulativeSteps, now)
+                                handleTriggers(triggers1 + triggers2, now)
+                            }
+                        }
+
+                        override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) = Unit
+                    }
+                    sensorListener = listener
+                    sm.registerListener(listener, stepSensor, SensorManager.SENSOR_DELAY_NORMAL)
+                }
             }
         } catch (e: Throwable) {
             Log.w(TAG, "Could not register motion sensor listener: ${e.message}")
@@ -214,10 +289,11 @@ class ContextSensingManager(
 
     private fun unregisterMotionObserver() {
         try {
-            val listener = sensorListener ?: return
             val sm = context.getSystemService(Context.SENSOR_SERVICE) as? SensorManager
-            sm?.unregisterListener(listener)
+            sensorListener?.let { sm?.unregisterListener(it) }
             sensorListener = null
+            stepCounterListener?.let { sm?.unregisterListener(it) }
+            stepCounterListener = null
         } catch (e: Throwable) {
             Log.w(TAG, "Error unregistering sensor listener: ${e.message}")
         }
@@ -232,14 +308,150 @@ class ContextSensingManager(
                     val now = System.currentTimeMillis()
                     // Return to STILL if no steps have been detected for > 60 seconds
                     if (lastStepTimeMs > 0L && now - lastStepTimeMs > 60_000L && contextEngine.getState().motion == MotionAxis.WALKING) {
-                        contextEngine.onMotionSignal(MotionAxis.STILL, confidence = 0.8f)
+                        val motionTriggers = contextEngine.onMotionSignal(MotionAxis.STILL, confidence = 0.8f)
+                        handleTriggers(motionTriggers, now)
                     }
-                    contextEngine.checkTimeouts()
+                    val timeoutTriggers = contextEngine.checkTimeouts()
+                    handleTriggers(timeoutTriggers, now)
                 } catch (e: Throwable) {
                     Log.w(TAG, "Error running contextEngine.checkTimeouts: ${e.message}")
                 }
             }
         }
+    }
+
+    private suspend fun handleTriggers(triggers: List<ContextTrigger>, now: Long) {
+        if (triggers.isEmpty()) return
+        val storage = storageProvider() ?: return
+
+        val dayRule = storage.getEffectiveDayRule(now)
+        if (!com.anchor.core.time.DayRollover.isInDayWindow(now, dayRule)) return
+        if (contextEngine.getState().motion == MotionAxis.VEHICLE) return
+
+        for (trigger in triggers) {
+            when (trigger) {
+                ContextTrigger.CONTEXT_LEFT_HOME -> {
+                    try {
+                        val clock = SystemClock()
+                        val errands = OpportunisticErrandsEvaluator(storage, clock).evaluateLeaveHome(now)
+                        // Silence on empty per D-087 / BP 43 §3.5: If no relevant errands, do NOT disturb user
+                        if (errands.isEmpty()) continue
+
+                        val errandChecklists = errands.joinToString("\n\n") { it.message }
+                        val logicalDayStart = com.anchor.core.time.DayRollover.getLogicalDayStart(now, dayRule)
+                        val windowLengthMs = ((dayRule.endMinute - dayRule.startMinute + 1440) % 1440) * 60_000L
+                        val todayEnd = logicalDayStart + windowLengthMs
+                        val upcomingTasks = storage.getNodesDueBetween(now, todayEnd, 5).filter { it.status == "active" }
+                        val nextTask = upcomingTasks.minByOrNull { it.dueAt ?: Long.MAX_VALUE }
+                        val due = nextTask?.dueAt
+                        val timeFormat = SimpleDateFormat("h:mm a", Locale.getDefault())
+
+                        val finalMessage = if (nextTask != null && due != null) {
+                            val nextTime = timeFormat.format(Date(due))
+                            "You just left home. Don't forget ${errands.first().title}, and be back by $nextTime for '${nextTask.title}'.\n\n$errandChecklists"
+                        } else {
+                            "You just left home.\n\n$errandChecklists"
+                        }
+
+                        val msgId = "a_${UUID.randomUUID()}"
+                        storage.insertRawMessage(msgId, "assistant", finalMessage)
+                        ChatReplyNotifier.notify(context, finalMessage)
+
+                        // Cancel fallback wakeups and clear context trigger so it doesn't fire again
+                        val scheduler = AndroidAlarmScheduler(context)
+                        for (errand in errands) {
+                            val fallbackWakeupId = "aw_errand_${errand.nodeId}"
+                            scheduler.cancelAgentWakeup(fallbackWakeupId)
+                            storage.markAgentWakeupState(fallbackWakeupId, "cancelled")
+                            val node = storage.getNode(errand.nodeId)
+                            if (node != null && node.contextTrigger != null) {
+                                val updated = node.copy(contextTrigger = null, updatedAt = now)
+                                val uId = "u_${java.util.UUID.randomUUID()}"
+                                val event = com.anchor.core.models.RawEvent(uId, "UPDATE", "node", node.id, beforeJson = null, afterJson = null, tsUtc = now)
+                                storage.updateNodeAndCommit(updated, event, deleteReminderId = null)
+                            }
+                        }
+                    } catch (e: Throwable) {
+                        Log.w(TAG, "Error handling CONTEXT_LEFT_HOME trigger: ${e.message}")
+                    }
+                }
+                ContextTrigger.CONTEXT_WALKING_STARTED -> {
+                    try {
+                        val clock = SystemClock()
+                        val walk = WalkCompanionEvaluator(storage, clock, AndroidAlarmScheduler(context)).evaluateWalkStarted(now)
+                        val logicalDayStart = com.anchor.core.time.DayRollover.getLogicalDayStart(now, dayRule)
+                        val windowLengthMs = ((dayRule.endMinute - dayRule.startMinute + 1440) % 1440) * 60_000L
+                        val todayEnd = logicalDayStart + windowLengthMs
+                        val upcomingTasks = storage.getNodesDueBetween(now, todayEnd, 5).filter { it.status == "active" }
+                        val nextTask = upcomingTasks.minByOrNull { it.dueAt ?: Long.MAX_VALUE }
+                        val due = nextTask?.dueAt
+                        val timeFormat = SimpleDateFormat("h:mm a", Locale.getDefault())
+
+                        val finalMessage = if (nextTask != null && due != null) {
+                            val nextTime = timeFormat.format(Date(due))
+                            "Have a great walk! Be back by $nextTime for '${nextTask.title}'."
+                        } else {
+                            walk.message
+                        }
+
+                        val msgId = "a_${UUID.randomUUID()}"
+                        storage.insertRawMessage(msgId, "assistant", finalMessage)
+                        ChatReplyNotifier.notify(context, finalMessage)
+                    } catch (e: Throwable) {
+                        Log.w(TAG, "Error handling CONTEXT_WALKING_STARTED trigger: ${e.message}")
+                    }
+                }
+                ContextTrigger.CONTEXT_HOME_AGAIN -> {
+                    try {
+                        val pendingWakeups = storage.getPendingAgentWakeups(now + 2 * 3600_000L)
+                            .filter { it.payloadJson?.contains("WALK_RETURN_CHECKIN") == true }
+                        if (pendingWakeups.isNotEmpty()) {
+                            val scheduler = AndroidAlarmScheduler(context)
+                            pendingWakeups.forEach { w ->
+                                scheduler.cancelAgentWakeup(w.id)
+                                storage.markAgentWakeupState(w.id, "cancelled")
+                            }
+                            val welcomeMsg = "Welcome back home! Hope your walk was refreshing."
+                            val msgId = "a_${UUID.randomUUID()}"
+                            storage.insertRawMessage(msgId, "assistant", welcomeMsg)
+                            ChatReplyNotifier.notify(context, welcomeMsg)
+                        }
+                    } catch (e: Throwable) {
+                        Log.w(TAG, "Error handling CONTEXT_HOME_AGAIN trigger: ${e.message}")
+                    }
+                }
+                else -> {}
+            }
+        }
+    }
+
+    fun enrollCurrentWifiAsHome(): Boolean {
+        val wm = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager ?: return false
+        val info = wm.connectionInfo ?: return false
+        val ssid = cleanSsid(info.ssid)
+        val bssid = cleanBssid(info.bssid)
+        if (ssid.isNullOrBlank() && bssid.isNullOrBlank()) return false
+        val scannedBssids = try {
+            wm.scanResults?.mapNotNull { cleanBssid(it.BSSID) } ?: emptyList()
+        } catch (_: Throwable) { emptyList() }
+        val allBssids = (listOfNotNull(bssid) + scannedBssids).distinct()
+        val now = System.currentTimeMillis()
+        val place = com.anchor.core.sensing.Place(
+            id = "place_home",
+            kind = "home",
+            label = "Home",
+            updatedAt = now
+        )
+        val bssidsJson = allBssids.joinToString(prefix = "[", postfix = "]", separator = ",") { "\"$it\"" }
+        val wifiJson = """{"ssid":"${ssid ?: ""}","bssids":$bssidsJson}"""
+        val signal = com.anchor.core.sensing.PlaceSignal(
+            placeId = "place_home",
+            wifiJson = wifiJson
+        )
+        scope.launch {
+            storageProvider()?.savePlace(place, signal)
+        }
+        return true
     }
 
     companion object {

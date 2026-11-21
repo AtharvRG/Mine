@@ -37,7 +37,8 @@ class QuoteManager(
     private val orchestrator: ProviderOrchestrator? = null,
     private val clock: Clock,
     private val timeZone: TimeZone = TimeZone.getDefault(),
-    private val coroutineScope: CoroutineScope = CoroutineScope(Dispatchers.Default)
+    private val coroutineScope: CoroutineScope = CoroutineScope(Dispatchers.Default),
+    private val limiter: com.anchor.core.provider.RateLimiter? = null
 ) {
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -181,6 +182,10 @@ class QuoteManager(
             }
         }
 
+        if (key.isNotBlank() && limiter?.getCooldownExpiry(key) != null) {
+            return existing
+        }
+
         val newRegenCount = if (isFirstLive) 0 else (existing?.regenCount ?: 0) + 1
 
         return try {
@@ -200,7 +205,7 @@ class QuoteManager(
                 }
             }.toString()
 
-            val target = Target(ep, key, 50)
+            val target = Target(ep, key, 50, model = mod, limiterKey = "bg:$key")
             val builder = StringBuilder()
             orchestrator.chat(listOf(target), body)
                 .catch { e ->

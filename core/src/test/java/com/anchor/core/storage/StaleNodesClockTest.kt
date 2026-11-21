@@ -62,7 +62,7 @@ class StaleNodesClockTest {
     }
 
     @Test
-    fun testGetStaleNodes_ExcludesLocalOnly() = runBlocking {
+    fun testGetStaleNodes_IncludesLocalOnly() = runBlocking {
         val baseTime = 1_700_000_000_000L
         val clock = FakeClock(baseTime)
         val storage = SharedFakeStorage(clock)
@@ -71,20 +71,24 @@ class StaleNodesClockTest {
         storage.activeNodes.add(Node("public_stale", "task", "Public", "active", createdAt = oldTime, updatedAt = oldTime, localOnly = false))
         storage.activeNodes.add(Node("private_stale", "task", "Private", "active", createdAt = oldTime, updatedAt = oldTime, localOnly = true))
 
-        val stale = storage.getStaleNodes(clock.now())
-        assertEquals(1, stale.size)
-        assertEquals("public_stale", stale[0].id)
+        val stale = storage.getStaleNodes(clock.now(), includeLocalOnly = true)
+        // Blueprint 16 & 21 §3.5 Rule 8 / Audit Bug 3: local_only items must be visible in local UI stale inbox
+        assertEquals(2, stale.size)
+        assertTrue(stale.any { it.id == "public_stale" })
+        assertTrue(stale.any { it.id == "private_stale" })
     }
 
     @Test
-    fun testGetUrgentNodes_ExcludesLocalOnly() = runBlocking {
+    fun testGetUrgentNodes_IncludesLocalOnly() = runBlocking {
         val storage = SharedFakeStorage()
         storage.activeNodes.add(Node("u_pub", "task", "Urgent Public", "active", dueAt = 1000L, localOnly = false))
         storage.activeNodes.add(Node("u_priv", "task", "Urgent Private", "active", dueAt = 500L, localOnly = true))
 
-        val urgent = storage.getUrgentNodes()
-        assertEquals(1, urgent.size)
-        assertEquals("u_pub", urgent[0].id)
+        val urgent = storage.getUrgentNodes(includeLocalOnly = true)
+        // Blueprint 16 & 21 §3.5 Rule 8 / Audit Bug 3: local_only items must be visible in local UI urgent items
+        assertEquals(2, urgent.size)
+        assertTrue(urgent.any { it.id == "u_pub" })
+        assertTrue(urgent.any { it.id == "u_priv" })
     }
 
     @Test

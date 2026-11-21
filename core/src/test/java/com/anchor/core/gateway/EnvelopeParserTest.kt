@@ -22,15 +22,15 @@ class EnvelopeParserTest {
             ```
             Hope that helps!
         """.trimIndent()
-        
+
         val envelope = EnvelopeParser.parse(messy)
         assertNotNull(envelope)
         assertEquals("Got it.", envelope!!.reply)
-        
+
         val args = EnvelopeParser.resolveArgs(envelope.calls[0])
         assertEquals("CREATE", args["intent"])
         assertEquals("2", args["minutes"])
-        
+
         // A1: Nulls, "null", and empty strings must be completely dropped
         assertFalse(args.containsKey("nullVal"))
         assertFalse(args.containsKey("strNull"))
@@ -52,6 +52,21 @@ class EnvelopeParserTest {
         assertEquals("I have scheduled your reminder for \"Doctor Appointment\" at 10 AM.", parsed!!.reply)
         assertEquals(1, parsed.calls.size)
         assertEquals("propose_change", parsed.calls[0].tool)
+    }
+
+    @Test
+    fun testInnerCodeFencesPreserved() {
+        val input = """
+            ```json
+            {
+              "reply": "Here is how you do it:\n```kotlin\nval x = 42\n```\nEnjoy!",
+              "calls": []
+            }
+            ```
+        """.trimIndent()
+        val parsed = EnvelopeParser.parse(input)
+        assertNotNull(parsed)
+        assertEquals("Here is how you do it:\n```kotlin\nval x = 42\n```\nEnjoy!", parsed!!.reply)
     }
 
     @Test

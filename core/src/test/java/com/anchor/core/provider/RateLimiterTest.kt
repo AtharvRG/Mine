@@ -27,12 +27,55 @@ class RateLimiterTest {
         assertTrue("Window should clear", limiter.canRequest("key1", 100))
 
         // Test Default Cooldown (15 min)
-        limiter.apply429Cooldown("key2", null)
+        limiter.apply429Cooldown("key2", null, defaultCooldownMin = 15)
         assertFalse(limiter.canRequest("key2", 20))
         clock += (14 * 60 * 1000L) // 14 mins
         assertFalse(limiter.canRequest("key2", 20))
         clock += (2 * 60 * 1000L)  // 16 mins
         assertTrue("Should recover after 15m", limiter.canRequest("key2", 20))
+    }
+
+    @Test
+    fun testLimiter_RetryAfterSecondsAndExponentialBackoff() = runBlocking {
+        var clock = 1000L
+        val limiter = RateLimiter { clock }
+
+        // Test explicit retryAfterSeconds = 3
+        limiter.apply429Cooldown("keyExplicit", retryAfterSeconds = 3)
+        assertFalse(limiter.canRequest("keyExplicit", 20))
+        clock += 2_000L // 2s passed
+        assertFalse(limiter.canRequest("keyExplicit", 20))
+        clock += 2_000L // 4s total passed
+        assertTrue("Should recover after 3s", limiter.canRequest("keyExplicit", 20))
+
+        // Test exponential backoff: strike 1 = 2s
+        limiter.apply429Cooldown("keyExp", retryAfterSeconds = null)
+        assertFalse(limiter.canRequest("keyExp", 20))
+        clock += 1_000L
+        assertFalse(limiter.canRequest("keyExp", 20))
+        clock += 2_000L
+        assertTrue("Should recover after 2s for strike 1", limiter.canRequest("keyExp", 20))
+
+        // Strike 2 = 4s
+        limiter.apply429Cooldown("keyExp", retryAfterSeconds = null)
+        clock += 3_000L
+        assertFalse("Should still be in cooldown at 3s for strike 2", limiter.canRequest("keyExp", 20))
+        clock += 2_000L
+        assertTrue("Should recover after 4s for strike 2", limiter.canRequest("keyExp", 20))
+
+        // Clear cooldown
+        limiter.apply429Cooldown("keyExp", retryAfterSeconds = null)
+        assertFalse(limiter.canRequest("keyExp", 20))
+        limiter.clearCooldown("keyExp")
+        assertTrue("Should be immediately clear after clearCooldown", limiter.canRequest("keyExp", 20))
+
+        // Strike count reset on recordSuccess
+        limiter.apply429Cooldown("keyExp", retryAfterSeconds = null) // strike 1 (was cleared)
+        limiter.recordSuccess("keyExp")
+        limiter.clearCooldown("keyExp")
+        limiter.apply429Cooldown("keyExp", retryAfterSeconds = null) // should start back at strike 1 (2s)
+        clock += 3_000L
+        assertTrue("Should be strike 1 (2s) after recordSuccess reset", limiter.canRequest("keyExp", 20))
     }
 
     @Test

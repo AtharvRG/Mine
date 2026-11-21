@@ -45,14 +45,22 @@ class AlarmReconciler(
             storage.deleteRegisteredAlarm(orphanId)
         }
 
-        // 2. Schedule pending reminders within 60s grace; report the rest as overdue (H-01/R-01).
+        // 2. Schedule pending reminders within 60s grace and 48h horizon; report overdue or cancel beyond-horizon registrations
         //    Dropping them silently left a reminder that came due while the device was off with no
         //    alarm and no report unless the boot/app-open sweeper happened to run.
         val results = mutableListOf<ScheduleResult>()
         val validPending = mutableListOf<com.anchor.core.models.Reminder>()
         for (reminder in pending) {
-            if (reminder.fireAtMillis >= now - GRACE_MS) {
+            if (reminder.fireAtMillis in (now - GRACE_MS)..(now + HORIZON_MS)) {
                 validPending.add(reminder)
+                continue
+            }
+            if (reminder.fireAtMillis > now + HORIZON_MS) {
+                // P1-5: Beyond 48h horizon: keep in DB pending, but cancel OS registration to prevent quota exhaustion
+                if (registeredMap.containsKey(reminder.id)) {
+                    scheduler.cancel(reminder.id)
+                    storage.deleteRegisteredAlarm(reminder.id)
+                }
                 continue
             }
             // A registration for a past instant can never fire; clear it so it is not left stale.
@@ -66,8 +74,12 @@ class AlarmReconciler(
             // overdue as well would surface a second notification for one fire.
             val lastMiss = storage.getReminderFire(reminder.id, "missed")
             val errored = storage.getReminderFire(reminder.id, "errored")
+            val delivered = storage.getReminderFire(reminder.id, "delivered")
+            val suppressed = storage.getReminderFire(reminder.id, "suppressed")
             val alreadyReported = lastMiss?.scheduledFor == reminder.fireAtMillis ||
-                errored?.scheduledFor == reminder.fireAtMillis
+                errored?.scheduledFor == reminder.fireAtMillis ||
+                delivered?.scheduledFor == reminder.fireAtMillis ||
+                suppressed?.scheduledFor == reminder.fireAtMillis
             if (!alreadyReported) {
                 results.add(
                     ScheduleResult.Overdue(
@@ -93,7 +105,17 @@ class AlarmReconciler(
             }
         }
 
-        // 3. Recompute reliability state. R-26: a truncated page is a failure of this pass, not a
+        // 3. Reconcile pending agent wakeups within 48h horizon (boot/restart re-arm)
+        storage.unstickRunningWakeups(now - 600_000L)
+        val pendingWakeups = storage.getPendingAgentWakeups(now + HORIZON_MS)
+        for (w in pendingWakeups) {
+            if (w.fireAt >= now - GRACE_MS) {
+                val res = scheduler.scheduleAgentWakeup(w.id, w.fireAt)
+                results.add(res)
+            }
+        }
+
+        // 4. Recompute reliability state. R-26: a truncated page is a failure of this pass, not a
         //    clean one — it is appended to the results the caller reads, and from there folded into
         //    the reliability issues below.
         if (truncated) {
@@ -117,23 +139,28 @@ class AlarmReconciler(
             val boundedIssues = updatedIssues
                 .sortedByDescending { it.time }
                 .take(5)
+            val newIssuesJson = encodeIssues(boundedIssues)
 
-            storage.saveReliabilityState(
-                currentState.copy(
-                    score = "at_risk",
-                    issuesJson = encodeIssues(boundedIssues),
-                    lastCheckAt = now
+            if (currentState.score != "at_risk" || currentState.issuesJson != newIssuesJson) {
+                storage.saveReliabilityState(
+                    currentState.copy(
+                        score = "at_risk",
+                        issuesJson = newIssuesJson,
+                        lastCheckAt = now
+                    )
                 )
-            )
+            }
         } else {
-            // Clean pass: recover score to healthy and clear issues
-            storage.saveReliabilityState(
-                currentState.copy(
-                    score = "healthy",
-                    issuesJson = null,
-                    lastCheckAt = now
+            // Clean pass: recover score to healthy and clear issues only when state actually changed
+            if (currentState.score != "healthy" || currentState.issuesJson != null) {
+                storage.saveReliabilityState(
+                    currentState.copy(
+                        score = "healthy",
+                        issuesJson = null,
+                        lastCheckAt = now
+                    )
                 )
-            )
+            }
         }
 
         return results
@@ -145,6 +172,9 @@ class AlarmReconciler(
     companion object {
         /** How far past its fire instant a reminder is still armed rather than reported overdue. */
         const val GRACE_MS = 60000L
+
+        /** Maximum horizon into the future to arm in OS AlarmManager to avoid quota exhaustion (48 hours). */
+        const val HORIZON_MS = 48L * 3600_000L
 
         /** R-26: the pending read returned a full page, so an unseen tail was not reconciled. */
         const val ISSUE_PENDING_TRUNCATED = "pending_reminders_truncated"

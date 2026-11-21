@@ -14,9 +14,14 @@ import com.anchor.core.gateway.EnvelopeParser
 import com.anchor.core.gateway.Gateway
 import com.anchor.core.models.*
 import com.anchor.core.nudge.NudgeEngine
+import com.anchor.core.provider.AllProvidersFailedException
+import com.anchor.core.provider.Http429Exception
+import com.anchor.core.provider.HttpStatusException
 import com.anchor.core.provider.OfflineException
 import com.anchor.core.provider.ProviderConfigParser
 import com.anchor.core.provider.ProviderOrchestrator
+import com.anchor.core.provider.ProviderTimeoutException
+import com.anchor.core.provider.RateLimiter
 import com.anchor.core.provider.StreamEvent
 import com.anchor.core.provider.Target
 import com.anchor.core.storage.Storage
@@ -31,6 +36,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 import java.util.UUID
 
 class ChatController(
@@ -42,9 +49,10 @@ class ChatController(
     private val coroutineScope: CoroutineScope,
     private val defaultDispatcher: CoroutineDispatcher,
     private val clock: Clock,
+    private val rateLimiter: RateLimiter? = null,
     private val reconciler: AlarmReconciler = AlarmReconciler(storage, alarmScheduler, clock),
     private val dateResolver: DateResolver = DateResolver(clock, is24HourFormat = { false }),
-    private val quoteManager: com.anchor.core.quotes.QuoteManager = com.anchor.core.quotes.QuoteManager(storage, orchestrator, clock, coroutineScope = coroutineScope),
+    private val quoteManager: com.anchor.core.quotes.QuoteManager = com.anchor.core.quotes.QuoteManager(storage, orchestrator, clock, coroutineScope = coroutineScope, limiter = rateLimiter),
     // Blueprint 31: the proactive pipeline's gatekeeper. This is the production construction the
     // audit found missing — the engine existed and was tested, but nothing ever built or called it.
     private val nudgeEngine: NudgeEngine = NudgeEngine(clock),
@@ -54,7 +62,8 @@ class ChatController(
     // request, while a wrong "offline" would queue a message that could have been answered now.
     private val networkCheck: (() -> Boolean)? = null,
     private val embedder: com.anchor.core.retrieval.Embedder? = null,
-    private val contextEngine: com.anchor.core.sensing.ContextEngine? = null
+    private val contextEngine: com.anchor.core.sensing.ContextEngine? = null,
+    private val checkinBuilder: com.anchor.core.nudge.CheckinBuilder = com.anchor.core.nudge.CheckinBuilder(storage, clock, dateResolver)
 ) {
     private val _state = MutableStateFlow(UiState())
     val state: StateFlow<UiState> = _state.asStateFlow()
@@ -66,9 +75,30 @@ class ChatController(
     private val templateEngine = com.anchor.core.persona.TemplateEngine()
     private val personaEngine = com.anchor.core.persona.PersonaEngine()
     private val ruleBasedQuickAdd = com.anchor.core.capture.RuleBasedQuickAdd(dateResolver)
+    private val companionActions = CompanionActions(storage, gateway, alarmScheduler, clock, ruleBasedQuickAdd, dateResolver)
+    private val actionSeq = java.util.concurrent.atomic.AtomicLong(0)
     private val sendMutex = kotlinx.coroutines.sync.Mutex()
+    private val isDraining = java.util.concurrent.atomic.AtomicBoolean(false)
+    private val workerScope = CoroutineScope(defaultDispatcher + SupervisorJob())
+    private var workerAiJob: Job? = null
 
-    private fun addTransientReceipt(receipt: ReceiptState) {
+    /**
+     * D-206: Background Chat Reply Notification callback.
+     * Invoked when an assistant turn completes while the app is in the background.
+     */
+    var onBackgroundReplyCompleted: ((replySnippet: String) -> Unit)? = null
+
+    /**
+     * Invoked when context sensing is enabled or disabled.
+     */
+    var onContextSensingChanged: ((Boolean) -> Unit)? = null
+
+    /**
+     * P2-11 (Patch T): Invoked when post-call nudges are enabled or disabled.
+     */
+    var onPostCallNudgesChanged: ((Boolean) -> Unit)? = null
+
+    fun addTransientReceipt(receipt: ReceiptState) {
         val dayMs = 24L * 3600 * 1000L
         synchronized(transientReceipts) {
             transientReceipts.removeAll { clock.now() - it.timestamp >= dayMs }
@@ -192,13 +222,15 @@ class ChatController(
     }
     val proactive = storage.getProactiveState()
     val activeThread = proactive.openThreadMsgId?.let { ActiveThread(it, proactive.threadOpenedAt ?: 0L) }
+    val initialKey = storage.getSetting("key") ?: ""
+    val initialCooldownExpiry = if (initialKey.isNotBlank()) rateLimiter?.getCooldownExpiry(initialKey) else null
 
     _state.update { it.copy(
         receipts = recentReceipts + currentTransientReceipts(),
         activeReminders = storage.getActiveReminders(clock.now()),
         chatMessages = if (it.isChatLoading) it.chatMessages else storage.getRecentMessages(30),
         providerEndpoint = storage.getSetting("ep") ?: "https://api.openai.com/v1/chat/completions",
-        providerKey = storage.getSetting("key") ?: "",
+        providerKey = initialKey,
         providerModel = storage.getSetting("mod") ?: "gpt-4o-mini",
         debugStats = storage.getDebugStats().entries.joinToString("\n") { e -> "${e.key}: ${e.value}" },
         openProposals = proposals,
@@ -232,9 +264,25 @@ class ChatController(
         ambientEnabled = storage.getSetting("ambient.enabled") == "1",
         voiceprintEnrolled = storage.getVoiceprint() != null,
         latestAmbientReport = storage.getLatestAmbientReport(),
-        ambientReportItems = storage.getLatestAmbientReport()?.let { r -> storage.getAmbientReportItems(r.id) } ?: emptyList()
+        ambientReportItems = storage.getLatestAmbientReport()?.let { r -> storage.getAmbientReportItems(r.id) } ?: emptyList(),
+        procrastinationMode = storage.getSetting("procrastination.mode") ?: "gentle",
+        contextSensingEnabled = (storage.getSetting("flag.sensing") == "1") && (storage.getSetting("sensing.enabled") == "1"),
+        postCallNudgesEnabled = (storage.getSetting("flag.call_nudge") == "1" || storage.getSetting("flag.call_nudges") == "1") && storage.getSetting("callnudge.enabled") != "0",
+        onDeviceFallbackEnabled = storage.getSetting("provider.ondevice.enabled") == "1" || storage.getSetting("flag.ondevice_llm") == "1",
+        moodTrackingEnabled = storage.getSetting("flag.mood_tracking") == "1",
+        hideNotificationContent = storage.getSetting("privacy.hide_notification_content") == "1" || storage.getSetting("flag.hide_notification_content") == "1",
+        soulAutoAcceptMode = storage.getSetting("soul.mode") == "auto" || storage.getSetting("soul.auto_accept") == "1",
+        fallbackEndpoint = storage.getSetting("provider.fallback.endpoint") ?: storage.getSetting("ep.fallback") ?: storage.getSetting("ep_fallback") ?: "",
+        fallbackKey = storage.getSetting("provider.fallback.key") ?: storage.getSetting("key.fallback") ?: storage.getSetting("key_fallback") ?: "",
+        fallbackModel = storage.getSetting("provider.fallback.model") ?: storage.getSetting("model.fallback") ?: storage.getSetting("model_fallback") ?: "",
+        providerCooldownExpiry = initialCooldownExpiry,
+        autoBackupEnabled = storage.getSetting("export.auto.enabled")?.let { it == "1" || it.toBooleanStrictOrNull() == true } ?: (storage.getSetting("backup.auto_enabled") == "1"),
+        autoBackupUri = storage.getSetting("export.auto.folder_uri") ?: storage.getSetting("backup.auto_uri") ?: "",
+        webSearchEnabled = (storage.getSetting("web_search.enabled")?.let { it == "1" } ?: (it.webSearchEnabled || gateway.webSearchEnabled)).also { gateway.webSearchEnabled = it }
     )}
     _state.update { it.copy(chatItems = ChatTimelineBuilder.build(it.chatMessages, it.receipts, it.openProposals)) }
+    loadCompanionExtras()
+    _state.update { it.copy(initialLoadComplete = true) }
 
         val onboardingDone = storage.getSetting(ONBOARDING_DONE_KEY) == "1" || storage.getSetting("onboarding.done") == "true"
         val lastNotified = storage.getSetting(WhatsNewCatalog.SETTING_VERSION_NOTIFIED)
@@ -259,6 +307,66 @@ class ChatController(
                 _state.update { it.copy(composerDraft = "") }
                 sendText(text)
             }
+            is UiAction.SendText -> {
+                val text = action.text.trim()
+                if (text.isNotEmpty()) sendText(text)
+            }
+            is UiAction.RetryLastMessage -> coroutineScope.launch(defaultDispatcher) {
+                val id = _state.value.lastFailedMsgId ?: return@launch
+                val text = try { storage.getRawMessage(id) } catch (e: Exception) {
+                    if (e is CancellationException) throw e
+                    null
+                }
+                _state.update { it.copy(lastFailedMsgId = null, connectionError = null, connectionErrorRetryable = false, connectionErrorNeedsSettings = false) }
+                if (!text.isNullOrBlank()) sendText(text, id)
+            }
+            is UiAction.DismissConnectionError -> _state.update {
+                it.copy(connectionError = null, connectionErrorRetryable = false, connectionErrorNeedsSettings = false)
+            }
+            is UiAction.TestProvider -> coroutineScope.launch(defaultDispatcher) {
+                val ep = action.endpoint.trim()
+                val key = action.key.trim()
+                val model = action.model.trim()
+                val draft = if (ep.isBlank() || (key.isBlank() && !ep.startsWith("local://"))) {
+                    ActionResultDraft("Add the address and API key first.", isError = true)
+                } else try {
+                    val startedNs = System.nanoTime()
+                    val payload = kotlinx.serialization.json.Json.encodeToString(
+                        com.anchor.core.provider.ChatRequest(
+                            model,
+                            true,
+                            listOf(com.anchor.core.provider.RequestMessage("user", "Reply with the single word: ok")),
+                            temperature = 0.0,
+                            max_tokens = 8
+                        )
+                    )
+                    var answered = false
+                    kotlinx.coroutines.withTimeout(PROVIDER_TEST_TIMEOUT_MS) {
+                        orchestrator.chat(listOf(Target(ep, key, 60, model = model.ifBlank { null })), payload, envelopeMode = false).collect { ev ->
+                            if (ev is StreamEvent.TextDelta && ev.text.isNotBlank()) answered = true
+                        }
+                    }
+                    val ms = (System.nanoTime() - startedNs) / 1_000_000
+                    if (answered) ActionResultDraft("Connected · ${ms} ms") else ActionResultDraft("The provider answered, but with an empty reply. Check the model name.", isError = true)
+                } catch (e: Exception) {
+                    if (e is kotlinx.coroutines.TimeoutCancellationException) {
+                        ActionResultDraft("No answer within ${PROVIDER_TEST_TIMEOUT_MS / 1000} seconds. Check the address.", isError = true)
+                    } else {
+                        if (e is CancellationException) throw e
+                        ActionResultDraft(ChatResilience.describe(e).message, isError = true)
+                    }
+                }
+                publishActionResult(draft, action.tag)
+            }
+            is UiAction.Direct -> coroutineScope.launch(defaultDispatcher) {
+                val draft = companionActions.handle(action)
+                publishActionResult(draft, action.tag)
+                try {
+                    refreshUI()
+                } catch (e: Exception) {
+                    if (e is CancellationException) throw e
+                }
+            }
             is UiAction.Stop -> {
                 // B10: Cancel job, but do NOT set isChatLoading = false here.
                 // The finally block of handleSendMessage will do it, preventing job overlap.
@@ -281,32 +389,7 @@ class ChatController(
                 }
             }
             is UiAction.ImportProviderConfig -> coroutineScope.launch(defaultDispatcher) {
-                try {
-                    val parsed = ProviderConfigParser.parse(action.payload).getOrThrow()
-                    val targetKey = parsed.key ?: _state.value.providerKey
-                    val settingsToSave = mutableMapOf("ep" to parsed.endpoint, "mod" to parsed.model)
-                    if (parsed.key != null) {
-                        settingsToSave["key"] = parsed.key
-                    }
-                    storage.saveSettings(settingsToSave)
-                    _state.update {
-                        it.copy(
-                            providerEndpoint = parsed.endpoint,
-                            providerModel = parsed.model,
-                            providerKey = targetKey
-                        )
-                    }
-                    addTransientReceipt(
-                        ReceiptState(
-                            UUID.randomUUID().toString(),
-                            "Imported provider setup (${parsed.model})" + if (parsed.key == null) " [key unchanged]" else "",
-                            null,
-                            isError = false,
-                            timestamp = clock.now()
-                        )
-                    )
-                    refreshUI()
-                } catch (e: Exception) {
+                val parsed = ProviderConfigParser.parse(action.payload).getOrElse { e ->
                     if (e is kotlinx.coroutines.CancellationException) throw e
                     addTransientReceipt(
                         ReceiptState(
@@ -318,7 +401,63 @@ class ChatController(
                         )
                     )
                     refreshUI()
+                    return@launch
                 }
+                _state.update { it.copy(pendingProviderImport = parsed) }
+            }
+            is UiAction.RejectProviderImport -> {
+                _state.update { it.copy(pendingProviderImport = null) }
+            }
+            is UiAction.ConfirmProviderImport -> coroutineScope.launch(defaultDispatcher) {
+                val p = _state.value.pendingProviderImport ?: return@launch
+                val oldHost = runCatching { java.net.URI(_state.value.providerEndpoint).host }.getOrNull()
+                val newHost = runCatching { java.net.URI(p.endpoint).host }.getOrNull()
+                val sameHost = oldHost != null && oldHost.equals(newHost, ignoreCase = true)
+                val settings = mutableMapOf("ep" to p.endpoint, "mod" to p.model, "provider.endpoint" to p.endpoint, "provider.model" to p.model)
+                when {
+                    p.key != null -> {
+                        settings["key"] = p.key
+                        settings["provider.key"] = p.key
+                    }
+                    !sameHost -> {
+                        settings["key"] = "" // Never send the old key to a different host
+                        settings["provider.key"] = ""
+                    }
+                }
+                if (p.fallbackEndpoint != null) {
+                    settings["provider.fallback.endpoint"] = p.fallbackEndpoint
+                    settings["ep.fallback"] = p.fallbackEndpoint
+                }
+                if (p.fallbackModel != null) {
+                    settings["provider.fallback.model"] = p.fallbackModel
+                    settings["model.fallback"] = p.fallbackModel
+                }
+                if (p.fallbackKey != null) {
+                    settings["provider.fallback.key"] = p.fallbackKey
+                    settings["key.fallback"] = p.fallbackKey
+                }
+                storage.saveSettings(settings)
+                _state.update {
+                    it.copy(
+                        pendingProviderImport = null,
+                        providerEndpoint = p.endpoint,
+                        providerModel = p.model,
+                        providerKey = settings["key"] ?: it.providerKey,
+                        fallbackEndpoint = p.fallbackEndpoint ?: it.fallbackEndpoint,
+                        fallbackModel = p.fallbackModel ?: it.fallbackModel,
+                        fallbackKey = p.fallbackKey ?: it.fallbackKey
+                    )
+                }
+                addTransientReceipt(
+                    ReceiptState(
+                        UUID.randomUUID().toString(),
+                        "Imported provider setup (${p.model})" + if (p.key == null && sameHost) " [key unchanged]" else if (!sameHost && p.key == null) " [key cleared]" else "",
+                        null,
+                        isError = false,
+                        timestamp = clock.now()
+                    )
+                )
+                refreshUI()
             }
             is UiAction.CancelReminder -> coroutineScope.launch(defaultDispatcher) {
                 val rem = storage.getPendingReminders().find { it.id == action.id }
@@ -866,6 +1005,17 @@ class ChatController(
                 try {
                     val now = clock.now()
                     storage.dropStaleOutbox(now)
+
+                    if (storage.getSetting("nudge.enabled") == "0") {
+                        _state.update { it.copy(nudgeGate = "disabled") }
+                        return@launch
+                    }
+                    val pausedUntil = storage.getSetting(CompanionActions.KEY_NUDGES_PAUSED)?.toLongOrNull()
+                    if (pausedUntil != null && pausedUntil > now) {
+                        _state.update { it.copy(nudgeGate = "paused") }
+                        return@launch
+                    }
+
                     val dayRule = storage.getEffectiveDayRule(now)
                     val currentDayKey = com.anchor.core.time.DayRollover.computeDayKey(now, dayRule)
                     val isInDayWindow = com.anchor.core.time.DayRollover.isInDayWindow(now, dayRule)
@@ -885,10 +1035,14 @@ class ChatController(
                         } catch (_: Exception) {}
                     }
 
+                    val minGapMinutes = storage.getSetting("nudge.min_gap_minutes")?.toLongOrNull() ?: 60L
+                    val ignoreWindowHours = storage.getSetting("nudge.ignore_window_hours")?.toLongOrNull() ?: 3L
+                    val maxPerDay = storage.getSetting("nudge.max_per_day")?.toIntOrNull() ?: 40
+
                     val state = storage.getProactiveState()
-                    // An ignored thread is closed by the engine after its 3-hour window; running
+                    // An ignored thread is closed by the engine after its window; running
                     // that first is what lets the next nudge out once the window has passed.
-                    val afterIgnore = nudgeEngine.processIgnore(state, now)
+                    val afterIgnore = nudgeEngine.processIgnore(state, now, ignoreWindowHours)
                     if (afterIgnore != state) {
                         storage.saveProactiveState(afterIgnore)
                         if (afterIgnore.backoffStep > state.backoffStep) {
@@ -906,18 +1060,51 @@ class ChatController(
                         _state.update { it.copy(nudgeGate = "no_candidate") }
                         return@launch
                     }
-                    val (candidate, node) = picked
+                    val candidate = picked.candidate
                     val isVehicle = contextEngine?.isVehicleHoldActive() ?: false
-                    when (val gate = nudgeEngine.evaluate(candidate, afterIgnore, isInDayWindow = isInDayWindow, currentDayKey = currentDayKey, isVehicle = isVehicle)) {
-                        is GateResult.Held -> _state.update { it.copy(nudgeGate = gate.reason) }
+                    when (val gate = nudgeEngine.evaluate(
+                        candidate,
+                        afterIgnore,
+                        isInDayWindow = isInDayWindow,
+                        currentDayKey = currentDayKey,
+                        isVehicle = isVehicle,
+                        minGapMinutes = minGapMinutes,
+                        maxPerDay = maxPerDay
+                    )) {
+                        is GateResult.Held -> {
+                            _state.update { it.copy(nudgeGate = gate.reason) }
+                            try {
+                                storage.saveNudgeLog(
+                                    com.anchor.core.models.NudgeLogRecord(
+                                        id = "nl_${UUID.randomUUID()}",
+                                        tsUtc = now,
+                                        triggerType = candidate.triggerType,
+                                        decision = "held",
+                                        reasonJson = gate.reason
+                                    )
+                                )
+                            } catch (_: Exception) {}
+                        }
                         is GateResult.Pass -> {
                             val msgId = "n_${UUID.randomUUID()}"
-                            val text = nudgeText(node)
+                            val text = picked.customText ?: nudgeText(picked.node!!)
                             // The message row is written before the state is advanced: a crash in
                             // between leaves a nudge the user saw but the engine will re-send, which
                             // is recoverable; the reverse loses it silently.
                             storage.insertRawMessage(msgId, "assistant", text)
                             storage.saveProactiveState(nudgeEngine.onNudgeSent(afterIgnore, msgId, now, dayKey = currentDayKey))
+                            try {
+                                storage.saveNudgeLog(
+                                    com.anchor.core.models.NudgeLogRecord(
+                                        id = "nl_${UUID.randomUUID()}",
+                                        tsUtc = now,
+                                        triggerType = candidate.triggerType,
+                                        decision = "pass",
+                                        msgId = msgId
+                                    )
+                                )
+                            } catch (_: Exception) {}
+                            onBackgroundReplyCompleted?.invoke(text)
                             _state.update { it.copy(nudgeGate = "sent") }
                             refreshUI()
                         }
@@ -946,6 +1133,9 @@ class ChatController(
                 } catch (e: Exception) {
                     if (e is kotlinx.coroutines.CancellationException) throw e
                 }
+            }
+            is UiAction.DismissWhyNudge -> {
+                _state.update { it.copy(whyNudgeText = null) }
             }
             is UiAction.LockLearnedPref -> coroutineScope.launch(defaultDispatcher) {
                 try {
@@ -1026,6 +1216,26 @@ class ChatController(
                     refreshUI()
                 }
             }
+            is UiAction.SetProcrastinationMode -> coroutineScope.launch(defaultDispatcher) {
+                try {
+                    storage.saveSetting("procrastination.mode", action.mode)
+                    _state.update { it.copy(procrastinationMode = action.mode) }
+                    refreshUI()
+                } catch (e: Exception) {
+                    if (e is kotlinx.coroutines.CancellationException) throw e
+                }
+            }
+            is UiAction.SetContextSensing -> coroutineScope.launch(defaultDispatcher) {
+                try {
+                    storage.saveSetting("flag.sensing", if (action.enabled) "1" else "0")
+                    storage.saveSetting("sensing.enabled", if (action.enabled) "1" else "0")
+                    _state.update { it.copy(contextSensingEnabled = action.enabled) }
+                    onContextSensingChanged?.invoke(action.enabled)
+                    refreshUI()
+                } catch (e: Exception) {
+                    if (e is kotlinx.coroutines.CancellationException) throw e
+                }
+            }
             is UiAction.AcceptAmbientItem -> coroutineScope.launch(defaultDispatcher) {
                 try {
                     val report = storage.getLatestAmbientReport() ?: return@launch
@@ -1033,12 +1243,31 @@ class ChatController(
                     val target = items.find { it.id == action.itemId } ?: return@launch
 
                     storage.updateAmbientReportItemState(target.id, "accepted", clock.now())
+                    var scheduledNote = ""
                     if (target.nodeId != null) {
                         gateway.handleActivateNode(target.nodeId)
+                        // A suggestion that names a time ("Call Riya at 6pm") becomes a real reminder
+                        // on accept, through the same reschedule path a chat turn would use.
+                        val node = storage.getNode(target.nodeId)
+                        val whenText = node?.takeIf { it.dueAt == null }?.let { com.anchor.core.notifications.NotificationSuggestions.timeSpan(it.title) }
+                        if (whenText != null) {
+                            val r = gateway.executeTool(
+                                com.anchor.core.gateway.ToolCall(
+                                    "propose_change",
+                                    mapOf(
+                                        "intent" to kotlinx.serialization.json.JsonPrimitive("RESCHEDULE"),
+                                        "target_ref" to kotlinx.serialization.json.JsonPrimitive(target.nodeId),
+                                        "due_text" to kotlinx.serialization.json.JsonPrimitive(whenText)
+                                    )
+                                ),
+                                executedCalls = mutableSetOf()
+                            )
+                            if (r is ToolResult.Committed) scheduledNote = " · reminder set"
+                        }
                     }
                     val updatedItems = storage.getAmbientReportItems(report.id)
                     _state.update { it.copy(ambientReportItems = updatedItems) }
-                    addTransientReceipt(ReceiptState(UUID.randomUUID().toString(), "Accepted: ${target.summary}", null, isError = false, timestamp = clock.now()))
+                    addTransientReceipt(ReceiptState(UUID.randomUUID().toString(), "Accepted: ${target.summary}$scheduledNote", null, isError = false, timestamp = clock.now()))
                     refreshUI()
                 } catch (e: Exception) {
                     if (e is kotlinx.coroutines.CancellationException) throw e
@@ -1135,28 +1364,260 @@ class ChatController(
             is UiAction.UpdateHandsFreeState -> {
                 _state.update { it.copy(handsFreeState = action.state) }
             }
+            is UiAction.ToggleWebSearch -> {
+                val next = !_state.value.webSearchEnabled
+                _state.update { it.copy(webSearchEnabled = next) }
+                gateway.webSearchEnabled = next
+                coroutineScope.launch(defaultDispatcher) {
+                    storage.saveSetting("web_search.enabled", if (next) "1" else "0")
+                }
+            }
+            is UiAction.SetWebSearch -> {
+                _state.update { it.copy(webSearchEnabled = action.enabled) }
+                gateway.webSearchEnabled = action.enabled
+                coroutineScope.launch(defaultDispatcher) {
+                    storage.saveSetting("web_search.enabled", if (action.enabled) "1" else "0")
+                }
+            }
+            is UiAction.CreateTopicNote -> coroutineScope.launch(defaultDispatcher) {
+                val now = clock.now()
+                val id = "tn_${UUID.randomUUID().toString().take(8)}"
+                val cleanedBullets = action.bullets.map { it.trim().removePrefix("-").removePrefix("*").trim() }.filter { it.isNotBlank() }
+                val newNote = TopicNote(
+                    id = id,
+                    topic = action.topic.trim(),
+                    content = cleanedBullets.joinToString("\n") { "- $it" },
+                    bulletsJson = json.encodeToString(cleanedBullets),
+                    pinned = action.pinned,
+                    lastEditedAt = now,
+                    createdAt = now
+                )
+                storage.saveTopicNote(newNote)
+                val uId = "u_${UUID.randomUUID()}"
+                val event = RawEvent(
+                    opId = uId,
+                    opType = "CREATE",
+                    targetType = "topic_note",
+                    targetId = id,
+                    beforeJson = null,
+                    afterJson = json.encodeToString(newNote),
+                    tsUtc = now
+                )
+                storage.insertRawEvent(event)
+                addTransientReceipt(ReceiptState(uId, "Created note: ${newNote.topic}", uId, isError = false, timestamp = now))
+                refreshUI()
+            }
+            is UiAction.AddTopicNoteBullet -> coroutineScope.launch(defaultDispatcher) {
+                val note = storage.getTopicNote(action.id) ?: storage.getAllTopicNotes().find { it.id == action.id }
+                if (note != null) {
+                    val now = clock.now()
+                    val existingBullets = try {
+                        json.decodeFromString<List<String>>(note.bulletsJson)
+                    } catch (_: Exception) {
+                        note.content.lines().map { it.removePrefix("-").trim() }.filter { it.isNotBlank() }
+                    }
+                    val bulletClean = action.bullet.trim().removePrefix("-").removePrefix("*").trim()
+                    if (bulletClean.isNotBlank()) {
+                        val updatedBullets = existingBullets + bulletClean
+                        val updatedNote = note.copy(
+                            content = updatedBullets.joinToString("\n") { "- $it" },
+                            bulletsJson = json.encodeToString(updatedBullets),
+                            lastEditedAt = now
+                        )
+                        storage.saveTopicNote(updatedNote)
+                        val uId = "u_${UUID.randomUUID()}"
+                        val event = RawEvent(
+                            opId = uId,
+                            opType = "UPDATE",
+                            targetType = "topic_note",
+                            targetId = note.id,
+                            beforeJson = json.encodeToString(note),
+                            afterJson = json.encodeToString(updatedNote),
+                            tsUtc = now
+                        )
+                        storage.insertRawEvent(event)
+                        addTransientReceipt(ReceiptState(uId, "Updated note: ${note.topic}", uId, isError = false, timestamp = now))
+                        refreshUI()
+                    }
+                }
+            }
+            is UiAction.TogglePinTopicNote -> coroutineScope.launch(defaultDispatcher) {
+                val note = storage.getTopicNote(action.id) ?: storage.getAllTopicNotes().find { it.id == action.id }
+                if (note != null) {
+                    val now = clock.now()
+                    val updatedNote = note.copy(
+                        pinned = !note.pinned,
+                        lastEditedAt = now
+                    )
+                    storage.saveTopicNote(updatedNote)
+                    val uId = "u_${UUID.randomUUID()}"
+                    val event = RawEvent(
+                        opId = uId,
+                        opType = "UPDATE",
+                        targetType = "topic_note",
+                        targetId = note.id,
+                        beforeJson = json.encodeToString(note),
+                        afterJson = json.encodeToString(updatedNote),
+                        tsUtc = now
+                    )
+                    storage.insertRawEvent(event)
+                    val msg = if (updatedNote.pinned) "Pinned note: ${note.topic}" else "Unpinned note: ${note.topic}"
+                    addTransientReceipt(ReceiptState(uId, msg, uId, isError = false, timestamp = now))
+                    refreshUI()
+                }
+            }
+            is UiAction.DeleteTopicNote -> coroutineScope.launch(defaultDispatcher) {
+                val note = storage.getTopicNote(action.id) ?: storage.getAllTopicNotes().find { it.id == action.id }
+                if (note != null) {
+                    val now = clock.now()
+                    storage.deleteTopicNote(action.id)
+                    val uId = "u_${UUID.randomUUID()}"
+                    val event = RawEvent(
+                        opId = uId,
+                        opType = "DELETE",
+                        targetType = "topic_note",
+                        targetId = note.id,
+                        beforeJson = json.encodeToString(note),
+                        afterJson = null,
+                        tsUtc = now
+                    )
+                    storage.insertRawEvent(event)
+                    addTransientReceipt(ReceiptState(uId, "Deleted note: ${note.topic}", uId, isError = false, timestamp = now))
+                    refreshUI()
+                }
+            }
+            is UiAction.SetCurrentWifiAsHome -> coroutineScope.launch(defaultDispatcher) {
+                val now = clock.now()
+                val place = com.anchor.core.sensing.Place(
+                    id = "place_home",
+                    kind = "home",
+                    label = "Home",
+                    updatedAt = now
+                )
+                val signal = com.anchor.core.sensing.PlaceSignal(
+                    placeId = "place_home",
+                    wifiJson = """{"ssid":"home_wifi","bssids":[]}"""
+                )
+                storage.savePlace(place, signal)
+                addTransientReceipt(ReceiptState(UUID.randomUUID().toString(), "Enrolled Home Wi-Fi", null, isError = false, timestamp = now))
+                refreshUI()
+            }
+            is UiAction.SetPostCallNudges -> coroutineScope.launch(defaultDispatcher) {
+                val v = if (action.enabled) "1" else "0"
+                storage.saveSetting("flag.call_nudge", v)
+                storage.saveSetting("callnudge.enabled", v)
+                storage.saveSetting("flag.call_nudges", v)
+                _state.update { it.copy(postCallNudgesEnabled = action.enabled) }
+                onPostCallNudgesChanged?.invoke(action.enabled)
+                refreshUI()
+            }
+            is UiAction.SetOnDeviceFallback -> coroutineScope.launch(defaultDispatcher) {
+                val v = if (action.enabled) "1" else "0"
+                storage.saveSetting("provider.ondevice.enabled", v)
+                storage.saveSetting("flag.ondevice_llm", v)
+                _state.update { it.copy(onDeviceFallbackEnabled = action.enabled) }
+                refreshUI()
+            }
+            is UiAction.SetMoodTracking -> coroutineScope.launch(defaultDispatcher) {
+                storage.saveSetting("flag.mood_tracking", if (action.enabled) "1" else "0")
+                _state.update { it.copy(moodTrackingEnabled = action.enabled) }
+                refreshUI()
+            }
+            is UiAction.SetHideNotificationContent -> coroutineScope.launch(defaultDispatcher) {
+                val v = if (action.enabled) "1" else "0"
+                storage.saveSetting("privacy.hide_notification_content", v)
+                storage.saveSetting("flag.hide_notification_content", v)
+                _state.update { it.copy(hideNotificationContent = action.enabled) }
+                refreshUI()
+            }
+            is UiAction.SetSoulAutoAcceptMode -> coroutineScope.launch(defaultDispatcher) {
+                val mode = if (action.enabled) "auto" else "ask"
+                storage.saveSetting("soul.mode", mode)
+                storage.saveSetting("soul.auto_accept", if (action.enabled) "1" else "0")
+                _state.update { it.copy(soulAutoAcceptMode = action.enabled) }
+                refreshUI()
+            }
+            is UiAction.SaveFallbackProvider -> coroutineScope.launch(defaultDispatcher) {
+                val ep = action.endpoint.trim()
+                val k = action.key.trim()
+                val m = action.model.trim()
+                storage.saveSetting("provider.fallback.endpoint", ep)
+                storage.saveSetting("provider.fallback.key", k)
+                storage.saveSetting("provider.fallback.model", m)
+                storage.saveSetting("ep.fallback", ep)
+                storage.saveSetting("key.fallback", k)
+                storage.saveSetting("model.fallback", m)
+                _state.update { it.copy(fallbackEndpoint = ep, fallbackKey = k, fallbackModel = m) }
+                refreshUI()
+            }
+            is UiAction.SetFallbackModel -> coroutineScope.launch(defaultDispatcher) {
+                val m = action.model.trim()
+                storage.saveSetting("provider.fallback.model", m)
+                storage.saveSetting("model.fallback", m)
+                _state.update { it.copy(fallbackModel = m) }
+                refreshUI()
+            }
+            is UiAction.RetryNow -> coroutineScope.launch(defaultDispatcher) {
+                val primaryKey = _state.value.providerKey
+                val fallbackKey = _state.value.fallbackKey
+                if (primaryKey.isNotBlank()) rateLimiter?.clearCooldown(primaryKey)
+                if (fallbackKey.isNotBlank()) rateLimiter?.clearCooldown(fallbackKey)
+                _state.update { it.copy(connectionError = null, providerCooldownExpiry = null) }
+                drainQueuedTurns()
+                refreshUI()
+            }
+            is UiAction.SetAutoBackup -> coroutineScope.launch(defaultDispatcher) {
+                val boolStr = if (action.enabled) "true" else "false"
+                val digitStr = if (action.enabled) "1" else "0"
+                storage.saveSetting("export.auto.enabled", boolStr)
+                storage.saveSetting("backup.auto_enabled", digitStr)
+                _state.update { it.copy(autoBackupEnabled = action.enabled) }
+                refreshUI()
+            }
+            is UiAction.SetAutoBackupUri -> coroutineScope.launch(defaultDispatcher) {
+                storage.saveSetting("export.auto.folder_uri", action.uri)
+                storage.saveSetting("backup.auto_uri", action.uri)
+                _state.update { it.copy(autoBackupUri = action.uri) }
+                refreshUI()
+            }
             else -> {}
         }
     }
 
+    private data class PickedNudge(
+        val candidate: NudgeCandidate,
+        val node: Node? = null,
+        val customText: String? = null
+    )
+
     /**
-     * Blueprint 31 §3.2: the v1 slice has exactly one trigger — an open item whose due time has
-     * passed. Local-only items are skipped: they are invisible to the model and to chat (H2), and
-     * a nudge is a chat message. The oldest overdue item wins so the same item is not starved by
-     * a newer one, and a null due time is never overdue.
+     * Blueprint 31 §3.2: the v1 slice has overdue item triggers and grounded casual check-in triggers.
+     * Local-only items are skipped: they are invisible to the model and to chat (H2).
      */
-    private suspend fun pickNudgeCandidate(state: ProactiveState): Pair<NudgeCandidate, Node>? {
+    private suspend fun pickNudgeCandidate(state: ProactiveState): PickedNudge? {
         val now = clock.now()
         val overdue = storage.getActiveNodes(NUDGE_SCAN_PAGE)
             .filter { !it.localOnly && it.dueAt != null && it.dueAt < now }
             .minByOrNull { it.dueAt!! }
-            ?: return null
-        // Blueprint 31 §3.3: a candidate is worth sending only if it scores at or above the
-        // threshold, which falls as time passes since the last contact.
-        val baseValue = 20.0 + (overdue.priority * 5.0) + (overdue.severity * 5.0)
-        val candidate = NudgeCandidate("overdue_item", isCritical = false, baseValue = baseValue)
-        if (candidate.baseValue < nudgeEngine.calculateThreshold(state)) return null
-        return candidate to overdue
+
+        if (overdue != null) {
+            val baseValue = 20.0 + (overdue.priority * 5.0) + (overdue.severity * 5.0)
+            val candidate = NudgeCandidate("overdue_item", isCritical = false, baseValue = baseValue)
+            if (candidate.baseValue >= nudgeEngine.calculateThreshold(state)) {
+                return PickedNudge(candidate, overdue, null)
+            }
+        }
+
+        // Blueprint 31 casual checkin: when no overdue item or below threshold, check if threshold is cool (<= 22.0)
+        if (nudgeEngine.calculateThreshold(state) <= 22.0) {
+            val casualMsg = checkinBuilder.buildGroundedCasualCheckin(now)
+            if (!casualMsg.isNullOrBlank()) {
+                val candidate = NudgeCandidate("casual_checkin", isCritical = false, baseValue = 25.0)
+                return PickedNudge(candidate, null, customText = casualMsg)
+            }
+        }
+
+        return null
     }
 
     /** Blueprint 31 §3.7 template text: no model call, styled by active persona. */
@@ -1191,6 +1652,7 @@ class ChatController(
         coroutineScope.launch(defaultDispatcher) {
             sendMutex.withLock {
                 currentStreamJob = currentCoroutineContext()[Job]
+                workerAiJob?.cancel()
                 try {
                     val before = storage.getProactiveState()
                     if (before.openThreadMsgId != null) {
@@ -1210,14 +1672,31 @@ class ChatController(
                 try {
                     _state.update { it.copy(isChatLoading = true, connectionError = null) }
                     val key = storage.getSetting("key") ?: ""
-                    if (key.isBlank()) {
+                    val onDeviceOnly = key.isBlank() &&
+                        (storage.getSetting("provider.ondevice.enabled") == "1" || storage.getSetting("flag.ondevice_llm") == "1")
+                    if (key.isBlank() && !onDeviceOnly) {
+                        val activeUserMsgId = userMsgId ?: "u_${UUID.randomUUID()}"
+                        val quickAdd = ruleBasedQuickAdd.parse(text)
+                        if (quickAdd != null) {
+                            _state.update { it.copy(isChatLoading = false) }
+                            handleOfflineQuickAdd(quickAdd, text, if (userMsgId == null) null else activeUserMsgId)
+                            return@withLock
+                        }
+                        val talk = ChatResilience.classifySmallTalk(text)
+                        if (talk != null) {
+                            replyLocally(text, userMsgId, talk, connected = false)
+                            return@withLock
+                        }
+                        enqueueChatTurn(text, userMsgId)
                         _state.update {
                             it.copy(
                                 isChatLoading = false,
-                                connectionError = "Connect an AI provider in Settings first."
+                                connectionError = "Connect an AI provider in Settings and I'll answer this. Your message is saved.",
+                                connectionErrorRetryable = false,
+                                connectionErrorNeedsSettings = true
                             )
                         }
-                        QuickCapture.notifyCaptureFailed(userMsgId)
+                        refreshUI()
                         return@withLock
                     }
                     _state.update {
@@ -1228,11 +1707,16 @@ class ChatController(
                         )
                     }
 
-                    if (!networkAvailable()) {
+                    if (!networkAvailable() && !onDeviceOnly) {
                         _state.update { it.copy(isChatLoading = false) }
                         val quickAdd = ruleBasedQuickAdd.parse(text)
                         if (quickAdd != null) {
                             handleOfflineQuickAdd(quickAdd, text, userMsgId)
+                            return@withLock
+                        }
+                        val talk = ChatResilience.classifySmallTalk(text)
+                        if (talk != null) {
+                            replyLocally(text, userMsgId, talk, connected = true)
                             return@withLock
                         }
                         enqueueChatTurn(text, userMsgId)
@@ -1241,12 +1725,44 @@ class ChatController(
 
                     executeChatTurn(text, userMsgId, queuedBatch = false, batchIds = emptyList())
                 } finally {
+                    isDraining.set(false)
                     if (currentStreamJob == currentCoroutineContext()[Job]) {
                         currentStreamJob = null
                     }
                 }
             }
         }
+    }
+
+    /**
+     * Answers a greeting / thanks / "how are you" on the device, so social messages are never
+     * met with silence when no model can be reached. Stores the user row (unless the caller
+     * already did) and the reply, like any other turn.
+     */
+    private suspend fun replyLocally(
+        text: String,
+        userMsgId: String?,
+        kind: ChatResilience.SmallTalkKind,
+        connected: Boolean,
+        alreadyStored: Boolean = false
+    ) {
+        val id = userMsgId ?: "u_${UUID.randomUUID()}"
+        if (userMsgId == null && !alreadyStored) storage.insertRawMessage(id, "user", text)
+        val now = clock.now()
+        val hour = try {
+            val rule = storage.getEffectiveDayRule(now)
+            java.util.Calendar.getInstance(DayRollover.safeTimeZone(rule.tzId)).apply { timeInMillis = now }.get(java.util.Calendar.HOUR_OF_DAY)
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            12
+        }
+        val name = storage.getSetting(CompanionActions.KEY_USER_NAME)
+        val reply = ChatResilience.smallTalkReply(kind, name, connected, hour)
+        val botId = "m_${UUID.randomUUID()}"
+        storage.insertRawMessage(botId, "assistant", reply, causeMsgId = id)
+        _state.update { it.copy(isChatLoading = false) }
+        refreshUI()
+        onBackgroundReplyCompleted?.invoke(reply)
     }
 
     /**
@@ -1292,7 +1808,6 @@ class ChatController(
             QuickCapture.notifyCaptureFailed(userMsgId)
             return
         }
-        _state.update { it.copy(connectionError = null) }
         refreshUI()
     }
 
@@ -1366,6 +1881,7 @@ class ChatController(
         addTransientReceipt(receipt)
         _state.update { it.copy(isChatLoading = false) }
         refreshUI()
+        onBackgroundReplyCompleted?.invoke(replyText)
     }
 
     /**
@@ -1380,16 +1896,29 @@ class ChatController(
      * finds nothing due instead of sending the same messages twice.
      */
     suspend fun drainQueuedTurns() {
+        if (!isDraining.compareAndSet(false, true)) return
         try {
-            if (_state.value.isChatLoading || sendMutex.isLocked) return
-            if (!networkAvailable()) return
+            if (_state.value.isChatLoading || sendMutex.isLocked) {
+                isDraining.set(false)
+                return
+            }
+            if (!networkAvailable()) {
+                isDraining.set(false)
+                return
+            }
             val key = storage.getSetting("key") ?: ""
-            if (key.isBlank()) return
+            if (key.isBlank()) {
+                isDraining.set(false)
+                return
+            }
 
             val now = clock.now()
             storage.dropStaleOutbox(now)
             val due = storage.getDueOutbox(OutboxJob.JOB_CHAT_TURN, now)
-            if (due.isEmpty()) return
+            if (due.isEmpty()) {
+                isDraining.set(false)
+                return
+            }
             val validDue = mutableListOf<Pair<OutboxJob, String>>()
             for (job in due) {
                 val msgId = queuedMsgId(job)
@@ -1400,7 +1929,10 @@ class ChatController(
                     validDue.add(job to msgId)
                 }
             }
-            if (validDue.isEmpty()) return
+            if (validDue.isEmpty()) {
+                isDraining.set(false)
+                return
+            }
             val ids = validDue.map { it.second }
             for ((job, _) in validDue) {
                 storage.claimOutbox(job.id, now + QUEUE_CLAIM_MS, now)
@@ -1421,6 +1953,7 @@ class ChatController(
             // stored, which is the one moment "answered" is a fact (see markBatchAnswered).
             handleSendMessage(offlineBatchInstruction(ids, now), existingUserMsgId = null, queuedBatch = true, batchIds = ids)
         } catch (e: Exception) {
+            isDraining.set(false)
             if (e is kotlinx.coroutines.CancellationException) throw e
             addTransientReceipt(ReceiptState(UUID.randomUUID().toString(), "Could not send saved messages: ${e.message ?: e.javaClass.simpleName}", null, isError = true, timestamp = clock.now()))
             refreshUI()
@@ -1487,16 +2020,25 @@ class ChatController(
         coroutineScope.launch(defaultDispatcher) {
             sendMutex.withLock {
                 currentStreamJob = currentCoroutineContext()[Job]
+                workerAiJob?.cancel()
                 try {
                     _state.update { it.copy(isChatLoading = true, connectionError = null) }
                     executeChatTurn(text, existingUserMsgId, queuedBatch, batchIds)
                 } finally {
+                    isDraining.set(false)
                     if (currentStreamJob == currentCoroutineContext()[Job]) {
                         currentStreamJob = null
                     }
                 }
             }
         }
+    }
+
+    private fun isTransientProviderError(e: Throwable): Boolean = when (val root = (e as? AllProvidersFailedException)?.cause ?: e) {
+        is HttpStatusException -> root.isTransient
+        is Http429Exception, is ProviderTimeoutException -> true
+        is java.io.IOException -> true
+        else -> false
     }
 
     private suspend fun executeChatTurn(
@@ -1507,6 +2049,8 @@ class ChatController(
     ) {
         var activeUserMsgId: String? = existingUserMsgId
         var activeBatchIds: List<String> = emptyList()
+        var anyLoopCommitted = false
+        var turnTainted = false
         try {
             currentBotId = null
             // Read before the turn starts: a capture queued while this turn is streaming must
@@ -1517,19 +2061,100 @@ class ChatController(
             val userMsgId = existingUserMsgId ?: "u_${UUID.randomUUID()}"
             activeUserMsgId = userMsgId
 
+            val cleanText = text.trim()
+            if (storage.getOpenProposals().isEmpty() && TALK_LATER_REGEX.matches(cleanText)) {
+                if (existingUserMsgId == null && !queuedBatch) {
+                    storage.insertRawMessage(userMsgId, "user", text)
+                }
+                val recent6 = storage.getRecentMessages(6)
+                val previousTurns = recent6.filter { it.id != userMsgId && !it.content.isNullOrBlank() }
+                val lastTopic = previousTurns.lastOrNull()?.content?.take(100)?.replace("\n", " ")?.trim()
+
+                val wakeupTime = clock.now() + 2 * 3600_000L
+                val wakeupId = "aw_defer_${UUID.randomUUID().toString().take(6)}"
+                val checkinReason = if (!lastTopic.isNullOrBlank()) {
+                    "Earlier we were talking about: \"$lastTopic\" — you were busy then. Ready to pick that back up?"
+                } else {
+                    "Checking back in—are you free to chat now?"
+                }
+                val encodedTopic = kotlinx.serialization.json.Json.encodeToString(kotlinx.serialization.serializer(), lastTopic ?: "")
+                val wakeup = com.anchor.core.models.AgentWakeup(
+                    id = wakeupId,
+                    fireAt = wakeupTime,
+                    reason = checkinReason,
+                    payloadJson = """{"type":"DEFERRED_CHECKIN","topic":$encodedTopic}""",
+                    state = "pending",
+                    createdAt = clock.now()
+                )
+                storage.saveAgentWakeup(wakeup)
+                alarmScheduler.scheduleAgentWakeup(wakeupId, wakeupTime)
+
+                val replyText = "Understood! I'll check back in with you in a couple of hours."
+                val botMsgId = "m_${UUID.randomUUID()}"
+                storage.insertRawMessage(botMsgId, "assistant", replyText)
+                _state.update { it.copy(isChatLoading = false) }
+                refreshUI()
+                onBackgroundReplyCompleted?.invoke(replyText)
+                return
+            }
+
+            val breakMatch = BREAK_REGEX.find(cleanText)
+            if (breakMatch != null) {
+                if (existingUserMsgId == null && !queuedBatch) {
+                    storage.insertRawMessage(userMsgId, "user", text)
+                }
+                val mins = breakMatch.groupValues[1].toLongOrNull() ?: 15L
+                val untilMs = clock.now() + mins * 60_000L
+                storage.saveSetting("break.until_ms", untilMs.toString())
+
+                val wakeupId = "aw_break_${UUID.randomUUID().toString().take(6)}"
+                val reason = "Your $mins-minute break is up! Ready to jump back in?"
+                val wakeup = com.anchor.core.models.AgentWakeup(
+                    id = wakeupId,
+                    fireAt = untilMs,
+                    reason = reason,
+                    payloadJson = """{"type":"BREAK_TIMER","mins":$mins}""",
+                    state = "pending",
+                    createdAt = clock.now()
+                )
+                storage.saveAgentWakeup(wakeup)
+                alarmScheduler.scheduleAgentWakeup(wakeupId, untilMs)
+
+                val replyText = "Enjoy your $mins-minute break! I'll ping you when it's time to dive back in."
+                val botMsgId = "m_${UUID.randomUUID()}"
+                storage.insertRawMessage(botMsgId, "assistant", replyText)
+                _state.update { it.copy(isChatLoading = false) }
+                refreshUI()
+                onBackgroundReplyCompleted?.invoke(replyText)
+                return
+            }
+
+            val onDeviceEnabled = storage.getSetting("provider.ondevice.enabled") == "1" || storage.getSetting("flag.ondevice_llm") == "1"
             if (!networkAvailable() && !queuedBatch) {
                 val quickAdd = ruleBasedQuickAdd.parse(text)
                 if (quickAdd != null) {
                     handleOfflineQuickAdd(quickAdd, text, existingUserMsgId)
                     return
                 }
-                enqueueChatTurn(text, existingUserMsgId)
-                refreshUI()
-                return
+                if (!onDeviceEnabled) {
+                    enqueueChatTurn(text, existingUserMsgId)
+                    refreshUI()
+                    return
+                }
             }
 
-                if (existingUserMsgId == null && !queuedBatch) storage.insertRawMessage(userMsgId, "user", text)
-                refreshUI()
+                if (existingUserMsgId == null && !queuedBatch) {
+                    storage.insertRawMessage(userMsgId, "user", text)
+                }
+                if (!queuedBatch) {
+                    _state.update {
+                        val msgs = if (it.chatMessages.none { m -> m.id == userMsgId }) {
+                            it.chatMessages + ChatMessage(userMsgId, "user", text)
+                        } else it.chatMessages
+                        it.copy(chatMessages = msgs, chatItems = ChatTimelineBuilder.build(msgs, it.receipts, it.openProposals))
+                    }
+                    refreshUI()
+                }
 
                 gateway.aliasRegistry.clear()
                 val contextLine = contextEngine?.formatNowContext()
@@ -1545,27 +2170,28 @@ class ChatController(
                 var turnComplete = false
                 var loops = 0
                 val executedCalls = mutableSetOf<String>()
+                var emptyRetries = 0
+                var trimmedForOverflow = false
+                var lastSubstantiveReply: String? = null
 
                 while (!turnComplete && loops < 4) {
                     loops++
                     val payload = buildJsonPayload(pack)
                     val rpm = storage.getSetting("provider.rpm_default")?.toIntOrNull() ?: 20
                     val chain = mutableListOf<Target>()
-                    if (_state.value.providerKey.isNotBlank()) {
-                        chain.add(Target(_state.value.providerEndpoint, _state.value.providerKey, rpm))
+                    if (networkAvailable() && _state.value.providerKey.isNotBlank()) {
+                        chain.add(Target(_state.value.providerEndpoint, _state.value.providerKey, rpm, model = _state.value.providerModel))
                     }
-                    val fallbackEndpoint = storage.getSetting("provider.fallback.endpoint") ?: storage.getSetting("ep_fallback")
-                    val fallbackKey = storage.getSetting("provider.fallback.key") ?: storage.getSetting("key_fallback")
+                    val fallbackEndpoint = storage.getSetting("provider.fallback.endpoint") ?: storage.getSetting("ep.fallback") ?: storage.getSetting("ep_fallback")
+                    val fallbackKey = storage.getSetting("provider.fallback.key") ?: storage.getSetting("key.fallback") ?: storage.getSetting("key_fallback")
                     val fallbackRpm = storage.getSetting("provider.fallback.rpm")?.toIntOrNull() ?: rpm
-                    if (!fallbackEndpoint.isNullOrBlank() && !fallbackKey.isNullOrBlank()) {
-                        chain.add(Target(fallbackEndpoint, fallbackKey, fallbackRpm))
+                    val fallbackModel = storage.getSetting("provider.fallback.model") ?: storage.getSetting("model.fallback") ?: storage.getSetting("model_fallback")
+                    if (networkAvailable() && !fallbackEndpoint.isNullOrBlank() && !fallbackKey.isNullOrBlank()) {
+                        chain.add(Target(fallbackEndpoint, fallbackKey, fallbackRpm, model = fallbackModel))
                     }
                     val onDeviceEnabled = storage.getSetting("provider.ondevice.enabled") == "1" || storage.getSetting("flag.ondevice_llm") == "1"
-                    if (onDeviceEnabled) {
+                    if (onDeviceEnabled || chain.isEmpty()) {
                         chain.add(Target("local://ondevice", "local", 120))
-                    }
-                    if (chain.isEmpty()) {
-                        chain.add(Target(_state.value.providerEndpoint, _state.value.providerKey, rpm))
                     }
 
                     val botId = "a_${UUID.randomUUID()}"
@@ -1573,23 +2199,40 @@ class ChatController(
                     val botResponse = java.lang.StringBuilder()
                     var lastUpdate = 0L
 
-                    _state.update { it.copy(chatMessages = it.chatMessages + ChatMessage(botId, "assistant", "")) }
+                    _state.update {
+                        val msgs = it.chatMessages + ChatMessage(botId, "assistant", "")
+                        it.copy(chatMessages = msgs, chatItems = ChatTimelineBuilder.build(msgs, it.receipts, it.openProposals))
+                    }
 
-                    orchestrator.chat(chain, payload).collect { event ->
-                        if (event is StreamEvent.Clear) {
-                            botResponse.clear()
-                        } else if (event is StreamEvent.TextDelta) {
-                            botResponse.append(event.text)
-                            if (clock.now() - lastUpdate > 100) {
-                                // B7: Incremental streaming of JSON 'reply' field natively
-                                val currentText = botResponse.toString()
-                                val display = extractReplyFromJsonStream(currentText)
-                                if (display != null) {
-                                    updateLastMessage(botId, display)
+                    try {
+                        orchestrator.chat(chain, payload, envelopeMode = true).collect { event ->
+                            if (event is StreamEvent.Clear) {
+                                botResponse.clear()
+                            } else if (event is StreamEvent.TextDelta) {
+                                botResponse.append(event.text)
+                                if (clock.now() - lastUpdate > 100) {
+                                    // B7: Incremental streaming of JSON 'reply' field natively
+                                    val currentText = botResponse.toString()
+                                    val display = extractReplyFromJsonStream(currentText)
+                                    if (display != null) {
+                                        updateLastMessage(botId, display)
+                                    }
+                                    lastUpdate = clock.now()
                                 }
-                                lastUpdate = clock.now()
                             }
                         }
+                    } catch (e: Exception) {
+                        if (e is CancellationException) throw e
+                        // A prompt that outgrew the model's context is fixed by a shorter one, not by
+                        // failing the turn: retry once with the newest history only.
+                        if (!trimmedForOverflow && ChatResilience.isContextOverflow(e)) {
+                            trimmedForOverflow = true
+                            dropPlaceholder(botId)
+                            pack = trimPackForOverflow(pack)
+                            loops--
+                            continue
+                        }
+                        throw e
                     }
 
                     // Flush any remaining characters immediately so nothing is dropped before tool execution
@@ -1606,12 +2249,37 @@ class ChatController(
                         var hasCommitted = false
                         val turnReceipts = mutableListOf<ReceiptState>()
                         val turnErrors = mutableListOf<String>()
+                        val toolResults = mutableListOf<ToolResult>()
 
                         envelope.calls.forEach { call ->
-                            val result = gateway.executeTool(call, executedCalls, userMessage = text, causeMsgId = userMsgId)
+                            if (call.tool == "web_search") {
+                                val query = (call.args["query"] ?: call.args["q"])?.toString()?.trim('"', ' ')
+                                if (!query.isNullOrBlank()) {
+                                    _state.update { it.copy(lastWebSearchQuery = query) }
+                                }
+                            }
+                            val effectiveUserMessage = if (queuedBatch) {
+                                if (activeBatchIds.isNotEmpty()) {
+                                    storage.getRecentMessages(20)
+                                        .filter { it.id in activeBatchIds }
+                                        .mapNotNull { it.content }
+                                        .joinToString(" ")
+                                        .ifBlank { null }
+                                } else null
+                            } else text
+                            val effectiveCauseMsgId = if (queuedBatch) activeBatchIds.lastOrNull() ?: userMsgId else userMsgId
+                            val result = gateway.executeTool(
+                                call,
+                                executedCalls,
+                                userMessage = effectiveUserMessage,
+                                causeMsgId = effectiveCauseMsgId,
+                                untrustedContentInTurn = turnTainted
+                            )
+                            toolResults.add(result)
                             val rawText = when(result) {
                                 is ToolResult.Committed -> {
                                     hasCommitted = true
+                                    anyLoopCommitted = true
                                     "Committed. ${result.message}"
                                 }
                                 is ToolResult.Ambiguous -> {
@@ -1653,23 +2321,53 @@ class ChatController(
                         turnReceipts.forEach { addTransientReceipt(it.copy(timestamp = clock.now())) }
                         refreshUI()
 
+                        if (envelope.calls.any { it.tool == "web_search" } && toolResults.any { it is ToolResult.Data }) {
+                            turnTainted = true
+                        }
+
+                        val hasData = toolResults.any { it is ToolResult.Data }
+                        val hasQuestion = envelope.reply.contains('?')
                         if (envelope.calls.isEmpty() || hasCommitted || turnErrors.isNotEmpty()) {
-                            turnComplete = true
+                            if (!(hasData && !hasQuestion && turnErrors.isEmpty() && loops < 3)) {
+                                turnComplete = true
+                            }
                         }
 
                         // Stop storing model "Done!" prose when receipts already show the change
                         val rawReply = envelope.reply.trim()
                         val isGenericDone = rawReply.lowercase().removeSuffix(".").removeSuffix("!") in setOf("done", "saved", "added", "acknowledged", "ok")
-                        val baseText = if (isGenericDone && hasCommitted && turnErrors.isEmpty()) {
+                        val baseText = if (isGenericDone && (hasCommitted || anyLoopCommitted) && turnErrors.isEmpty()) {
                             "" // Suppress generic "Done!" when commit receipts exist
                         } else {
                             rawReply
                         }
 
-                        val finalAssistantText = if (turnErrors.isNotEmpty()) {
-                            if (hasCommitted && baseText.isNotBlank()) "$baseText\n\n(${turnErrors.joinToString("; ")})"
+                        val composedAssistantText = if (turnErrors.isNotEmpty()) {
+                            if ((hasCommitted || anyLoopCommitted) && baseText.isNotBlank()) "$baseText\n\n(${turnErrors.joinToString("; ")})"
                             else turnErrors.joinToString("\n")
                         } else baseText
+
+                        if (!ChatResilience.isProgressOnly(composedAssistantText)) lastSubstantiveReply = composedAssistantText
+
+                        // A turn that did nothing and said nothing is a model hiccup, not an answer:
+                        // ask once more, then fall back to a plain apology instead of silence.
+                        val nothingHappened = composedAssistantText.isBlank() && !hasCommitted && !anyLoopCommitted &&
+                            turnReceipts.isEmpty() && toolResults.none {
+                                it is ToolResult.Ambiguous || it is ToolResult.NeedsConfirm || it is ToolResult.NeedsTime || it is ToolResult.Data
+                            }
+                        if (turnComplete && nothingHappened && emptyRetries == 0 && loops < 4) {
+                            emptyRetries++
+                            turnComplete = false
+                            dropPlaceholder(botId)
+                            pack = pack + ChatMessage(botId, "assistant", rawBot.trim().ifBlank { """{"reply":"","calls":[]}""" }) +
+                                ChatMessage("sys_${UUID.randomUUID()}", "user", ChatResilience.EMPTY_REPLY_FEEDBACK)
+                            continue
+                        }
+                        val finalAssistantText = if (turnComplete && nothingHappened) {
+                            ChatResilience.classifySmallTalk(text)?.let { kind ->
+                                ChatResilience.smallTalkReply(kind, storage.getSetting(CompanionActions.KEY_USER_NAME), true, 12)
+                            } ?: ChatResilience.EMPTY_REPLY
+                        } else composedAssistantText
 
                         if (turnComplete) {
                             // Avoid inserting empty placeholder messages if we purely generated receipts
@@ -1681,22 +2379,34 @@ class ChatController(
                                 pack = pack + ChatMessage(botId, "assistant", finalAssistantText)
                                 if (activeBatchIds.isNotEmpty()) markBatchAnswered(activeBatchIds)
                             } else {
-                                _state.update { it.copy(chatMessages = it.chatMessages.dropLast(1)) }
+                                _state.update {
+                                    val msgs = it.chatMessages.dropLast(1)
+                                    it.copy(chatMessages = msgs, chatItems = ChatTimelineBuilder.build(msgs, it.receipts, it.openProposals))
+                                }
                                 currentBotId = null
-                                if (hasCommitted && activeBatchIds.isNotEmpty()) markBatchAnswered(activeBatchIds)
+                                if ((hasCommitted || anyLoopCommitted) && activeBatchIds.isNotEmpty()) markBatchAnswered(activeBatchIds)
                             }
+                            val replySnippet = when {
+                                finalAssistantText.isNotBlank() -> finalAssistantText
+                                turnReceipts.isNotEmpty() -> turnReceipts.joinToString("; ") { it.message }
+                                else -> "Action completed"
+                            }
+                            onBackgroundReplyCompleted?.invoke(replySnippet)
+                            triggerWorkerAiDebounced()
                         } else {
                             // Multi-step tool loop: intermediate turn continuing to next loop.
+                            // Do not insert intermediate assistant bubble into storage raw_message.
                             // Always append an assistant message to pack so the subsequent system feedback
                             // ("user" role) never causes two consecutive user messages in strict APIs.
                             val intermediateAssistantText = if (finalAssistantText.isNotBlank()) {
                                 updateLastMessage(botId, finalAssistantText)
-                                val causeId = if (queuedBatch) activeBatchIds.lastOrNull() else userMsgId
-                                storage.insertRawMessage(botId, "assistant", finalAssistantText, causeMsgId = causeId)
                                 currentBotId = null
                                 finalAssistantText
                             } else {
-                                _state.update { it.copy(chatMessages = it.chatMessages.dropLast(1)) }
+                                _state.update {
+                                    val msgs = it.chatMessages.dropLast(1)
+                                    it.copy(chatMessages = msgs, chatItems = ChatTimelineBuilder.build(msgs, it.receipts, it.openProposals))
+                                }
                                 currentBotId = null
                                 rawBot.trim().ifBlank { """{"reply":"","calls":[]}""" }
                             }
@@ -1709,13 +2419,17 @@ class ChatController(
 
                         // SEC 6: Use unique ID to prevent PK violations when loop limit is hit without completing
                         if (!turnComplete && loops >= 4) {
-                            val limitMsg = "Loop limit reached."
+                            val limitMsg = lastSubstantiveReply?.takeIf { it.isNotBlank() } ?: ChatResilience.LOOP_LIMIT_REPLY
                             val limitId = "a_${UUID.randomUUID()}"
-                            _state.update { it.copy(chatMessages = it.chatMessages + ChatMessage(limitId, "assistant", limitMsg)) }
+                            _state.update {
+                                val msgs = it.chatMessages + ChatMessage(limitId, "assistant", limitMsg)
+                                it.copy(chatMessages = msgs, chatItems = ChatTimelineBuilder.build(msgs, it.receipts, it.openProposals))
+                            }
                             val causeId = if (queuedBatch) activeBatchIds.lastOrNull() else userMsgId
                             storage.insertRawMessage(limitId, "assistant", limitMsg, causeMsgId = causeId)
                             currentBotId = null
                             if (activeBatchIds.isNotEmpty()) markBatchAnswered(activeBatchIds)
+                            onBackgroundReplyCompleted?.invoke(limitMsg)
                             turnComplete = true
                         }
                     } else {
@@ -1729,51 +2443,124 @@ class ChatController(
                             continue
                         }
 
-                        val extractedProse = if (rawBot.trim().startsWith("{")) extractReplyFromJsonStream(rawBot) else null
-                        val finalTxt = when {
-                            claimsAction -> "I couldn't turn that into a reminder, so nothing was saved. Please try again."
-                            !extractedProse.isNullOrBlank() -> extractedProse
-                            rawBot.isBlank() -> "..."
-                            else -> rawBot
+                        if (rawBot.isBlank() && emptyRetries == 0 && loops < 4) {
+                            emptyRetries++
+                            dropPlaceholder(botId)
+                            pack = pack + ChatMessage("sys_${UUID.randomUUID()}", "user", ChatResilience.EMPTY_REPLY_FEEDBACK)
+                            continue
                         }
-                        if (claimsAction) {
+                        val extractedProse = if (rawBot.trim().startsWith("{")) extractReplyFromJsonStream(rawBot) else null
+                        val coverUp = if (claimsAction && !queuedBatch) ruleBasedQuickAdd.parse(text) else null
+
+                        if (claimsAction && coverUp != null) {
+                            // Cover up: rule-based parser creates and schedules the task cleanly (Blueprint 41 / Mandate M1)
+                            val nodeId = "n_${UUID.randomUUID()}"
+                            val now = clock.now()
+                            val node = com.anchor.core.models.Node(
+                                id = nodeId,
+                                type = "task",
+                                title = coverUp.title,
+                                status = "active",
+                                createdAt = now,
+                                updatedAt = now,
+                                dueAt = coverUp.dueAt
+                            )
+                            val reminder = coverUp.dueAt?.let {
+                                Reminder(
+                                    id = "r_$nodeId",
+                                    text = coverUp.title,
+                                    fireAtMillis = it,
+                                    nodeId = nodeId,
+                                    tier = coverUp.tier
+                                )
+                            }
+                            val afterJson = json.encodeToString(com.anchor.core.models.NodeStateSnapshot(node, reminder))
+                            val undoId = "u_${UUID.randomUUID()}"
+                            val event = com.anchor.core.models.RawEvent(
+                                opId = undoId,
+                                opType = com.anchor.core.models.IntentType.CREATE.name,
+                                targetType = "node",
+                                targetId = nodeId,
+                                afterJson = afterJson,
+                                tsUtc = now,
+                                causeMsgId = userMsgId
+                            )
+                            storage.createNodeAndCommit(node, event, reminder)
+                            if (reminder != null) {
+                                alarmScheduler.schedule(reminder)
+                            }
                             addTransientReceipt(
                                 ReceiptState(
-                                    UUID.randomUUID().toString(),
-                                    "No reminder was created — the assistant did not issue an action.",
-                                    null,
-                                    isError = true,
+                                    id = undoId,
+                                    message = if (coverUp.dueAt != null) "Created: ${coverUp.title} (${coverUp.dueText})" else "Created: ${coverUp.title}",
+                                    undoToken = undoId,
+                                    isError = false,
                                     causeMsgId = userMsgId,
-                                    timestamp = clock.now()
+                                    timestamp = now
                                 )
                             )
-                        }
-                        updateLastMessage(botId, finalTxt)
-                        val causeId = if (queuedBatch) activeBatchIds.lastOrNull() else userMsgId
-                        storage.insertRawMessage(botId, "assistant", finalTxt, causeMsgId = causeId)
-                        currentBotId = null
-                        if (activeBatchIds.isNotEmpty()) {
-                            if (!claimsAction) {
-                                markBatchAnswered(activeBatchIds)
+                            val formattedDue = coverUp.dueAt?.let { coverUp.dueText ?: dateResolver.format(it) }
+                            val finalTxt = if (formattedDue != null) {
+                                "Created: ${coverUp.title} — $formattedDue (offline parser)"
                             } else {
-                                val now = clock.now()
-                                val pendingJobs = storage.getPendingOutbox(OutboxJob.JOB_CHAT_TURN)
-                                activeBatchIds.forEach { msgId ->
-                                    val jobId = chatTurnJobId(msgId)
-                                    val job = pendingJobs.find { it.id == jobId }
-                                    val attempts = (job?.attempts ?: 0) + 1
-                                    val backoffMs = when (attempts) {
-                                        1 -> 60_000L
-                                        2 -> 120_000L
-                                        3 -> 300_000L
-                                        4 -> 600_000L
-                                        else -> 1_800_000L
+                                "Created: ${coverUp.title} (offline parser)"
+                            }
+                            updateLastMessage(botId, finalTxt)
+                            val causeId = if (queuedBatch) activeBatchIds.lastOrNull() else userMsgId
+                            storage.insertRawMessage(botId, "assistant", finalTxt, causeMsgId = causeId)
+                            currentBotId = null
+                            if (activeBatchIds.isNotEmpty()) markBatchAnswered(activeBatchIds)
+                            onBackgroundReplyCompleted?.invoke(finalTxt)
+                            turnComplete = true
+                        } else {
+                            val finalTxt = when {
+                                claimsAction -> "I couldn't turn that into a reminder, so nothing was saved. Please try again."
+                                !extractedProse.isNullOrBlank() -> extractedProse
+                                rawBot.isBlank() -> ChatResilience.classifySmallTalk(text)?.let { kind ->
+                                    ChatResilience.smallTalkReply(kind, storage.getSetting(CompanionActions.KEY_USER_NAME), true, 12)
+                                } ?: ChatResilience.EMPTY_REPLY
+                                else -> rawBot
+                            }
+                            if (claimsAction) {
+                                addTransientReceipt(
+                                    ReceiptState(
+                                        UUID.randomUUID().toString(),
+                                        "No reminder was created — the assistant did not issue an action.",
+                                        null,
+                                        isError = true,
+                                        causeMsgId = userMsgId,
+                                        timestamp = clock.now()
+                                    )
+                                )
+                            }
+                            updateLastMessage(botId, finalTxt)
+                            val causeId = if (queuedBatch) activeBatchIds.lastOrNull() else userMsgId
+                            storage.insertRawMessage(botId, "assistant", finalTxt, causeMsgId = causeId)
+                            currentBotId = null
+                            if (activeBatchIds.isNotEmpty()) {
+                                if (!claimsAction) {
+                                    markBatchAnswered(activeBatchIds)
+                                } else {
+                                    val now = clock.now()
+                                    val pendingJobs = storage.getPendingOutbox(OutboxJob.JOB_CHAT_TURN)
+                                    activeBatchIds.forEach { msgId ->
+                                        val jobId = chatTurnJobId(msgId)
+                                        val job = pendingJobs.find { it.id == jobId }
+                                        val attempts = (job?.attempts ?: 0) + 1
+                                        val backoffMs = when (attempts) {
+                                            1 -> 60_000L
+                                            2 -> 120_000L
+                                            3 -> 300_000L
+                                            4 -> 600_000L
+                                            else -> 1_800_000L
+                                        }
+                                        storage.markOutboxFailed(jobId, now, now + backoffMs, "Model claimed action without envelope")
                                     }
-                                    storage.markOutboxFailed(jobId, now, now + backoffMs, "Model claimed action without envelope")
                                 }
                             }
+                            onBackgroundReplyCompleted?.invoke(finalTxt)
+                            turnComplete = true
                         }
-                        turnComplete = true
                     }
                 }
             } catch (e: Exception) {
@@ -1805,6 +2592,19 @@ class ChatController(
                     }
                     throw e
                 }
+                if (anyLoopCommitted) {
+                    val partialReply = "Done — your changes are saved. I couldn't finish replying, though: ${ChatResilience.describe(e).message}"
+                    val botMsgId = currentBotId ?: "m_${UUID.randomUUID()}"
+                    currentBotId = null
+                    updateLastMessage(botMsgId, partialReply)
+                    val causeId = if (queuedBatch) activeBatchIds.lastOrNull() else activeUserMsgId
+                    storage.insertRawMessage(botMsgId, "assistant", partialReply, causeMsgId = causeId)
+                    if (queuedBatch && activeBatchIds.isNotEmpty()) {
+                        markBatchAnswered(activeBatchIds)
+                    }
+                    _state.update { it.copy(connectionError = null) }
+                    return
+                }
                 // Blueprint 41 §2: an offline state is not an unhandled error — messages are either
                 // handled immediately via RuleBasedQuickAdd or queued safely in outbox.
                 if (e is OfflineException) {
@@ -1820,23 +2620,57 @@ class ChatController(
                     return
                 }
                 // A10: Provider error refreshes UI properly below in finally
-                _state.update { it.copy(connectionError = "Error: ${e.message}") }
+                val friendly = ChatResilience.describe(e)
+                val willQueue = !queuedBatch && activeUserMsgId != null && isTransientProviderError(e)
+                _state.update {
+                    it.copy(
+                        connectionError = friendly.message,
+                        connectionErrorRetryable = friendly.retryable && !willQueue,
+                        connectionErrorNeedsSettings = friendly.needsSettings,
+                        lastFailedMsgId = if (!queuedBatch && !willQueue) activeUserMsgId else it.lastFailedMsgId
+                    )
+                }
+                // Small talk still gets a human reply when the provider is down; the banner above
+                // explains the outage. Real questions keep their place so Retry can answer them.
+                if (!queuedBatch && !willQueue && activeUserMsgId != null) {
+                    ChatResilience.classifySmallTalk(text)?.let { kind ->
+                        try {
+                            val botIdToDrop = currentBotId
+                            if (botIdToDrop != null) dropPlaceholder(botIdToDrop)
+                            currentBotId = null
+                            replyLocally(text, activeUserMsgId, kind, connected = true, alreadyStored = true)
+                            _state.update { st -> st.copy(lastFailedMsgId = null, connectionErrorRetryable = false) }
+                        } catch (inner: Exception) {
+                            if (inner is CancellationException) throw inner
+                        }
+                    }
+                }
                 if (queuedBatch && activeBatchIds.isNotEmpty() && e !is OfflineException) {
                     val now = clock.now()
                     val errText = e.message ?: e.javaClass.simpleName
                     val pendingJobs = storage.getPendingOutbox(OutboxJob.JOB_CHAT_TURN)
+                    val isTransient = isTransientProviderError(e)
                     activeBatchIds.forEach { msgId ->
                         val jobId = chatTurnJobId(msgId)
                         val job = pendingJobs.find { it.id == jobId }
                         val attempts = (job?.attempts ?: 0) + 1
-                        val backoffMs = when (attempts) {
-                            1 -> 60_000L
-                            2 -> 120_000L
-                            3 -> 300_000L
-                            4 -> 600_000L
-                            else -> 1_800_000L
+                        if (attempts >= 5 || !isTransient) {
+                            storage.markOutboxFailed(jobId, now, now + 86400000L, errText, status = OutboxJob.STATUS_FAILED)
+                        } else {
+                            val backoffMs = when (attempts) {
+                                1 -> 60_000L
+                                2 -> 120_000L
+                                3 -> 300_000L
+                                4 -> 600_000L
+                                else -> 1_800_000L
+                            }
+                            storage.markOutboxFailed(jobId, now, now + backoffMs, errText, status = OutboxJob.STATUS_PENDING)
                         }
-                        storage.markOutboxFailed(jobId, now, now + backoffMs, errText)
+                    }
+                } else if (!queuedBatch && activeUserMsgId != null && e !is OfflineException) {
+                    // Fallback to outbox retry on transient network/5xx/429 errors only, NOT on 400/401/403 configuration errors
+                    if (isTransientProviderError(e)) {
+                        enqueueChatTurn(text, activeUserMsgId)
                     }
                 }
                 // E-17: a capture whose turn never ran stays unanswered in the raw log, so the
@@ -1858,22 +2692,67 @@ class ChatController(
             }
     }
 
-    private fun buildJsonPayload(pack: List<ChatMessage>): String {
+    /** Removes the streaming placeholder bubble [botId] from the visible timeline. */
+    private fun dropPlaceholder(botId: String) {
+        _state.update { st ->
+            val msgs = st.chatMessages.filter { it.id != botId }
+            st.copy(chatMessages = msgs, chatItems = ChatTimelineBuilder.build(msgs, st.receipts, st.openProposals))
+        }
+        if (currentBotId == botId) currentBotId = null
+    }
+
+    /**
+     * The pack after a context-overflow refusal: the system prompt capped, and only the newest
+     * few messages (each capped) kept. The live user turn is always the last message.
+     */
+    private fun trimPackForOverflow(pack: List<ChatMessage>): List<ChatMessage> {
+        val system = pack.firstOrNull { it.role == "system" }
+        val rest = pack.filter { it.role != "system" && !it.content.isNullOrBlank() }.takeLast(OVERFLOW_KEEP_MESSAGES)
+        val cappedSystem = system?.let { it.copy(content = ChatResilience.capForModel(it.content.orEmpty(), OVERFLOW_SYSTEM_CHARS)) }
+        return listOfNotNull(cappedSystem) + rest.map { it.copy(content = ChatResilience.capForModel(it.content.orEmpty(), OVERFLOW_MESSAGE_CHARS)) }
+    }
+
+    private suspend fun buildJsonPayload(pack: List<ChatMessage>, temperatureOverride: Double? = null): String {
         // TB-5: Tool instructions and rules are unified into ContextBuilder's single system message.
         // Exactly one system message is emitted per turn.
+        // Coalesce consecutive same-role non-system messages to satisfy strict LLM alternating role requirements.
+        val rawMessages = pack.filter { !it.content.isNullOrBlank() }.map {
+            val cap = if (it.role == "system") MAX_SYSTEM_CHARS else MAX_MESSAGE_CHARS
+            com.anchor.core.provider.RequestMessage(it.role, ChatResilience.capForModel(it.content!!, cap))
+        }
         val messages = mutableListOf<com.anchor.core.provider.RequestMessage>()
-        pack.filter { it.content != null }.forEach { messages.add(com.anchor.core.provider.RequestMessage(it.role, it.content!!)) }
-        return kotlinx.serialization.json.Json.encodeToString(com.anchor.core.provider.ChatRequest(_state.value.providerModel, true, messages))
+        for (msg in rawMessages) {
+            if (messages.isNotEmpty() && msg.role != "system" && messages.last().role == msg.role) {
+                val previous = messages.removeAt(messages.lastIndex)
+                messages.add(com.anchor.core.provider.RequestMessage(msg.role, "${previous.content}\n\n${msg.content}"))
+            } else {
+                messages.add(msg)
+            }
+        }
+        val temp = temperatureOverride ?: (storage.getSetting("ai.temperature.chat")?.toDoubleOrNull() ?: 0.7)
+        val maxTokens = storage.getSetting("ai.max_tokens")?.toIntOrNull() ?: 1200
+        return kotlinx.serialization.json.Json.encodeToString(
+            com.anchor.core.provider.ChatRequest(
+                _state.value.providerModel,
+                true,
+                messages,
+                temperature = temp,
+                max_tokens = maxTokens
+            )
+        )
     }
 
     private fun updateLastMessage(id: String, content: String) {
-        // B9: Use the thread-safe StateFlow.update {} transaction block to prevent 
+        // B9: Use the thread-safe StateFlow.update {} transaction block to prevent
         // concurrent typing inputs from being overwritten by incoming LLM network chunks.
         _state.update { curr ->
             val msgs = curr.chatMessages.toMutableList()
             val idx = msgs.indexOfLast { it.id == id }
             if (idx != -1) msgs[idx] = ChatMessage(id, "assistant", content)
-            curr.copy(chatMessages = msgs)
+            curr.copy(
+                chatMessages = msgs,
+                chatItems = ChatTimelineBuilder.build(msgs, curr.receipts, curr.openProposals)
+            )
         }
     }
 
@@ -1905,6 +2784,80 @@ class ChatController(
         }
     }
 
+    private fun publishActionResult(d: ActionResultDraft, tag: String?) {
+        val r = ActionResult(
+            seq = actionSeq.incrementAndGet(),
+            tag = tag,
+            message = d.message,
+            undoToken = d.undoToken,
+            isError = d.isError,
+            needsChoice = d.needsChoice,
+            targetId = d.targetId
+        )
+        _state.update { it.copy(lastActionResult = r) }
+    }
+
+    /**
+     * The companion UI's extra reads: open items, living notes and their links, armed wakeups,
+     * the user's profile and notification-reading settings. Isolated so one failing read can
+     * never stop the chat state from refreshing.
+     */
+    private suspend fun loadCompanionExtras() {
+        try {
+            val now = clock.now()
+            val nodes = storage.getActiveNodes(COMPANION_NODE_LIMIT)
+            val notes = storage.getAllTopicNotes()
+            val refs = notes.flatMap { n ->
+                try { storage.getReferencesForNote(n.id) } catch (e: Exception) {
+                    if (e is CancellationException) throw e
+                    emptyList()
+                }
+            }
+            val wakeups = storage.getPendingAgentWakeups(Long.MAX_VALUE)
+            val rule = storage.getEffectiveDayRule(now)
+            val prefKeys = PROFILE_PREF_KEYS
+            val prefs = buildMap {
+                for (k in prefKeys) storage.getSetting(k)?.let { put(k, it) }
+                for (n in notes) storage.getSetting("note.mode.${n.id}")?.let { put("note.mode.${n.id}", it) }
+            }
+            val profile = UserProfile(
+                name = storage.getSetting(CompanionActions.KEY_USER_NAME).orEmpty(),
+                languages = storage.getSetting(CompanionActions.KEY_LANGUAGES)?.split(',')?.map { it.trim() }?.filter { it.isNotEmpty() }?.ifEmpty { null } ?: listOf("English"),
+                dayStartMinute = rule.startMinute,
+                dayEndMinute = rule.endMinute,
+                breakUntilMs = storage.getSetting(CompanionActions.KEY_BREAK_UNTIL)?.toLongOrNull()?.takeIf { it > now },
+                nudgesPausedUntilMs = storage.getSetting(CompanionActions.KEY_NUDGES_PAUSED)?.toLongOrNull()?.takeIf { it > now },
+                prefs = prefs
+            )
+            val dayCounts = try {
+                storage.getHeatMapCounts(
+                    DayRollover.computeDayKey(now - 60L * 86_400_000L, rule),
+                    DayRollover.computeDayKey(now, rule)
+                )
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                emptyMap()
+            }
+            val readMap = buildMap {
+                for (k in com.anchor.core.notifications.NotificationReadSettings.ALL_KEYS) storage.getSetting(k)?.let { put(k, it) }
+            }
+            val reading = com.anchor.core.notifications.NotificationReadSettings.fromSettings { readMap[it] }
+            _state.update {
+                it.copy(
+                    activeNodes = nodes,
+                    topicNotes = notes,
+                    noteReferences = refs,
+                    pendingWakeups = wakeups,
+                    profile = profile,
+                    notificationReading = reading,
+                    chatDayCounts = dayCounts
+                )
+            }
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+        }
+    }
+
     private suspend fun refreshUI() {
         reconcileAlarms(force = false)
         val currentSize = _state.value.chatMessages.size
@@ -1933,9 +2886,26 @@ class ChatController(
         val ambEnabled = storage.getSetting("ambient.enabled") == "1"
         val vpEnrolled = storage.getVoiceprint() != null
 
+        val currentBot = currentBotId?.let { bId -> _state.value.chatMessages.find { m -> m.id == bId } }
+        val recentMessages = storage.getRecentMessages(fetchCount)
+        val resolvedMessages = if (_state.value.isChatLoading) {
+            if (currentBot != null && recentMessages.none { m -> m.id == currentBot.id }) {
+                recentMessages + currentBot
+            } else if (recentMessages.isNotEmpty()) {
+                recentMessages
+            } else {
+                _state.value.chatMessages
+            }
+        } else {
+            recentMessages
+        }
+
+        val pKey = _state.value.providerKey
+        val cooldownExp = if (pKey.isNotBlank()) rateLimiter?.getCooldownExpiry(pKey) else null
+
         _state.update { it.copy(
-            receipts = recentReceipts + currentTransientReceipts(),
-            chatMessages = if (it.isChatLoading) it.chatMessages else storage.getRecentMessages(fetchCount),
+            receipts = (recentReceipts + currentTransientReceipts()).distinctBy { it.undoToken ?: it.id },
+            chatMessages = resolvedMessages,
             activeReminders = storage.getActiveReminders(clock.now()),
             openProposals = proposals,
             proposedSoulFacts = soulFacts,
@@ -1951,9 +2921,23 @@ class ChatController(
             latestAmbientReport = latestReport,
             ambientReportItems = reportItems,
             ambientEnabled = ambEnabled,
-            voiceprintEnrolled = vpEnrolled
+            voiceprintEnrolled = vpEnrolled,
+            postCallNudgesEnabled = (storage.getSetting("flag.call_nudge") == "1" || storage.getSetting("flag.call_nudges") == "1") && storage.getSetting("callnudge.enabled") != "0",
+            onDeviceFallbackEnabled = storage.getSetting("provider.ondevice.enabled") == "1" || storage.getSetting("flag.ondevice_llm") == "1",
+            moodTrackingEnabled = storage.getSetting("flag.mood_tracking") == "1",
+            hideNotificationContent = storage.getSetting("privacy.hide_notification_content") == "1" || storage.getSetting("flag.hide_notification_content") == "1",
+            soulAutoAcceptMode = storage.getSetting("soul.mode") == "auto" || storage.getSetting("soul.auto_accept") == "1",
+            fallbackEndpoint = storage.getSetting("provider.fallback.endpoint") ?: storage.getSetting("ep.fallback") ?: storage.getSetting("ep_fallback") ?: "",
+            fallbackKey = storage.getSetting("provider.fallback.key") ?: storage.getSetting("key.fallback") ?: storage.getSetting("key_fallback") ?: "",
+            fallbackModel = storage.getSetting("provider.fallback.model") ?: storage.getSetting("model.fallback") ?: storage.getSetting("model_fallback") ?: "",
+            providerCooldownExpiry = cooldownExp,
+            autoBackupEnabled = storage.getSetting("export.auto.enabled")?.let { it == "1" || it.toBooleanStrictOrNull() == true } ?: (storage.getSetting("backup.auto_enabled") == "1"),
+            autoBackupUri = storage.getSetting("export.auto.folder_uri") ?: storage.getSetting("backup.auto_uri") ?: "",
+            contextSensingEnabled = (storage.getSetting("flag.sensing") == "1") && (storage.getSetting("sensing.enabled") == "1"),
+            webSearchEnabled = (storage.getSetting("web_search.enabled")?.let { it == "1" } ?: (it.webSearchEnabled || gateway.webSearchEnabled)).also { gateway.webSearchEnabled = it }
         ) }
         _state.update { it.copy(chatItems = ChatTimelineBuilder.build(it.chatMessages, it.receipts, it.openProposals)) }
+        loadCompanionExtras()
     }
 
     /**
@@ -1968,6 +2952,205 @@ class ChatController(
         emptyList()
     }
 
+    /**
+     * Blueprint 02 & Blueprint 20 §3.8: Debounced 30-second Worker AI background pipeline.
+     * Extracts implicit tasks, reflected Soul facts, and pattern observations in the background
+     * without blocking user interaction or conversational turns.
+     */
+    internal fun triggerWorkerAiDebounced(debounceMs: Long = 30_000L) {
+        workerAiJob?.cancel()
+        workerAiJob = workerScope.launch {
+            try {
+                delay(debounceMs)
+                runWorkerAiExtraction()
+            } catch (_: CancellationException) {
+                // Expected on cancellation or new user input
+            } catch (_: Throwable) {
+                // Background worker errors must never affect chat operations
+            }
+        }
+    }
+
+    suspend fun runWorkerAiExtraction() {
+        try {
+            val autoExtract = storage.getSetting("memory.auto_extract") != "0"
+            if (!autoExtract) return
+
+            val sameAsChat = (storage.getSetting("worker.same_as_chat") ?: storage.getSetting("slot.worker.same_as_chat")) != "0"
+            val workerTemp = storage.getSetting("ai.temperature.worker")?.toDoubleOrNull() ?: 0.3
+            val lastExtractedId = storage.getSetting("worker.last_extracted_msg_id") ?: ""
+            val lastExtractedTs = storage.getSetting("worker.last_extracted_ts_utc")?.toLongOrNull() ?: 0L
+            var maxExtractedTs = lastExtractedTs
+            val recentEvents = storage.getRecentEvents(100)
+            val causeMsgIds = recentEvents.mapNotNull { it.causeMsgId }.toSet()
+
+            // Reflect Soul facts from closed tasks and habits (combine active + proposed to avoid duplicate proposed spam)
+            val closedNodes = storage.getNodesClosedBetween(
+                startMs = clock.now() - 7 * 86400 * 1000L,
+                endMs = clock.now()
+            )
+            val existingFacts = storage.getActiveSoulFacts(includeLocalOnly = true) + storage.getProposedSoulFacts()
+            val consolidation = com.anchor.core.consolidation.ConsolidationEngine()
+            val candidates = consolidation.reflectSoulPatterns(closedNodes, existingFacts, clock.now())
+
+            var factsAdded = false
+            for (cand in candidates) {
+                if (storage.isSoulFactSuppressed(cand.statement)) continue
+                val fact = consolidation.toProposedSoulFact(cand, clock.now())
+                val uId = "u_${UUID.randomUUID()}"
+                val event = RawEvent(
+                    opId = uId,
+                    opType = "PROPOSE",
+                    targetType = "soul_fact",
+                    targetId = fact.id,
+                    afterJson = null,
+                    tsUtc = clock.now()
+                )
+                storage.createSoulFactAndCommit(fact, event)
+                factsAdded = true
+            }
+
+            if (factsAdded) {
+                refreshUI()
+            }
+
+            // Companion Brain / Living Notes extraction:
+            val recentMsgs = storage.getRecentMessages(10)
+            for (msg in recentMsgs) {
+                if (msg.role != "user" || msg.content.isNullOrBlank()) continue
+                if (msg.id == lastExtractedId || (msg.tsUtc > 0 && msg.tsUtc <= lastExtractedTs) || msg.id in causeMsgIds) continue
+                val text = msg.content
+                val lines = text.lines().map { it.trim() }.filter { it.isNotBlank() }
+                val bulletLines = lines.filter { it.startsWith("-") || it.startsWith("*") || it.matches(Regex("""^\d+[\.)]\s+.*""")) }
+                if (bulletLines.size >= 2) {
+                    val firstLine = lines.first()
+                    val topic = if (!firstLine.startsWith("-") && !firstLine.startsWith("*") && !firstLine.matches(Regex("""^\d+[\.)]\s+.*"""))) {
+                        firstLine.removeSuffix(":").take(50).trim()
+                    } else {
+                        "General Notes"
+                    }
+                    val bullets = bulletLines.map {
+                        it.removePrefix("-").removePrefix("*").replace(Regex("""^\d+[\.)]\s*"""), "").trim()
+                    }.filter { it.isNotBlank() }
+
+                    if (topic.isNotBlank() && bullets.isNotEmpty()) {
+                        val existing = storage.getTopicNoteByTopic(topic)
+                        val merged = if (existing != null) {
+                            val prev = try {
+                                json.decodeFromString<List<String>>(existing.bulletsJson)
+                            } catch (_: Exception) {
+                                existing.content.lines().map { it.removePrefix("-").trim() }
+                            }
+                            (prev + bullets).distinct()
+                        } else bullets.distinct()
+
+                        val note = TopicNote(
+                            id = existing?.id ?: "tn_${UUID.randomUUID().toString().take(8)}",
+                            topic = topic,
+                            content = merged.joinToString("\n") { "- $it" },
+                            bulletsJson = json.encodeToString(merged),
+                            pinned = existing?.pinned ?: false,
+                            lastEditedAt = clock.now(),
+                            createdAt = existing?.createdAt ?: clock.now()
+                        )
+                        storage.saveTopicNote(note)
+                        if (msg.tsUtc > maxExtractedTs) maxExtractedTs = msg.tsUtc
+                        storage.saveSetting("worker.last_extracted_msg_id", msg.id)
+                        storage.saveSetting("worker.last_extracted_ts_utc", maxExtractedTs.toString())
+
+                        // Check if an active task matches this topic and link reference
+                        val activeNodes = storage.getActiveNodes(50)
+                        val topicTokens = topic.lowercase().split(Regex("""\s+""")).filter { it.length > 3 }
+                        val matchingNode = activeNodes.find { node ->
+                            val nodeTokens = node.title.lowercase().split(Regex("""\s+""")).toSet()
+                            topicTokens.any { it in nodeTokens } ||
+                                node.title.contains(topic, ignoreCase = true) ||
+                                topic.contains(node.title, ignoreCase = true)
+                        }
+                        if (matchingNode != null) {
+                            val existingRefs = storage.getReferencesForNode(matchingNode.id)
+                            if (existingRefs.none { it.noteId == note.id }) {
+                                val ref = NoteReference(
+                                    id = "nr_${UUID.randomUUID().toString().take(8)}",
+                                    noteId = note.id,
+                                    nodeId = matchingNode.id,
+                                    createdAt = clock.now()
+                                )
+                                storage.linkNoteReference(ref)
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Worker AI LLM Natural Language Reflection
+            val workerEp = if (sameAsChat) _state.value.providerEndpoint else (storage.getSetting("ep.worker") ?: storage.getSetting("provider.worker.endpoint") ?: _state.value.providerEndpoint)
+            val workerKey = if (sameAsChat) _state.value.providerKey else (storage.getSetting("key.worker") ?: storage.getSetting("provider.worker.key") ?: _state.value.providerKey)
+
+            if ((networkCheck?.invoke() != false) && workerKey.isNotBlank()) {
+                if (rateLimiter?.getCooldownExpiry(workerKey) != null) {
+                    return
+                }
+                val recent6 = storage.getRecentMessages(6)
+                val latestUserMsg = recent6.lastOrNull { it.role == "user" }
+                val isSubstantive = (latestUserMsg?.content?.length ?: 0) >= 25 &&
+                    latestUserMsg?.id != lastExtractedId &&
+                    (latestUserMsg?.tsUtc ?: 0L) > lastExtractedTs &&
+                    latestUserMsg?.id !in causeMsgIds
+                if (isSubstantive) {
+                    val systemPrompt = """
+You are Mine's background Worker AI. Analyze the recent conversation between user and assistant.
+Extract any worthy structured knowledge from natural language:
+- Topic Note bullets (`upsert_topic_note` with topic, bullets, pinned) for checklists, plans, meeting takeaways, or study lists.
+- Note-to-Task links (`link_note_reference` with note_id, node_id, mode="read_write").
+- Opportunistic Errands (`propose_change` with intent="CREATE", title="...", context_trigger="ON_LEAVE_HOME").
+- Long-term Soul facts (`soul_propose` with statement, category).
+If the exchange contains only transient chit-chat, return empty calls.
+Respond ONLY in JSON envelope: {"reply":"","calls":[...]}
+                    """.trimIndent()
+
+                    val workerMessages = mutableListOf<ChatMessage>()
+                    workerMessages.add(ChatMessage("sys_worker", "system", systemPrompt))
+                    recent6.forEach {
+                        workerMessages.add(ChatMessage(it.id, it.role, it.content ?: ""))
+                    }
+
+                    val workerPayload = buildJsonPayload(workerMessages, temperatureOverride = workerTemp)
+                    val rpm = storage.getSetting("provider.rpm_default")?.toIntOrNull() ?: 20
+                    val workerModel = storage.getSetting("provider.worker.model") ?: storage.getSetting("model.worker") ?: _state.value.providerModel
+                    val chain = listOf(Target(workerEp, workerKey, rpm, model = workerModel, limiterKey = "bg:$workerKey"))
+
+                    val responseBuffer = StringBuilder()
+                    orchestrator.chat(chain, workerPayload, envelopeMode = true).collect { event ->
+                        if (event is com.anchor.core.provider.StreamEvent.TextDelta) {
+                            responseBuffer.append(event.text)
+                        }
+                    }
+
+                    val rawEnvelope = responseBuffer.toString()
+                    val envelope = EnvelopeParser.parse(rawEnvelope)
+                    if (envelope != null && envelope.calls.isNotEmpty()) {
+                        val executedCalls = mutableSetOf<String>()
+                        for (call in envelope.calls) {
+                            val intentContent = (call.args["intent"]?.jsonPrimitive?.contentOrNull ?: call.args["intent"]?.toString()?.trim('"', ' '))
+                            val isAllowed = call.tool in setOf("upsert_topic_note", "link_note_reference", "soul_propose") ||
+                                (call.tool == "propose_change" && intentContent?.equals("CREATE", ignoreCase = true) == true)
+                            if (isAllowed) {
+                                gateway.executeTool(call, executedCalls)
+                            }
+                        }
+                        refreshUI()
+                    }
+                    if (latestUserMsg != null) {
+                        if (latestUserMsg.tsUtc > maxExtractedTs) maxExtractedTs = latestUserMsg.tsUtc
+                        storage.saveSetting("worker.last_extracted_msg_id", latestUserMsg.id)
+                        storage.saveSetting("worker.last_extracted_ts_utc", maxExtractedTs.toString())
+                    }
+                }
+            }
+        } catch (_: Throwable) {}
+    }
+
     companion object {
         /**
          * Row 20: how many Items the read-only viewer loads. The list is a browse surface, not a
@@ -1975,6 +3158,20 @@ class ChatController(
          * paged Home helper uses per page.
          */
         const val MEMORY_VIEWER_PAGE = 200
+        /** Per-message caps so one giant paste or note can never make the request itself fail. */
+        const val MAX_MESSAGE_CHARS = 24_000
+        const val MAX_SYSTEM_CHARS = 48_000
+        const val OVERFLOW_KEEP_MESSAGES = 6
+        const val PROVIDER_TEST_TIMEOUT_MS = 20_000L
+        const val OVERFLOW_MESSAGE_CHARS = 6_000
+        const val OVERFLOW_SYSTEM_CHARS = 14_000
+        /** Open items surfaced to the companion UI (Home, Memory, Board). */
+        const val COMPANION_NODE_LIMIT = 300
+        /** Settings exposed to the UI as preferences. */
+        val PROFILE_PREF_KEYS = listOf(
+            "ui.reduced_motion", "ui.dev_mode", "chat.reasoning", "voice.replies",
+            "consent.accepted", "ui.onboarding_fast_path", "ambient.enabled", "notif_read.onboarded"
+        )
 
         /**
          * Blueprint 31: how many open items one proactive pass scans for an overdue candidate.
@@ -2025,6 +3222,10 @@ class ChatController(
         )
 
         private val REPLY_KEY_REGEX = Regex(""""reply"\s*:\s*"""")
+
+        internal val TALK_LATER_REGEX = Regex("""(?i)^\s*(talk\s+later|not\s+now|busy(\s+right\s+now)?|another\s+time|ping\s+me\s+later|check\s+in\s+later)\s*[.!]?\s*$""")
+
+        internal val BREAK_REGEX = Regex("""(?i)\b(?:i(?:'m|\s+am)?\s+)?(?:taking|start(?:ing)?|on)\s+a\s+(\d{1,3})\s*(?:min|minute|mins|minutes)\s+break\b""")
 
         internal fun extractReplyFromJsonStream(jsonStream: String): String? {
             // Find the LAST occurrence of "reply": in case a failed failover stream was prepended

@@ -72,7 +72,8 @@ class ProviderFallbackChainTest {
             }
         }
 
-        val orchestrator = ProviderOrchestrator(RateLimiter { clock.now() }, fakeTransport)
+        val limiter = RateLimiter { clock.now() }
+        val orchestrator = ProviderOrchestrator(limiter, fakeTransport)
         val controller = ChatController(
             storage = storage,
             orchestrator = orchestrator,
@@ -81,9 +82,11 @@ class ProviderFallbackChainTest {
             alarmScheduler = NoopScheduler(),
             coroutineScope = controllerScope,
             clock = clock,
-            defaultDispatcher = testDispatcher
+            defaultDispatcher = testDispatcher,
+            rateLimiter = limiter
         )
 
+        targetAttempts.clear()
         controller.sendText("Hello")
 
         // Verify primary target was tried first, then fallback target

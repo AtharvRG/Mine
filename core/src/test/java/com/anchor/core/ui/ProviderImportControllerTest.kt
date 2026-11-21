@@ -72,6 +72,10 @@ class ProviderImportControllerTest {
         val json = """{"endpoint": "https://api.openai.com/v1", "model": "gpt-4o", "key": "sk-imported"}"""
         controller.onAction(UiAction.ImportProviderConfig(json))
 
+        // P0-03: Must require confirmation before persisting
+        assertEquals("https://api.openai.com/v1", controller.state.value.pendingProviderImport?.endpoint)
+        controller.onAction(UiAction.ConfirmProviderImport)
+
         assertEquals("https://api.openai.com/v1", storage.getSetting("ep"))
         assertEquals("gpt-4o", storage.getSetting("mod"))
         assertEquals("sk-imported", storage.getSetting("key"))
@@ -85,17 +89,18 @@ class ProviderImportControllerTest {
     fun testImportProviderConfig_WithoutKey_PreservesExistingKeyInStorageAndState() = runTest(testDispatcher) {
         val clock = FakeClock(1700000000000L)
         val storage = SharedFakeStorage()
-        storage.settings["ep"] = "https://old.example.com/v1"
+        storage.settings["ep"] = "https://api.groq.com/v1"
         storage.settings["mod"] = "old-model"
         storage.settings["key"] = "sk-existing-secret"
         val controller = newController(storage, clock)
 
         val json = """{"endpoint": "https://api.groq.com/openai/v1", "model": "llama-3.3-70b"}"""
         controller.onAction(UiAction.ImportProviderConfig(json))
+        controller.onAction(UiAction.ConfirmProviderImport)
 
         assertEquals("https://api.groq.com/openai/v1", storage.getSetting("ep"))
         assertEquals("llama-3.3-70b", storage.getSetting("mod"))
-        // INVARIANT: existing key MUST be preserved
+        // INVARIANT: existing key MUST be preserved when host is same
         assertEquals("sk-existing-secret", storage.getSetting("key"))
         assertEquals("https://api.groq.com/openai/v1", controller.state.value.providerEndpoint)
         assertEquals("llama-3.3-70b", controller.state.value.providerModel)
@@ -111,6 +116,7 @@ class ProviderImportControllerTest {
 
         val uri = "mine://provider?endpoint=https%3A%2F%2Fapi.mistral.ai%2Fv1&model=mistral-large&key=mis-xyz"
         controller.onAction(UiAction.ImportProviderConfig(uri))
+        controller.onAction(UiAction.ConfirmProviderImport)
 
         assertEquals("https://api.mistral.ai/v1", storage.getSetting("ep"))
         assertEquals("mistral-large", storage.getSetting("mod"))

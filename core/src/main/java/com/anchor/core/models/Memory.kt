@@ -25,7 +25,42 @@ data class Node(
     val recurrenceRule: String? = null,
     val streakCurrent: Int = 0,
     val streakBest: Int = 0,
-    val lastCompletedAt: Long? = null
+    val lastCompletedAt: Long? = null,
+    val originalDueAt: Long? = null,
+    val dueHistoryJson: String? = null,
+    val slipCount: Int = 0,
+    val contextTrigger: String? = null,
+    val fallbackFireAt: Long? = null
+)
+
+@Serializable
+data class TopicNote(
+    val id: String,
+    val topic: String,
+    val content: String,
+    val bulletsJson: String = "[]",
+    val pinned: Boolean = false,
+    val lastEditedAt: Long,
+    val createdAt: Long
+)
+
+@Serializable
+data class NoteReference(
+    val id: String,
+    val noteId: String,
+    val nodeId: String,
+    val createdAt: Long,
+    val mode: String = "read_write"
+)
+
+@Serializable
+data class AgentWakeup(
+    val id: String,
+    val fireAt: Long,
+    val reason: String,
+    val payloadJson: String? = null,
+    val state: String = "pending", // pending, fired, cancelled
+    val createdAt: Long
 )
 
 @Serializable
@@ -120,7 +155,9 @@ data class ProposalPayload(
     val targetId: String? = null,
     val untitled: Boolean = false,
     val label: String? = null,
-    val newTitle: String? = null
+    val newTitle: String? = null,
+    val contextTrigger: String? = null,
+    val fallbackFireAt: Long? = null
 )
 
 @Serializable

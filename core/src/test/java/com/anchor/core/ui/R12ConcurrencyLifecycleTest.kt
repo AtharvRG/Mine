@@ -835,9 +835,12 @@ class R12ConcurrencyLifecycleTest {
         controller.onAction(UiAction.ArchiveNode("n_test_dup"))
 
         // Wait for UI refresh
-        delay(200L)
-        val receipts = controller.state.value.receipts
-        val archiveReceipts = receipts.filter { it.message.contains("Archived", ignoreCase = true) }
+        var archiveReceipts = emptyList<ReceiptState>()
+        for (i in 1..20) {
+            delay(50L)
+            archiveReceipts = controller.state.value.receipts.filter { it.message.contains("Archived", ignoreCase = true) }
+            if (archiveReceipts.isNotEmpty()) break
+        }
         assertEquals("There must be exactly one archive receipt, not duplicated", 1, archiveReceipts.size)
 
         testScope.cancel()
@@ -879,4 +882,3 @@ class R12ConcurrencyLifecycleTest {
         testScope.cancel()
     }
 }
-

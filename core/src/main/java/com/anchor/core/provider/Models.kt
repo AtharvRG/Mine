@@ -9,7 +9,9 @@ import kotlinx.coroutines.flow.Flow
 data class Target(
     val id: String,
     val key: String,
-    val limitRpm: Int
+    val limitRpm: Int,
+    val model: String? = null,
+    val limiterKey: String = key
 )
 
 interface HttpTransport {
@@ -24,6 +26,14 @@ sealed interface StreamEvent {
 }
 
 class Http429Exception(val retryAfterSeconds: Int? = null) : Exception("Rate limited")
+
+class HttpStatusException(val code: Int, val bodySnippet: String) : Exception("HTTP $code: $bodySnippet") {
+    val isTransient: Boolean get() = code == 408 || code == 425 || code == 429 || code >= 500
+}
+
+class ProviderTimeoutException(message: String = "The provider did not respond in time", cause: Throwable? = null) : Exception(message, cause)
+
+class AllProvidersFailedException(cause: Throwable?) : Exception("All providers failed or in cooldown. Last error: ${cause?.message ?: "Unknown"}", cause)
 
 /**
  * Blueprint 41 §2 `no_network`: the request never reached a provider because this device has no

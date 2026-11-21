@@ -153,6 +153,16 @@ class DateResolverTest {
     }
 
     @Test
+    fun testTonightAt1am_At11pm_ResolvesToUpcomingMorning1am() {
+        val cal11pm = Calendar.getInstance().apply { set(2026, Calendar.OCTOBER, 26, 23, 0, 0); set(Calendar.MILLISECOND, 0) }
+        val resolver = DateResolver(FakeClock(cal11pm.timeInMillis))
+        val res = resolver.resolve("tonight at 1am")
+        assertTrue("tonight at 1am should resolve to Exact, was $res", res is DateResolution.Exact)
+        val expected1am = Calendar.getInstance().apply { set(2026, Calendar.OCTOBER, 27, 1, 0, 0); set(Calendar.MILLISECOND, 0) }.timeInMillis
+        assertEquals(expected1am, (res as DateResolution.Exact).timeMillis)
+    }
+
+    @Test
     fun testD103_FourAmRollover_LogicalDayBoundary() {
         // Base time: 2:00 AM on Oct 26 (within 4am logical night window of Oct 25)
         val cal2am = Calendar.getInstance().apply { set(2026, Calendar.OCTOBER, 26, 2, 0, 0); set(Calendar.MILLISECOND, 0) }
@@ -280,5 +290,22 @@ class DateResolverTest {
         assertEquals("Tomorrow 5:00 PM", resolver.formatChipLabel(tomorrow5pm, now))
         assertEquals("Fri 5:00 PM", resolver.formatChipLabel(friday5pm, now))
         assertEquals("Sun 15 Nov, 5:00 PM", resolver.formatChipLabel(nextMonth5pm, now))
+    }
+
+    @Test
+    fun testDateResolver_DynamicTimezone_EvaluatesWithoutStaleCache() {
+        val originalTz = java.util.TimeZone.getDefault()
+        try {
+            java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("UTC"))
+            val fakeClock = FakeClock(1700000000000L)
+            val resolver = DateResolver(fakeClock, { true })
+            assertEquals("UTC", resolver.timeZone.id)
+
+            // Dynamically change JVM default timezone
+            java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("Asia/Tokyo"))
+            assertEquals("Asia/Tokyo", resolver.timeZone.id)
+        } finally {
+            java.util.TimeZone.setDefault(originalTz)
+        }
     }
 }

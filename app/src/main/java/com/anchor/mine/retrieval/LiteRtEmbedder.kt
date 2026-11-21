@@ -18,17 +18,41 @@ import kotlinx.coroutines.withContext
  *
  * Employs Matryoshka Representation Learning (MRL) truncation to 256 dimensions
  * and symmetric int8 quantization with a per-vector floating-point scale factor.
+ *
+ * Note on on-device embedding runtime: Generative LiteRT-LM runtime models run through
+ * `runPrefill` for token ingestion. When raw hidden states / pooling layers are not directly
+ * exposed as embedding vectors by the text generation C++ runtime, `SemanticProjection.generateSemanticVector`
+ * provides the deterministic 256-dim Matryoshka projection with subword hashing and semantic
+ * clustering as a zero-alloc fallback.
  */
 class LiteRtEmbedder(
     val modelPath: String,
     private val isNativeAvailableOverride: Boolean? = null
-) : Embedder {
+) : Embedder, java.io.Closeable {
 
     constructor(context: android.content.Context) : this(
         File(context.filesDir, "models/embeddinggemma-2-text-270m.litertlm").absolutePath
     )
 
-    override val version: String = "egemma2-text-256-int8-v1"
+    companion object {
+        const val MODEL_VERSION = "egemma2-270m-text-256-int8-v2"
+        const val HASH_VERSION = "hash-projection-v1"
+
+        fun quantizeFloats(floats: FloatArray, targetDim: Int = 256): QuantVector {
+            return com.anchor.core.retrieval.SemanticProjection.quantizeFloats(floats, targetDim)
+        }
+
+        fun generateDeterministicVector(text: String, targetDim: Int = 256): QuantVector {
+            return generateSemanticVector(text, targetDim)
+        }
+
+        fun generateSemanticVector(text: String, targetDim: Int = 256): QuantVector {
+            return com.anchor.core.retrieval.SemanticProjection.projectSemanticVector(text, targetDim)
+        }
+    }
+
+    override val version: String
+        get() = HASH_VERSION
     override val dim: Int = 256
 
     private val isNativeAvailable: Boolean by lazy {
@@ -53,35 +77,16 @@ class LiteRtEmbedder(
         }
 
         val file = File(modelPath)
-        if (file.exists() && isNativeAvailable) {
-            try {
-                return@withContext executeNativeEmbedding(formattedTexts)
-            } catch (e: Throwable) {
-                android.util.Log.w("LiteRtEmbedder", "Native embedding failed: ${e.message}, falling back to projection")
-            }
+        if (file.exists()) {
+            android.util.Log.d("LiteRtEmbedder", "Using deterministic Matryoshka projection (model file present at $modelPath)")
         }
 
-        // Fallback: Deterministic Matryoshka-truncated 256-d projection for test/headless runs
         return@withContext formattedTexts.map { formatted ->
             generateDeterministicVector(formatted)
         }
     }
 
-    private fun executeNativeEmbedding(texts: List<String>): List<QuantVector> {
-        return texts.map { generateDeterministicVector(it) }
-    }
-
-    companion object {
-        fun quantizeFloats(floats: FloatArray, targetDim: Int = 256): QuantVector {
-            return com.anchor.core.retrieval.SemanticProjection.quantizeFloats(floats, targetDim)
-        }
-
-        fun generateDeterministicVector(text: String, targetDim: Int = 256): QuantVector {
-            return generateSemanticVector(text, targetDim)
-        }
-
-        fun generateSemanticVector(text: String, targetDim: Int = 256): QuantVector {
-            return com.anchor.core.retrieval.SemanticProjection.projectSemanticVector(text, targetDim)
-        }
+    override fun close() {
+        // No-op: zero-alloc deterministic projection
     }
 }

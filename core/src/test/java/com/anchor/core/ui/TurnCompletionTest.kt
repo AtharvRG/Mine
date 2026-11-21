@@ -37,7 +37,7 @@ class TurnCompletionTest {
         storage.settings["key"] = "test-key"
         storage.activeNodes.add(Node("n_tomo", "event", "Dinner with Raj", "active"))
         storage.activeNodes.add(Node("n_thur", "event", "Dinner with Sam", "active"))
-        
+
         val clock = FakeClock(1000L)
         var callCount = 0
 
@@ -76,7 +76,7 @@ class TurnCompletionTest {
         controller.onAction(UiAction.UpdateDraft("Raj"))
         controller.onAction(UiAction.SendMessage)
         assertEquals(2, callCount) // User Answers -> Commit -> Loop Ends
-        
+
         val active = storage.getActiveNodes(100)
         assertEquals("Exactly one node cancelled", 1, active.size)
         assertEquals("n_thur", active[0].id)
@@ -87,7 +87,7 @@ class TurnCompletionTest {
         val storage = SharedFakeStorage()
         storage.settings["key"] = "test-key"
         val clock = FakeClock(1000L)
-        
+
         val fakeTransport = object : HttpTransport {
             override suspend fun postStream(target: Target, body: String): Flow<String> = flow {
                 emit("""data: {"choices":[{"delta":{"content":"{\"reply\":\"Got it\",\"calls\":[]}"}}]}""")
@@ -108,7 +108,7 @@ class TurnCompletionTest {
 
         controller.onAction(UiAction.UpdateDraft("Hello"))
         controller.onAction(UiAction.SendMessage)
-        
+
         val lastMsg = storage.messages.last().content!!
         assertEquals("Got it", lastMsg)
         assertFalse("Raw JSON leaked into DB", lastMsg.contains("{\"reply\""))
@@ -121,7 +121,7 @@ class TurnCompletionTest {
         storage.activeNodes.add(Node("n1", "task", "Buy milk", "active"))
         val clock = FakeClock(1000L)
         var callCount = 0
-        
+
         val fakeTransport = object : HttpTransport {
             override suspend fun postStream(target: Target, body: String): Flow<String> = flow {
                 callCount++
@@ -183,7 +183,7 @@ class TurnCompletionTest {
 
         assertEquals("Should stop after 4 loops", 4, callCount)
         val messages = storage.messages
-        val limitMessage = messages.find { it.content == "Loop limit reached." }
+        val limitMessage = messages.find { it.content == ChatResilience.LOOP_LIMIT_REPLY }
         org.junit.Assert.assertNotNull("Must show loop limit reached", limitMessage)
         // Verify unique IDs so no PK collisions
         val ids = messages.map { it.id }
@@ -226,7 +226,7 @@ class TurnCompletionTest {
 
         assertEquals(4, callCount)
         val messages = storage.messages
-        val limitMessage = messages.find { it.content == "Loop limit reached." }
+        val limitMessage = messages.find { it.content == ChatResilience.LOOP_LIMIT_REPLY }
         org.junit.Assert.assertNull("Loop limit reached must NOT fire if 4th loop commits", limitMessage)
     }
 

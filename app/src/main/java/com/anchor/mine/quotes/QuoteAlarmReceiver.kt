@@ -36,14 +36,15 @@ class QuoteAlarmReceiver : BroadcastReceiver() {
                         val quoteManager = QuoteManager(
                             storage = storage,
                             orchestrator = app.orchestrator,
-                            clock = SystemClock()
+                            clock = SystemClock(),
+                            limiter = app.rateLimiter
                         )
                         quoteManager.prepareNextSlotQuote()
                     }
                 }
             } catch (e: CancellationException) {
                 throw e
-            } catch (_: Exception) {
+            } catch (_: Throwable) {
                 // Ignore transient network or database errors during background prep
             } finally {
                 QuoteAlarmScheduler.scheduleNext(context)

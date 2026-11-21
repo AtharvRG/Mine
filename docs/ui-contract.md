@@ -58,6 +58,7 @@ The single source of truth for the UI at any given moment:
 - `voiceprintEnrolled`: Boolean (True if user's acoustic voiceprint embedding is enrolled)
 - `latestInsightsReport`: FullInsightsReport? (Weekly/monthly review stats, 7-day activity bars, goal hierarchies, habit streaks, 24h heat strip, opt-in mood)
 - `handsFreeState`: HandsFreeState (IDLE, LISTENING, PROCESSING, SPEAKING; half-duplex continuous voice)
+- `webSearchEnabled`: Boolean (True when web search toggle 🌐 is active in composer)
 
 ## 1b. Structured timeline items (`ChatItem`, D-121)
 `UiState.chatItems` is composed by `ChatTimelineBuilder.build(messages, receipts, openProposals)`:
@@ -123,19 +124,36 @@ The only events the UI can trigger:
 - `LoadInsights(days)`: Recomputes and populates `latestInsightsReport` for analytics dashboard.
 - `SetHandsFree(enabled)`: Activates or halts hands-free continuous voice conversation mode.
 - `UpdateHandsFreeState(state)`: Updates half-duplex turn state (IDLE, LISTENING, PROCESSING, SPEAKING).
+- `ToggleWebSearch`: Inverts active web search toggle state and updates gateway.
+- `SetWebSearch(enabled)`: Sets explicit web search toggle state and updates gateway.
+- `RetryNow`: Immediately clears provider 429 backoff cooldowns and triggers offline outbox queue draining.
+- `ConfirmProviderImport`: Confirms deep-link provider configuration import, applying new endpoint, model, and clearing existing key on host change without key.
+- `RejectProviderImport`: Rejects pending deep-link provider configuration import.
+- `SetContextSensing(enabled)`: Toggles opportunistic walk and errand context sensing triggers.
 
-## 3. Adaptive UI & Layout Contract (D-199)
+## 3. Adaptive UI & Layout Contract (D-199, D-208, D-213)
 - **Compact Form Factor (< 600dp width or < 400dp height)**:
-  - Single-column layout with top `PrimaryScrollableTabRow` across all 9 navigation tabs (`Chat`, `Reminders`, `Provider`, `Backup`, `Debug`, `Memory`, `Board`, `Calendar`, `Insights`).
+  - Single-column layout with top `PrimaryScrollableTabRow` across all 10 navigation tabs (`Chat`, `Reminders`, `Provider`, `Backup`, `Debug`, `Memory`, `Board`, `Calendar`, `Insights`, `Notes`).
+  - `ChatScreen` composer row features the `🌐` web search toggle button (`Modifier.testTag("webSearchToggleButton")`) alongside hands-free, text input, audio recording, and send.
 - **Large-Screen / Tablet / Foldable Form Factor (>= 600dp width && >= 400dp height)**:
-  - Vertical `NavigationRail` pinned to the start edge with category icons and labels.
+  - Vertical `NavigationRail` pinned to the start edge with category icons and labels across all 10 tabs (`Chat 💬`, `Reminders ⏰`, `Provider 🤖`, `Backup 💾`, `Debug 🛠️`, `Memory 🧠`, `Board 📋`, `Calendar 📅`, `Insights 📊`, `Notes 📝`).
   - Dual-Pane Productivity Workspace:
-    - Left Pane (48% width): `ChatScreen` with hands-free banner and interactive composer.
+    - Left Pane (48% width): `ChatScreen` with hands-free banner, web search toggle, and interactive composer.
     - Right Pane (52% width): Companion Workspace corresponding to the active tab (defaults to `InsightsScreen` or `BoardViewScreen` when Chat is active).
   - Preserves full touch targets and layout stability across orientation changes.
 
 ## 4. Backend Capabilities (Exposed via Storage Interface)
 The UI layer can query the `Storage` interface directly for data visualization without triggering state mutations:
+- **Living Topic Notes & References (D-208, D-209)**:
+  - `getTopicNotes()`, `getTopicNote(id)`, `getTopicNoteByTopic(topic)`, `saveTopicNote(note)`, `deleteTopicNote(id)`
+  - `getReferencesForNode(nodeId)`, `getReferencesForNote(noteId)`, `linkNoteReference(ref)`, `deleteNoteReference(id)`
+- **Deadlines & Rescheduling Slippage (D-205)**:
+  - `original_due_at`, `due_history_json`, `slip_count` on `node`.
+  - Strikethrough deadlines rendered across board and calendar views.
+- **Conditioned Wakeups (D-207)**:
+  - `getPendingAgentWakeups(now)`, `getAgentWakeup(id)`, `saveAgentWakeup(wakeup)`, `deleteAgentWakeup(id)`
+- **Smart Web Search Pipeline (D-213)**:
+  - DuckDuckGo HTML and Jsoup article extraction with SSRF blocklist and untrusted data wrapping `<data source="web" integrity="untrusted">`.
 - **Day Paging**: Query `getMessagesForDay(dayKey)` from `raw_message`.
 - **Calendar Heat-Map**: Query `getHeatMapCounts(startDayKey, endDayKey)` and `getDaysWithMessages(startDayKey, endDayKey)` from `raw_message`.
 - **Reminder Queries**: Query `getRemindersBetween(startMs, endMs)` and `getRemindersForDay(startOfDayMs, endOfDayMs)` from `reminder`.
@@ -158,4 +176,3 @@ The UI layer can query the `Storage` interface directly for data visualization w
 - **On-Device LLM Fallback (D-198)**:
   - `provider.ondevice.enabled` ("0" or "1"), `provider.ondevice.model_path`
   - Fallback target `Target("local://ondevice", "local", 120)` evaluated when offline or on cloud failure.
-

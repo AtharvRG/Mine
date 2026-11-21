@@ -42,7 +42,7 @@ class CheckinBuilderNullDueTest {
             updatedAt = clock.now()
         )
         val storage = object : SharedFakeStorage(clock) {
-            override suspend fun getNodesDueBetween(startMs: Long, endMs: Long, limit: Int): List<Node> =
+            override suspend fun getNodesDueBetween(startMs: Long, endMs: Long, limit: Int, includeLocalOnly: Boolean): List<Node> =
                 listOf(undated, dated)
         }
 

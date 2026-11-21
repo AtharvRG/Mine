@@ -785,4 +785,112 @@ class DatabaseMigrationTest {
             context.deleteDatabase(dbName)
         }
     }
+
+    @Test
+    fun testDatabaseMigration_V12toV13_CreatesCompanionBrainTablesAndColumns() {
+        runBlocking {
+            val context = InstrumentationRegistry.getInstrumentation().targetContext
+            val dbName = "mine_v12_v13_test.db"
+            context.deleteDatabase(dbName)
+            val key = ByteArray(32) { 13 }
+
+            val helper = DatabaseProvider.getHelper(context, key, dbName)
+            val db = helper.writableDatabase
+
+            // Simulate V12 state by dropping V13 tables and indexes
+            db.execSQL("DROP TRIGGER IF EXISTS trg_topic_note_fts_insert")
+            db.execSQL("DROP TRIGGER IF EXISTS trg_topic_note_fts_delete")
+            db.execSQL("DROP TRIGGER IF EXISTS trg_topic_note_fts_update")
+            db.execSQL("DROP TABLE IF EXISTS topic_note_fts")
+            db.execSQL("DROP TABLE IF EXISTS topic_note")
+            db.execSQL("DROP TABLE IF EXISTS note_reference")
+            db.execSQL("DROP TABLE IF EXISTS agent_wakeup")
+
+            // Run migration from 12 to 13
+            MineDatabaseCallback().onUpgrade(db, 12, 13)
+
+            // Verify tables exist
+            var topicNoteFound = false
+            var noteRefFound = false
+            var agentWakeupFound = false
+            var topicNoteFtsFound = false
+            db.query("SELECT name FROM sqlite_master WHERE type='table'").use { c ->
+                while (c.moveToNext()) {
+                    val name = c.getString(0)
+                    if (name.equals("topic_note", ignoreCase = true)) topicNoteFound = true
+                    if (name.equals("note_reference", ignoreCase = true)) noteRefFound = true
+                    if (name.equals("agent_wakeup", ignoreCase = true)) agentWakeupFound = true
+                    if (name.equals("topic_note_fts", ignoreCase = true)) topicNoteFtsFound = true
+                }
+            }
+            assertTrue("V13 migration must create topic_note table", topicNoteFound)
+            assertTrue("V13 migration must create note_reference table", noteRefFound)
+            assertTrue("V13 migration must create agent_wakeup table", agentWakeupFound)
+            assertTrue("V13 migration must create topic_note_fts table", topicNoteFtsFound)
+
+            // Verify node table columns
+            val nodeCols = mutableSetOf<String>()
+            db.query("PRAGMA table_info(node)").use { c ->
+                val nameIdx = c.getColumnIndex("name")
+                while (c.moveToNext()) {
+                    if (nameIdx != -1) nodeCols.add(c.getString(nameIdx).lowercase())
+                }
+            }
+            assertTrue("node table must contain original_due_at", "original_due_at" in nodeCols)
+            assertTrue("node table must contain due_history_json", "due_history_json" in nodeCols)
+            assertTrue("node table must contain slip_count", "slip_count" in nodeCols)
+            assertTrue("node table must contain context_trigger", "context_trigger" in nodeCols)
+            assertTrue("node table must contain fallback_fire_at", "fallback_fire_at" in nodeCols)
+
+            // Verify operations through AndroidStorage
+            val storage = AndroidStorage(helper)
+            val note = com.anchor.core.models.TopicNote(
+                id = "note_123",
+                topic = "Health & Diet",
+                content = "- Drink water\n- Take vitamins",
+                bulletsJson = "[\"- Drink water\", \"- Take vitamins\"]",
+                pinned = true,
+                lastEditedAt = 1000L,
+                createdAt = 500L
+            )
+            storage.saveTopicNote(note)
+            val fetchedNote = storage.getTopicNote("note_123")
+            assertNotNull(fetchedNote)
+            assertEquals("Health & Diet", fetchedNote?.topic)
+            assertEquals(true, fetchedNote?.pinned)
+
+            val searchedNotes = storage.searchTopicNotes("vitamins", 5)
+            assertTrue("FTS search must find topic note", searchedNotes.any { it.id == "note_123" })
+
+            val noteRef = com.anchor.core.models.NoteReference(
+                id = "ref_1",
+                noteId = "note_123",
+                nodeId = "node_456",
+                createdAt = 1000L
+            )
+            storage.linkNoteReference(noteRef)
+            assertEquals(1, storage.getReferencesForNote("note_123").size)
+            assertEquals(1, storage.getReferencesForNode("node_456").size)
+
+            val wakeup = com.anchor.core.models.AgentWakeup(
+                id = "wakeup_1",
+                fireAt = 5000L,
+                reason = "walk_check",
+                payloadJson = "{}",
+                state = "pending",
+                createdAt = 1000L
+            )
+            storage.saveAgentWakeup(wakeup)
+            val pendingWakeups = storage.getPendingAgentWakeups(6000L)
+            assertEquals(1, pendingWakeups.size)
+            assertEquals("walk_check", pendingWakeups[0].reason)
+
+            storage.markAgentWakeupState("wakeup_1", "fired")
+            val emptyPending = storage.getPendingAgentWakeups(6000L)
+            assertTrue(emptyPending.isEmpty())
+
+            helper.close()
+            context.deleteDatabase(dbName)
+        }
+    }
 }

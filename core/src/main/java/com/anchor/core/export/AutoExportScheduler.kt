@@ -17,8 +17,10 @@ class AutoExportScheduler(
     private val clock: Clock
 ) {
 
-    suspend fun isEnabled(): Boolean =
-        storage.getSetting(KEY_ENABLED)?.toBooleanStrictOrNull() ?: false
+    suspend fun isEnabled(): Boolean {
+        val v = storage.getSetting(KEY_ENABLED) ?: return false
+        return v == "1" || v.equals("true", ignoreCase = true)
+    }
 
     suspend fun setEnabled(enabled: Boolean) {
         storage.saveSetting(KEY_ENABLED, enabled.toString())

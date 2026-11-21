@@ -47,10 +47,14 @@ class HybridRetriever(
                     storage.getActiveSoulFacts().associateBy { it.id }
                 } else emptyMap()
 
+                val activeNodesMap = if (scored.any { it.first == "node" }) {
+                    storage.getActiveNodes(100).associateBy { it.id }
+                } else emptyMap()
+
                 for ((ownerType, ownerId, _) in scored) {
                     when (ownerType) {
                         "node" -> {
-                            val node = storage.getNode(ownerId)
+                            val node = activeNodesMap[ownerId] ?: storage.getNode(ownerId)
                             if (node != null && node.status != "archived" && node.status != "cancelled" && node.status != "done" && !node.localOnly) {
                                 val dueText = if (node.dueAt != null) "Due: ${node.dueAt}" else ""
                                 val details = "Status: ${node.status} $dueText".trim()
@@ -100,7 +104,7 @@ class HybridRetriever(
             val item = itemLookup[id] ?: return@mapNotNull null
             var multiplier = 1.0f
 
-            val node = storage.getNode(id)
+            val node = if (id.startsWith("n_")) storage.getNode(id) else null
             if (node != null) {
                 when (node.status) {
                     "active", "in_progress" -> multiplier *= 1.0f

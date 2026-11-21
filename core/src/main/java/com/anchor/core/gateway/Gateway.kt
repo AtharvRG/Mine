@@ -13,6 +13,7 @@ import com.anchor.core.storage.getAllActiveNodesPaged
 import com.anchor.core.time.Clock
 import com.anchor.core.time.DateResolution
 import com.anchor.core.time.DateResolver
+import com.anchor.core.time.DayRollover
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.util.Calendar
@@ -20,17 +21,28 @@ import java.util.TimeZone
 import java.util.UUID
 
 class Gateway(
-    private val storage: Storage, 
+    private val storage: Storage,
     private val resolver: Resolver,
     private val dateResolver: DateResolver,
     private val clock: Clock,
     private val hybridRetriever: com.anchor.core.retrieval.HybridRetriever? = null,
     private val embedder: com.anchor.core.retrieval.Embedder? = null,
-    private val alarmScheduler: com.anchor.core.alarms.AlarmScheduler? = null
+    private val alarmScheduler: com.anchor.core.alarms.AlarmScheduler? = null,
+    val webSearchEngine: com.anchor.core.search.WebSearchEngine? = null,
+    var webSearchEnabled: Boolean = false
 ) {
     private val json = Json { ignoreUnknownKeys = true }
 
-    suspend fun executeTool(call: ToolCall, executedCalls: MutableSet<String> = mutableSetOf(), userMessage: String? = null, causeMsgId: String? = null): ToolResult {
+    suspend fun executeTool(
+        call: ToolCall,
+        executedCalls: MutableSet<String> = mutableSetOf(),
+        userMessage: String? = null,
+        causeMsgId: String? = null,
+        untrustedContentInTurn: Boolean = false
+    ): ToolResult {
+        if (untrustedContentInTurn && call.tool in MUTATING_TOOLS) {
+            return ToolResult.Error("Blocked: this turn read web content. Ask the user to confirm the change in their own words first.")
+        }
         val args = EnvelopeParser.resolveArgs(call)
         // Keyed on the raw arguments: resolution drops placeholders, which would make two
         // genuinely different calls look identical and silently drop the second one.
@@ -118,11 +130,13 @@ class Gateway(
                 handleRemoveFollowUp(edgeId, causeMsgId)
             }
             "schedule_reminder" -> {
-                val tierStr = args["tier"] ?: "alarm"
+                val defaultTier = storage.getSetting("reminder.default_tier") ?: "alarm"
+                val tierStr = args["tier"] ?: defaultTier
                 val tier = if (tierStr.equals("gentle", ignoreCase = true)) AlarmTier.GENTLE else AlarmTier.ALARM
                 val targetRef = args["target_ref"] ?: args["target"] ?: ""
                 val whenText = args["when_text"] ?: args["when"] ?: ""
-                val offsetText = args["offset_text"] ?: args["offset"]
+                val leadTimeMin = storage.getSetting("reminder.lead_time_minutes")?.toIntOrNull() ?: 0
+                val offsetText = args["offset_text"] ?: args["offset"] ?: (if (leadTimeMin > 0) "-$leadTimeMin min" else null)
                 val inferred = args["inferred"]?.equals("true", ignoreCase = true) == true
                 handleScheduleReminder(targetRef, whenText, offsetText, inferred, tier, causeMsgId)
             }
@@ -148,7 +162,8 @@ class Gateway(
                 }
 
                 // B3: Hard cap LLM hallucinated lengths to prevent DB/UI bloat
-                val hint = (args["hint"] ?: args["title"] ?: "").take(200)
+                val targetRef = args["target_ref"] ?: args["target"] ?: args["node_id"] ?: args["id"]
+                val hint = (targetRef ?: args["hint"] ?: args["title"] ?: "").take(200)
                 val dueText = (args["due_text"] ?: "").take(100)
 
                 val tierStr = args["tier"]?.trim()?.lowercase(java.util.Locale.US)
@@ -177,7 +192,7 @@ class Gateway(
 
                 val dayRule = storage.getEffectiveDayRule(clock.now())
                 val rolloverMin = dayRule.startMinute
-                val timeZone = TimeZone.getTimeZone(dayRule.tzId)
+                val timeZone = DayRollover.safeTimeZone(dayRule.tzId)
 
                 val timeResolution = if (dueText.isBlank()) null else dateResolver.resolve(dueText, rolloverMin, timeZone)
 
@@ -195,6 +210,9 @@ class Gateway(
                         val pinned = args["pinned"]?.toBooleanStrictOrNull() ?: false
                         val followUpTo = args["follow_up_to"] ?: args["follow_up_of"]
 
+                        val contextTrigger = args["context_trigger"] ?: if (args["on_leave_home"] == "true") "ON_LEAVE_HOME" else null
+                        val fallbackFireAt = args["fallback_fire_at"]?.toLongOrNull()
+
                         val payload = ProposalPayload(
                             intent = intent,
                             title = hint,
@@ -206,7 +224,9 @@ class Gateway(
                             severity = severity,
                             pinned = pinned,
                             untitled = isUntitled,
-                            label = label
+                            label = label,
+                            contextTrigger = contextTrigger,
+                            fallbackFireAt = fallbackFireAt
                         )
                         storage.saveProposal(Proposal(pId, "time", intent, opts, payload = json.encodeToString(payload)))
                         return ToolResult.NeedsTime(pId, timeResolution.chipLabels)
@@ -279,6 +299,8 @@ class Gateway(
                                 val severity = args["severity"]?.toIntOrNull() ?: 0
                                 val pinned = args["pinned"]?.toBooleanStrictOrNull() ?: false
                                 val followUpTo = args["follow_up_to"] ?: args["follow_up_of"]
+                                val contextTrigger = args["context_trigger"] ?: if (args["on_leave_home"] == "true") "ON_LEAVE_HOME" else null
+                                val fallbackFireAt = args["fallback_fire_at"]?.toLongOrNull()
                                 val payload = ProposalPayload(
                                     targetAtMillis = targetTimeMillis,
                                     title = title,
@@ -289,7 +311,9 @@ class Gateway(
                                     pinned = pinned,
                                     tier = tier,
                                     targetId = duplicate.id,
-                                    intent = IntentType.CREATE
+                                    intent = IntentType.CREATE,
+                                    contextTrigger = contextTrigger,
+                                    fallbackFireAt = fallbackFireAt
                                 )
                                 val proposal = Proposal(
                                     id = pId,
@@ -313,7 +337,9 @@ class Gateway(
                         val pinned = args["pinned"]?.toBooleanStrictOrNull() ?: false
                         val followUpTo = args["follow_up_to"] ?: args["follow_up_of"]
                         val recurrenceRule = args["recurrence_rule"] ?: args["recurrence"] ?: args["rrule"]
-                        handleCreate(title, safeType, targetTimeMillis, followUpTo, priority, severity, pinned, tier, recurrenceRule, causeMsgId)
+                        val contextTrigger = args["context_trigger"] ?: if (args["on_leave_home"] == "true") "ON_LEAVE_HOME" else null
+                        val fallbackFireAt = args["fallback_fire_at"]?.toLongOrNull()
+                        handleCreate(title, safeType, targetTimeMillis, followUpTo, priority, severity, pinned, tier, recurrenceRule, causeMsgId, contextTrigger = contextTrigger, fallbackFireAt = fallbackFireAt)
                     }
                     IntentType.CANCEL, IntentType.COMPLETE, IntentType.RESCHEDULE -> {
                         val timeForResolver = if (intent == IntentType.RESCHEDULE) null else targetTimeMillis
@@ -321,6 +347,184 @@ class Gateway(
                     }
                     else -> ToolResult.Error("${intent.name} is not supported yet")
                 }
+            }
+            "schedule_agent_wakeup" -> {
+                val fireAtRaw = args["fire_at"] ?: args["when"] ?: args["time"] ?: ""
+                if (fireAtRaw.isBlank()) return ToolResult.Error("Missing fire_at: when should the agent wake up?")
+                val reason = args["reason"]?.trim() ?: "Check in"
+                val payload = args["payload"]
+
+                val dayRule = storage.getEffectiveDayRule(clock.now())
+                val rolloverMin = dayRule.startMinute
+                val timeZone = DayRollover.safeTimeZone(dayRule.tzId)
+
+                val fireAtMillis = fireAtRaw.toLongOrNull() ?: run {
+                    when (val res = dateResolver.resolve(fireAtRaw, rolloverMin, timeZone)) {
+                        is DateResolution.Exact -> res.timeMillis
+                        is DateResolution.NeedsClarification -> res.candidateMillis.firstOrNull()
+                        else -> null
+                    }
+                }
+
+                if (fireAtMillis == null || fireAtMillis <= clock.now()) {
+                    return ToolResult.Error("Invalid or past wakeup time '$fireAtRaw'")
+                }
+
+                val wakeupId = "aw_${UUID.randomUUID().toString().take(8)}"
+                val uId = "u_${UUID.randomUUID()}"
+                val wakeup = AgentWakeup(
+                    id = wakeupId,
+                    fireAt = fireAtMillis,
+                    reason = reason,
+                    payloadJson = payload,
+                    state = "pending",
+                    createdAt = clock.now()
+                )
+                storage.saveAgentWakeup(wakeup)
+                alarmScheduler?.scheduleAgentWakeup(wakeupId, fireAtMillis)
+                val event = RawEvent(
+                    opId = uId,
+                    opType = "SCHEDULE_WAKEUP",
+                    targetType = "agent_wakeup",
+                    targetId = wakeupId,
+                    beforeJson = null,
+                    afterJson = json.encodeToString(wakeup),
+                    tsUtc = clock.now(),
+                    causeMsgId = causeMsgId
+                )
+                storage.insertRawEvent(event)
+                ToolResult.Committed("WAKEUP", wakeupId, "Scheduled agent self-wakeup for ${dateResolver.format(fireAtMillis)}: $reason", uId)
+            }
+            "upsert_topic_note" -> {
+                val topic = (args["topic"] ?: args["title"] ?: "").trim()
+                if (topic.isBlank()) return ToolResult.Error("Missing topic for living note")
+                val rawBullets = args["bullets"] ?: args["content"] ?: args["text"] ?: ""
+                val newBullets = parseBullets(rawBullets)
+                if (newBullets.isEmpty()) return ToolResult.Error("Missing bullets or content for note '$topic'")
+
+                val rawNoteArg = (args["note_id"] ?: args["id"] ?: "").trim()
+                val resolvedNoteId = if (rawNoteArg.isNotBlank()) resolveRef(rawNoteArg, "note") else ""
+                val existing = (if (resolvedNoteId.isNotBlank()) storage.getTopicNote(resolvedNoteId) else null)
+                    ?: (if (rawNoteArg.isNotBlank()) storage.getTopicNote(rawNoteArg) else null)
+                    ?: storage.getTopicNoteByTopic(topic)
+
+                if (existing != null && storage.getReferencesForNote(existing.id).any { it.mode == "read_only" }) {
+                    return ToolResult.Error("Note '${existing.topic}' is linked as READ_ONLY and cannot be modified by the assistant.")
+                }
+
+                var requestedPinned = args["pinned"]?.toBooleanStrictOrNull() ?: existing?.pinned ?: false
+                var unpinnedWarning = ""
+                if (requestedPinned) {
+                    val otherPinnedCount = storage.getAllTopicNotes().count { it.pinned && it.id != (existing?.id ?: "") }
+                    if (otherPinnedCount >= 3) {
+                        requestedPinned = false
+                        unpinnedWarning = " (unpinned: max 3 pinned notes reached)"
+                    }
+                }
+                val mergedBullets = if (existing != null) {
+                    val existingBullets = try {
+                        json.decodeFromString<List<String>>(existing.bulletsJson)
+                    } catch (_: Exception) {
+                        existing.content.lines().map { it.trim().removePrefix("-").removePrefix("*").trim() }.filter { it.isNotBlank() }
+                    }
+                    (existingBullets + newBullets).distinct()
+                } else {
+                    newBullets.distinct()
+                }
+                val formattedContent = mergedBullets.joinToString("\n") { "- $it" }
+                val bulletsJson = json.encodeToString(mergedBullets)
+                val noteId = existing?.id ?: "tn_${UUID.randomUUID().toString().take(8)}"
+                val note = TopicNote(
+                    id = noteId,
+                    topic = topic,
+                    content = formattedContent,
+                    bulletsJson = bulletsJson,
+                    pinned = requestedPinned,
+                    lastEditedAt = clock.now(),
+                    createdAt = existing?.createdAt ?: clock.now()
+                )
+                storage.saveTopicNote(note)
+                val uId = "u_${UUID.randomUUID()}"
+                val event = RawEvent(
+                    opId = uId,
+                    opType = "UPSERT_TOPIC_NOTE",
+                    targetType = "topic_note",
+                    targetId = noteId,
+                    beforeJson = existing?.let { json.encodeToString(it) },
+                    afterJson = json.encodeToString(note),
+                    tsUtc = clock.now(),
+                    causeMsgId = causeMsgId
+                )
+                storage.insertRawEvent(event)
+                val action = if (existing != null) "Updated" else "Created"
+                ToolResult.Committed("UPSERT_NOTE", noteId, "$action living note '$topic' (${mergedBullets.size} items)$unpinnedWarning", uId)
+            }
+            "link_note_reference" -> {
+                val rawNoteId = (args["note_id"] ?: args["note"] ?: "").trim()
+                val rawNodeId = (args["node_id"] ?: args["task_id"] ?: args["target"] ?: "").trim()
+                if (rawNoteId.isBlank() || rawNodeId.isBlank()) {
+                    return ToolResult.Error("Missing note_id or node_id")
+                }
+                val resolvedNoteId = resolveRef(rawNoteId, "note")
+                val note = storage.getTopicNote(resolvedNoteId)
+                    ?: storage.getTopicNote(rawNoteId)
+                    ?: storage.getTopicNoteByTopic(rawNoteId)
+                    ?: return ToolResult.Error("Note '$rawNoteId' not found")
+                val resolvedNodeId = resolveRef(rawNodeId, "n")
+                val node = storage.getNode(resolvedNodeId)
+                    ?: return ToolResult.Error("Task '$rawNodeId' not found")
+
+                val modeArg = (args["mode"] ?: args["relationship"] ?: "").trim().lowercase()
+                val effectiveMode = if (modeArg == "read_only") "read_only" else "read_write"
+
+                val refId = "nr_${UUID.randomUUID().toString().take(8)}"
+                val ref = NoteReference(
+                    id = refId,
+                    noteId = note.id,
+                    nodeId = node.id,
+                    createdAt = clock.now(),
+                    mode = effectiveMode
+                )
+                storage.linkNoteReference(ref)
+                val uId = "u_${UUID.randomUUID()}"
+                val event = RawEvent(
+                    opId = uId,
+                    opType = "LINK_NOTE_REFERENCE",
+                    targetType = "note_reference",
+                    targetId = refId,
+                    beforeJson = null,
+                    afterJson = json.encodeToString(ref),
+                    tsUtc = clock.now(),
+                    causeMsgId = causeMsgId
+                )
+                storage.insertRawEvent(event)
+                ToolResult.Committed("LINK_NOTE", refId, "Linked note '${note.topic}' to task '${node.title}' ($effectiveMode)", uId)
+            }
+            "web_search" -> {
+                if (!webSearchEnabled || webSearchEngine == null) {
+                    return ToolResult.Error("Web search is disabled. Enable the globe toggle 🌐 to search the web.")
+                }
+                val fetchUrl = (args["fetch_url"] ?: args["url"] ?: "").trim()
+                if (fetchUrl.isNotBlank()) {
+                    if (!com.anchor.core.search.WebSecurityGuard.isSafeUrl(fetchUrl, resolveDns = true)) {
+                        return ToolResult.Error("Security: URL blocked: $fetchUrl")
+                    }
+                }
+                val query = (args["query"] ?: args["q"] ?: "").trim()
+                if (query.isBlank() && fetchUrl.isBlank()) return ToolResult.Error("Missing query for web search")
+                val limit = (args["limit"]?.toIntOrNull() ?: 3).coerceIn(1, 5)
+                val searchResults = if (query.isNotBlank()) webSearchEngine.search(query, limit).toMutableList() else mutableListOf()
+                if (fetchUrl.isNotBlank()) {
+                    val pageContent = webSearchEngine.fetchPage(fetchUrl)
+                    val existingIndex = searchResults.indexOfFirst { it.url == fetchUrl }
+                    if (existingIndex >= 0) {
+                        searchResults[existingIndex] = searchResults[existingIndex].copy(pageContent = pageContent)
+                    } else {
+                        searchResults.add(0, com.anchor.core.search.WebSearchResult("Page Content", fetchUrl, pageContent?.take(200) ?: "", pageContent = pageContent))
+                    }
+                }
+                val safeText = com.anchor.core.search.WebSecurityGuard.wrapInSafetyTag(searchResults)
+                ToolResult.Data(safeText)
             }
             else -> ToolResult.Error("Tool not supported yet")
         }
@@ -341,7 +545,7 @@ class Gateway(
 
         val dayRule = storage.getEffectiveDayRule(clock.now())
         val rolloverMin = dayRule.startMinute
-        val timeZone = TimeZone.getTimeZone(dayRule.tzId)
+        val timeZone = DayRollover.safeTimeZone(dayRule.tzId)
 
         var fireAt: Long = if (!offsetText.isNullOrBlank()) {
             if (node == null || node.dueAt == null) {
@@ -379,12 +583,12 @@ class Gateway(
         // Quiet hours check for AI-inferred reminders (Blueprint 30 s3.3, D-035)
         // Explicit user reminders ring anyway (requested-class). AI-suggested ones are moved to day_start + 30 min.
         if (inferred) {
-            val cal = Calendar.getInstance(timeZone).apply { timeInMillis = fireAt }
-            val minuteOfDay = cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE)
-            val isOutsideDayWindow = minuteOfDay < dayRule.startMinute || minuteOfDay > dayRule.endMinute
+            val isOutsideDayWindow = !DayRollover.isInDayWindow(fireAt, dayRule)
             if (isOutsideDayWindow) {
+                val cal = Calendar.getInstance(timeZone).apply { timeInMillis = fireAt }
+                val minuteOfDay = cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE)
                 val targetMinute = dayRule.startMinute + 30
-                if (minuteOfDay > dayRule.endMinute) {
+                if (minuteOfDay >= dayRule.startMinute) {
                     cal.add(Calendar.DAY_OF_YEAR, 1)
                 }
                 cal.set(Calendar.HOUR_OF_DAY, targetMinute / 60)
@@ -526,6 +730,8 @@ class Gateway(
                         val severity = payload?.severity ?: 0
                         val pinned = payload?.pinned ?: false
                         val tier = payload?.tier ?: AlarmTier.ALARM
+                        val contextTrigger = payload?.contextTrigger
+                        val fallbackFireAt = payload?.fallbackFireAt
                         handleCreate(
                             title = title,
                             type = type,
@@ -536,7 +742,9 @@ class Gateway(
                             pinned = pinned,
                             tier = tier,
                             causeMsgId = null,
-                            consumeProposalId = proposal.id
+                            consumeProposalId = proposal.id,
+                            contextTrigger = contextTrigger,
+                            fallbackFireAt = fallbackFireAt
                         )
                     }
                     else -> {
@@ -658,7 +866,12 @@ class Gateway(
                         val severity = payload?.severity ?: 0
                         val pinned = payload?.pinned ?: false
                         val tier = payload?.tier ?: AlarmTier.ALARM
-                        handleCreate(title, type, chosenMillis, followUpTo, priority, severity, pinned, tier, consumeProposalId = proposal.id)
+                        handleCreate(
+                            title, type, chosenMillis, followUpTo, priority, severity, pinned, tier,
+                            consumeProposalId = proposal.id,
+                            contextTrigger = payload?.contextTrigger,
+                            fallbackFireAt = payload?.fallbackFireAt
+                        )
                     }
                     IntentType.RESCHEDULE -> {
                         val hint = payload?.hint ?: ""
@@ -786,7 +999,14 @@ class Gateway(
                         storage.consumeProposal(proposal.id)
                         return ToolResult.Error("That time has already passed; tell me the new time again")
                     }
-                    val newNode = node.copy(dueAt = target, updatedAt = now)
+                    val rescheduleCalc = calculateDueReschedule(node, target)
+                    val newNode = node.copy(
+                        dueAt = target,
+                        updatedAt = now,
+                        originalDueAt = rescheduleCalc.originalDueAt,
+                        dueHistoryJson = rescheduleCalc.dueHistoryJson,
+                        slipCount = rescheduleCalc.slipCount
+                    )
                     val remId = oldRem?.id ?: "r_${node.id}"
                     val existingTier = oldRem?.tier ?: AlarmTier.ALARM
                     val newRem = if (oldRem != null) {
@@ -853,48 +1073,130 @@ class Gateway(
             .replace("’", "'")
             .replace("cannot", "can not")
             .replace("n't", " not")
-        val tokens = expanded.split(Regex("[^a-z0-9]+")).filter { it.isNotEmpty() }
+        val tokens = expanded.split(Regex("""[^\p{L}\p{N}]+""")).filter { it.isNotEmpty() }
         val tokenSet = tokens.toSet()
-        val itemTitle = proposal.payload?.let {
+        val payloadTitle = proposal.payload?.let {
             try { json.decodeFromString<ProposalPayload>(it).title } catch (e: Exception) { null }
         }
-        val titleTokens = itemTitle?.trim()?.lowercase(java.util.Locale.US)
-            ?.split(Regex("[^a-z0-9]+"))?.filter { it.isNotEmpty() }.orEmpty()
-        if (titleTokens.isNotEmpty() && tokenSet == titleTokens.toSet()) {
-            return false
+        val optionTitle = option.title.substringBefore(" (").trim()
+        val candidateTitles = listOfNotNull(payloadTitle, optionTitle).filter { it.isNotBlank() }
+        for (t in candidateTitles) {
+            val titleTokens = t.trim().lowercase(java.util.Locale.US)
+                .split(Regex("""[^\p{L}\p{N}]+""")).filter { it.isNotEmpty() }
+            if (titleTokens.isNotEmpty() && tokenSet == titleTokens.toSet()) {
+                return false
+            }
         }
         return tokens.any { it in NEGATION_TOKENS }
     }
 
     private fun matchesUserMessage(userMessage: String, option: ProposalOption, choice: String, proposal: Proposal): Boolean {
+        // Blueprint 22 §2 / Audit Bug 2: Reject explicit user negation ("no", "don't", "cancel", "neither")
+        if (isNegated(userMessage, option, proposal)) return false
+
         val cleanMsg = userMessage.trim().lowercase(java.util.Locale.US)
         val cleanChoice = choice.trim().lowercase(java.util.Locale.US)
         val resolvedChoice = resolveRef(choice, "n")
         val cleanResolved = resolvedChoice.trim().lowercase(java.util.Locale.US)
         val cleanTitle = option.title.trim().lowercase(java.util.Locale.US)
-        // The item's own name is a valid way to select its option: a dedupe chip's option title
-        // is "Update existing" and its id is the node id, so without this the only way to answer
-        // "Similar item already exists: Not now review" by name is refused.
         val itemTitle = proposal.payload?.let {
             try { json.decodeFromString<ProposalPayload>(it).title } catch (e: Exception) { null }
         }?.trim()?.lowercase(java.util.Locale.US).orEmpty()
 
         if (cleanMsg == cleanChoice || cleanMsg == cleanResolved || cleanMsg == cleanTitle) return true
         if (itemTitle.isNotEmpty() && cleanMsg == itemTitle) return true
-        if (cleanTitle.contains(cleanMsg) || cleanMsg.contains(cleanTitle)) return true
 
-        val stopWords = setOf("the", "a", "an", "to", "for", "in", "on", "at", "my", "me", "i", "it", "this", "that", "please")
-        val userTokens = cleanMsg.split(Regex("[^a-zA-Z0-9]+")).filter { it.length >= 2 && it !in stopWords }
-        val optionTokens = cleanTitle.split(Regex("[^a-zA-Z0-9]+")).filter { it.length >= 2 && it !in stopWords }
-        val choiceTokens = cleanChoice.split(Regex("[^a-zA-Z0-9]+")).filter { it.length >= 2 && it !in stopWords }
-        val itemTokens = itemTitle.split(Regex("[^a-zA-Z0-9]+")).filter { it.length >= 2 && it !in stopWords }
+        // 1. Ordinal selections ("first", "1st", "the first one", "second", "2nd", etc.)
+        val optionIndex = proposal.options.indexOfFirst { it.id == option.id || it.id == resolvedChoice }
+        val ordinals = listOf(
+            setOf("first", "1st", "the first", "the first one", "#1", "option 1", "choice 1"),
+            setOf("second", "2nd", "the second", "the second one", "#2", "option 2", "choice 2"),
+            setOf("third", "3rd", "the third", "the third one", "#3", "option 3", "choice 3"),
+            setOf("fourth", "4th", "the fourth", "the fourth one", "#4", "option 4", "choice 4"),
+            setOf("fifth", "5th", "the fifth", "the fifth one", "#5", "option 5", "choice 5")
+        )
 
-        if (userTokens.any { it in optionTokens || it in choiceTokens || it in itemTokens }) return true
+        val exactDigitOrdinal = if (cleanMsg.length == 1 && cleanMsg[0].isDigit()) cleanMsg.toInt() - 1 else null
+        var userOrdinalIndex: Int? = exactDigitOrdinal
+        if (userOrdinalIndex == null) {
+            for (i in ordinals.indices) {
+                val terms = ordinals[i]
+                val matched = terms.any { term ->
+                    if (term.contains(" ")) {
+                        cleanMsg.contains(term)
+                    } else {
+                        cleanMsg.contains(Regex("""\b${Regex.escape(term)}\b"""))
+                    }
+                }
+                if (matched) {
+                    userOrdinalIndex = i
+                    break
+                }
+            }
+        }
 
+        if (userOrdinalIndex != null) {
+            return userOrdinalIndex == optionIndex
+        }
+
+        // 2. Lexical Overlap between user tokens and options
+        val stopWords = setOf("the", "a", "an", "to", "for", "in", "on", "at", "my", "me", "i", "it", "this", "that", "please", "one", "with", "and", "or", "of", "task", "event", "item")
+        val filteredUserTokens = cleanMsg.split(Regex("""[^\p{L}\p{N}]+""")).filter { it.length >= 2 && it !in stopWords }
+
+        val thisItemTokens = itemTitle.split(Regex("""[^\p{L}\p{N}]+""")).filter { it.length >= 2 && it !in stopWords }
+        val thisOptionTokens = (cleanTitle.split(Regex("""[^\p{L}\p{N}]+""")) +
+                cleanChoice.split(Regex("""[^\p{L}\p{N}]+""")) +
+                thisItemTokens).filter { it.length >= 2 && it !in stopWords }.toSet()
+
+        val otherOptionsTokens = proposal.options.filter { it.id != option.id && it.id != resolvedChoice }
+            .flatMap { other ->
+                val otherTitle = other.title.trim().lowercase(java.util.Locale.US)
+                val otherId = other.id.trim().lowercase(java.util.Locale.US)
+                (otherTitle.split(Regex("""[^\p{L}\p{N}]+""")) + otherId.split(Regex("""[^\p{L}\p{N}]+""")))
+                    .filter { it.length >= 2 && it !in stopWords }
+            }.toSet()
+
+        val thisOverlap = filteredUserTokens.count { it in thisOptionTokens }
+        val otherOverlap = filteredUserTokens.count { it in otherOptionsTokens }
+
+        if (otherOverlap > 0 && thisOverlap == 0) {
+            return false
+        }
+        if (thisOverlap > 0 && thisOverlap >= otherOverlap) {
+            return true
+        }
+
+        // 3. Time token match
         val chosenMillis = choice.toLongOrNull()
         if (chosenMillis != null) {
             val formattedTime = dateResolver.formatTimeOnly(chosenMillis).lowercase(java.util.Locale.US)
-            if (cleanMsg.contains(formattedTime) || formattedTime.contains(cleanMsg)) return true
+            val cleanFormatted = formattedTime.replace(" ", "").replace(":00", "")
+            val cleanUserTime = cleanMsg.replace(" ", "").replace(":00", "")
+
+            val userHasAm = Regex("""\b(am|morning)\b""").containsMatchIn(cleanMsg)
+            val userHasPm = Regex("""\b(pm|evening|afternoon|night)\b""").containsMatchIn(cleanMsg)
+            val optHasAm = Regex("""\b(am|morning)\b""").containsMatchIn(formattedTime) || cleanFormatted.endsWith("am") || cleanTitle.contains("am")
+            val optHasPm = Regex("""\b(pm|evening|afternoon|night)\b""").containsMatchIn(formattedTime) || cleanFormatted.endsWith("pm") || cleanTitle.contains("pm")
+
+            if (userHasAm && optHasPm && !userHasPm) return false
+            if (userHasPm && optHasAm && !userHasAm) return false
+
+            if (cleanFormatted == cleanUserTime || cleanFormatted.contains(cleanUserTime) || cleanUserTime.contains(cleanFormatted) ||
+                cleanMsg.contains(formattedTime) || formattedTime.contains(cleanMsg)) return true
+        }
+
+        // 4. Affirmations: only valid when single option or needs_confirm proposal with exactly one non-cancel option.
+        // For multiple disambiguation choices, user must pick an option or ordinal explicitly.
+        val affirmationTokens = setOf("yes", "yep", "yeah", "sure", "ok", "okay", "confirm", "do", "it", "please", "proceed", "go", "ahead")
+        val userTokens = cleanMsg.split(Regex("""[^\p{L}\p{N}]+""")).filter { it.isNotEmpty() }
+        val isAffirmation = userTokens.isNotEmpty() && userTokens.all { it in affirmationTokens }
+        if (isAffirmation) {
+            val nonCancelOptions = proposal.options.filter {
+                !it.id.equals("cancel", ignoreCase = true) && !it.title.equals("cancel", ignoreCase = true)
+            }
+            if (nonCancelOptions.size == 1 && (option.id == nonCancelOptions.first().id || resolvedChoice == nonCancelOptions.first().id)) {
+                return true
+            }
         }
 
         return false
@@ -911,7 +1213,9 @@ class Gateway(
         tier: AlarmTier = AlarmTier.ALARM,
         recurrenceRule: String? = null,
         causeMsgId: String? = null,
-        consumeProposalId: String? = null
+        consumeProposalId: String? = null,
+        contextTrigger: String? = null,
+        fallbackFireAt: Long? = null
     ): ToolResult {
         val followUpEdge: Edge?
         val followUpEdgeEvent: RawEvent?
@@ -950,7 +1254,27 @@ class Gateway(
         }
 
         val effectiveRRule = recurrenceRule ?: if (type == "habit") "FREQ=DAILY" else null
-        val node = Node(nId, type, title, "active", dueAt, createdAt = now, updatedAt = now, priority = priority, severity = severity, pinned = pinned, recurrenceRule = effectiveRRule)
+        val effectiveFallback = if (contextTrigger == "ON_LEAVE_HOME" && dueAt == null && fallbackFireAt == null) {
+            val dayRule = storage.getEffectiveDayRule(now)
+            val logicalDayStart = DayRollover.getLogicalDayStart(now, dayRule)
+            val windowLengthMs = ((dayRule.endMinute - dayRule.startMinute + 1440) % 1440) * 60_000L
+            val logicalDayEnd = logicalDayStart + windowLengthMs
+            var target = logicalDayEnd - (210 * 60_000L) // day_end - 3.5 hours
+            if (target <= now) {
+                target += 86_400_000L
+            }
+            target
+        } else fallbackFireAt
+
+        val node = Node(
+            nId, type, title, "active", dueAt,
+            createdAt = now, updatedAt = now,
+            priority = priority, severity = severity, pinned = pinned,
+            recurrenceRule = effectiveRRule,
+            originalDueAt = dueAt,
+            contextTrigger = contextTrigger,
+            fallbackFireAt = effectiveFallback
+        )
 
         // Fix: Auto-create the reminder inherently so the LLM doesn't have to call a separate tool
         val reminder = dueAt?.let { Reminder("r_$nId", title, it, nId, tier = tier, rrule = effectiveRRule) }
@@ -960,6 +1284,20 @@ class Gateway(
         val event = RawEvent(uId, IntentType.CREATE.name, "node", nId, afterJson = afterJson, tsUtc = now, causeMsgId = causeMsgId)
 
         storage.createNodeAndCommit(node, event, reminder, followUpEdge, followUpEdgeEvent, consumeProposalId)
+
+        if (effectiveFallback != null && contextTrigger == "ON_LEAVE_HOME") {
+            val wakeupId = "aw_errand_$nId"
+            val wakeup = AgentWakeup(
+                id = wakeupId,
+                fireAt = effectiveFallback,
+                reason = "Reminder: You haven't stepped out today, don't forget '$title'",
+                payloadJson = """{"node_id":"$nId","message_if_not_done":"You haven't stepped out today—don't forget: $title"}""",
+                state = "pending",
+                createdAt = now
+            )
+            storage.saveAgentWakeup(wakeup)
+            alarmScheduler?.scheduleAgentWakeup(wakeupId, effectiveFallback)
+        }
 
         if (embedder != null && !node.localOnly) {
             val vec = embedder.embed(listOf(node.title), com.anchor.core.retrieval.Embedder.Kind.DOCUMENT).firstOrNull()
@@ -973,13 +1311,17 @@ class Gateway(
     }
 
     private suspend fun handleUpdate(args: Map<String, String>, causeMsgId: String?): ToolResult {
-        val hint = (args["hint"] ?: args["target"] ?: "").take(200)
-        if (hint.isBlank()) {
+        val rawHint = (args["target_ref"] ?: args["target"] ?: args["node_id"] ?: args["id"] ?: args["hint"] ?: "").take(200)
+        if (rawHint.isBlank()) {
             return ToolResult.Error("Missing hint: which item should be updated?")
         }
+        val directNodeId = resolveRef(rawHint, "n")
+        val directNode = storage.getNode(directNodeId)
+        val hint = directNode?.title ?: rawHint
 
         // P1-B 16: UPDATE supports optional field changes; at least one change must be requested.
         val newTitle = args["new_title"]?.trim()?.take(200)
+        val directDueAt = args["due_at"]?.trim()?.toLongOrNull() ?: args["new_due_at"]?.trim()?.toLongOrNull()
         val dueText = args["due_text"]?.trim()?.take(100)?.ifBlank { null }
         val newPriority = args["priority"]?.toIntOrNull()
         val newSeverity = args["severity"]?.toIntOrNull()
@@ -988,7 +1330,7 @@ class Gateway(
         val newTier = if (tierStr == "gentle") AlarmTier.GENTLE else if (tierStr == "alarm") AlarmTier.ALARM else null
         val newDueText = args["new_due_text"]?.trim()?.take(100)?.ifBlank { null } ?: dueText
 
-        if (newTitle.isNullOrBlank() && newDueText.isNullOrBlank() && newPriority == null &&
+        if (newTitle.isNullOrBlank() && newDueText.isNullOrBlank() && directDueAt == null && newPriority == null &&
             newSeverity == null && newPinned == null && newTier == null
         ) {
             return ToolResult.Error("No changes specified for UPDATE: provide new_title, due_text, priority, severity, pinned, or tier")
@@ -996,10 +1338,10 @@ class Gateway(
 
         val dayRule = storage.getEffectiveDayRule(clock.now())
         val rolloverMin = dayRule.startMinute
-        val timeZone = TimeZone.getTimeZone(dayRule.tzId)
+        val timeZone = DayRollover.safeTimeZone(dayRule.tzId)
 
-        var targetDueMillis: Long? = null
-        if (!newDueText.isNullOrBlank()) {
+        var targetDueMillis: Long? = directDueAt
+        if (targetDueMillis == null && !newDueText.isNullOrBlank()) {
             when (val timeResolution = dateResolver.resolve(newDueText, rolloverMin, timeZone)) {
                 is DateResolution.NeedsClarification -> {
                     val pId = "p_${UUID.randomUUID()}"
@@ -1032,7 +1374,8 @@ class Gateway(
             newSeverity = newSeverity,
             newPinned = newPinned,
             newTier = newTier,
-            causeMsgId = causeMsgId
+            causeMsgId = causeMsgId,
+            resolvedNodeId = directNode?.id
         )
     }
 
@@ -1109,8 +1452,9 @@ class Gateway(
         val now = clock.now()
         val oldRem = storage.getReminderByNodeId(oldNode.id) ?: storage.getPendingReminders().find { it.nodeId == oldNode.id || it.id == "r_${oldNode.id}" }
 
+        val rescheduleCalc = calculateDueReschedule(oldNode, newDueMillis)
         val effectiveTitle = newTitle ?: oldNode.title
-        val effectiveDue = newDueMillis ?: oldNode.dueAt
+        val effectiveDue = rescheduleCalc.dueAt
         val effectivePriority = newPriority ?: oldNode.priority
         val effectiveSeverity = newSeverity ?: oldNode.severity
         val effectivePinned = newPinned ?: oldNode.pinned
@@ -1130,7 +1474,10 @@ class Gateway(
             priority = effectivePriority,
             severity = effectiveSeverity,
             pinned = effectivePinned,
-            updatedAt = now
+            updatedAt = now,
+            originalDueAt = rescheduleCalc.originalDueAt,
+            dueHistoryJson = rescheduleCalc.dueHistoryJson,
+            slipCount = rescheduleCalc.slipCount
         )
 
         // Reminder follows the node: text syncs to title, fire time syncs to due date, tier only changes when explicitly requested.
@@ -1170,6 +1517,77 @@ class Gateway(
         return ToolResult.Committed(IntentType.UPDATE.name, updatedNode.id, changes.joinToString(", "), uId)
     }
 
+    private data class DueRescheduleCalculation(
+        val dueAt: Long?,
+        val originalDueAt: Long?,
+        val dueHistoryJson: String?,
+        val slipCount: Int
+    )
+
+    private fun calculateDueReschedule(
+        node: Node,
+        newDueMillis: Long?
+    ): DueRescheduleCalculation {
+        if (newDueMillis == null) {
+            return DueRescheduleCalculation(
+                dueAt = node.dueAt,
+                originalDueAt = node.originalDueAt,
+                dueHistoryJson = node.dueHistoryJson,
+                slipCount = node.slipCount
+            )
+        }
+        val currentDue = node.dueAt
+        if (currentDue == null) {
+            return DueRescheduleCalculation(
+                dueAt = newDueMillis,
+                originalDueAt = node.originalDueAt ?: newDueMillis,
+                dueHistoryJson = node.dueHistoryJson,
+                slipCount = node.slipCount
+            )
+        }
+
+        // D-205 / Fix 5: Exempt from slip if:
+        // 1. newDueMillis <= currentDue (moving deadline earlier or same)
+        // 2. node.createdAt > 0L && (clock.now() - node.createdAt) <= 10 * 60_000L (typo edit within 10 min of creation)
+        // 3. (newDueMillis - currentDue) <= 10 * 60_000L (grace adjustment forward by <= 10 min)
+        val isCreationTypo = node.createdAt > 0L &&
+            (clock.now() - node.createdAt) <= 10 * 60_000L &&
+            currentDue > clock.now() &&
+            (currentDue - node.createdAt) > 15 * 60_000L
+        val isExempt = (newDueMillis <= currentDue) ||
+            isCreationTypo ||
+            (newDueMillis - currentDue <= 10 * 60_000L)
+
+        val effectiveOriginal = if (isCreationTypo) newDueMillis else (node.originalDueAt ?: currentDue)
+
+        if (!isExempt) {
+            val currentHistory = try {
+                if (!node.dueHistoryJson.isNullOrBlank()) {
+                    json.decodeFromString<List<Long>>(node.dueHistoryJson)
+                } else {
+                    listOf(currentDue)
+                }
+            } catch (e: Exception) {
+                listOf(currentDue)
+            }
+            val updatedHistory = currentHistory + newDueMillis
+            val historyJson = json.encodeToString(updatedHistory)
+            return DueRescheduleCalculation(
+                dueAt = newDueMillis,
+                originalDueAt = effectiveOriginal,
+                dueHistoryJson = historyJson,
+                slipCount = node.slipCount + 1
+            )
+        } else {
+            return DueRescheduleCalculation(
+                dueAt = newDueMillis,
+                originalDueAt = effectiveOriginal,
+                dueHistoryJson = node.dueHistoryJson,
+                slipCount = node.slipCount
+            )
+        }
+    }
+
     private suspend fun handleResolveChange(
         intent: IntentType,
         hint: String,
@@ -1181,12 +1599,18 @@ class Gateway(
         if (intent == IntentType.RESCHEDULE && destinationTimeMillis == null) {
             return ToolResult.Error("To when?")
         }
-        val candidates = try {
-            storage.getAllActiveNodesPaged(pageSize = 200, hardCap = 5000)
-        } catch (e: TooManyActiveNodesException) {
-            return ToolResult.Error("There are too many active items (${e.cap}+). Please be more specific with the item title or due time.")
+        val directNodeId = resolveRef(hint, "n")
+        val directNode = storage.getNode(directNodeId)
+        val resolution = if (directNode != null) {
+            com.anchor.core.models.Resolution.ClearWinner(directNode)
+        } else {
+            val candidates = try {
+                storage.getAllActiveNodesPaged(pageSize = 200, hardCap = 5000)
+            } catch (e: TooManyActiveNodesException) {
+                return ToolResult.Error("There are too many active items (${e.cap}+). Please be more specific with the item title or due time.")
+            }
+            resolver.resolve(intent, hint, timeForResolver, candidates)
         }
-        val resolution = resolver.resolve(intent, hint, timeForResolver, candidates)
 
         return when (resolution) {
             is Resolution.NotFound -> {
@@ -1261,7 +1685,14 @@ class Gateway(
                     }
                     intent == IntentType.RESCHEDULE -> {
                         val destTime = destinationTimeMillis ?: return ToolResult.Error("To when?")
-                        val nodeRes = oldNode.copy(dueAt = destTime, updatedAt = now)
+                        val rescheduleCalc = calculateDueReschedule(oldNode, destTime)
+                        val nodeRes = oldNode.copy(
+                            dueAt = destTime,
+                            updatedAt = now,
+                            originalDueAt = rescheduleCalc.originalDueAt,
+                            dueHistoryJson = rescheduleCalc.dueHistoryJson,
+                            slipCount = rescheduleCalc.slipCount
+                        )
                         val remRes = if (oldRem != null) {
                             oldRem.copy(text = nodeRes.title, fireAtMillis = destTime)
                         } else {
@@ -1301,6 +1732,21 @@ class Gateway(
 
     fun aliasFor(prefix: String, targetId: String): String {
         return aliasRegistry.aliasFor(prefix, targetId)
+    }
+
+    private fun parseBullets(rawBullets: String): List<String> {
+        val trimmed = rawBullets.trim()
+        if (trimmed.isBlank()) return emptyList()
+        if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
+            try {
+                return json.decodeFromString<List<String>>(trimmed)
+                    .map { it.trim().removePrefix("-").removePrefix("*").trim() }
+                    .filter { it.isNotBlank() }
+            } catch (_: Exception) {}
+        }
+        return trimmed.split("\n", ";")
+            .map { it.trim().removePrefix("-").removePrefix("*").trim() }
+            .filter { it.isNotBlank() }
     }
 
     /**
@@ -1346,7 +1792,10 @@ class Gateway(
     private suspend fun handleUndo(token: String): ToolResult {
         if (storage.hasUndo(token)) return ToolResult.Error("Already undone")
         val event = storage.getEvent(token) ?: return ToolResult.Error("Undo token not found")
-        
+        if (event.undoOf != null || event.opType.startsWith("UNDO")) {
+            return ToolResult.Error("Cannot undo an undo operation")
+        }
+
         // B16: Enforce 24-hour limit on Undo operations
         if (clock.now() - event.tsUtc > 24 * 3600 * 1000L) {
             return ToolResult.Error("Cannot undo changes older than 24 hours.")
@@ -1354,6 +1803,37 @@ class Gateway(
 
         val afterJson = event.afterJson
         val newEventId = "u_${UUID.randomUUID()}"
+
+        if (event.targetType == "agent_wakeup") {
+            val undoEvent = RawEvent(newEventId, "UNDO_SCHEDULE_WAKEUP", "agent_wakeup", event.targetId, undoOf = token, beforeJson = afterJson, afterJson = null, tsUtc = clock.now())
+            storage.markAgentWakeupState(event.targetId, "cancelled")
+            alarmScheduler?.cancelAgentWakeup(event.targetId)
+            storage.insertRawEvent(undoEvent)
+            return ToolResult.Committed("UNDO", event.targetId, "Cancelled agent self-wakeup", newEventId)
+        }
+
+        if (event.targetType == "topic_note") {
+            if (event.beforeJson != null) {
+                val prevNote = try { json.decodeFromString<TopicNote>(event.beforeJson) } catch (_: Exception) { null }
+                if (prevNote != null) {
+                    val undoEvent = RawEvent(newEventId, "UNDO_UPSERT_NOTE", "topic_note", event.targetId, undoOf = token, beforeJson = afterJson, afterJson = event.beforeJson, tsUtc = clock.now())
+                    storage.saveTopicNote(prevNote)
+                    storage.insertRawEvent(undoEvent)
+                    return ToolResult.Committed("UNDO", event.targetId, "Restored previous note: ${prevNote.topic}", newEventId)
+                }
+            }
+            val undoEvent = RawEvent(newEventId, "UNDO_UPSERT_NOTE", "topic_note", event.targetId, undoOf = token, beforeJson = afterJson, afterJson = null, tsUtc = clock.now())
+            storage.deleteTopicNote(event.targetId)
+            storage.insertRawEvent(undoEvent)
+            return ToolResult.Committed("UNDO", event.targetId, "Removed living note", newEventId)
+        }
+
+        if (event.targetType == "note_reference") {
+            val undoEvent = RawEvent(newEventId, "UNDO_LINK_NOTE", "note_reference", event.targetId, undoOf = token, beforeJson = afterJson, afterJson = null, tsUtc = clock.now())
+            storage.deleteNoteReference(event.targetId)
+            storage.insertRawEvent(undoEvent)
+            return ToolResult.Committed("UNDO", event.targetId, "Removed note link", newEventId)
+        }
 
         if (event.targetType == "reminder") {
             if (event.opType == "SCHEDULE") {
@@ -1423,7 +1903,13 @@ class Gateway(
         val currentSnapshot = NodeStateSnapshot(currentNode, currentReminder)
         val expectedAfterSnapshot = try { json.decodeFromString<NodeStateSnapshot>(afterJson) } catch (e: Exception) { return ToolResult.Error("Corrupted JSON") }
 
-        if (currentSnapshot != expectedAfterSnapshot) return ToolResult.Error("Node state has changed, cannot undo")
+        val reminderConflict = if (currentReminder == null && expectedAfterSnapshot.reminder != null && expectedAfterSnapshot.reminder.fireAtMillis <= clock.now()) {
+            false
+        } else {
+            currentSnapshot.reminder != expectedAfterSnapshot.reminder
+        }
+
+        if (currentSnapshot.node != expectedAfterSnapshot.node || reminderConflict) return ToolResult.Error("Node state has changed, cannot undo")
 
         if (event.opType == "CREATE") {
             val cancelledNode = currentNode.copy(status = "cancelled", closedAt = clock.now(), updatedAt = clock.now())
@@ -1438,11 +1924,11 @@ class Gateway(
             val beforeJson = event.beforeJson ?: return ToolResult.Error("No previous state to restore")
             val snapshot = try { json.decodeFromString<NodeStateSnapshot>(beforeJson) } catch (e: Exception) { return ToolResult.Error("Corrupted state") }
             val undoEvent = RawEvent(newEventId, "UNDO", "node", snapshot.node.id, undoOf = token, beforeJson = afterJson, afterJson = beforeJson, tsUtc = clock.now())
-            
+
             // ISSUE: If the snapshot has NO reminder, we must explicitly delete the current reminder that might have been created by RESCHEDULE
             val remIdToDelete = if (snapshot.reminder == null) currentReminder?.id else null
             storage.updateNodeAndCommit(snapshot.node, undoEvent, deleteReminderId = remIdToDelete, upsertReminder = snapshot.reminder)
-            
+
             return ToolResult.Committed("UNDO", snapshot.node.id, "Restored: ${snapshot.node.title}", newEventId)
         }
     }
@@ -1516,10 +2002,16 @@ class Gateway(
         val oldRem = storage.getReminderByNodeId(resolvedId) ?: storage.getPendingReminders().find { it.id == "r_$resolvedId" }
         val beforeJson = json.encodeToString(NodeStateSnapshot(node, oldRem))
         val newNode = node.copy(status = "active", closedAt = null, updatedAt = now)
-        val afterJson = json.encodeToString(NodeStateSnapshot(newNode, null))
+        val restoredRem = if (oldRem == null && newNode.dueAt != null && newNode.dueAt > now) {
+            Reminder("r_${newNode.id}", newNode.title, newNode.dueAt, newNode.id, rrule = newNode.recurrenceRule)
+        } else oldRem
+        val afterJson = json.encodeToString(NodeStateSnapshot(newNode, restoredRem))
         val uId = "u_${UUID.randomUUID()}"
         val event = RawEvent(uId, "RESTORE_NODE", "node", resolvedId, beforeJson = beforeJson, afterJson = afterJson, tsUtc = now)
-        storage.updateNodeAndCommit(newNode, event, deleteReminderId = null, upsertReminder = null)
+        storage.updateNodeAndCommit(newNode, event, deleteReminderId = null, upsertReminder = restoredRem)
+        if (restoredRem != null) {
+            alarmScheduler?.schedule(restoredRem)
+        }
         return ToolResult.Committed("RESTORE_NODE", resolvedId, "Restored: ${node.title}", uId)
     }
 
@@ -1527,12 +2019,19 @@ class Gateway(
         val resolvedId = resolveRef(nodeId, "n")
         val node = storage.getNode(resolvedId) ?: return ToolResult.Error("Node not found")
         val now = clock.now()
-        val beforeJson = json.encodeToString(NodeStateSnapshot(node, null))
-        val newNode = node.copy(status = "active", updatedAt = now)
-        val afterJson = json.encodeToString(NodeStateSnapshot(newNode, null))
+        val oldRem = storage.getReminderByNodeId(resolvedId) ?: storage.getPendingReminders().find { it.id == "r_$resolvedId" }
+        val beforeJson = json.encodeToString(NodeStateSnapshot(node, oldRem))
+        val newNode = node.copy(status = "active", closedAt = null, updatedAt = now)
+        val restoredRem = if (oldRem == null && newNode.dueAt != null && newNode.dueAt > now) {
+            Reminder("r_${newNode.id}", newNode.title, newNode.dueAt, newNode.id, rrule = newNode.recurrenceRule)
+        } else oldRem
+        val afterJson = json.encodeToString(NodeStateSnapshot(newNode, restoredRem))
         val uId = "u_${UUID.randomUUID()}"
         val event = RawEvent(uId, "ACTIVATE_NODE", "node", resolvedId, beforeJson = beforeJson, afterJson = afterJson, tsUtc = now)
-        storage.updateNodeAndCommit(newNode, event, deleteReminderId = null, upsertReminder = null)
+        storage.updateNodeAndCommit(newNode, event, deleteReminderId = null, upsertReminder = restoredRem)
+        if (restoredRem != null) {
+            alarmScheduler?.schedule(restoredRem)
+        }
         return ToolResult.Committed("ACTIVATE_NODE", resolvedId, "Activated: ${node.title}", uId)
     }
 
@@ -1582,13 +2081,19 @@ class Gateway(
         val closedAt = if (newStatus == "done" || newStatus == "archived" || newStatus == "cancelled") now else null
         val deleteRemId = if (closedAt != null) (oldRem?.id ?: "r_$resolvedId") else null
         val newNode = node.copy(status = newStatus, closedAt = closedAt, updatedAt = now)
-        val afterJson = json.encodeToString(NodeStateSnapshot(newNode, if (deleteRemId != null) null else oldRem))
+        val upsertRem = if (closedAt == null && oldRem == null && newNode.dueAt != null && newNode.dueAt > now) {
+            Reminder("r_${newNode.id}", newNode.title, newNode.dueAt, newNode.id, rrule = newNode.recurrenceRule)
+        } else null
+        val afterJson = json.encodeToString(NodeStateSnapshot(newNode, if (deleteRemId != null) null else (upsertRem ?: oldRem)))
         val uId = "u_${UUID.randomUUID()}"
         val event = RawEvent(uId, "UPDATE_STATUS", "node", resolvedId, beforeJson = beforeJson, afterJson = afterJson, tsUtc = now)
-        storage.updateNodeAndCommit(newNode, event, deleteReminderId = deleteRemId, upsertReminder = null)
+        storage.updateNodeAndCommit(newNode, event, deleteReminderId = deleteRemId, upsertReminder = upsertRem)
         if (deleteRemId != null) {
             alarmScheduler?.cancel(deleteRemId)
             storage.deleteRegisteredAlarm(deleteRemId)
+        }
+        if (upsertRem != null) {
+            alarmScheduler?.schedule(upsertRem)
         }
         return ToolResult.Committed("UPDATE_STATUS", resolvedId, "Updated status of ${node.title} to $newStatus", uId)
     }
@@ -1701,6 +2206,11 @@ class Gateway(
     }
 
     companion object {
+        val MUTATING_TOOLS = setOf(
+            "propose_change", "confirm_change", "undo", "soul_propose", "schedule_agent_wakeup",
+            "upsert_topic_note", "link_note_reference", "keep_stale", "cancel_stale", "add_follow_up", "remove_follow_up", "schedule_reminder"
+        )
+
         const val DEDUPE_TIME_WINDOW_MS = 2 * 60 * 60 * 1000L // 2 hours
 
         /** Upper bound on the per-turn alias map before it is dropped wholesale. */

@@ -164,16 +164,16 @@ open class SharedFakeStorage(var clock: Clock = SystemClock()) : Storage {
             .sortedWith(compareBy<Node> { it.dueAt == null }.thenBy { it.dueAt }.thenBy { it.id })
     }
 
-    override suspend fun getNodesDueBetween(startMs: Long, endMs: Long, limit: Int): List<Node> {
+    override suspend fun getNodesDueBetween(startMs: Long, endMs: Long, limit: Int, includeLocalOnly: Boolean): List<Node> {
         return activeNodes
-            .filter { (it.status == "active" || it.status == "in_progress" || it.status == "paused") && !it.localOnly && it.dueAt != null && it.dueAt in startMs until endMs }
+            .filter { (it.status == "active" || it.status == "in_progress" || it.status == "paused" || it.status == "done") && (includeLocalOnly || !it.localOnly) && it.dueAt != null && it.dueAt in startMs until endMs }
             .sortedWith(compareBy<Node> { it.dueAt }.thenBy { it.id })
             .take(limit)
     }
 
     override suspend fun getOverdueNodes(beforeMs: Long, limit: Int): List<Node> {
         return activeNodes
-            .filter { (it.status == "active" || it.status == "in_progress" || it.status == "paused") && !it.localOnly && it.dueAt != null && it.dueAt < beforeMs }
+            .filter { (it.status == "active" || it.status == "in_progress" || it.status == "paused") && it.dueAt != null && it.dueAt < beforeMs }
             .sortedWith(compareBy<Node> { it.dueAt }.thenBy { it.id })
             .take(limit)
     }
@@ -219,10 +219,10 @@ open class SharedFakeStorage(var clock: Clock = SystemClock()) : Storage {
         return union.values.toList()
     }
 
-    override suspend fun getActiveNodeCounts(now: Long, staleCutoffMs: Long): NodeCounts = synchronized(this) {
+    override suspend fun getActiveNodeCounts(now: Long, staleCutoffMs: Long, includeLocalOnly: Boolean): NodeCounts = synchronized(this) {
         val nonStaleOpen = activeNodes.filter {
             (it.status == "active" || it.status == "in_progress" || it.status == "paused") &&
-            !it.localOnly &&
+            (includeLocalOnly || !it.localOnly) &&
             ((it.dueAt != null && it.dueAt > now) || maxOf(it.updatedAt, it.createdAt) == 0L || (now - maxOf(it.updatedAt, it.createdAt) <= staleCutoffMs))
         }
         val totalOpen = nonStaleOpen.size
@@ -230,10 +230,10 @@ open class SharedFakeStorage(var clock: Clock = SystemClock()) : Storage {
         NodeCounts(totalOpen, overdue)
     }
 
-    override suspend fun getStaleNodes(now: Long, cutoffMs: Long): List<Node> = synchronized(this) {
+    override suspend fun getStaleNodes(now: Long, cutoffMs: Long, includeLocalOnly: Boolean): List<Node> = synchronized(this) {
         activeNodes.filter {
             (it.status == "active" || it.status == "in_progress" || it.status == "paused") &&
-            !it.localOnly &&
+            (includeLocalOnly || !it.localOnly) &&
             (maxOf(it.updatedAt, it.createdAt) > 0L && (now - maxOf(it.updatedAt, it.createdAt) > cutoffMs)) &&
             (it.dueAt == null || it.dueAt <= now)
         }.sortedByDescending { it.createdAt }
@@ -250,6 +250,7 @@ open class SharedFakeStorage(var clock: Clock = SystemClock()) : Storage {
         activeNodes.removeAll { it.id == nodeId }
         reminders.removeAll { it.nodeId == nodeId || it.id == "r_$nodeId" }
         edges.removeAll { it.srcId == nodeId || it.dstId == nodeId }
+        noteReferences.removeAll { it.nodeId == nodeId }
         for (i in loggedEvents.indices) {
             if (loggedEvents[i].targetId == nodeId) {
                 loggedEvents[i] = loggedEvents[i].copy(beforeJson = null, afterJson = null)
@@ -359,17 +360,20 @@ open class SharedFakeStorage(var clock: Clock = SystemClock()) : Storage {
             .mapNotNull { it.undoOf }
             .toSet()
     override suspend fun getRecentEvents(limit: Int): List<RawEvent> {
-        val uiVisibleOps = setOf("CREATE", "CANCEL", "COMPLETE", "RESCHEDULE", "UPDATE", "SCHEDULE", "KEEP_STALE", "CANCEL_STALE", "DELETE", "CONFIRM", "ACCEPT", "REJECT", "LINK", "UNLINK", "UPDATE_STATUS", "ARCHIVE_NODE", "DELETE_NODE", "RESTORE_NODE")
+        val uiVisibleOps = setOf("CREATE", "CANCEL", "COMPLETE", "RESCHEDULE", "UPDATE", "SCHEDULE", "KEEP_STALE", "CANCEL_STALE", "DELETE", "CONFIRM", "ACCEPT", "REJECT", "LINK", "UNLINK", "UPDATE_STATUS", "ARCHIVE_NODE", "DELETE_NODE", "RESTORE_NODE", "SCHEDULE_WAKEUP", "UPSERT_TOPIC_NOTE", "LINK_NOTE_REFERENCE")
         return loggedEvents
             .filter { it.undoOf == null && it.opType in uiVisibleOps }
             .takeLast(limit)
+    }
+
+    override suspend fun insertRawEvent(event: RawEvent): Unit = synchronized(this) {
+        loggedEvents.add(event)
     }
 
     // P1-D 20 (D-121): Home queries, mirroring AndroidStorage.
     override suspend fun getHomePriorityList(now: Long, limit: Int): List<Node> {
         val freshActive = activeNodes.filter {
             (it.status == "active" || it.status == "in_progress" || it.status == "paused") &&
-            !it.localOnly &&
             ((it.dueAt != null && it.dueAt > now) || maxOf(it.updatedAt, it.createdAt) == 0L || (now - maxOf(it.updatedAt, it.createdAt) <= 30L * 24 * 3600 * 1000L))
         }
         return rankHomeNodes(freshActive, now).take(limit)
@@ -420,7 +424,7 @@ open class SharedFakeStorage(var clock: Clock = SystemClock()) : Storage {
             it.status == "open" && it.id.isNotBlank() && (proposalCreatedAt[it.id] ?: 0L) > expiryThreshold
         }
     }
-    override suspend fun getUrgentNodes(): List<Node> = activeNodes.filter { (it.status == "active" || it.status == "in_progress") && !it.localOnly }.sortedWith(compareBy<Node> { it.dueAt == null }.thenBy { it.dueAt }).take(3)
+    override suspend fun getUrgentNodes(includeLocalOnly: Boolean): List<Node> = activeNodes.filter { (it.status == "active" || it.status == "in_progress") && (includeLocalOnly || !it.localOnly) }.sortedWith(compareBy<Node> { it.dueAt == null }.thenBy { it.dueAt }).take(3)
     override suspend fun getActiveSoulFacts(includeLocalOnly: Boolean): List<SoulFact> = soulFacts.filter { (it.status == "active" || it.status == "pinned") && (includeLocalOnly || !it.localOnly) }
 
     override suspend fun updateNodeAndCommit(node: Node, event: RawEvent, deleteReminderId: String?, upsertReminder: Reminder?, consumeProposalId: String?, softDeleteEdgeIds: List<String>) {
@@ -490,7 +494,7 @@ open class SharedFakeStorage(var clock: Clock = SystemClock()) : Storage {
         soulFacts.removeAll { it.id == fact.id }
         soulFacts.add(fact)
     }
-    
+
     override suspend fun createSoulFactAndCommit(fact: SoulFact, event: RawEvent) {
         soulFacts.removeAll { it.id == fact.id }
         soulFacts.add(fact)
@@ -563,7 +567,7 @@ open class SharedFakeStorage(var clock: Clock = SystemClock()) : Storage {
         registeredAlarms[reminderId] = com.anchor.core.models.RegisteredAlarm(reminderId, registeredFor, api)
     }
     override suspend fun deleteRegisteredAlarm(reminderId: String) { registeredAlarms.remove(reminderId) }
-    
+
     override suspend fun getProposedSoulFacts(): List<SoulFact> = soulFacts.filter { it.status == "proposed" }
     override suspend fun updateSoulFactStatus(id: String, status: String) {
         val idx = soulFacts.indexOfFirst { it.id == id }
@@ -745,10 +749,10 @@ open class SharedFakeStorage(var clock: Clock = SystemClock()) : Storage {
         if (i >= 0) outbox[i] = outbox[i].copy(status = OutboxJob.STATUS_DONE, updatedAt = now)
     }
 
-    override suspend fun markOutboxFailed(id: String, now: Long, nextTryAt: Long, error: String) {
+    override suspend fun markOutboxFailed(id: String, now: Long, nextTryAt: Long, error: String, status: String) {
         val i = outbox.indexOfFirst { it.id == id }
         if (i >= 0) outbox[i] = outbox[i].copy(
-            status = OutboxJob.STATUS_PENDING, attempts = outbox[i].attempts + 1,
+            status = status, attempts = outbox[i].attempts + 1,
             nextTryAt = nextTryAt, updatedAt = now, lastError = error
         )
     }
@@ -999,6 +1003,8 @@ open class SharedFakeStorage(var clock: Clock = SystemClock()) : Storage {
         1
     }
 
+    override suspend fun rebuildFtsIndexes() {}
+
     // Ambient storage in SharedFakeStorage
     private val voiceprints = mutableListOf<com.anchor.core.ambient.Voiceprint>()
     private val ambientSessions = mutableListOf<com.anchor.core.ambient.AmbientSession>()
@@ -1092,12 +1098,33 @@ open class SharedFakeStorage(var clock: Clock = SystemClock()) : Storage {
         val proposalCountBefore = ambientReportItems.size
         val proposalCutoff = now - 7 * 86_400_000L
         val expiredReportIds = ambientReports.filter { it.generatedAt < proposalCutoff }.map { it.id }.toSet()
+        val expiredItems = ambientReportItems.filter { it.kind == "proposal" && it.state == "pending" && it.reportId in expiredReportIds }
+        val orphanedNodeIds = expiredItems.mapNotNull { it.nodeId }.toSet()
+        val nodeCountBefore = activeNodes.size
+        val expiredNodeIds = activeNodes.filter { it.origin == "ambient" && it.status == "proposed" && (it.id in orphanedNodeIds || it.createdAt < proposalCutoff) }.map { it.id }.toSet()
+        for (i in loggedEvents.indices) {
+            val ev = loggedEvents[i]
+            if (ev.targetType == "node" && ev.targetId in expiredNodeIds) {
+                loggedEvents[i] = ev.copy(beforeJson = null, afterJson = null)
+            }
+        }
+        activeNodes.removeAll { it.id in expiredNodeIds }
         ambientReportItems.removeAll { it.kind == "proposal" && it.state == "pending" && it.reportId in expiredReportIds }
-        (segmentCountBefore - ambientSegments.size) + (proposalCountBefore - ambientReportItems.size)
+        (segmentCountBefore - ambientSegments.size) + (proposalCountBefore - ambientReportItems.size) + (nodeCountBefore - activeNodes.size)
     }
 
     override suspend fun deleteAllAmbientData(): Int = synchronized(this) {
-        val count = ambientSegments.size + ambientReportItems.size + ambientReports.size + ambientWindows.size
+        val ambientProposedNodeIds = activeNodes.filter { it.origin == "ambient" && it.status == "proposed" }.map { it.id }.toSet()
+        val delNodes = activeNodes.count { it.origin == "ambient" && it.status == "proposed" }
+        // Scrub raw_events: update payloads to null, never remove (mimics trg_raw_evt_no_delete trigger)
+        for (i in loggedEvents.indices) {
+            val ev = loggedEvents[i]
+            if ((ev.targetType == "node" && ev.targetId in ambientProposedNodeIds) || ev.targetType in listOf("ambient_report", "ambient_report_item", "voiceprint")) {
+                loggedEvents[i] = ev.copy(beforeJson = null, afterJson = null)
+            }
+        }
+        activeNodes.removeAll { it.origin == "ambient" && it.status == "proposed" }
+        val count = ambientSegments.size + ambientReportItems.size + ambientReports.size + ambientWindows.size + ambientSessions.size + voiceprints.size + delNodes
         ambientSegments.clear()
         ambientReportItems.clear()
         ambientReports.clear()
@@ -1115,11 +1142,11 @@ open class SharedFakeStorage(var clock: Clock = SystemClock()) : Storage {
     }
 
     override suspend fun getNodesCreatedBetween(startMs: Long, endMs: Long, limit: Int): List<Node> = synchronized(this) {
-        activeNodes.filter { it.createdAt in startMs..endMs && !it.localOnly }.sortedBy { it.createdAt }.take(limit)
+        activeNodes.filter { it.createdAt in startMs..endMs }.sortedBy { it.createdAt }.take(limit)
     }
 
     override suspend fun getNodesClosedBetween(startMs: Long, endMs: Long, limit: Int): List<Node> = synchronized(this) {
-        activeNodes.filter { (it.closedAt ?: it.updatedAt) in startMs..endMs && it.status in listOf("done", "completed") && !it.localOnly }
+        activeNodes.filter { (it.closedAt ?: it.updatedAt) in startMs..endMs && it.status in listOf("done", "completed") }
             .sortedBy { it.closedAt ?: it.updatedAt }.take(limit)
     }
 
@@ -1128,11 +1155,11 @@ open class SharedFakeStorage(var clock: Clock = SystemClock()) : Storage {
     }
 
     override suspend fun getGoalNodes(): List<Node> = synchronized(this) {
-        activeNodes.filter { it.type == "goal" && it.status != "archived" && !it.localOnly }
+        activeNodes.filter { it.type == "goal" && it.status != "archived" }
     }
 
     override suspend fun getHabitNodes(): List<Node> = synchronized(this) {
-        activeNodes.filter { (it.type == "habit" || it.recurrenceRule != null) && it.status != "archived" && !it.localOnly }
+        activeNodes.filter { (it.type == "habit" || it.recurrenceRule != null) && it.status != "archived" }
             .sortedByDescending { it.streakCurrent }
     }
 
@@ -1178,5 +1205,118 @@ open class SharedFakeStorage(var clock: Clock = SystemClock()) : Storage {
             activityHeatStrip = heatStrip,
             moodTrends = moodTrends
         )
+    }
+
+    val dayBlocks = mutableListOf<com.anchor.core.models.DayBlock>()
+    override suspend fun saveDayBlock(block: com.anchor.core.models.DayBlock) {
+        synchronized(this) {
+            dayBlocks.removeAll { it.dayKey == block.dayKey && it.idx == block.idx }
+            dayBlocks.add(block)
+        }
+    }
+    override suspend fun getDayBlocks(dayKey: String): List<com.anchor.core.models.DayBlock> = synchronized(this) {
+        dayBlocks.filter { it.dayKey == dayKey }.sortedBy { it.idx }
+    }
+
+    val exportLogs = mutableListOf<com.anchor.core.models.ExportLogRecord>()
+    override suspend fun saveExportLog(record: com.anchor.core.models.ExportLogRecord) {
+        synchronized(this) {
+            exportLogs.removeAll { it.id == record.id }
+            exportLogs.add(record)
+        }
+    }
+    override suspend fun getRecentExportLogs(limit: Int): List<com.anchor.core.models.ExportLogRecord> = synchronized(this) {
+        exportLogs.sortedByDescending { it.ts }.take(limit)
+    }
+
+    val checkinStates = mutableListOf<com.anchor.core.models.CheckinStateRecord>()
+    override suspend fun saveCheckinState(record: com.anchor.core.models.CheckinStateRecord) {
+        synchronized(this) {
+            checkinStates.removeAll { it.kind == record.kind && it.dayKey == record.dayKey }
+            checkinStates.add(record)
+        }
+    }
+    override suspend fun getCheckinState(kind: String, dayKey: String): com.anchor.core.models.CheckinStateRecord? = synchronized(this) {
+        checkinStates.firstOrNull { it.kind == kind && it.dayKey == dayKey }
+    }
+
+    val nudgeLogs = mutableListOf<com.anchor.core.models.NudgeLogRecord>()
+    override suspend fun saveNudgeLog(record: com.anchor.core.models.NudgeLogRecord) {
+        synchronized(this) {
+            nudgeLogs.removeAll { it.id == record.id }
+            nudgeLogs.add(record)
+        }
+    }
+    override suspend fun getRecentNudgeLogs(limit: Int): List<com.anchor.core.models.NudgeLogRecord> = synchronized(this) {
+        nudgeLogs.sortedByDescending { it.tsUtc }.take(limit)
+    }
+
+    val topicNotes = mutableMapOf<String, com.anchor.core.models.TopicNote>()
+    override suspend fun saveTopicNote(note: com.anchor.core.models.TopicNote) = synchronized(this) {
+        topicNotes[note.id] = note
+    }
+    override suspend fun getTopicNote(id: String): com.anchor.core.models.TopicNote? = synchronized(this) {
+        topicNotes[id]
+    }
+    override suspend fun getTopicNoteByTopic(topic: String): com.anchor.core.models.TopicNote? = synchronized(this) {
+        topicNotes.values.firstOrNull { it.topic.equals(topic, ignoreCase = true) }
+    }
+    override suspend fun getAllTopicNotes(): List<com.anchor.core.models.TopicNote> = synchronized(this) {
+        topicNotes.values.sortedWith(compareByDescending<com.anchor.core.models.TopicNote> { it.pinned }.thenByDescending { it.lastEditedAt })
+    }
+    override suspend fun searchTopicNotes(query: String, limit: Int): List<com.anchor.core.models.TopicNote> = synchronized(this) {
+        val q = query.trim().lowercase()
+        topicNotes.values.filter { it.topic.lowercase().contains(q) || it.content.lowercase().contains(q) }
+            .sortedWith(compareByDescending<com.anchor.core.models.TopicNote> { it.pinned }.thenByDescending { it.lastEditedAt })
+            .take(limit)
+    }
+    override suspend fun deleteTopicNote(id: String) = synchronized(this) {
+        topicNotes.remove(id)
+        noteReferences.removeAll { it.noteId == id }
+        Unit
+    }
+
+    val noteReferences = mutableListOf<com.anchor.core.models.NoteReference>()
+    override suspend fun linkNoteReference(ref: com.anchor.core.models.NoteReference) = synchronized(this) {
+        noteReferences.removeAll { it.noteId == ref.noteId && it.nodeId == ref.nodeId }
+        noteReferences.add(ref)
+        Unit
+    }
+    override suspend fun getReferencesForNote(noteId: String): List<com.anchor.core.models.NoteReference> = synchronized(this) {
+        noteReferences.filter { it.noteId == noteId }
+    }
+    override suspend fun getReferencesForNode(nodeId: String): List<com.anchor.core.models.NoteReference> = synchronized(this) {
+        noteReferences.filter { it.nodeId == nodeId }
+    }
+    override suspend fun deleteNoteReference(id: String) = synchronized(this) {
+        noteReferences.removeAll { it.id == id }
+        Unit
+    }
+
+    val agentWakeups = mutableMapOf<String, com.anchor.core.models.AgentWakeup>()
+    override suspend fun saveAgentWakeup(wakeup: com.anchor.core.models.AgentWakeup) = synchronized(this) {
+        agentWakeups[wakeup.id] = wakeup
+    }
+    override suspend fun getPendingAgentWakeups(upToMillis: Long): List<com.anchor.core.models.AgentWakeup> = synchronized(this) {
+        agentWakeups.values.filter { it.state == "pending" && it.fireAt <= upToMillis }.sortedBy { it.fireAt }
+    }
+    override suspend fun markAgentWakeupState(id: String, state: String) = synchronized(this) {
+        agentWakeups[id]?.let {
+            agentWakeups[id] = it.copy(state = state)
+        }
+        Unit
+    }
+    override suspend fun getAgentWakeup(id: String): com.anchor.core.models.AgentWakeup? = synchronized(this) {
+        agentWakeups[id]
+    }
+    override suspend fun unstickRunningWakeups(olderThanMillis: Long): Int = synchronized(this) {
+        var count = 0
+        for ((id, w) in agentWakeups.entries) {
+            if (w.state == "running" && w.fireAt <= olderThanMillis) {
+                agentWakeups[id] = w.copy(state = "pending")
+                count++
+            }
+        }
+        count
     }
 }

@@ -36,6 +36,10 @@ class ReceiptFormatter(private val dateResolver: DateResolver) {
                             val fact = event.afterJson?.let { json.decodeFromString<SoulFact>(it) }
                             if (fact != null) "Saved to Soul: ${fact.statement}" else "Saved to Soul: ${event.targetId}"
                         }
+                        "topic_note" -> {
+                            val note = event.afterJson?.let { json.decodeFromString<com.anchor.core.models.TopicNote>(it) }
+                            if (note != null) "Created note: ${note.topic}" else "Created note: ${event.targetId}"
+                        }
                         else -> "Created: ${event.targetId}"
                     }
                 }
@@ -66,17 +70,22 @@ class ReceiptFormatter(private val dateResolver: DateResolver) {
                     }
                 }
                 "UPDATE" -> {
-                    // P1-B 16/P1-D 20: applyNodeUpdate writes before/after NodeStateSnapshot; the after-state titles the receipt.
-                    val snapshot = (event.afterJson ?: event.beforeJson)?.let { json.decodeFromString<NodeStateSnapshot>(it) }
-                    val node = snapshot?.node
-                    if (node != null) {
-                        if (node.dueAt != null) {
-                            "Updated: ${node.title} (${dateResolver.format(node.dueAt)})"
-                        } else {
-                            "Updated: ${node.title}"
-                        }
+                    if (event.targetType == "topic_note") {
+                        val note = (event.afterJson ?: event.beforeJson)?.let { json.decodeFromString<com.anchor.core.models.TopicNote>(it) }
+                        if (note != null) "Updated note: ${note.topic}" else "Updated note: ${event.targetId}"
                     } else {
-                        "Updated: ${event.targetId}"
+                        // P1-B 16/P1-D 20: applyNodeUpdate writes before/after NodeStateSnapshot; the after-state titles the receipt.
+                        val snapshot = (event.afterJson ?: event.beforeJson)?.let { json.decodeFromString<NodeStateSnapshot>(it) }
+                        val node = snapshot?.node
+                        if (node != null) {
+                            if (node.dueAt != null) {
+                                "Updated: ${node.title} (${dateResolver.format(node.dueAt)})"
+                            } else {
+                                "Updated: ${node.title}"
+                            }
+                        } else {
+                            "Updated: ${event.targetId}"
+                        }
                     }
                 }
                 "RESCHEDULE" -> {
@@ -111,11 +120,16 @@ class ReceiptFormatter(private val dateResolver: DateResolver) {
                     }
                 }
                 "DELETE" -> {
-                    val rem = (event.beforeJson ?: event.afterJson)?.let { json.decodeFromString<Reminder>(it) }
-                    if (rem != null) {
-                        "Cancelled reminder: ${rem.text}"
+                    if (event.targetType == "topic_note") {
+                        val note = (event.beforeJson ?: event.afterJson)?.let { json.decodeFromString<com.anchor.core.models.TopicNote>(it) }
+                        if (note != null) "Deleted note: ${note.topic}" else "Deleted note: ${event.targetId}"
                     } else {
-                        "Cancelled reminder: ${event.targetId}"
+                        val rem = (event.beforeJson ?: event.afterJson)?.let { json.decodeFromString<Reminder>(it) }
+                        if (rem != null) {
+                            "Cancelled reminder: ${rem.text}"
+                        } else {
+                            "Cancelled reminder: ${event.targetId}"
+                        }
                     }
                 }
                 "CONFIRM", "ACCEPT" -> {
@@ -160,6 +174,34 @@ class ReceiptFormatter(private val dateResolver: DateResolver) {
                     val node = snapshot?.node
                     if (node != null) "Restored: ${node.title}" else "Restored: ${event.targetId}"
                 }
+                "SCHEDULE_WAKEUP" -> {
+                    val wakeup = event.afterJson?.let { json.decodeFromString<com.anchor.core.models.AgentWakeup>(it) }
+                    if (wakeup != null) "Agent wakeup: ${wakeup.reason} (${dateResolver.format(wakeup.fireAt)})" else "Scheduled agent wakeup: ${event.targetId}"
+                }
+                "UPSERT_TOPIC_NOTE" -> {
+                    val note = event.afterJson?.let { json.decodeFromString<com.anchor.core.models.TopicNote>(it) }
+                    if (note != null) "Living note: ${note.topic}" else "Saved topic note: ${event.targetId}"
+                }
+                "LINK_NOTE_REFERENCE" -> {
+                    val ref = event.afterJson?.let { json.decodeFromString<com.anchor.core.models.NoteReference>(it) }
+                    if (ref != null) "Linked note to task (${ref.mode})" else "Linked note reference"
+                }
+                "ACTIVATE_NODE" -> {
+                    val snapshot = (event.afterJson ?: event.beforeJson)?.let { json.decodeFromString<NodeStateSnapshot>(it) }
+                    val node = snapshot?.node
+                    if (node != null) "Activated: ${node.title}" else "Activated: ${event.targetId}"
+                }
+                "PROPOSE" -> {
+                    if (event.targetType == "soul_fact") {
+                        val fact = (event.afterJson ?: event.beforeJson)?.let { json.decodeFromString<SoulFact>(it) }
+                        if (fact != null) "Proposed to Soul: ${fact.statement}" else "Proposed to Soul: ${event.targetId}"
+                    } else {
+                        "Proposed: ${event.targetId}"
+                    }
+                }
+                "UNDO_SCHEDULE_WAKEUP" -> "Cancelled agent self-wakeup"
+                "UNDO_UPSERT_NOTE" -> "Undid living note changes"
+                "UNDO_LINK_NOTE" -> "Removed note link"
                 else -> "${event.opType.lowercase().replaceFirstChar { it.uppercase() }}: ${event.targetId}"
             }
         } catch (_: Exception) {

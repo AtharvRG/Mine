@@ -5,17 +5,20 @@
 package com.anchor.mine.provider
 
 import com.anchor.core.provider.Http429Exception
+import com.anchor.core.provider.HttpStatusException
 import com.anchor.core.provider.HttpTransport
 import com.anchor.core.provider.OfflineException
+import com.anchor.core.provider.ProviderTimeoutException
 import com.anchor.core.provider.Target
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.buffer
+import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.isActive
-import kotlinx.coroutines.runInterruptible
+import kotlinx.coroutines.launch
 import java.io.IOException
 import java.net.ConnectException
 import java.net.HttpURLConnection
@@ -24,49 +27,72 @@ import java.net.URL
 import java.net.UnknownHostException
 
 class AndroidHttpTransport : HttpTransport {
-    override suspend fun postStream(target: Target, body: String): Flow<String> = flow {
-        val connection = URL(target.id).openConnection() as HttpURLConnection
-        connection.requestMethod = "POST"
-        connection.setRequestProperty("Content-Type", "application/json")
-        connection.setRequestProperty("Authorization", "Bearer ${target.key}")
-        connection.doOutput = true
-        connection.connectTimeout = 10000
-        connection.readTimeout = 60000
 
-        try {
-            connection.outputStream.use { os -> os.write(body.toByteArray(Charsets.UTF_8)) }
-            val code = connection.responseCode
+    companion object {
+        internal fun parseRetryAfter(v: String?): Int? = v?.trim()?.let { s ->
+            s.toIntOrNull() ?: runCatching {
+                val at = java.time.ZonedDateTime.parse(s, java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME).toInstant().toEpochMilli()
+                ((at - System.currentTimeMillis()) / 1000L).toInt().coerceAtLeast(1)
+            }.getOrNull()
+        }
 
-            if (code == 429) {
-                val retryAfter = connection.getHeaderField("Retry-After")?.toIntOrNull()
-                throw Http429Exception(retryAfter)
-            }
-            if (code !in 200..299) {
-                // B13: Cap the error body to 500 characters so Cloudflare/Nginx HTML pages don't blow up the UI State
-                val err = connection.errorStream?.bufferedReader()?.use { it.readText().take(500) } ?: "HTTP $code"
-                throw Exception("Provider error: $err")
-            }
-
-            connection.inputStream.bufferedReader().use { reader ->
-                while (currentCoroutineContext().isActive) {
-                    val line = runInterruptible { reader.readLine() } ?: break
-                    if (line.isNotBlank()) emit(line)
+        internal fun readCapped(s: java.io.InputStream?, max: Int): String {
+            if (s == null) return ""
+            val buf = ByteArray(max)
+            var n = 0
+            s.use {
+                while (n < max) {
+                    val r = it.read(buf, n, max - n)
+                    if (r < 0) break
+                    n += r
                 }
             }
-        } catch (e: IOException) {
-            // Blueprint 41 §2 no_network: the socket-level failures that mean "this device has no
-            // usable connection". They used to escape as raw IOException and reach the controller as
-            // "Error: Unable to resolve host …", which is neither actionable nor queueable.
-            // Cancellation is not an IOException, so a cancelled turn still propagates untouched.
-            throw when (e) {
-                is UnknownHostException, is ConnectException, is SocketTimeoutException ->
-                    OfflineException(e.message ?: "No network connection", e)
-                else -> e
-            }
-        } finally {
-            // Disconnect in finally guarantees the socket is severed instantly on coroutine cancellation,
-            // unblocking readLine() immediately.
-            connection.disconnect()
+            return String(buf, 0, n, Charsets.UTF_8)
         }
-    }.flowOn(Dispatchers.IO) // Entire flow runs on IO, making thread-safety clean
+    }
+
+    override suspend fun postStream(target: Target, body: String): Flow<String> = callbackFlow {
+        val conn = (URL(target.id).openConnection() as HttpURLConnection).apply {
+            requestMethod = "POST"
+            doOutput = true
+            setRequestProperty("Content-Type", "application/json")
+            setRequestProperty("Accept", "text/event-stream")
+            setRequestProperty("Authorization", "Bearer ${target.key}")
+            connectTimeout = 15_000
+            readTimeout = 120_000 // Reasoning models think > 60s before token 1
+        }
+        val io = launch(Dispatchers.IO) {
+            try {
+                conn.outputStream.use { os -> os.write(body.toByteArray(Charsets.UTF_8)) }
+                val code = conn.responseCode
+                if (code == 429) {
+                    throw Http429Exception(parseRetryAfter(conn.getHeaderField("Retry-After")))
+                }
+                if (code !in 200..299) {
+                    throw HttpStatusException(code, readCapped(conn.errorStream, 2048))
+                }
+                conn.inputStream.bufferedReader().use { r ->
+                    while (isActive) {
+                        val line = r.readLine() ?: break
+                        if (line.isNotBlank()) send(line)
+                    }
+                }
+                close()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: SocketTimeoutException) {
+                close(ProviderTimeoutException("The provider did not respond in time", e))
+            } catch (e: UnknownHostException) {
+                close(OfflineException(e.message ?: "DNS lookup failed", e))
+            } catch (e: ConnectException) {
+                close(OfflineException(e.message ?: "Connection refused", e))
+            } catch (e: Throwable) {
+                close(e)
+            }
+        }
+        awaitClose {
+            runCatching { conn.disconnect() }
+            io.cancel()
+        }
+    }.buffer(Channel.UNLIMITED)
 }

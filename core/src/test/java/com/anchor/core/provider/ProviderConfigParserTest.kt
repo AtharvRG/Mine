@@ -130,6 +130,22 @@ class ProviderConfigParserTest {
     }
 
     @Test
+    fun parse_HttpNonLocalhost_Fails() {
+        val uri = "mine://provider?endpoint=http://attacker.example.com/v1&model=test"
+        val result = ProviderConfigParser.parse(uri)
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull()?.message?.contains("https", ignoreCase = true) == true)
+    }
+
+    @Test
+    fun parse_HttpLocalhost_Succeeds() {
+        val uri = "mine://provider?endpoint=http://localhost:11434/v1&model=llama3"
+        val result = ProviderConfigParser.parse(uri)
+        assertTrue(result.isSuccess)
+        assertEquals("http://localhost:11434/v1", result.getOrNull()?.endpoint)
+    }
+
+    @Test
     fun parse_EmptyModel_Fails() {
         val json = """{"endpoint": "https://api.openai.com/v1", "model": "  "}"""
         val result = ProviderConfigParser.parse(json)

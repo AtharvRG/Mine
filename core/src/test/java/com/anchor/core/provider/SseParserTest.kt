@@ -17,7 +17,7 @@ class SseParserTest {
     fun testSseSerializationParsing() = runBlocking {
         val limiter = RateLimiter { 1000L }
         val target = Target("url", "key", 20)
-        
+
         val transport = object : HttpTransport {
             override suspend fun postStream(target: Target, body: String): Flow<String> = flow {
                 emit("data: {\"choices\":[{\"delta\":{\"content\":\"Hello \"}}]}")
@@ -27,7 +27,7 @@ class SseParserTest {
                 emit("data: [DONE]")
             }
         }
-        
+
         val orchestrator = ProviderOrchestrator(limiter, transport)
         val results = orchestrator.chat(listOf(target), "test").toList()
 

@@ -45,102 +45,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             try {
                 val app = application as MineApp
-                val loadedStorage = app.sharedStorage.await() // Can throw if keys/DB corrupt
-                storage = loadedStorage
-                val rateLimiter = com.anchor.core.provider.RateLimiter(
-                    clock = { System.currentTimeMillis() },
-                    persistence = com.anchor.core.provider.StorageRateLimitPersistence(loadedStorage),
-                    monotonicClock = { android.os.SystemClock.elapsedRealtime() }
-                )
-                val onDeviceEngine = com.anchor.mine.provider.AndroidOnDeviceLlmEngine(application)
-                val orchestrator = com.anchor.core.provider.ProviderOrchestrator(
-                    limiter = rateLimiter,
-                    transport = com.anchor.mine.provider.AndroidHttpTransport(),
-                    onDeviceEngine = onDeviceEngine
-                )
-                val clock = SystemClock()
-                val is24HourFormat = { android.text.format.DateFormat.is24HourFormat(application) }
-                val dateResolver = DateResolver(clock, is24HourFormat)
-                val embedder = com.anchor.mine.retrieval.LiteRtEmbedder(application)
-                val hybridRetriever = com.anchor.core.retrieval.HybridRetriever(loadedStorage, embedder, clock, dateResolver)
-                val scheduler = AndroidAlarmScheduler(application)
-                val gateway = Gateway(loadedStorage, Resolver(), dateResolver, clock, hybridRetriever, embedder, scheduler)
-                reliabilityManager = ReliabilityManager(
-                    loadedStorage, clock,
-                    onAutoExportTriggered = {
-                        val uriStr = loadedStorage.getSetting(com.anchor.core.export.AutoExportScheduler.KEY_FOLDER_URI)
-                        val passphrase = loadedStorage.getSetting("export.passphrase") ?: loadedStorage.getSetting("backup.passphrase")
-                        if (!uriStr.isNullOrBlank() && !passphrase.isNullOrBlank()) {
-                            val tempFile = java.io.File(application.cacheDir, "auto_backup_${clock.now()}.minebackup")
-                            try {
-                                val exportMgr = app.sharedExportManager.await()
-                                exportMgr.exportTo(tempFile, passphrase, includeApiKeys = false, includeEmbeddings = false)
+                // P1-01 (Patch C): Collect from singleton AppGraph process graph
+                val graph = app.ensureAppGraphInitialized().await()
+                storage = graph.storage
+                controller = graph.chatController
+                reliabilityManager = graph.reliabilityManager
 
-                                val treeUri = android.net.Uri.parse(uriStr)
-                                val docFolder = androidx.documentfile.provider.DocumentFile.fromTreeUri(application, treeUri)
-                                if (docFolder != null && docFolder.canWrite()) {
-                                    val fileName = "mine_backup_${clock.now()}.minebackup"
-                                    val newDoc = docFolder.createFile("application/octet-stream", fileName)
-                                    if (newDoc != null) {
-                                        application.contentResolver.openOutputStream(newDoc.uri)?.use { outStream ->
-                                            tempFile.inputStream().use { inStream ->
-                                                inStream.copyTo(outStream)
-                                            }
-                                        }
-                                        reliabilityManager.autoExportScheduler.recordExportSuccess(clock.now())
-
-                                        // Prune expired backups in user's SAF folder
-                                        val existingBackups: List<Pair<androidx.documentfile.provider.DocumentFile, Long>> = docFolder.listFiles()
-                                            .filter { it.name?.endsWith(".minebackup") == true && it.isFile }
-                                            .mapNotNull { doc ->
-                                                val name = doc.name ?: return@mapNotNull null
-                                                val ts = name.removePrefix("mine_backup_").removeSuffix(".minebackup").toLongOrNull() ?: doc.lastModified()
-                                                Pair(doc, ts)
-                                            }
-                                        val retentionCount = loadedStorage.getSetting(com.anchor.core.export.AutoExportScheduler.KEY_RETENTION_COUNT)?.toIntOrNull()
-                                            ?: com.anchor.core.export.AutoExportScheduler.DEFAULT_RETENTION_COUNT
-                                        val toPrune = com.anchor.core.export.AutoExportScheduler.findFilesToPrune(existingBackups, retentionCount)
-                                        toPrune.forEach { (doc, _) ->
-                                            try { doc.delete() } catch (_: Throwable) {}
-                                        }
-                                    }
-                                }
-                            } catch (e: Throwable) {
-                                android.util.Log.w("MainViewModel", "Auto-export failed: ${e.message}")
-                            } finally {
-                                try { tempFile.delete() } catch (_: Throwable) {}
-                            }
-                        } else {
-                            android.util.Log.i("MainViewModel", "Auto-export skipped: missing SAF URI or passphrase")
-                        }
-                    }
-                )
-
-                val checkinBuilder = com.anchor.core.nudge.CheckinBuilder(loadedStorage, clock, dateResolver)
-                val contextBuilder = ContextBuilder(loadedStorage, clock, dateResolver, checkinBuilder)
-                
-                // Blueprint 41 §3.1: the controller decides offline *before* a request, so an
-                // airplane-mode capture is instant instead of a ten-second connect timeout.
-                val connectivity = com.anchor.mine.provider.ConnectivityOracle(application)
-                controller = ChatController(
-                    loadedStorage, orchestrator, contextBuilder,
-                    gateway, scheduler,
-                    viewModelScope, Dispatchers.Default, clock,
-                    dateResolver = dateResolver,
-                    networkCheck = { connectivity.isOnline() },
-                    embedder = embedder,
-                    contextEngine = app.contextEngine
-                )
-                // Blueprint 50 §3.14: the notification reply needs a controller when one exists.
-                app.captureController = controller
-
-                // Drain any actions that arrived before the controller was initialized (e.g. cold-start intents)
+                // Drain any actions that arrived before the controller was initialized
                 while (true) {
                     val pending = pendingActions.poll() ?: break
-                    controller?.onAction(pending)
+                    graph.chatController.onAction(pending)
                 }
 
-                reliabilityManager.runSweeper().forEach { missedRem ->
+                // Run sweeper on app open
+                graph.reliabilityManager.runSweeper().forEach { missedRem ->
                     val intent = android.content.Intent(getApplication(), com.anchor.mine.alarms.AlarmReceiver::class.java).apply {
                         putExtra("EXTRA_ID", missedRem.id)
                         putExtra("EXTRA_TEXT", missedRem.text)
@@ -151,35 +69,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     getApplication<Application>().sendBroadcast(intent)
                 }
 
-                // E-17: a capture stored while the app was dead (or whose turn failed) is still
-                // unanswered in the raw log. Send each one now, oldest first. The captured row is
-                // the user turn, so nothing is duplicated; an answered capture is not in this list.
-                //
-                // Every capture is sent, not just the first: a turn's reply is an assistant row
-                // that answers *every* capture before it, so sending only the oldest would mark
-                // the rest answered without ever showing them to the model. sendText queues each
-                // behind the previous one (a turn already streaming is not dropped, it is waited
-                // for), so the replies arrive in the order the user wrote them.
-                for (captureId in com.anchor.core.capture.QuickCapture.pending(loadedStorage)) {
-                    val text = loadedStorage.getRawMessage(captureId)
-                    if (!text.isNullOrBlank()) controller!!.sendText(text, captureId)
+                // E-17: a capture stored while the app was dead is sent now, oldest first
+                for (captureId in com.anchor.core.capture.QuickCapture.pending(graph.storage)) {
+                    val text = graph.storage.getRawMessage(captureId)
+                    if (!text.isNullOrBlank()) graph.chatController.sendText(text, captureId)
                 }
 
-                // H-11 (R-15): a denied POST_NOTIFICATIONS is not an error in the controller, so
-                // the banner is derived here rather than left to the controller's state. It is
-                // re-read on every controller emission and on every app resume (refreshNotification
-                // Blocked), because the user can change the grant in system settings while this
-                // ViewModel is alive.
                 _state.update { it.copy(notificationsBlocked = notificationsBlocked()) }
-                controller!!.state.collect { s -> _state.value = s.copy(notificationsBlocked = notificationsBlocked()) }
+                graph.chatController.state.collect { s -> _state.value = s.copy(notificationsBlocked = notificationsBlocked()) }
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (e: Throwable) {
-                // H-06 (R-11): an Error here used to escape as an uncaught coroutine exception and
-                // leave the user on a blank screen with no banner and no reset path.
-                // H-11: keep the notifications flag too — the startup-failure screen is exactly
-                // where a user may go to settings to fix things, and must come back to a correct
-                // banner.
                 _state.value = _state.value.copy(
                     globalError = startupFailureMessage(e),
                     notificationsBlocked = notificationsBlocked()
@@ -211,12 +111,32 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
         if (action is UiAction.ConfirmResetDatabase) {
             if (action.confirm) {
-                val ctx = getApplication<Application>().applicationContext
-                ctx.deleteDatabase("mine_encrypted.db")
-                java.io.File(ctx.filesDir, "wrapped_db.key").delete()
-                android.os.Process.killProcess(android.os.Process.myPid())
+                viewModelScope.launch(Dispatchers.IO) {
+                    val app = getApplication<Application>() as? MineApp
+                    app?.resetDatabase()
+                }
             } else {
                 _state.value = _state.value.copy(showResetConfirm = false)
+            }
+            return
+        }
+        if (action is UiAction.SetContextSensing) {
+            val c = controller
+            if (c != null) {
+                c.onAction(action)
+            } else {
+                pendingActions.add(action)
+            }
+            (getApplication<Application>() as? MineApp)?.contextSensingManager?.checkAndApplySettings()
+            return
+        }
+        if (action is UiAction.SetCurrentWifiAsHome) {
+            val app = getApplication<Application>() as? MineApp
+            val enrolled = app?.contextSensingManager?.enrollCurrentWifiAsHome() ?: false
+            if (enrolled) {
+                controller?.addTransientReceipt(com.anchor.core.ui.ReceiptState(java.util.UUID.randomUUID().toString(), "Current Wi-Fi enrolled as Home place", null, isError = false, timestamp = System.currentTimeMillis()))
+            } else {
+                controller?.addTransientReceipt(com.anchor.core.ui.ReceiptState(java.util.UUID.randomUUID().toString(), "Could not read current Wi-Fi network (ensure Wi-Fi is connected)", null, isError = true, timestamp = System.currentTimeMillis()))
             }
             return
         }

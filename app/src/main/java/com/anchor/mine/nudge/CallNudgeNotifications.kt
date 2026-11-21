@@ -100,7 +100,7 @@ object CallNudgeNotifications {
 
         // Public version for lockscreen (never leaks contact name)
         val publicNotification = NotificationCompat.Builder(context, NotificationChannels.CALL_NUDGE)
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setSmallIcon(com.anchor.mine.R.drawable.ic_notification)
             .setContentTitle("Call done")
             .setContentText("Anything worth remembering?")
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
@@ -109,7 +109,7 @@ object CallNudgeNotifications {
 
         val title = if (!contactName.isNullOrBlank()) "Call with $contactName done" else "Call done"
         val notification = NotificationCompat.Builder(context, NotificationChannels.CALL_NUDGE)
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setSmallIcon(com.anchor.mine.R.drawable.ic_notification)
             .setContentTitle(title)
             .setContentText("Anything worth remembering?")
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)

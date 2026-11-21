@@ -18,67 +18,84 @@ class ReadableMarkdownExporter(
 ) {
 
     suspend fun generateMarkdown(): String {
-        val sb = StringBuilder()
+        val sw = java.io.StringWriter()
+        writeMarkdownTo(sw)
+        return sw.toString()
+    }
 
+    suspend fun writeMarkdownTo(writer: java.io.Writer) {
         // 1. Loud plain-text security warning header
-        sb.appendLine("# Mine Data Export (Human-Readable Markdown)")
-        sb.appendLine()
-        sb.appendLine("> ⚠️ **WARNING: UNENCRYPTED PLAIN TEXT EXPORT**")
-        sb.appendLine("> This file contains your unencrypted notes, tasks, habits, soul facts, and conversation history.")
-        sb.appendLine("> Anyone with access to this file can read your personal data.")
-        sb.appendLine("> This export is intended for human reading and archiving ONLY. It cannot be re-imported into Mine.")
-        sb.appendLine()
-        sb.appendLine("---")
-        sb.appendLine()
+        writer.write("# Mine Data Export (Human-Readable Markdown)\n\n")
+        writer.write("> ⚠️ **WARNING: UNENCRYPTED PLAIN TEXT EXPORT**\n")
+        writer.write("> This file contains your unencrypted notes, tasks, habits, soul facts, and conversation history.\n")
+        writer.write("> Anyone with access to this file can read your personal data.\n")
+        writer.write("> This export is intended for human reading and archiving ONLY. It cannot be re-imported into Mine.\n\n")
+        writer.write("---\n\n")
 
         // 2. Active Items & Habits
         val activeNodes = storage.getActiveNodes(limit = 10_000)
-        sb.appendLine("## Items & Habits (${activeNodes.size})")
-        sb.appendLine()
+        writer.write("## Items & Habits (${activeNodes.size})\n\n")
         if (activeNodes.isEmpty()) {
-            sb.appendLine("_No active items._")
+            writer.write("_No active items._\n\n")
         } else {
             for (node in activeNodes) {
-                sb.append("- [ ] **${node.title}** (`${node.type}`, status: `${node.status}`)")
+                writer.write("- [ ] **${node.title}** (`${node.type}`, status: `${node.status}`)")
                 if (node.dueAt != null) {
-                    sb.append(" — Due: ${node.dueAt}")
+                    writer.write(" — Due: ${node.dueAt}")
                 }
                 if (node.type == "habit" || node.recurrenceRule != null) {
-                    sb.append(" — Streak: ${node.streakCurrent} (Best: ${node.streakBest})")
+                    writer.write(" — Streak: ${node.streakCurrent} (Best: ${node.streakBest})")
                     if (node.recurrenceRule != null) {
-                        sb.append(" [${node.recurrenceRule}]")
+                        writer.write(" [${node.recurrenceRule}]")
                     }
                 }
-                sb.appendLine()
+                writer.write("\n")
             }
+            writer.write("\n")
         }
-        sb.appendLine()
 
         // 3. Soul Facts
         val soulFacts = storage.getActiveSoulFacts(includeLocalOnly = true)
-        sb.appendLine("## Soul Facts & Preferences (${soulFacts.size})")
-        sb.appendLine()
+        writer.write("## Soul Facts & Preferences (${soulFacts.size})\n\n")
         if (soulFacts.isEmpty()) {
-            sb.appendLine("_No soul facts._")
+            writer.write("_No soul facts._\n\n")
         } else {
             for (fact in soulFacts) {
-                sb.appendLine("- **[${fact.category}]** ${fact.statement} *(confidence: ${fact.confidence}, status: ${fact.status})*")
+                writer.write("- **[${fact.category}]** ${fact.statement} *(confidence: ${fact.confidence}, status: ${fact.status})*\n")
+            }
+            writer.write("\n")
+        }
+
+        // 4. Living Topic Notes
+        val topicNotes = storage.getAllTopicNotes()
+        writer.write("## Living Topic Notes (${topicNotes.size})\n\n")
+        if (topicNotes.isEmpty()) {
+            writer.write("_No living topic notes._\n\n")
+        } else {
+            for (note in topicNotes) {
+                writer.write("### ${note.topic}${if (note.pinned) " 📌" else ""}\n\n")
+                if (note.content.isNotBlank()) {
+                    writer.write("${note.content}\n\n")
+                } else {
+                    writer.write("_Empty note._\n\n")
+                }
             }
         }
-        sb.appendLine()
 
-        // 4. Conversation History Grouped by Day
+        // 5. Conversation History Grouped by Day (Streamed to avoid OOM)
         val messages = storage.getRecentMessages(limit = 100_000)
         val grouped = messages.groupBy { it.dayKey ?: "Undated" }
 
-        sb.appendLine("## Conversation History")
-        sb.appendLine()
+        writer.write("## Conversation History\n\n")
         if (messages.isEmpty()) {
-            sb.appendLine("_No messages._")
+            writer.write("_No messages._\n")
         } else {
             for ((dayKey, dayMessages) in grouped) {
-                sb.appendLine("## Day: $dayKey")
-                sb.appendLine()
+                writer.write("## Day: $dayKey\n\n")
+                val digest = storage.getDayDigest(dayKey)
+                if (digest != null) {
+                    writer.write("> **Day Digest:** ${digest.summaryText}\n\n")
+                }
                 for (msg in dayMessages) {
                     val roleLabel = when (msg.role.lowercase()) {
                         "user" -> "**User**"
@@ -86,22 +103,17 @@ class ReadableMarkdownExporter(
                         "system" -> "_System_"
                         else -> "**${msg.role}**"
                     }
-                    val body = if (msg.content == null) {
-                        "_[Redacted]_"
-                    } else {
-                        msg.content
-                    }
-                    sb.appendLine("$roleLabel: $body")
-                    sb.appendLine()
+                    val body = msg.content ?: "_[Redacted]_"
+                    writer.write("$roleLabel: $body\n\n")
                 }
             }
         }
-
-        return sb.toString()
+        writer.flush()
     }
 
     suspend fun exportToFile(file: File) {
-        val markdown = generateMarkdown()
-        file.writeText(markdown, Charsets.UTF_8)
+        file.bufferedWriter(Charsets.UTF_8).use { writer ->
+            writeMarkdownTo(writer)
+        }
     }
 }

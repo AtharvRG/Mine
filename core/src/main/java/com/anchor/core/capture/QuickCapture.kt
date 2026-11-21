@@ -70,28 +70,54 @@ object QuickCapture {
      * The id is generated here rather than by the caller so the notification that shows
      * "Sending..." and the row it refers to can never disagree.
      */
+    /**
+     * Stores [text] as a user message and enqueues an OutboxJob for it.
+     * P1-03 (Patch F): Enqueues an OutboxJob with kind JOB_CHAT_TURN so pending captures are tracked
+     * deterministically without fragile assistant message heuristics.
+     */
     suspend fun store(storage: Storage, text: String): String? {
         val trimmed = text.trim()
         if (trimmed.isEmpty()) return null
         val id = newMessageId()
         storage.insertRawMessage(id, "user", trimmed)
+        val now = System.currentTimeMillis()
+        try {
+            storage.enqueueOutbox(
+                com.anchor.core.models.OutboxJob(
+                    id = "ob_$id",
+                    jobType = com.anchor.core.models.OutboxJob.JOB_CHAT_TURN,
+                    priority = com.anchor.core.models.OutboxJob.PRIORITY_P0,
+                    payloadJson = """{"msg_id":"$id"}""",
+                    idemKey = id,
+                    nextTryAt = now,
+                    createdAt = now,
+                    updatedAt = now
+                )
+            )
+        } catch (_: Exception) {}
         return id
     }
 
     /**
      * True when [messageId] is a quick-capture message that has not yet been answered.
-     *
-     * A captured message is answered when a later assistant message exists. This is the
-     * "process when possible" half of E-17: a stored message whose turn never ran is retried
-     * on the next app start, and a message that was already answered is left alone.
+     * P1-03: Integrates OutboxJob tracking while checking assistant replies.
      */
     suspend fun isUnanswered(storage: Storage, messageId: String): Boolean {
         val content = storage.getRawMessage(messageId) ?: return false
         if (content.isBlank()) return false
+
         val recent = storage.getRecentMessages(200)
         val mine = recent.indexOfFirst { it.id == messageId }
-        if (mine < 0) return false
-        return !hasAssistantAfter(recent, mine)
+        if (mine >= 0 && hasAssistantAfter(recent, mine)) {
+            return false
+        }
+
+        val outbox = try {
+            storage.getPendingOutbox(com.anchor.core.models.OutboxJob.JOB_CHAT_TURN)
+        } catch (_: Exception) {
+            emptyList()
+        }
+        return outbox.any { it.idemKey == messageId || it.id == "ob_$messageId" } || (mine >= 0)
     }
 
     private fun hasAssistantAfter(messages: List<ChatMessage>, index: Int): Boolean =
@@ -102,17 +128,26 @@ object QuickCapture {
      * order the user wrote them.
      */
     suspend fun pending(storage: Storage): List<String> {
-        val outboxPending = try {
+        val outbox = try {
             storage.getPendingOutbox(com.anchor.core.models.OutboxJob.JOB_CHAT_TURN)
-                .mapNotNull { job -> job.idemKey.ifBlank { null } ?: (job.id.removePrefix("ob_")) }
-                .toSet()
         } catch (_: Exception) {
-            emptySet()
+            emptyList()
         }
+        val outboxPendingIds = outbox
+            .map { it.idemKey.ifBlank { it.id.removePrefix("ob_") } }
+            .toSet()
+
         val recent = storage.getRecentMessages(200)
+        if (outboxPendingIds.isNotEmpty()) {
+            val fromRecent = recent.withIndex()
+                .filter { (i, m) -> m.role == "user" && m.id in outboxPendingIds && !hasAssistantAfter(recent, i) }
+                .map { it.value.id }
+            if (fromRecent.isNotEmpty()) return fromRecent
+        }
+
         return recent.withIndex()
             .filter { (i, m) ->
-                m.role == "user" && m.id.startsWith("q_") && m.id !in outboxPending && !hasAssistantAfter(recent, i)
+                m.role == "user" && m.id.startsWith("q_") && !hasAssistantAfter(recent, i)
             }
             .map { it.value.id }
     }

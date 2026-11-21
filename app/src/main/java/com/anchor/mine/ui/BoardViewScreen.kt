@@ -28,6 +28,11 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.withStyle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -40,6 +45,9 @@ import androidx.compose.ui.unit.dp
 import com.anchor.core.models.Node
 import com.anchor.core.storage.Storage
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 /**
  * Kanban-style Items Board View per Blueprint 51 §50/§199 & Roadmap v1.1 Item 8.
@@ -177,6 +185,25 @@ private fun BoardColumn(
                     ) {
                         Column(modifier = Modifier.padding(8.dp)) {
                             Text(node.title, style = MaterialTheme.typography.bodyMedium)
+                            val sdf = SimpleDateFormat("MMM d, HH:mm", Locale.getDefault())
+                            val dueAnnotated: AnnotatedString? = if (node.dueAt != null) {
+                                if (node.originalDueAt != null && node.originalDueAt != node.dueAt && node.slipCount > 0) {
+                                    val oldDueStr = sdf.format(Date(node.originalDueAt!!))
+                                    val newDueStr = sdf.format(Date(node.dueAt!!))
+                                    buildAnnotatedString {
+                                        withStyle(SpanStyle(textDecoration = TextDecoration.LineThrough, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))) {
+                                            append(oldDueStr)
+                                        }
+                                        append(" → $newDueStr (Slipped ${node.slipCount}x)")
+                                    }
+                                } else {
+                                    AnnotatedString(sdf.format(Date(node.dueAt!!)))
+                                }
+                            } else null
+                            if (dueAnnotated != null) {
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(dueAnnotated, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                            }
                             if (node.streakCurrent > 0) {
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text("🔥 Streak: ${node.streakCurrent} d", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)

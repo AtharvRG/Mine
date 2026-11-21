@@ -19,8 +19,9 @@ dependencies {
 }
 
 tasks.withType<Test> {
+    maxHeapSize = "1024m"
     testLogging {
-        events("started", "passed", "skipped", "failed")
-        showStandardStreams = true
+        events("passed", "skipped", "failed")
+        showStandardStreams = false
     }
 }

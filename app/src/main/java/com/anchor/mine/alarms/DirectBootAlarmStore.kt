@@ -75,6 +75,16 @@ class DirectBootAlarmStore(context: Context) {
         }
     }
 
+    fun clearAll() {
+        try {
+            val db = dbHelper.writableDatabase
+            db.delete("direct_boot_alarm", null, null)
+            db.delete("direct_boot_fired", null, null)
+        } catch (e: Exception) {
+            android.util.Log.w("DirectBootAlarmStore", "clearAll failed: ${e.message}")
+        }
+    }
+
     fun getUpcomingAlarms(now: Long, limit: Int = 100): List<DirectBootAlarm> {
         val list = mutableListOf<DirectBootAlarm>()
         try {

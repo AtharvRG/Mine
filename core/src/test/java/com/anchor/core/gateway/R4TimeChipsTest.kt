@@ -298,4 +298,51 @@ class R4TimeChipsTest {
         assertEquals(expectedTitle, node.title)
         assertEquals(target5pmMillis, node.dueAt)
     }
+
+    @Test
+    fun testConfirmChange_RejectsAmChoiceWhenUserSpecifiedPm() = runBlocking {
+        val call = ToolCall(
+            "propose_change",
+            mapOf(
+                "intent" to JsonPrimitive("CREATE"),
+                "title" to JsonPrimitive("Call doctor"),
+                "due_text" to JsonPrimitive("at 5")
+            )
+        )
+        val result = gateway.executeTool(call)
+        assertTrue("Expected NeedsTime, was $result", result is ToolResult.NeedsTime)
+        val proposal = storage.getProposal((result as ToolResult.NeedsTime).proposalId)!!
+
+        val cal5am = Calendar.getInstance().apply {
+            set(2026, Calendar.OCTOBER, 29, 5, 0, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        val cal5pm = Calendar.getInstance().apply {
+            set(2026, Calendar.OCTOBER, 28, 17, 0, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+
+        // User typed "5:00 pm", but model tried to pick 5:00 am
+        val badCall = ToolCall(
+            "confirm_change",
+            mapOf(
+                "proposal" to JsonPrimitive(proposal.id),
+                "choice" to JsonPrimitive(cal5am.timeInMillis.toString())
+            )
+        )
+        val badResult = gateway.executeTool(badCall, userMessage = "5:00 pm")
+        assertTrue("Expected Error for AM choice when user specified PM, was $badResult", badResult is ToolResult.Error)
+        assertTrue((badResult as ToolResult.Error).reason.contains("does not match user's response"))
+
+        // Correct 5:00 pm choice matches
+        val goodCall = ToolCall(
+            "confirm_change",
+            mapOf(
+                "proposal" to JsonPrimitive(proposal.id),
+                "choice" to JsonPrimitive(cal5pm.timeInMillis.toString())
+            )
+        )
+        val goodResult = gateway.executeTool(goodCall, userMessage = "5:00 pm")
+        assertTrue("Expected Committed for matching PM choice, was $goodResult", goodResult is ToolResult.Committed)
+    }
 }

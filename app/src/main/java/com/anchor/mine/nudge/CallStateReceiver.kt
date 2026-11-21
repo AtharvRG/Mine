@@ -40,6 +40,25 @@ class CallStateReceiver : BroadcastReceiver() {
         @androidx.annotation.VisibleForTesting
         @Volatile
         var lastDecision: CallNudgeDecision? = null
+
+        /**
+         * P2-11 (Patch T): Dynamically enable or disable the CallStateReceiver component in PackageManager
+         * based on flag.call_nudge and callnudge.enabled.
+         */
+        fun setCallReceiverEnabled(context: Context, enabled: Boolean) {
+            try {
+                val pm = context.packageManager
+                val component = android.content.ComponentName(context, CallStateReceiver::class.java)
+                val newState = if (enabled) {
+                    android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_ENABLED
+                } else {
+                    android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_DISABLED
+                }
+                pm.setComponentEnabledSetting(component, newState, android.content.pm.PackageManager.DONT_KILL_APP)
+            } catch (t: Throwable) {
+                android.util.Log.w("CallStateReceiver", "Failed to update component state: ${t.message}")
+            }
+        }
     }
 
     override fun onReceive(context: Context, intent: Intent) {
@@ -54,7 +73,7 @@ class CallStateReceiver : BroadcastReceiver() {
                 val storage = app.sharedStorage.await()
 
                 // Dark-ship and user setting guards
-                val flagEnabled = storage.getSetting("flag.call_nudge") == "1"
+                val flagEnabled = storage.getSetting("flag.call_nudge") == "1" || storage.getSetting("flag.call_nudges") == "1"
                 val callNudgeEnabled = storage.getSetting("callnudge.enabled") == "1"
                 if (!flagEnabled || !callNudgeEnabled) return@launch
 
@@ -91,43 +110,10 @@ class CallStateReceiver : BroadcastReceiver() {
 
                         when (decision) {
                             is CallNudgeDecision.ScheduleAfterDelay -> {
-                                val alarmManager = appContext.getSystemService(Context.ALARM_SERVICE) as? AlarmManager
-                                val nudgeIntent = Intent(appContext, CallNudgeActionReceiver::class.java).apply {
-                                    action = CallNudgeActionReceiver.ACTION_EVALUATE_CALL_NUDGE
-                                    putExtra(CallNudgeNotifications.EXTRA_CALL_EVENT_ID, decision.eventId)
-                                }
-                                val pending = PendingIntent.getBroadcast(
-                                    appContext,
-                                    decision.eventId.hashCode(),
-                                    nudgeIntent,
-                                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-                                )
-                                try {
-                                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S && alarmManager?.canScheduleExactAlarms() == true) {
-                                        alarmManager.setExactAndAllowWhileIdle(
-                                            AlarmManager.RTC_WAKEUP,
-                                            decision.fireAt,
-                                            pending
-                                        )
-                                    } else {
-                                        alarmManager?.setAndAllowWhileIdle(
-                                            AlarmManager.RTC_WAKEUP,
-                                            decision.fireAt,
-                                            pending
-                                        )
-                                    }
-                                } catch (e: SecurityException) {
-                                    alarmManager?.setAndAllowWhileIdle(
-                                        AlarmManager.RTC_WAKEUP,
-                                        decision.fireAt,
-                                        pending
-                                    )
-                                } catch (_: Throwable) {
-                                    // Suppress unexpected scheduler errors
-                                }
+                                scheduleNudgeAlarm(appContext, decision.eventId, decision.fireAt)
                             }
                             is CallNudgeDecision.CoalesceWithExisting -> {
-                                // Merged with active candidate
+                                scheduleNudgeAlarm(appContext, decision.existingId, decision.newFireAt)
                             }
                             else -> {
                                 // Short call dropped or held
@@ -135,9 +121,48 @@ class CallStateReceiver : BroadcastReceiver() {
                         }
                     }
                 }
+            } catch (t: Throwable) {
+                android.util.Log.e("CallStateReceiver", "Call state handling failed: ${t.message}", t)
             } finally {
                 pendingResult?.finish()
             }
+        }
+    }
+
+    private fun scheduleNudgeAlarm(appContext: Context, eventId: String, fireAt: Long) {
+        val alarmManager = appContext.getSystemService(Context.ALARM_SERVICE) as? AlarmManager
+        val nudgeIntent = Intent(appContext, CallNudgeActionReceiver::class.java).apply {
+            action = CallNudgeActionReceiver.ACTION_EVALUATE_CALL_NUDGE
+            putExtra(CallNudgeNotifications.EXTRA_CALL_EVENT_ID, eventId)
+        }
+        val pending = PendingIntent.getBroadcast(
+            appContext,
+            eventId.hashCode(),
+            nudgeIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S && alarmManager?.canScheduleExactAlarms() == true) {
+                alarmManager.setExactAndAllowWhileIdle(
+                    AlarmManager.RTC_WAKEUP,
+                    fireAt,
+                    pending
+                )
+            } else {
+                alarmManager?.setAndAllowWhileIdle(
+                    AlarmManager.RTC_WAKEUP,
+                    fireAt,
+                    pending
+                )
+            }
+        } catch (e: SecurityException) {
+            alarmManager?.setAndAllowWhileIdle(
+                AlarmManager.RTC_WAKEUP,
+                fireAt,
+                pending
+            )
+        } catch (_: Throwable) {
+            // Suppress unexpected scheduler errors
         }
     }
 }

@@ -25,6 +25,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -73,6 +74,45 @@ fun BackupScreen(
     var pendingUri by remember { mutableStateOf<Uri?>(null) }
     var pendingMarkdownUri by remember { mutableStateOf<Uri?>(null) }
     var showMarkdownWarning by remember { mutableStateOf(false) }
+    var autoBackupEnabled by remember { mutableStateOf(false) }
+    var autoBackupUri by remember { mutableStateOf<String?>(null) }
+    var hasAutoBackupPassphrase by remember { mutableStateOf(false) }
+    var showAutoBackupPassphraseDialog by remember { mutableStateOf(false) }
+    var autoBackupPassphraseInput by remember { mutableStateOf("") }
+    var autoBackupPassphraseError by remember { mutableStateOf<String?>(null) }
+    var lastExportTs by remember { mutableStateOf<Long>(0L) }
+
+    LaunchedEffect(storage) {
+        if (storage != null) {
+            val enabledVal = storage.getSetting("export.auto.enabled")
+            autoBackupEnabled = (enabledVal == "1" || enabledVal.equals("true", ignoreCase = true)) || (storage.getSetting("backup.auto_enabled") == "1")
+            autoBackupUri = storage.getSetting("export.auto.folder_uri") ?: storage.getSetting("backup.auto_uri")
+            hasAutoBackupPassphrase = com.anchor.mine.export.BackupPassphraseVault.getPassphrase(context) != null ||
+                !storage.getSetting("export.passphrase").isNullOrBlank() || !storage.getSetting("backup.passphrase").isNullOrBlank()
+            lastExportTs = storage.getSetting(com.anchor.core.export.AutoExportScheduler.KEY_LAST_EXPORT_TS)?.toLongOrNull() ?: 0L
+        }
+    }
+
+    val folderLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocumentTree()
+    ) { uri ->
+        if (uri != null) {
+            try {
+                context.contentResolver.takePersistableUriPermission(
+                    uri,
+                    android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                )
+            } catch (e: Exception) {
+                android.util.Log.w("BackupScreen", "Failed to take persistable URI permission: ${e.message}")
+            }
+            autoBackupUri = uri.toString()
+            onAction?.invoke(com.anchor.core.ui.UiAction.SetAutoBackupUri(uri.toString()))
+            scope.launch {
+                storage?.saveSetting("export.auto.folder_uri", uri.toString())
+                storage?.saveSetting("backup.auto_uri", uri.toString())
+            }
+        }
+    }
 
     val exportLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/octet-stream")
@@ -164,6 +204,166 @@ fun BackupScreen(
                 modifier = Modifier.padding(top = 8.dp).testTag("backupRestart")
             )
         }
+
+        Spacer(modifier = Modifier.height(16.dp))
+        Text("=== Automatic Daily Backup ===", style = MaterialTheme.typography.titleMedium)
+        Spacer(modifier = Modifier.height(8.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Daily Auto-Backup", style = MaterialTheme.typography.titleSmall)
+                Text("Automatically create an encrypted backup once a day in background", style = MaterialTheme.typography.bodySmall)
+            }
+            Switch(
+                checked = autoBackupEnabled,
+                onCheckedChange = { checked ->
+                    autoBackupEnabled = checked
+                    onAction?.invoke(com.anchor.core.ui.UiAction.SetAutoBackup(checked))
+                    scope.launch {
+                        storage?.saveSetting("export.auto.enabled", if (checked) "true" else "false")
+                        storage?.saveSetting("backup.auto_enabled", if (checked) "1" else "0")
+                    }
+                    if (checked && !hasAutoBackupPassphrase) {
+                        showAutoBackupPassphraseDialog = true
+                    }
+                },
+                modifier = Modifier.testTag("autoBackupSwitch")
+            )
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Auto-Backup Folder", style = MaterialTheme.typography.titleSmall)
+                Text(
+                    text = autoBackupUri ?: "No folder selected",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Button(
+                onClick = { folderLauncher.launch(null) },
+                modifier = Modifier.testTag("pickAutoBackupFolderBtn")
+            ) {
+                Text("Select Folder")
+            }
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Auto-Backup Encryption", style = MaterialTheme.typography.titleSmall)
+                Text(
+                    text = if (hasAutoBackupPassphrase) "Passphrase configured" else "Passphrase required (AES-GCM)",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (hasAutoBackupPassphrase) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error
+                )
+            }
+            OutlinedButton(
+                onClick = {
+                    autoBackupPassphraseInput = ""
+                    autoBackupPassphraseError = null
+                    showAutoBackupPassphraseDialog = true
+                },
+                modifier = Modifier.testTag("setAutoBackupPassphraseBtn")
+            ) {
+                Text(if (hasAutoBackupPassphrase) "Change Passphrase" else "Set Passphrase")
+            }
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Last Backup Status", style = MaterialTheme.typography.titleSmall)
+                val statusText = if (lastExportTs > 0L) {
+                    val sdf = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault())
+                    "Last successful backup: ${sdf.format(java.util.Date(lastExportTs))}"
+                } else {
+                    "No automatic backups recorded yet"
+                }
+                Text(
+                    text = statusText,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (lastExportTs > 0L) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.testTag("lastBackupStatusLabel")
+                )
+            }
+        }
+    }
+
+    if (showAutoBackupPassphraseDialog && storage != null) {
+        AlertDialog(
+            onDismissRequest = {
+                showAutoBackupPassphraseDialog = false
+                autoBackupPassphraseInput = ""
+                autoBackupPassphraseError = null
+            },
+            title = { Text("Set Auto-Backup Passphrase") },
+            text = {
+                Column {
+                    Text(
+                        "Auto-backups are encrypted with this passphrase. You will need it to restore your backups if you switch devices.",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = autoBackupPassphraseInput,
+                        onValueChange = {
+                            autoBackupPassphraseInput = it
+                            if (it.length >= MIN_PASSPHRASE_LENGTH) autoBackupPassphraseError = null
+                        },
+                        label = { Text("Passphrase (min $MIN_PASSPHRASE_LENGTH chars)") },
+                        visualTransformation = PasswordVisualTransformation(),
+                        isError = autoBackupPassphraseError != null,
+                        supportingText = autoBackupPassphraseError?.let { { Text(it, color = MaterialTheme.colorScheme.error) } },
+                        modifier = Modifier.fillMaxWidth().testTag("autoBackupPassphraseInput")
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (autoBackupPassphraseInput.length < MIN_PASSPHRASE_LENGTH) {
+                            autoBackupPassphraseError = "Passphrase must be at least $MIN_PASSPHRASE_LENGTH characters"
+                        } else {
+                            scope.launch {
+                                // P1-02 (Patch G): Encrypt auto-backup passphrase into hardware-backed Keystore vault
+                                com.anchor.mine.export.BackupPassphraseVault.savePassphrase(context, autoBackupPassphraseInput)
+                                storage.saveSetting("export.has_passphrase", "1")
+                                storage.saveSetting("backup.has_passphrase", "1")
+                                hasAutoBackupPassphrase = true
+                                showAutoBackupPassphraseDialog = false
+                                autoBackupPassphraseInput = ""
+                            }
+                        }
+                    },
+                    modifier = Modifier.testTag("saveAutoBackupPassphraseBtn")
+                ) {
+                    Text("Save Passphrase")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showAutoBackupPassphraseDialog = false
+                    autoBackupPassphraseInput = ""
+                    autoBackupPassphraseError = null
+                }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 
     if (showMarkdownWarning && pendingMarkdownUri != null && storage != null) {

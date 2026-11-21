@@ -49,11 +49,10 @@ class BootReceiver : BroadcastReceiver() {
         const val REQUEST_CODE_SWEEP = 9109
 
         /**
-         * H-02: how often the sweeper may run unattended. Inexact on purpose — the OS may defer
-         * it, and a late sweep reports the same miss a minute later; an exact alarm would need a
-         * wakeup we do not need for a report.
+         * H-02: how often the sweeper may run unattended. 60 minutes periodic background sweep.
+         * Inexact on purpose — the OS may defer it, and a late sweep reports the same miss a minute later.
          */
-        const val SWEEP_INTERVAL_MS = 15L * 60 * 1000
+        const val SWEEP_INTERVAL_MS = 60L * 60 * 1000
 
         /** H-02: same observation channel as [retriesArmed], same reason. Test-only in practice. */
         @Volatile
@@ -87,7 +86,17 @@ class BootReceiver : BroadcastReceiver() {
             sweepsArmed++
         }
 
-        fun scheduleStorageRetry(context: Context, delayMs: Long = STORAGE_RETRY_DELAY_MS) {
+        const val MAX_STORAGE_RETRIES = 4
+
+        fun scheduleStorageRetry(context: Context, delayMs: Long = STORAGE_RETRY_DELAY_MS, error: Throwable? = null) {
+            if (retriesArmed >= MAX_STORAGE_RETRIES) {
+                android.util.Log.w("BootReceiver", "Max storage retries ($MAX_STORAGE_RETRIES) reached; aborting retry scheduling.")
+                return
+            }
+            if (error?.message?.contains("KEYSTORE_LOST", ignoreCase = true) == true) {
+                android.util.Log.e("BootReceiver", "Permanent KEYSTORE_LOST encountered; aborting boot retry alarm.")
+                return
+            }
             val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
             val pendingIntent = PendingIntent.getBroadcast(
                 context,
@@ -109,6 +118,7 @@ class BootReceiver : BroadcastReceiver() {
         val validActions = listOf(
             Intent.ACTION_LOCKED_BOOT_COMPLETED,
             Intent.ACTION_BOOT_COMPLETED,
+            Intent.ACTION_USER_UNLOCKED,
             Intent.ACTION_MY_PACKAGE_REPLACED,
             Intent.ACTION_TIME_CHANGED,
             Intent.ACTION_TIMEZONE_CHANGED,
@@ -137,7 +147,7 @@ class BootReceiver : BroadcastReceiver() {
                     return@launch
                 }
 
-                val storage = (context.applicationContext as MineApp).sharedStorage.await()
+                val storage = (context.applicationContext as MineApp).ensureStorageInitialized().await()
                 val scheduler = AndroidAlarmScheduler(context)
                 val clock = SystemClock()
 
@@ -153,9 +163,29 @@ class BootReceiver : BroadcastReceiver() {
                     android.util.Log.w("BootReceiver", "Failed to reconcile direct boot fires: ${e.message}")
                 }
 
-                // 1. Reconcile alarms using unified core reconciler (force = true on boot / time change)
+                // 0b. Update DayRule on timezone change (P2-12)
+                if (action == Intent.ACTION_TIMEZONE_CHANGED) {
+                    try {
+                        val currentTzId = java.util.TimeZone.getDefault().id
+                        val existingRule = storage.getEffectiveDayRule(clock.now())
+                        if (existingRule.tzId != currentTzId) {
+                            val newRule = existingRule.copy(
+                                id = "rule_${java.util.UUID.randomUUID()}",
+                                effectiveFrom = clock.now(),
+                                tzId = currentTzId,
+                                createdAt = clock.now()
+                            )
+                            storage.saveDayRule(newRule)
+                        }
+                    } catch (e: Exception) {
+                        android.util.Log.w("BootReceiver", "Failed to update DayRule on timezone change: ${e.message}")
+                    }
+                }
+
+                // 1. Reconcile alarms using unified core reconciler (force = false on periodic sweep, force = true on boot/time change)
+                val forceReconcile = action != ACTION_SWEEP
                 val reconciler = AlarmReconciler(storage, scheduler, clock)
-                reconciler.reconcile(force = true)
+                reconciler.reconcile(force = forceReconcile)
 
                 // Sync DE safety-net table with CE reminders
                 try {
@@ -188,24 +218,32 @@ class BootReceiver : BroadcastReceiver() {
                     }
                 } catch (_: Exception) {}
 
+                // 3c. Schedule proactive day anchors (P1-13)
+                try {
+                    ProactiveAnchorScheduler.scheduleNextAnchors(context, storage, clock)
+                } catch (e: Exception) {
+                    android.util.Log.w("BootReceiver", "Failed to schedule proactive anchors: ${e.message}")
+                }
+
                 // 4. H-02: keep the periodic sweep registered. Re-arming on every boot and every
                 // app start is what makes the trigger survive a reboot, a package update and an
                 // OEM that drops repeating alarms.
                 schedulePeriodicSweep(context)
-            } catch (e: Exception) {
+            } catch (t: Throwable) {
+                if (t is kotlinx.coroutines.CancellationException) throw t
                 // H-03 (R-03): without this catch a Keystore failure skipped reconcile, the sweeper
                 // and quote rescheduling for the whole boot, and nothing ever retried — every
                 // reminder stayed disarmed until the user opened the app. Record the failure so the
                 // app can show it, and arm a bounded retry on this same path.
-                recordStorageFailure(context, e)
-                scheduleStorageRetry(context)
+                recordStorageFailure(context, t)
+                scheduleStorageRetry(context, error = t)
             } finally {
                 pendingResult?.finish()
             }
         }
     }
 
-    private suspend fun recordStorageFailure(context: Context, e: Exception) {
+    private suspend fun recordStorageFailure(context: Context, e: Throwable) {
         // Re-opening is the only way to record this: app.sharedStorage is a deferred that has
         // already completed (or failed), so awaiting it again either returns the same failure or
         // the same instance — never a fresh open. A transient failure (I/O, lock) can succeed on
@@ -228,7 +266,7 @@ class BootReceiver : BroadcastReceiver() {
             } finally {
                 db.close()
             }
-        } catch (_: Exception) {
+        } catch (_: Throwable) {
         }
     }
 }

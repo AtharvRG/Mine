@@ -16,6 +16,7 @@ All dependencies are compatible with the GNU General Public License v3.0 (GPL-3.
 | **AndroidX SQLite** (`androidx.sqlite:sqlite`) | 2.4.0 | Apache-2.0 | https://developer.android.com/jetpack/androidx/releases/sqlite |
 | **SQLCipher for Android** (`net.zetetic:sqlcipher-android`) | 4.19.1 | BSD-style / Zetetic License | https://www.zetetic.net/sqlcipher/ |
 | **Bouncy Castle Cryptography** (`org.bouncycastle:bcprov-jdk18on`) | 1.78.1 | Bouncy Castle Licence (MIT-style) | https://www.bouncycastle.org/licence.html |
+| **Jsoup Java HTML Parser** (`org.jsoup:jsoup`) | 1.18.3 | MIT License | https://jsoup.org/ |
 
 ## Testing Dependencies
 
@@ -46,3 +47,24 @@ Permission is hereby granted, free of charge, to any person obtaining a copy of 
 The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+### Jsoup MIT License
+Copyright (c) 2009-2024 Jonathan Hedley (https://jsoup.org/)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

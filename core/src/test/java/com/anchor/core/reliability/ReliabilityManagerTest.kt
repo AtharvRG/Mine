@@ -34,7 +34,7 @@ class ReliabilityManagerTest {
         // Verify r_missed was swept and logged, BUT NOT DELETED BY SWEEPER!
         // The AlarmReceiver deletes it, so it should still exist in storage right now.
         org.junit.Assert.assertEquals(3, storage.reminders.size)
-        
+
         org.junit.Assert.assertEquals(1, storage.reminderFires.size)
         org.junit.Assert.assertEquals("missed", storage.reminderFires[0].outcome)
         org.junit.Assert.assertEquals("r_missed", storage.reminderFires[0].reminderId)

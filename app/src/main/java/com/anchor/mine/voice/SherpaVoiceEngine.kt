@@ -21,8 +21,11 @@ import com.k2fsa.sherpa.onnx.OnlineRecognizer
 import com.k2fsa.sherpa.onnx.OnlineRecognizerConfig
 import com.k2fsa.sherpa.onnx.OnlineTransducerModelConfig
 import com.k2fsa.sherpa.onnx.SileroVadModelConfig
+import com.k2fsa.sherpa.onnx.SpeakerEmbeddingExtractor
+import com.k2fsa.sherpa.onnx.SpeakerEmbeddingExtractorConfig
 import com.k2fsa.sherpa.onnx.Vad
 import com.k2fsa.sherpa.onnx.VadModelConfig
+import com.anchor.core.voice.SyntheticAudioFixtures
 import java.io.Closeable
 
 /**
@@ -35,19 +38,47 @@ import java.io.Closeable
  */
 class SherpaVoiceEngine private constructor(
     private val paths: VoiceModelPaths,
-    private val vad: Vad?,
-    private val recognizer: OnlineRecognizer?,
-    private val tts: OfflineTts?,
+    val vad: Vad?,
+    val recognizer: OnlineRecognizer?,
+    val tts: OfflineTts?,
+    val speakerExtractor: SpeakerEmbeddingExtractor? = null,
     private val audioManager: AudioManager? = null
 ) : Closeable {
 
     private var activeAudioTrack: AudioTrack? = null
     private val audioLock = Any()
+    private val sttLock = Any()
+    private val ttsLock = Any()
+    private val vadLock = Any()
+    private val speakerLock = Any()
     private var focusRequest: AudioFocusRequest? = null
 
     val isVadAvailable: Boolean get() = vad != null
     val isSttAvailable: Boolean get() = recognizer != null
     val isTtsAvailable: Boolean get() = tts != null
+    val isSpeakerExtractorAvailable: Boolean get() = speakerExtractor != null
+
+    /**
+     * Extracts speaker embedding using neural SpeakerEmbeddingExtractor (campplus)
+     * if available, otherwise gracefully falls back to deterministic autocorrelation + DCT.
+     */
+    fun extractSpeakerEmbedding(samples: FloatArray, sampleRate: Int = 16000): FloatArray = synchronized(speakerLock) {
+        val extractor = speakerExtractor ?: return@synchronized SyntheticAudioFixtures.extractVoiceprintFromAudio(samples)
+        val stream = try {
+            extractor.createStream()
+        } catch (_: Throwable) {
+            return@synchronized SyntheticAudioFixtures.extractVoiceprintFromAudio(samples)
+        }
+        return@synchronized try {
+            stream.acceptWaveform(samples, sampleRate)
+            stream.inputFinished()
+            extractor.compute(stream)
+        } catch (_: Throwable) {
+            SyntheticAudioFixtures.extractVoiceprintFromAudio(samples)
+        } finally {
+            try { stream.release() } catch (_: Throwable) {}
+        }
+    }
 
     private fun requestFocus(): Boolean {
         val am = audioManager ?: return true
@@ -105,30 +136,57 @@ class SherpaVoiceEngine private constructor(
     /**
      * Transcribes 16kHz mono float audio samples to text.
      */
-    fun transcribe(samples: FloatArray, sampleRate: Int = 16000): String {
+    fun transcribe(samples: FloatArray, sampleRate: Int = 16000): String = synchronized(sttLock) {
         val rec = recognizer ?: throw IllegalStateException("STT recognizer is not initialized")
         val stream = rec.createStream()
-        return try {
+        return@synchronized try {
             stream.acceptWaveform(samples, sampleRate)
+            // Tail padding (0.66s of silence) to prevent dropping last word in streaming ASR
+            val tailPadding = FloatArray((0.66f * sampleRate).toInt())
+            stream.acceptWaveform(tailPadding, sampleRate)
             stream.inputFinished()
             while (rec.isReady(stream)) {
                 rec.decode(stream)
             }
             rec.getResult(stream).text.trim()
         } finally {
-            stream.release()
+            try { stream.release() } catch (_: Throwable) {}
+        }
+    }
+
+    /**
+     * Evaluates whether the given audio samples contain active human speech using Silero VAD.
+     * Uses a sliding window across the buffer and resets VAD state properly.
+     */
+    fun isSpeech(samples: FloatArray, window: Int = 512): Boolean = synchronized(vadLock) {
+        val v = vad ?: return@synchronized false
+        return@synchronized try {
+            v.reset()
+            var any = false
+            var i = 0
+            while (i + window <= samples.size) {
+                v.acceptWaveform(samples.copyOfRange(i, i + window))
+                if (v.isSpeechDetected()) any = true
+                i += window
+            }
+            v.flush()
+            if (!v.empty()) any = true
+            while (!v.empty()) v.pop()
+            any
+        } catch (_: Throwable) {
+            false
         }
     }
 
     /**
      * Synthesizes text to speech PCM audio samples.
      */
-    fun synthesize(text: String, sid: Int = 0, speed: Float = 1.0f): FloatArray {
+    fun synthesize(text: String, sid: Int = 0, speed: Float = 1.0f): FloatArray = synchronized(ttsLock) {
         val engine = tts ?: throw IllegalStateException("TTS engine is not initialized")
         val clean = cleanTextForSpeech(text)
-        if (clean.isBlank()) return FloatArray(0)
+        if (clean.isBlank()) return@synchronized FloatArray(0)
         val generated = engine.generate(clean, sid, speed)
-        return generated.samples
+        return@synchronized generated.samples
     }
 
     /**
@@ -226,6 +284,11 @@ class SherpaVoiceEngine private constructor(
                 kotlinx.coroutines.delay(40L)
             }
         } finally {
+            synchronized(audioLock) {
+                try { activeAudioTrack?.stop() } catch (_: Throwable) {}
+                try { activeAudioTrack?.release() } catch (_: Throwable) {}
+                activeAudioTrack = null
+            }
             abandonFocus()
         }
     }
@@ -252,18 +315,43 @@ class SherpaVoiceEngine private constructor(
 
     override fun close() {
         stopPlaying()
-        try { vad?.release() } catch (_: Exception) {}
-        try { recognizer?.release() } catch (_: Exception) {}
-        try { tts?.release() } catch (_: Exception) {}
+        synchronized(vadLock) {
+            try { vad?.release() } catch (_: Exception) {}
+        }
+        synchronized(sttLock) {
+            try { recognizer?.release() } catch (_: Exception) {}
+        }
+        synchronized(ttsLock) {
+            try { tts?.release() } catch (_: Exception) {}
+        }
+        synchronized(speakerLock) {
+            try { speakerExtractor?.release() } catch (_: Exception) {}
+        }
     }
 
     companion object {
         @Volatile
         private var instance: SherpaVoiceEngine? = null
+        @Volatile
+        private var nextRetryAt = 0L
 
         fun getInstance(context: Context, customPaths: VoiceModelPaths? = null): SherpaVoiceEngine? {
-            return instance ?: synchronized(this) {
-                instance ?: create(context.applicationContext, customPaths)?.also { instance = it }
+            instance?.let { return it }
+            return synchronized(this) {
+                instance?.let { return it }
+                if (System.currentTimeMillis() < nextRetryAt) return null
+                val created = try {
+                    create(context.applicationContext, customPaths)
+                } catch (_: Throwable) {
+                    null
+                }
+                if (created == null || (!created.isSttAvailable && !created.isTtsAvailable && !created.isVadAvailable)) {
+                    try { created?.close() } catch (_: Throwable) {}
+                    nextRetryAt = System.currentTimeMillis() + 10 * 60_000L
+                    return null
+                }
+                instance = created
+                created
             }
         }
 
@@ -271,6 +359,7 @@ class SherpaVoiceEngine private constructor(
             synchronized(this) {
                 instance?.close()
                 instance = null
+                nextRetryAt = 0L
             }
         }
         /**
@@ -290,9 +379,9 @@ class SherpaVoiceEngine private constructor(
 
         fun create(context: Context, customPaths: VoiceModelPaths? = null): SherpaVoiceEngine? {
             val paths = customPaths ?: VoiceModelPaths.resolve(context) ?: return null
-            if (!paths.isComplete) return null
+            if (!paths.vadPresent && !paths.sttComplete && !paths.ttsComplete) return null
 
-            val vad = try {
+            val vad = if (paths.vadPresent) try {
                 val vadConfig = VadModelConfig(
                     sileroVadModelConfig = SileroVadModelConfig(
                         model = paths.vadModel.absolutePath,
@@ -308,11 +397,11 @@ class SherpaVoiceEngine private constructor(
                     debug = false
                 )
                 Vad(null, vadConfig)
-            } catch (_: Exception) {
+            } catch (_: Throwable) {
                 null
-            }
+            } else null
 
-            val recognizer = try {
+            val recognizer = if (paths.sttComplete) try {
                 val modelConfig = OnlineModelConfig(
                     transducer = OnlineTransducerModelConfig(
                         encoder = paths.sttEncoder.absolutePath,
@@ -330,11 +419,11 @@ class SherpaVoiceEngine private constructor(
                     modelConfig = modelConfig
                 )
                 OnlineRecognizer(null, recConfig)
-            } catch (_: Exception) {
+            } catch (_: Throwable) {
                 null
-            }
+            } else null
 
-            val tts = try {
+            val tts = if (paths.ttsComplete) try {
                 val kokoroConfig = OfflineTtsKokoroModelConfig(
                     model = paths.ttsModel.absolutePath,
                     voices = paths.ttsVoices.absolutePath,
@@ -351,12 +440,29 @@ class SherpaVoiceEngine private constructor(
                 )
                 val ttsConfig = OfflineTtsConfig(model = ttsModelConfig)
                 OfflineTts(null, ttsConfig)
-            } catch (_: Exception) {
+            } catch (_: Throwable) {
                 null
-            }
+            } else null
+
+            val speakerExtractor = if (paths.speakerPresent) try {
+                val modelFile = paths.speakerModel
+                if (modelFile != null && modelFile.exists()) {
+                    val speakerConfig = SpeakerEmbeddingExtractorConfig(
+                        model = modelFile.absolutePath,
+                        numThreads = 2,
+                        debug = false,
+                        provider = "cpu"
+                    )
+                    SpeakerEmbeddingExtractor(null, speakerConfig)
+                } else {
+                    null
+                }
+            } catch (_: Throwable) {
+                null
+            } else null
 
             val am = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
-            return SherpaVoiceEngine(paths, vad, recognizer, tts, am)
+            return SherpaVoiceEngine(paths, vad, recognizer, tts, speakerExtractor, am)
         }
     }
 }

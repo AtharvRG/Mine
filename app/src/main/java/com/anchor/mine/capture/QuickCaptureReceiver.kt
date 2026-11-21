@@ -64,7 +64,7 @@ class QuickCaptureReceiver : BroadcastReceiver() {
                 }
                 app.captureNotificationIds[id] = notificationId
                 controller.sendText(text, id)
-            } catch (_: Exception) {
+            } catch (_: Throwable) {
                 // Storage failed before the row was written. Nothing was captured, so the
                 // notification must not claim otherwise.
                 CaptureNotifications.showFailed(appContext, notificationId)

@@ -7,6 +7,9 @@ package com.anchor.core.provider
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonObject
 import kotlinx.coroutines.CancellationException
 
 class ProviderOrchestrator(
@@ -16,16 +19,16 @@ class ProviderOrchestrator(
 ) {
     private val jsonParser = Json { ignoreUnknownKeys = true; isLenient = true }
 
-    suspend fun chat(chain: List<Target>, prompt: String): Flow<StreamEvent> = flow {
+    suspend fun chat(chain: List<Target>, prompt: String, envelopeMode: Boolean = false): Flow<StreamEvent> = flow {
         var lastError: Exception? = null
         // Declared outside the try: the catch clauses decide whether to emit Clear based on it.
         var emittedText = false
 
         for ((index, target) in chain.withIndex()) {
-            if (!limiter.canRequest(target.key, target.limitRpm)) continue
+            if (!limiter.canRequest(target.limiterKey, target.limitRpm)) continue
 
             try {
-                limiter.recordRequest(target.key)
+                limiter.recordRequest(target.limiterKey)
                 var emittedAnything = false
                 emittedText = false
 
@@ -36,8 +39,16 @@ class ProviderOrchestrator(
                         if (event is StreamEvent.TextDelta) emittedText = true
                     }
                 } else {
+                    // Rewrite prompt model if target has a specific model configured (Patch J / P1-05)
+                    val effectivePrompt = target.model?.let { m ->
+                        runCatching {
+                            val root = jsonParser.parseToJsonElement(prompt).jsonObject
+                            JsonObject(root + ("model" to JsonPrimitive(m))).toString()
+                        }.getOrDefault(prompt)
+                    } ?: prompt
+
                     // B13: Catch 5xx, Timeouts, and empty 200s, then fallback to next target!
-                    normalize(transport.postStream(target, prompt)).collect { event ->
+                    normalize(transport.postStream(target, effectivePrompt)).collect { event ->
                         emit(event)
                         emittedAnything = true
                         if (event is StreamEvent.TextDelta) emittedText = true
@@ -46,21 +57,20 @@ class ProviderOrchestrator(
 
                 if (!emittedAnything) throw Exception("Empty response from provider")
 
+                limiter.recordSuccess(target.limiterKey)
                 return@flow // Success! Turn completes.
             } catch (e: Http429Exception) {
-                limiter.apply429Cooldown(target.key, e.retryAfterSeconds)
+                limiter.apply429Cooldown(target.limiterKey, e.retryAfterSeconds)
                 lastError = e
-                // H-12 (R-16): Clear wipes the consumer's buffer. Only emit it when this attempt
-                // streamed no text — otherwise the user watches an answer they already read
-                // vanish and restart. A failed attempt is not a correction of the previous one.
-                if (!emittedText) emit(StreamEvent.Clear)
+                // H-12 (R-16) / Audit Part 6: In envelope mode, failover must clear to prevent invalid concatenated JSON
+                if (envelopeMode || !emittedText) emit(StreamEvent.Clear)
                 continue // Try next fallback target
             } catch (e: OfflineException) {
                 // Blueprint 41 §2 no_network: check if an on-device local target is remaining in the chain
                 val hasLocalRemaining = chain.drop(index + 1).any { it.id.startsWith("local://") }
                 if (hasLocalRemaining) {
                     lastError = e
-                    if (!emittedText) emit(StreamEvent.Clear)
+                    if (envelopeMode || !emittedText) emit(StreamEvent.Clear)
                     continue // Fall through to on-device LLM target!
                 }
                 // No local target available: rethrow so the controller queues on offline signal
@@ -68,12 +78,12 @@ class ProviderOrchestrator(
             } catch (e: Exception) {
                 if (e is CancellationException) throw e // Never swallow coroutine cancellation
                 lastError = e
-                if (!emittedText) emit(StreamEvent.Clear)
+                if (envelopeMode || !emittedText) emit(StreamEvent.Clear)
                 continue // 5xx, timeout, or parsing error -> Try next fallback target!
             }
         }
-        
-        throw Exception("All providers failed or in cooldown. Last error: ${lastError?.message ?: "Unknown"}")
+
+        throw AllProvidersFailedException(lastError)
     }
 
     private fun normalize(rawStream: Flow<String>): Flow<StreamEvent> = flow {

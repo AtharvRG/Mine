@@ -26,8 +26,14 @@ import kotlin.math.sqrt
  */
 class AudioRecorderHelper(
     private val sampleRate: Int = 16000,
-    private val maxDurationSeconds: Int = 180
+    private val maxDurationSeconds: Int = 180,
+    private val isForegroundUserMic: Boolean = true
 ) {
+
+    companion object {
+        @Volatile
+        var isForegroundMicActive: Boolean = false
+    }
 
     @Volatile
     var isRecording: Boolean = false
@@ -83,29 +89,58 @@ class AudioRecorderHelper(
 
             audioRecord = record
             isRecording = true
+            if (isForegroundUserMic) isForegroundMicActive = true
 
             recordingJob = coroutineScope.launch(Dispatchers.IO) {
                 val shortBuffer = ShortArray(minBufferSize)
                 val maxSamples = sampleRate * maxDurationSeconds
-                while (isActive && isRecording) {
-                    val read = record.read(shortBuffer, 0, shortBuffer.size)
-                    if (read > 0) {
-                        var sumSq = 0.0
-                        val floats = FloatArray(read)
-                        for (i in 0 until read) {
-                            val f = shortBuffer[i] / 32768.0f
-                            floats[i] = f
-                            sumSq += (f * f)
+                try {
+                    while (isActive && isRecording) {
+                        val read = record.read(shortBuffer, 0, shortBuffer.size)
+                        if (read > 0) {
+                            var sumSq = 0.0
+                            val floats = FloatArray(read)
+                            for (i in 0 until read) {
+                                val f = shortBuffer[i] / 32768.0f
+                                floats[i] = f
+                                sumSq += (f * f)
+                            }
+                            currentRms = sqrt(sumSq / read).toFloat()
+                            val shouldStop = synchronized(lock) {
+                                chunkList.add(floats)
+                                totalSampleCount += read
+                                if (totalSampleCount >= maxSamples) {
+                                    if (isForegroundUserMic) {
+                                        isRecording = false
+                                        true
+                                    } else {
+                                        // Ambient ring buffer: drop oldest audio chunks to remain bounded
+                                        while (totalSampleCount > maxSamples / 2 && chunkList.isNotEmpty()) {
+                                            totalSampleCount -= chunkList.removeAt(0).size
+                                        }
+                                        false
+                                    }
+                                } else {
+                                    false
+                                }
+                            }
+                            if (shouldStop) {
+                                break
+                            }
                         }
-                        currentRms = sqrt(sumSq / read).toFloat()
-                        val reachedCap = synchronized(lock) {
-                            chunkList.add(floats)
-                            totalSampleCount += read
-                            totalSampleCount >= maxSamples
-                        }
-                        if (reachedCap) {
+                    }
+                } finally {
+                    if (isForegroundUserMic) isForegroundMicActive = false
+                    try {
+                        record.stop()
+                    } catch (_: Throwable) {}
+                    try {
+                        record.release()
+                    } catch (_: Throwable) {}
+                    synchronized(lock) {
+                        if (audioRecord === record) {
+                            audioRecord = null
                             isRecording = false
-                            break
                         }
                     }
                 }
@@ -114,9 +149,25 @@ class AudioRecorderHelper(
         }
     }
 
+    fun snapshotAndClear(): FloatArray {
+        synchronized(lock) {
+            val result = FloatArray(totalSampleCount)
+            var offset = 0
+            for (chunk in chunkList) {
+                System.arraycopy(chunk, 0, result, offset, chunk.size)
+                offset += chunk.size
+            }
+            chunkList.clear()
+            totalSampleCount = 0
+            currentRms = 0f
+            return result
+        }
+    }
+
     fun stopRecording(): FloatArray {
         synchronized(lock) {
             isRecording = false
+            if (isForegroundUserMic) isForegroundMicActive = false
             recordingJob?.cancel()
             recordingJob = null
 
@@ -144,6 +195,7 @@ class AudioRecorderHelper(
     fun cancelRecording() {
         synchronized(lock) {
             isRecording = false
+            if (isForegroundUserMic) isForegroundMicActive = false
             recordingJob?.cancel()
             recordingJob = null
             try {

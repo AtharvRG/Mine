@@ -90,6 +90,8 @@ class CallNudgeActionReceiver : BroadcastReceiver() {
                         storage.updateCallEventState(callEventId, CallNudgeState.SKIPPED)
                     }
                 }
+            } catch (t: Throwable) {
+                android.util.Log.e("CallNudgeActionReceiver", "Failed handling call nudge action: ${t.message}", t)
             } finally {
                 pendingResult?.finish()
             }

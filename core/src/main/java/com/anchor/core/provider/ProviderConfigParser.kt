@@ -17,7 +17,10 @@ import java.util.Locale
 data class ImportedProviderConfig(
     val endpoint: String,
     val model: String,
-    val key: String? = null
+    val key: String? = null,
+    val fallbackEndpoint: String? = null,
+    val fallbackModel: String? = null,
+    val fallbackKey: String? = null
 )
 
 object ProviderConfigParser {
@@ -78,14 +81,25 @@ object ProviderConfigParser {
         val model = element.findString("model", "model_name", "modelName")
             ?: throw IllegalArgumentException("Missing required provider model")
         val key = element.findString("key", "api_key", "apiKey")?.takeIf { it.isNotBlank() }
+        val fallbackEndpoint = element.findString("fallback_endpoint", "fallbackEndpoint")
+        val fallbackModel = element.findString("fallback_model", "fallbackModel")
+        val fallbackKey = element.findString("fallback_key", "fallbackKey")?.takeIf { it.isNotBlank() }
 
         validateEndpoint(endpoint)
         validateModel(model)
         if (key != null && key.length > MAX_KEY_LENGTH) {
             throw IllegalArgumentException("API key exceeds maximum length of $MAX_KEY_LENGTH")
         }
+        if (fallbackEndpoint != null) validateEndpoint(fallbackEndpoint)
 
-        return ImportedProviderConfig(endpoint = endpoint.trim(), model = model.trim(), key = key?.trim())
+        return ImportedProviderConfig(
+            endpoint = endpoint.trim(),
+            model = model.trim(),
+            key = key?.trim(),
+            fallbackEndpoint = fallbackEndpoint?.trim(),
+            fallbackModel = fallbackModel?.trim(),
+            fallbackKey = fallbackKey?.trim()
+        )
     }
 
     private fun parseUri(uriString: String): ImportedProviderConfig {
@@ -111,14 +125,25 @@ object ProviderConfigParser {
         val model = params["model"] ?: params["model_name"] ?: params["modelname"]
             ?: throw IllegalArgumentException("Missing required provider model in URI")
         val key = (params["key"] ?: params["api_key"] ?: params["apikey"])?.takeIf { it.isNotBlank() }
+        val fallbackEndpoint = params["fallback_endpoint"] ?: params["fallbackendpoint"]
+        val fallbackModel = params["fallback_model"] ?: params["fallbackmodel"]
+        val fallbackKey = (params["fallback_key"] ?: params["fallbackkey"])?.takeIf { it.isNotBlank() }
 
         validateEndpoint(endpoint)
         validateModel(model)
         if (key != null && key.length > MAX_KEY_LENGTH) {
             throw IllegalArgumentException("API key exceeds maximum length of $MAX_KEY_LENGTH")
         }
+        if (fallbackEndpoint != null) validateEndpoint(fallbackEndpoint)
 
-        return ImportedProviderConfig(endpoint = endpoint.trim(), model = model.trim(), key = key?.trim())
+        return ImportedProviderConfig(
+            endpoint = endpoint.trim(),
+            model = model.trim(),
+            key = key?.trim(),
+            fallbackEndpoint = fallbackEndpoint?.trim(),
+            fallbackModel = fallbackModel?.trim(),
+            fallbackKey = fallbackKey?.trim()
+        )
     }
 
     private fun validateEndpoint(endpoint: String) {
@@ -130,8 +155,9 @@ object ProviderConfigParser {
             throw IllegalArgumentException("Invalid endpoint URL format: ${it.message}")
         }
         val scheme = uri.scheme?.lowercase(Locale.ROOT)
-        if (scheme != "http" && scheme != "https") {
-            throw IllegalArgumentException("Endpoint must use http or https scheme (got '$scheme')")
+        val isLocalhost = uri.host?.equals("localhost", ignoreCase = true) == true || uri.host == "127.0.0.1"
+        if (scheme != "https" && !(scheme == "http" && isLocalhost)) {
+            throw IllegalArgumentException("Endpoint must use https:// (or http:// on localhost)")
         }
         if (uri.host.isNullOrBlank()) {
             throw IllegalArgumentException("Endpoint URL must specify a valid host")

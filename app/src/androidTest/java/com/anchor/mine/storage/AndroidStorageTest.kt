@@ -7,7 +7,12 @@ package com.anchor.mine.storage
 import android.content.Intent
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.anchor.core.ambient.*
 import com.anchor.core.models.*
+import com.anchor.core.gateway.Gateway
+import com.anchor.core.gateway.ToolCall
+import com.anchor.core.time.Clock
+import kotlinx.serialization.json.JsonPrimitive
 import com.anchor.core.storage.ProposalAlreadyResolvedException
 import com.anchor.mine.alarms.BootReceiver
 import kotlinx.coroutines.Dispatchers
@@ -48,7 +53,7 @@ class AndroidStorageTest {
     fun testSaveAndReadProposal() = runBlocking {
         val p = Proposal("p1", "ambiguous", IntentType.CANCEL, listOf(ProposalOption("n1", "Option 1"), ProposalOption("n2", "Option 2")))
         storage.saveProposal(p)
-        
+
         val readProposal = storage.getProposal("p1")
         assertNotNull(readProposal)
         assertEquals(2, readProposal!!.options.size)
@@ -62,7 +67,7 @@ class AndroidStorageTest {
             storage.insertRawMessage("msg_$i", if (i % 2 == 0) "assistant" else "user", "Content $i")
             Thread.sleep(2) // Ensure distinct timestamps
         }
-        
+
         val recent = storage.getRecentMessages(30)
         assertEquals(30, recent.size)
         // Must be chronological: oldest of the 30 first
@@ -188,7 +193,7 @@ class AndroidStorageTest {
     @Test
     fun testStrictRedactionTrigger() = runBlocking {
         storage.insertRawMessage("msg_redact", "user", "Secret info")
-        
+
         // 1. Normal UPDATE aborts
         var threw = false
         try {
@@ -1239,6 +1244,65 @@ class AndroidStorageTest {
         assertNull("after_json must be scrubbed to null", scrubbedEvt!!.afterJson)
     }
 
+    @Test
+    fun testRealNodeUndo_CreateAndComplete_PersistsUndoOfAndRecordedInUndoneOpIds(): Unit = runBlocking {
+        val clock = object : Clock {
+            var current = 1_700_000_000_000L
+            override fun now() = current
+        }
+        val resolver = com.anchor.core.resolver.Resolver()
+        val dateResolver = com.anchor.core.time.DateResolver(clock)
+        val gateway = Gateway(storage, resolver = resolver, dateResolver = dateResolver, clock = clock)
+
+        // 1. Create a node via Gateway
+        val createRes = gateway.executeTool(
+            ToolCall("propose_change", mapOf("intent" to JsonPrimitive("CREATE"), "hint" to JsonPrimitive("Undoable task"))),
+            mutableSetOf()
+        )
+        assertTrue("Create must succeed: $createRes", createRes is ToolResult.Committed)
+        val createToken = (createRes as ToolResult.Committed).undoToken
+        val nodeId = createRes.targetId
+
+        assertNotNull(storage.getNode(nodeId))
+
+        // 2. Complete the node via Gateway
+        clock.current += 1000L
+        val completeRes = gateway.executeTool(
+            ToolCall("propose_change", mapOf("intent" to JsonPrimitive("COMPLETE"), "target_ref" to JsonPrimitive(nodeId))),
+            mutableSetOf()
+        )
+        assertTrue("Complete must succeed: $completeRes", completeRes is ToolResult.Committed)
+        val completeToken = (completeRes as ToolResult.Committed).undoToken
+
+        assertEquals("done", storage.getNode(nodeId)?.status)
+
+        // 3. Undo the COMPLETE operation
+        clock.current += 1000L
+        val undoCompleteRes = gateway.executeTool(
+            ToolCall("undo", mapOf("token" to JsonPrimitive(completeToken))),
+            mutableSetOf()
+        )
+        assertTrue("Undo COMPLETE must succeed: $undoCompleteRes", undoCompleteRes is ToolResult.Committed)
+
+        // Verify status is reverted to active and raw_event.undo_of is persisted
+        assertEquals("active", storage.getNode(nodeId)?.status)
+        assertTrue("storage.hasUndo must be true for completeToken", storage.hasUndo(completeToken))
+        assertTrue("getUndoneOpIds must contain completeToken", storage.getUndoneOpIds().contains(completeToken))
+
+        // 4. Undo the CREATE operation
+        clock.current += 1000L
+        val undoCreateRes = gateway.executeTool(
+            ToolCall("undo", mapOf("token" to JsonPrimitive(createToken))),
+            mutableSetOf()
+        )
+        assertTrue("Undo CREATE must succeed: $undoCreateRes", undoCreateRes is ToolResult.Committed)
+
+        // Verify node status is cancelled and raw_event.undo_of is persisted
+        assertEquals("cancelled", storage.getNode(nodeId)?.status)
+        assertTrue("storage.hasUndo must be true for createToken", storage.hasUndo(createToken))
+        assertTrue("getUndoneOpIds must contain createToken", storage.getUndoneOpIds().contains(createToken))
+    }
+
     // R-05: an UPDATE that matches no row still wrote a raw_event, so the UI rendered a receipt
     // ("Updated: ...") for a change that never happened. The event must not be written either.
     @Test
@@ -2053,6 +2117,95 @@ class AndroidStorageTest {
             assertEquals("ob2", c.getString(0))
             assertTrue(c.moveToNext())
             assertEquals("ob3", c.getString(0))
+        }
+    }
+
+    @Test
+    fun testDeleteAllAmbientData_WithAmbientProposalsAndTriggers_ScrubsPayloadsAndDeletesAmbientRecords() = runBlocking {
+        val now = 1_000_000_000L
+        val node = Node(
+            id = "n_amb_1",
+            type = "task",
+            title = "Ambient proposal",
+            status = "proposed",
+            origin = "ambient",
+            createdAt = now
+        )
+        val event = RawEvent(
+            opId = "op_amb_1",
+            opType = "PROPOSE",
+            targetType = "node",
+            targetId = "n_amb_1",
+            beforeJson = null,
+            afterJson = """{"id":"n_amb_1","title":"Ambient proposal"}""",
+            tsUtc = now
+        )
+        storage.createNodeAndCommit(node, event, reminder = null)
+
+        // Add ambient segments, reports, items, voiceprint
+        storage.saveAmbientSegment(AmbientSegment(id = "seg_1", windowId = "win_1", tStart = now - 1000L, tEnd = now, label = "user", text = "Hello ambient", expiresAt = now + 10000L))
+        storage.saveAmbientReport(AmbientReport("rep_1", "2026-11-15", now, "pending"))
+        storage.saveAmbientReportItem(AmbientReportItem("item_1", "rep_1", "win_1", "proposal", "Ambient proposal", "n_amb_1", null, "pending", null))
+        storage.saveVoiceprint(Voiceprint("user_p", ByteArray(192) { 1 }, "campplus", now))
+
+        // Execute purge
+        val deleted = storage.deleteAllAmbientData()
+        assertTrue("Must report deleted rows", deleted >= 3)
+
+        // Voiceprint, report items, segments, and proposed nodes must be gone
+        assertNull(storage.getVoiceprint())
+        assertNull(storage.getLatestAmbientReport())
+        assertTrue(storage.getAmbientSegments("win_1").isEmpty())
+        assertNull(storage.getNode("n_amb_1"))
+
+        // Raw event must still exist (append-only) but its payloads scrubbed to null
+        dbHelper.readableDatabase.query("SELECT before_json, after_json FROM raw_event WHERE target_id = 'n_amb_1'", emptyArray()).use { c ->
+            assertTrue("raw_event row must be preserved per trigger", c.moveToFirst())
+            assertTrue(c.isNull(0))
+            assertTrue(c.isNull(1))
+        }
+    }
+
+    @Test
+    fun testPruneAmbientStaging_RemovesExpiredSegmentsAndOrphanedProposedNodes() = runBlocking {
+        val now = 10_000_000_000L
+        val cutoff = now - 7 * 86_400_000L
+        val expiredNode = Node(
+            id = "n_amb_exp",
+            type = "task",
+            title = "Expired ambient proposal",
+            status = "proposed",
+            origin = "ambient",
+            createdAt = cutoff - 1000L
+        )
+        val event = RawEvent(
+            opId = "op_amb_exp",
+            opType = "PROPOSE",
+            targetType = "node",
+            targetId = "n_amb_exp",
+            beforeJson = null,
+            afterJson = """{"id":"n_amb_exp"}""",
+            tsUtc = cutoff - 1000L
+        )
+        storage.createNodeAndCommit(expiredNode, event, reminder = null)
+
+        storage.saveAmbientSegment(AmbientSegment(id = "seg_exp", windowId = "win_exp", tStart = now - 10000L, tEnd = now - 1000L, label = "user", text = "Expired", expiresAt = cutoff - 1000L))
+        storage.saveAmbientSegment(AmbientSegment(id = "seg_act", windowId = "win_exp", tStart = now - 1000L, tEnd = now, label = "user", text = "Active", expiresAt = now + 10000L))
+        storage.saveAmbientReport(AmbientReport("rep_exp", "2026-11-01", cutoff - 2000L, "pending"))
+        storage.saveAmbientReportItem(AmbientReportItem("item_exp", "rep_exp", "win_exp", "proposal", "Expired", "n_amb_exp", null, "pending", null))
+
+        val pruned = storage.pruneAmbientStaging(now)
+        assertTrue("Must prune expired items", pruned >= 2)
+
+        val remainingSegs = storage.getAmbientSegments("win_exp")
+        assertEquals(1, remainingSegs.size)
+        assertEquals("seg_act", remainingSegs[0].id)
+        assertNull(storage.getNode("n_amb_exp"))
+
+        // Raw event payload scrubbed
+        dbHelper.readableDatabase.query("SELECT after_json FROM raw_event WHERE target_id = 'n_amb_exp'", emptyArray()).use { c ->
+            assertTrue(c.moveToFirst())
+            assertTrue(c.isNull(0))
         }
     }
 }

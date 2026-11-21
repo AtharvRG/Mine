@@ -20,7 +20,7 @@ class LiteRtEmbedderTest {
             isNativeAvailableOverride = false
         )
 
-        assertEquals("egemma2-text-256-int8-v1", embedder.version)
+        assertEquals(LiteRtEmbedder.HASH_VERSION, embedder.version)
         assertEquals(256, embedder.dim)
 
         val queryVectors = embedder.embed(listOf("meeting with doctor"), Embedder.Kind.QUERY)

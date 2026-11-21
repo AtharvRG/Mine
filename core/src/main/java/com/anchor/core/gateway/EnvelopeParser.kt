@@ -25,9 +25,11 @@ data class ToolCall(
 
 object EnvelopeParser {
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
+    private val OUTER_FENCE = Regex("""^```(?:json)?\s*\n?([\s\S]*?)\n?```\s*$""")
 
     fun parse(rawOutput: String): ToolEnvelope? {
-        val clean = rawOutput.replace("```json", "").replace("```", "").trim()
+        val trimmed = rawOutput.trim()
+        val clean = OUTER_FENCE.matchEntire(trimmed)?.groupValues?.get(1)?.trim() ?: trimmed
         val end = clean.lastIndexOf("}")
 
         if (end != -1) {

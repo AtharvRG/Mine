@@ -8,6 +8,7 @@ import com.anchor.core.context.PromptSanitizer
 import com.anchor.core.storage.Storage
 import com.anchor.core.time.Clock
 import com.anchor.core.time.DateResolver
+import com.anchor.core.time.DayRollover
 import java.util.Calendar
 import java.util.TimeZone
 
@@ -29,8 +30,11 @@ class CheckinBuilder(private val storage: Storage, private val clock: Clock, pri
         val currentMin = cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE)
 
         // Blueprint 32 §3.1: Evening begins at day_end - 90 min (default 20:30 on 22:00 end)
-        val eveningThreshold = dayRule.endMinute - 90
-        val isEvening = currentMin >= eveningThreshold || currentMin < dayRule.startMinute
+        val logicalDayStart = DayRollover.getLogicalDayStart(now, dayRule)
+        val windowLengthMs = ((dayRule.endMinute - dayRule.startMinute + 1440) % 1440) * 60_000L
+        val logicalDayEnd = logicalDayStart + windowLengthMs
+        val eveningThresholdMs = logicalDayEnd - 90 * 60_000L
+        val isEvening = now >= eveningThresholdMs
 
         if (isEvening) {
             val logicalDayOfWeek = if (currentMin < dayRule.startMinute) {
@@ -179,5 +183,31 @@ class CheckinBuilder(private val storage: Storage, private val clock: Clock, pri
         builder.append("- Open Backlog: ${openCounts.totalOpen} (Overdue: ${openCounts.overdue})\n")
 
         return builder.toString()
+    }
+
+    /**
+     * D-212: Grounded Casual Check-In.
+     * Strictly grounded in user facts, living notes, or active tasks — never generic small talk.
+     */
+    suspend fun buildGroundedCasualCheckin(now: Long = clock.now()): String? {
+        val topicNotes = storage.getAllTopicNotes()
+        val note = topicNotes.firstOrNull { it.pinned } ?: topicNotes.firstOrNull()
+        if (note != null) {
+            val bullets = note.content.lines().map { it.removePrefix("-").removePrefix("*").trim() }.filter { it.isNotBlank() }
+            val firstBullet = bullets.firstOrNull()
+            return if (firstBullet != null) {
+                "Checking in on '${note.topic}': how is '$firstBullet' coming along?"
+            } else {
+                "Checking in on '${note.topic}': need any help organizing next steps?"
+            }
+        }
+
+        val soulFacts = storage.getActiveSoulFacts(includeLocalOnly = true)
+        val fact = soulFacts.firstOrNull { !it.sensitive && it.category != "health" && it.statement.isNotBlank() }
+        if (fact != null) {
+            return "Quick check-in regarding ${fact.statement.lowercase()}: anything you want to jot down or adjust today?"
+        }
+
+        return null
     }
 }

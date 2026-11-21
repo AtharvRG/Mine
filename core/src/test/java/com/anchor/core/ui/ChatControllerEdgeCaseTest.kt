@@ -9,6 +9,7 @@ import com.anchor.core.alarms.AlarmScheduler
 import com.anchor.core.context.ContextBuilder
 import com.anchor.core.gateway.Gateway
 import com.anchor.core.models.Reminder
+import com.anchor.core.models.OutboxJob
 import com.anchor.core.provider.HttpTransport
 import com.anchor.core.provider.ProviderOrchestrator
 import com.anchor.core.provider.RateLimiter
@@ -21,11 +22,14 @@ import com.anchor.core.time.FakeClock
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Test
 import kotlin.coroutines.cancellation.CancellationException
 
@@ -90,7 +94,10 @@ class ChatControllerEdgeCaseTest {
         controller.onAction(UiAction.SendMessage)
 
         assertEquals(false, controller.state.value.isChatLoading)
-        assertEquals("Error: All providers failed or in cooldown. Last error: Provider error: HTTP 500", controller.state.value.connectionError)
+        // The raw exception text is never shown; the user gets plain language and a retry path.
+        assertEquals("Something went wrong while answering. Tap retry.", controller.state.value.connectionError)
+        // "Hello" is small talk: it still gets a human reply while the provider is down.
+        assertTrue(storage.messages.any { it.role == "assistant" && it.content?.startsWith("Hey") == true })
         // Ensure "Thinking..." bubble is removed
         assertTrue(controller.state.value.chatMessages.none { it.content == "Thinking..." })
     }
@@ -210,21 +217,21 @@ class ChatControllerEdgeCaseTest {
         val clock = FakeClock(1000L)
         val resolver = Resolver()
         val gateway = Gateway(storage, resolver, DateResolver(clock), clock)
-        
+
         val node = com.anchor.core.models.Node("n1", "note", "Just a note", "active", 5000L)
         storage.activeNodes.add(node)
         // Explicitly NOT adding a reminder for this node
-        
+
         val rescheduleCall = com.anchor.core.gateway.ToolCall("propose_change", mapOf("intent" to kotlinx.serialization.json.JsonPrimitive("RESCHEDULE"), "hint" to kotlinx.serialization.json.JsonPrimitive("note"), "due_text" to kotlinx.serialization.json.JsonPrimitive("in 20 minutes")))
         val result = gateway.executeTool(rescheduleCall) as com.anchor.core.models.ToolResult.Committed
-        
+
         // Assert Reminder WAS created during reschedule
         assertEquals(1, storage.reminders.size)
-        
+
         val undoCall = com.anchor.core.gateway.ToolCall("undo", mapOf("token" to kotlinx.serialization.json.JsonPrimitive(result.undoToken)))
         val undoResult = gateway.executeTool(undoCall)
         assertTrue("Undo tool call must be committed", undoResult is com.anchor.core.models.ToolResult.Committed)
-        
+
         // Assert Reminder WAS destroyed because the old state had no reminder
         assertEquals(0, storage.reminders.size)
     }
@@ -854,9 +861,119 @@ class ChatControllerEdgeCaseTest {
         assertEquals("Proposal must be consumed", "consumed", storage.getProposal("p_ambig")?.status)
     }
 
+    @Test
+    fun testClaimsAction_WithParsableRuleBasedIntent_SilentlyCoversUpAndSucceeds() = runBlocking {
+        val storage = SharedFakeStorage().apply { settings["key"] = "test-key" }
+        val clock = FakeClock(1700000000000L) // Some fixed time
+        val transport = object : HttpTransport {
+            override suspend fun postStream(target: Target, body: String): Flow<String> = flow {
+                // LLM outputs raw prose claiming action without envelope on both turns (initial + auto-retry)
+                emit("""data: {"choices":[{"delta":{"content":"I have set a reminder to check oven."}}]}""")
+            }
+        }
+        val controller = buildController(storage, clock, transport)
+        controller.onAction(UiAction.UpdateDraft("Remind me to check oven in 10 minutes"))
+        controller.onAction(UiAction.SendMessage)
+
+        waitUntil { !controller.state.value.isChatLoading && storage.activeNodes.isNotEmpty() }
+
+        val activeNodes = storage.getActiveNodes(10)
+        assertEquals(1, activeNodes.size)
+        assertTrue(activeNodes[0].title.contains("check oven", ignoreCase = true))
+
+        val receipts = controller.state.value.receipts
+        assertEquals("Should have 1 successful receipt", 1, receipts.count { !it.isError })
+        assertEquals("Should have 0 error receipts", 0, receipts.count { it.isError })
+        assertTrue("Receipt message must indicate creation", receipts.first().message.contains("Created: check oven"))
+    }
+
+    @Test
+    fun testImportProviderConfig_RequiresConfirmation_AndClearsKeyOnDifferentHost() = runBlocking {
+        val storage = SharedFakeStorage().apply {
+            settings["ep"] = "https://legit.example.com/v1"
+            settings["key"] = "secret-user-key"
+            settings["mod"] = "model-a"
+        }
+        val clock = FakeClock(1700000000000L)
+        val transport = object : HttpTransport {
+            override suspend fun postStream(target: Target, body: String): Flow<String> = emptyFlow()
+        }
+        val controller = buildController(storage, clock, transport)
+
+        // 1. Deep link arrives from attacker with NO key and different host
+        val deepLink = "mine://provider?endpoint=https://attacker.example.com/v1&model=evil-model"
+        controller.onAction(UiAction.ImportProviderConfig(deepLink))
+
+        // Assert pendingProviderImport is set, but storage/state NOT changed yet
+        val pending = controller.state.value.pendingProviderImport
+        assertNotNull(pending)
+        assertEquals("https://attacker.example.com/v1", pending?.endpoint)
+        assertEquals("https://legit.example.com/v1", controller.state.value.providerEndpoint)
+        assertEquals("secret-user-key", controller.state.value.providerKey)
+        assertEquals("https://legit.example.com/v1", storage.getSetting("ep"))
+        assertEquals("secret-user-key", storage.getSetting("key"))
+
+        // 2. Reject clears pending import
+        controller.onAction(UiAction.RejectProviderImport)
+        assertNull(controller.state.value.pendingProviderImport)
+        assertEquals("secret-user-key", storage.getSetting("key"))
+
+        // 3. Import again, then Confirm
+        controller.onAction(UiAction.ImportProviderConfig(deepLink))
+        controller.onAction(UiAction.ConfirmProviderImport)
+
+        // Assert new endpoint and model applied, BUT existing key was CLEARED because host changed without key!
+        assertNull(controller.state.value.pendingProviderImport)
+        assertEquals("https://attacker.example.com/v1", controller.state.value.providerEndpoint)
+        assertEquals("evil-model", controller.state.value.providerModel)
+        assertEquals("", controller.state.value.providerKey)
+        assertEquals("", storage.getSetting("key"))
+    }
+
+    @Test
+    fun testMidTurnFailure_AfterCommit_DoesNotReEnqueueToOutbox_AndShowsSavedNotice() = runBlocking {
+        val storage = SharedFakeStorage().apply { settings["key"] = "test-key" }
+        val clock = FakeClock(1700000000000L)
+        var callCount = 0
+
+        val transport = object : HttpTransport {
+            override suspend fun postStream(target: Target, body: String): Flow<String> = flow {
+                callCount++
+                if (callCount == 1) {
+                    // Turn 1: Valid tool call creating a node + search requiring a second loop
+                    emit("""data: {"choices":[{"delta":{"content":"```json\n{\"calls\":[{\"tool\":\"propose_change\",\"args\":{\"intent\":\"CREATE\",\"hint\":\"Write tests\"}},{\"tool\":\"search_history\",\"args\":{\"query\":\"Write tests\"}}]}\n```"}}]}""")
+                    emit("data: [DONE]")
+                } else {
+                    // Turn 2: Transient network timeout failure
+                    throw com.anchor.core.provider.ProviderTimeoutException("Gateway timeout")
+                }
+            }
+        }
+
+        val controller = buildController(storage, clock, transport)
+        controller.onAction(UiAction.UpdateDraft("Create task Write tests"))
+        controller.onAction(UiAction.SendMessage)
+
+        waitUntil { !controller.state.value.isChatLoading && storage.messages.any { it.role == "assistant" } }
+
+        // 1. Assert task was actually created and committed
+        val activeNodes = storage.getActiveNodes(10)
+        assertEquals(1, activeNodes.size)
+        assertEquals("Write tests", activeNodes[0].title)
+
+        // 2. Assert turn was NOT re-enqueued into outbox (avoiding duplicate creation!)
+        val outboxJobs = storage.getPendingOutbox(OutboxJob.JOB_CHAT_TURN)
+        assertTrue("Committed turn must never be re-enqueued into outbox", outboxJobs.isEmpty())
+
+        // 3. Assert assistant reply informs user of partial commit
+        val lastMsg = storage.messages.last { it.role == "assistant" }
+        val content = lastMsg.content ?: ""
+        assertTrue("Assistant message must state changes were saved. Was: $content", content.contains("your changes are saved") && content.contains("couldn't finish replying"))
+    }
+
     private fun buildController(storage: com.anchor.core.storage.Storage, clock: Clock, transport: HttpTransport): ChatController {
         return ChatController(
-            storage, ProviderOrchestrator(RateLimiter { clock.now() }, transport), 
+            storage, ProviderOrchestrator(RateLimiter { clock.now() }, transport),
             com.anchor.core.context.ContextBuilder(storage, clock, DateResolver(clock), com.anchor.core.nudge.CheckinBuilder(storage, clock, DateResolver(clock))),
             Gateway(storage, Resolver(), DateResolver(clock), clock),
             object : AlarmScheduler { override val lastFiredId = MutableStateFlow<String?>(null); override fun schedule(reminder: Reminder) = com.anchor.core.alarms.ScheduleResult.Armed; override fun cancel(reminderId: String) {} },

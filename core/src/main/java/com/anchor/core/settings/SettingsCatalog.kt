@@ -54,6 +54,8 @@ object SettingsCatalog {
         SettingDef("nudge.min_gap_minutes", SettingSection.NUDGES, "60", SettingScope.SYNCED, validator = { it.matches(INT_REGEX) }),
         SettingDef("nudge.ignore_window_hours", SettingSection.NUDGES, "3", SettingScope.SYNCED, validator = { it.matches(INT_REGEX) }),
         SettingDef("nudge.max_per_day", SettingSection.NUDGES, "40", SettingScope.SYNCED, isAdvanced = true, validator = { it.matches(INT_REGEX) }),
+        SettingDef("procrastination.mode", SettingSection.NUDGES, "gentle", SettingScope.SYNCED, description = "Procrastination whistle mode: off, gentle, firm", validator = { it in setOf("off", "gentle", "firm") }),
+        SettingDef("procrastination.slip_threshold", SettingSection.NUDGES, "2", SettingScope.SYNCED, validator = { it.matches(INT_REGEX) && it.toInt() in 1..10 }),
         // Blueprint 43 §5: Context Sensing
         SettingDef("flag.sensing", SettingSection.NUDGES, "0", SettingScope.DEVICE_LOCAL, validator = { it.matches(BOOL_REGEX) }),
         SettingDef("sensing.enabled", SettingSection.NUDGES, "0", SettingScope.DEVICE_LOCAL, validator = { it.matches(BOOL_REGEX) }),

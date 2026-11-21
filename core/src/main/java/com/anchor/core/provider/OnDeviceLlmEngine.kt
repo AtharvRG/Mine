@@ -150,22 +150,25 @@ class RuleBasedLocalLlmEngine(
 
     private fun handleSystemFeedback(feedback: String): String {
         val clean = feedback.replace("\"", "\\\"").replace("\n", " ").trim()
-        return """{"reply": "Offline query results: $clean", "calls": []}"""
+        return """{"reply": "(offline mode) Offline query results: $clean", "calls": []}"""
     }
 
     private fun buildProposeChangeJson(title: String, dueText: String?, reply: String): String {
         val safeTitle = title.replace("\"", "\\\"")
         val dueTextField = if (!dueText.isNullOrBlank()) """, "due_text": "$dueText"""" else ""
-        return """{"reply": "$reply", "calls": [{"tool": "propose_change", "args": {"intent": "CREATE", "title": "$safeTitle"$dueTextField}}]}"""
+        val offlineReply = if (reply.startsWith("(offline mode)")) reply else "(offline mode) $reply"
+        return """{"reply": "$offlineReply", "calls": [{"tool": "propose_change", "args": {"intent": "CREATE", "title": "$safeTitle"$dueTextField}}]}"""
     }
 
     private fun buildSearchMemoryJson(query: String, reply: String): String {
         val safeQuery = query.replace("\"", "\\\"")
-        return """{"reply": "$reply", "calls": [{"tool": "search_memory", "args": {"query": "$safeQuery"}}]}"""
+        val offlineReply = if (reply.startsWith("(offline mode)")) reply else "(offline mode) $reply"
+        return """{"reply": "$offlineReply", "calls": [{"tool": "search_memory", "args": {"query": "$safeQuery"}}]}"""
     }
 
     private fun buildSimpleReply(reply: String): String {
-        val safe = reply.replace("\"", "\\\"")
+        val offlineReply = if (reply.startsWith("(offline mode)")) reply else "(offline mode) $reply"
+        val safe = offlineReply.replace("\"", "\\\"")
         return """{"reply": "$safe", "calls": []}"""
     }
 }

@@ -21,9 +21,9 @@ class NudgeEngine(private val clock: Clock) {
         return 30.0 * max(0.3, 1.0 - (hoursSince / 4.0))
     }
 
-    // BP 31 (3.6): Gap = min(60 * 2^step, 360)
-    fun calculateGapMinutes(state: ProactiveState): Long {
-        val gap = 60.0 * 2.0.pow(state.backoffStep.toDouble())
+    // BP 31 (3.6): Gap = min(baseGap * 2^step, 360)
+    fun calculateGapMinutes(state: ProactiveState, baseGapMinutes: Long = 60L): Long {
+        val gap = baseGapMinutes.toDouble() * 2.0.pow(state.backoffStep.toDouble())
         return min(gap, 360.0).toLong()
     }
 
@@ -33,7 +33,9 @@ class NudgeEngine(private val clock: Clock) {
         isUserPresent: Boolean = false,
         isInDayWindow: Boolean = true,
         currentDayKey: String? = null,
-        isVehicle: Boolean = false
+        isVehicle: Boolean = false,
+        minGapMinutes: Long = 60L,
+        maxPerDay: Int = 40
     ): GateResult {
         // 0. Vehicle Hold (Blueprint 43 §3.5): Conversational candidates wait while in vehicle
         if (isVehicle && !candidate.isCritical) {
@@ -44,7 +46,7 @@ class NudgeEngine(private val clock: Clock) {
         if (state.pausedUntil != null && state.pausedUntil > clock.now()) {
             if (!candidate.isCritical) return GateResult.Held("paused")
         }
-        
+
         // 2. Day Window
         if (!isInDayWindow && !candidate.isCritical) {
             return GateResult.Held("outside_window")
@@ -56,14 +58,14 @@ class NudgeEngine(private val clock: Clock) {
         }
 
         // 4. Minimum Gap
-        val gapMs = calculateGapMinutes(state) * 60 * 1000L
+        val gapMs = calculateGapMinutes(state, minGapMinutes) * 60 * 1000L
         if (state.lastSentAt != null && clock.now() - state.lastSentAt < gapMs) {
             if (!candidate.isCritical) return GateResult.Held("min_gap")
         }
 
         // 5. Hidden Fuse (e.g., max 40 per day, reset on day rollover)
         val sentToday = if (currentDayKey != null && state.dayKey != null && state.dayKey != currentDayKey) 0 else state.sentToday
-        if (sentToday >= 40) return GateResult.Held("fuse_tripped")
+        if (sentToday >= maxPerDay) return GateResult.Held("fuse_tripped")
 
         return GateResult.Pass
     }
@@ -79,10 +81,10 @@ class NudgeEngine(private val clock: Clock) {
         )
     }
 
-    fun processIgnore(state: ProactiveState, ts: Long): ProactiveState {
+    fun processIgnore(state: ProactiveState, ts: Long, ignoreWindowHours: Long = 3L): ProactiveState {
         val opened = state.threadOpenedAt ?: return state
-        // BP 31 (3.6): Ignore window is 3 hours
-        if (ts - opened >= 3 * 3600 * 1000L) {
+        // BP 31 (3.6): Ignore window (default 3 hours)
+        if (ts - opened >= ignoreWindowHours * 3600 * 1000L) {
             return state.copy(
                 openThreadMsgId = null,
                 backoffStep = min(state.backoffStep + 1, 5) // Cap step to prevent overflow

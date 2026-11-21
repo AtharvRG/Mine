@@ -17,15 +17,22 @@ import kotlin.math.sqrt
 object SemanticProjection {
 
     private val SEMANTIC_CLUSTERS = mapOf(
-        setOf("doctor", "physician", "medic", "clinic", "hospital", "health", "medicine", "nurse", "patient", "appointment") to 0,
-        setOf("tax", "taxes", "accountant", "accounting", "audit", "irs", "revenue", "financial", "finance", "money") to 16,
-        setOf("meeting", "sync", "call", "catchup", "discussion", "conference", "zoom", "chat") to 32,
-        setOf("grocery", "groceries", "milk", "eggs", "supermarket", "store", "buy", "purchase", "shopping") to 48,
-        setOf("gym", "workout", "exercise", "running", "fitness", "train", "training") to 64,
-        setOf("flight", "airport", "ticket", "hotel", "travel", "trip", "vacation") to 80,
-        setOf("car", "vehicle", "drive", "driving", "mechanic", "oil", "tire") to 96,
-        setOf("code", "programming", "software", "bug", "deploy", "build", "git", "commit") to 112,
-        setOf("home", "house", "apartment", "clean", "cleaning", "chore", "laundry", "dishes") to 128
+        setOf("doctor", "physician", "medic", "clinic", "hospital", "health", "medicine", "nurse", "patient", "appointment", "therapy", "dentist", "prescription") to 0,
+        setOf("tax", "taxes", "accountant", "accounting", "audit", "irs", "revenue", "financial", "finance", "money", "bank", "billing", "invoice", "salary") to 16,
+        setOf("meeting", "sync", "call", "catchup", "discussion", "conference", "zoom", "chat", "interview", "standup", "presentation") to 32,
+        setOf("grocery", "groceries", "milk", "eggs", "supermarket", "store", "buy", "purchase", "shopping", "food", "dinner", "lunch", "breakfast", "cook", "recipe") to 48,
+        setOf("gym", "workout", "exercise", "running", "fitness", "train", "training", "sports", "swim", "yoga", "cycling", "marathon") to 64,
+        setOf("flight", "airport", "ticket", "hotel", "travel", "trip", "vacation", "train", "bus", "passport", "luggage", "booking") to 80,
+        setOf("car", "vehicle", "drive", "driving", "mechanic", "oil", "tire", "repair", "gas", "parking") to 96,
+        setOf("code", "programming", "software", "bug", "deploy", "build", "git", "commit", "server", "database", "test", "release") to 112,
+        setOf("home", "house", "apartment", "clean", "cleaning", "chore", "laundry", "dishes", "furniture", "garden", "lawn") to 128,
+        setOf("study", "exam", "lecture", "course", "class", "school", "homework", "read", "book", "research", "university") to 144,
+        setOf("family", "parents", "mom", "dad", "kid", "child", "children", "baby", "spouse", "husband", "wife", "friend", "birthday", "anniversary") to 160,
+        setOf("project", "deadline", "report", "client", "boss", "manager", "task", "proposal", "career", "job", "resume") to 176,
+        setOf("movie", "concert", "music", "game", "gaming", "party", "show", "hobby", "relaxing", "weekend") to 192,
+        setOf("contract", "agreement", "legal", "lawyer", "permit", "license", "notary", "signature", "policy", "document") to 208,
+        setOf("reminder", "schedule", "plan", "agenda", "calendar", "alarm", "alert", "event", "urgent", "timeline") to 224,
+        setOf("email", "message", "letter", "contact", "reply", "feedback", "notify", "invite", "outreach", "inbox") to 240
     )
 
     fun quantizeFloats(floats: FloatArray, targetDim: Int = 256): QuantVector {
@@ -50,17 +57,24 @@ object SemanticProjection {
 
     fun projectSemanticVector(text: String, targetDim: Int = 256): QuantVector {
         val floats = FloatArray(targetDim)
-        val clean = text.lowercase(java.util.Locale.ROOT)
-        val tokens = clean.split(Regex("""[^a-z0-9]+""")).filter { it.isNotBlank() }
-        if (tokens.isEmpty()) return QuantVector(ByteArray(targetDim), 1.0f)
+        val isQuery = text.startsWith("task: search query | ")
+        val isDoc = text.startsWith("task: search result | ")
+        var clean = text.lowercase(java.util.Locale.ROOT)
+        clean = clean.removePrefix("task: search result | ").removePrefix("task: search query | ")
+        val rawTokens = clean.split(Regex("""[^\p{L}\p{M}\p{N}]+""")).filter { it.isNotBlank() }
+        if (rawTokens.isEmpty() && !isQuery && !isDoc) return QuantVector(ByteArray(targetDim), 1.0f)
+
+        val tokens = if (isQuery) rawTokens + "task_query" else if (isDoc) rawTokens + "task_result" else rawTokens
 
         for (token in tokens) {
-            // Concept cluster alignment
-            for ((clusterWords, baseDim) in SEMANTIC_CLUSTERS) {
-                if (clusterWords.contains(token) || clusterWords.any { token.startsWith(it) || it.startsWith(token) }) {
-                    for (d in 0 until 16) {
-                        val dimIdx = (baseDim + d) % targetDim
-                        floats[dimIdx] += 1.5f
+            // Concept cluster alignment (require minimum length 4 for prefix matching to prevent 1-letter pollution)
+            if (token != "task_query" && token != "task_result") {
+                for ((clusterWords, baseDim) in SEMANTIC_CLUSTERS) {
+                    if (clusterWords.contains(token) || (token.length >= 4 && clusterWords.any { (it.length >= 4 && token.startsWith(it)) || (token.length >= 4 && it.startsWith(token)) })) {
+                        for (d in 0 until 16) {
+                            val dimIdx = (baseDim + d) % targetDim
+                            floats[dimIdx] += 1.5f
+                        }
                     }
                 }
             }

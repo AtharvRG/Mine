@@ -21,30 +21,43 @@ data class VoiceModelPaths(
     val ttsVoices: File,
     val ttsTokens: File,
     val ttsDataDir: File,
-    val ttsLexicon: File
+    val ttsLexicon: File,
+    val speakerModel: File? = null
 ) {
-    val isComplete: Boolean
-        get() = vadModel.exists() &&
-                sttEncoder.exists() &&
+    val vadPresent: Boolean
+        get() = vadModel.exists()
+
+    val sttComplete: Boolean
+        get() = sttEncoder.exists() &&
                 sttDecoder.exists() &&
                 sttJoiner.exists() &&
-                sttTokens.exists() &&
-                ttsModel.exists() &&
+                sttTokens.exists()
+
+    val ttsComplete: Boolean
+        get() = ttsModel.exists() &&
                 ttsVoices.exists() &&
                 ttsTokens.exists() &&
                 (ttsLexicon.exists() || ttsDataDir.exists())
 
+    val speakerPresent: Boolean
+        get() = speakerModel != null && speakerModel.exists()
+
+    val isComplete: Boolean
+        get() = vadPresent && (sttComplete || ttsComplete)
+
     companion object {
         fun resolve(context: Context): VoiceModelPaths? {
-            val candidateDirs = listOf(
+            val candidateDirs = mutableListOf(
                 context.filesDir.resolve("models"),
-                File(context.filesDir, "models"),
-                File("/data/local/tmp/models")
+                File(context.filesDir, "models")
             )
+            if (com.anchor.mine.BuildConfig.DEBUG) {
+                candidateDirs.add(File("/data/local/tmp/models"))
+            }
 
             for (base in candidateDirs) {
                 val candidate = fromBaseDir(base)
-                if (candidate.isComplete) {
+                if (candidate.vadPresent || candidate.sttComplete || candidate.ttsComplete) {
                     return candidate
                 }
             }
@@ -66,7 +79,12 @@ data class VoiceModelPaths(
                 ttsVoices = ttsDir.resolve("voices.bin"),
                 ttsTokens = ttsDir.resolve("tokens.txt"),
                 ttsDataDir = ttsDir.resolve("espeak-ng-data"),
-                ttsLexicon = ttsDir.resolve("lexicon-us-en.txt")
+                ttsLexicon = ttsDir.resolve("lexicon-us-en.txt"),
+                speakerModel = listOf(
+                    baseDir.resolve("speaker/campplus.onnx"),
+                    baseDir.resolve("speaker/3dspeaker.onnx"),
+                    baseDir.resolve("speaker/speaker.onnx")
+                ).firstOrNull { it.exists() }
             )
         }
     }

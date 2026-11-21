@@ -44,3 +44,10 @@
 -keep class com.k2fsa.sherpa.onnx.** { *; }
 -dontwarn com.k2fsa.sherpa.onnx.**
 
+# LiteRT-LM & Edge AI (EmbeddingGemma 2)
+-keep class com.google.ai.edge.litertlm.** { *; }
+-dontwarn com.google.ai.edge.litertlm.**
+
+# Jsoup (Safe Web Search HTML Sanitizer)
+-keep class org.jsoup.** { *; }
+-dontwarn org.jsoup.**

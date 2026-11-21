@@ -28,12 +28,16 @@ class AmbientCoreComponentsTest {
 
     @Test
     fun testNumberScrubber_ScrubsCreditCardPhoneAndOtp() {
-        val input = "My card is 4111 2222 3333 4444 and my code is 849201. Call me at 555-123-4567 or SSN 123-45-6789."
+        val input = "My card is 4111 2222 3333 4444 and my code is 849201. Call me at 555-123-4567 or SSN 123-45-6789. In 2026 we walk 5000 steps. OTP 1234 and pin: 5678."
         val scrubbed = NumberScrubber.scrub(input)
         assertFalse("Credit card should be scrubbed", scrubbed.contains("4111"))
         assertFalse("OTP code should be scrubbed", scrubbed.contains("849201"))
         assertFalse("Phone should be scrubbed", scrubbed.contains("555-123-4567"))
         assertFalse("SSN should be scrubbed", scrubbed.contains("123-45-6789"))
+        assertTrue("Year 2026 should be preserved", scrubbed.contains("2026"))
+        assertTrue("Step count 5000 should be preserved", scrubbed.contains("5000"))
+        assertFalse("4-digit keyword OTP should be scrubbed", scrubbed.contains("OTP 1234"))
+        assertFalse("4-digit keyword PIN should be scrubbed", scrubbed.contains("pin: 5678"))
         assertTrue("Should contain [number]", scrubbed.contains("[number]"))
     }
 

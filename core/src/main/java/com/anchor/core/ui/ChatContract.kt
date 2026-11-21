@@ -101,7 +101,45 @@ data class UiState(
     // Blueprint 32 §3.5-§3.6 / P-007, P-008: Insights & Analytics report
     val latestInsightsReport: com.anchor.core.insights.FullInsightsReport? = null,
     // Blueprint 60 §9 / P-018: Hands-Free Conversation Mode
-    val handsFreeState: com.anchor.core.voice.HandsFreeState = com.anchor.core.voice.HandsFreeState.IDLE
+    val handsFreeState: com.anchor.core.voice.HandsFreeState = com.anchor.core.voice.HandsFreeState.IDLE,
+    // Companion Brain / D-213: Smart Web Search toggle
+    val webSearchEnabled: Boolean = false,
+    val lastWebSearchQuery: String? = null,
+    // Companion Brain / D-205 & D-211: Procrastination Whistle mode ("off", "gentle", "firm")
+    val procrastinationMode: String = "gentle",
+    // Companion Brain / D-206: Context Sensing (Walk & Errand triggers)
+    val contextSensingEnabled: Boolean = false,
+    val postCallNudgesEnabled: Boolean = true,
+    val onDeviceFallbackEnabled: Boolean = false,
+    val moodTrackingEnabled: Boolean = false,
+    val hideNotificationContent: Boolean = false,
+    val soulAutoAcceptMode: Boolean = false,
+    val fallbackEndpoint: String = "",
+    val fallbackKey: String = "",
+    val fallbackModel: String = "",
+    val providerCooldownExpiry: Long? = null,
+    val autoBackupEnabled: Boolean = false,
+    val autoBackupUri: String = "",
+    val pendingProviderImport: com.anchor.core.provider.ImportedProviderConfig? = null,
+    // ---- Companion UI surface (new UI integration) ----
+    /** Every open item (active / in progress / paused), newest-ranked first. Home, Memory and Board read this. */
+    val activeNodes: List<com.anchor.core.models.Node> = emptyList(),
+    val topicNotes: List<com.anchor.core.models.TopicNote> = emptyList(),
+    val noteReferences: List<com.anchor.core.models.NoteReference> = emptyList(),
+    /** Agent self-wakeups still armed (break timers, deferred check-ins, conditioned follow-ups). */
+    val pendingWakeups: List<com.anchor.core.models.AgentWakeup> = emptyList(),
+    val profile: UserProfile = UserProfile(),
+    val notificationReading: com.anchor.core.notifications.NotificationReadSettings = com.anchor.core.notifications.NotificationReadSettings(),
+    /** The user message whose turn failed without an answer; `RetryLastMessage` re-sends it. */
+    val lastFailedMsgId: String? = null,
+    val connectionErrorRetryable: Boolean = false,
+    val connectionErrorNeedsSettings: Boolean = false,
+    /** Result of the latest direct (non-chat) action, so the UI can confirm it and offer Undo. */
+    val lastActionResult: ActionResult? = null,
+    /** Messages per day key (yyyy-MM-dd) over the last 60 days, for the date dial and heat map. */
+    val chatDayCounts: Map<String, Int> = emptyMap(),
+    /** True once the first full read from storage has landed (the UI stops showing skeletons). */
+    val initialLoadComplete: Boolean = false
 ) {
     /** Blueprint 41 §2: the banner the user sees while messages wait. Null when nothing is queued. */
     val offlineQueuedText: String?
@@ -176,6 +214,7 @@ sealed interface UiAction {
 
     // Blueprint 25 §2: Behavioral learning actions
     data class WhyNudge(val msgId: String? = null) : UiAction
+    data object DismissWhyNudge : UiAction
     data class LockLearnedPref(val key: String, val scope: String, val locked: Boolean) : UiAction
     data class ResetLearning(val preserveLocked: Boolean = true) : UiAction
 
@@ -203,4 +242,106 @@ sealed interface UiAction {
     // Blueprint 60 §9 / P-018: Hands-Free Conversation actions
     data class SetHandsFree(val enabled: Boolean) : UiAction
     data class UpdateHandsFreeState(val state: com.anchor.core.voice.HandsFreeState) : UiAction
+
+    // Companion Brain / D-213: Smart Web Search actions
+    data object ToggleWebSearch : UiAction
+    data class SetWebSearch(val enabled: Boolean) : UiAction
+
+    // Companion Brain / D-205 & D-211: Procrastination Whistle actions
+    data class SetProcrastinationMode(val mode: String) : UiAction
+
+    // Companion Brain / D-206: Context Sensing actions
+    data class SetContextSensing(val enabled: Boolean) : UiAction
+    data object SetCurrentWifiAsHome : UiAction
+
+    // Companion Brain / D-207: Living Notes actions with audit and undo
+    data class CreateTopicNote(val topic: String, val bullets: List<String>, val pinned: Boolean = false) : UiAction
+    data class AddTopicNoteBullet(val id: String, val bullet: String) : UiAction
+    data class TogglePinTopicNote(val id: String) : UiAction
+    data class DeleteTopicNote(val id: String) : UiAction
+
+    // Audit remediation missing controls
+    data class SetPostCallNudges(val enabled: Boolean) : UiAction
+    data class SetOnDeviceFallback(val enabled: Boolean) : UiAction
+    data class SetMoodTracking(val enabled: Boolean) : UiAction
+    data class SetHideNotificationContent(val enabled: Boolean) : UiAction
+    data class SetSoulAutoAcceptMode(val enabled: Boolean) : UiAction
+    data class SaveFallbackProvider(val endpoint: String, val key: String, val model: String = "") : UiAction
+    data class SetFallbackModel(val model: String) : UiAction
+    data object RetryNow : UiAction
+    data class SetAutoBackup(val enabled: Boolean) : UiAction
+    data class SetAutoBackupUri(val uri: String) : UiAction
+    data object ConfirmProviderImport : UiAction
+    data object RejectProviderImport : UiAction
+
+    // ---- Direct actions used by the companion UI. Deterministic: no model call. ----
+    /** Sends [text] as a chat turn without going through the composer draft. */
+    data class SendText(val text: String) : UiAction
+    /** Re-sends the last user message whose turn failed (see `UiState.lastFailedMsgId`). */
+    data object RetryLastMessage : UiAction
+    data object DismissConnectionError : UiAction
+    /** Sends a one-word test request to [endpoint] and reports latency or a plain-language error as an [ActionResult]. */
+    data class TestProvider(val endpoint: String, val key: String, val model: String, val tag: String? = "provider-test") : UiAction
+
+    /** Marker for actions handled by `CompanionActions`. Each may carry a [tag] echoed in the result. */
+    sealed interface Direct : UiAction { val tag: String? }
+
+    /** "gym at 7" → a task (with a reminder when a time is given), parsed on device. */
+    data class QuickAdd(val text: String, override val tag: String? = null) : Direct
+    data class CompleteNode(val nodeId: String, override val tag: String? = null) : Direct
+    data class RescheduleNode(val nodeId: String, val whenText: String, override val tag: String? = null) : Direct
+    data class SetNodeLocalOnly(val nodeId: String, val localOnly: Boolean, override val tag: String? = null) : Direct
+    data class SetSoulFactLocalOnly(val factId: String, val localOnly: Boolean, override val tag: String? = null) : Direct
+    data class SetNoteReferenceMode(val noteId: String, val mode: String, override val tag: String? = null) : Direct
+    /** A reminder from the UI sheet. [leaveHome] arms it on leaving home with [fallbackWhenText] as the backstop. */
+    data class CreateReminder(
+        val title: String,
+        val whenText: String,
+        val gentle: Boolean,
+        val leaveHome: Boolean = false,
+        val fallbackWhenText: String? = null,
+        val recurrence: String? = null,
+        override val tag: String? = null
+    ) : Direct
+    data class SnoozeReminder(val reminderId: String, val minutes: Int, override val tag: String? = null) : Direct
+    /** Cancels a reminder and returns an undo token (unlike [CancelReminder], which predates undo). */
+    data class CancelReminderUndoable(val reminderId: String, override val tag: String? = null) : Direct
+    data class StartBreak(val minutes: Int, override val tag: String? = null) : Direct
+    data class EndBreak(override val tag: String? = null) : Direct
+    /** Pauses proactive nudges until [untilMs]; null resumes them. */
+    data class PauseNudges(val untilMs: Long?, override val tag: String? = null) : Direct
+    data class SetUserName(val name: String, override val tag: String? = null) : Direct
+    data class SetLanguages(val languages: List<String>, override val tag: String? = null) : Direct
+    data class SetDayWindow(val startMinute: Int, val endMinute: Int, override val tag: String? = null) : Direct
+    /** Stores a UI preference. Only keys under `ui.`, `voice.`, `chat.`, `consent.` and `ambient.` are accepted. */
+    data class SetPref(val key: String, val value: String, override val tag: String? = null) : Direct
+    data class SaveNotificationReading(val settings: com.anchor.core.notifications.NotificationReadSettings, override val tag: String? = null) : Direct
+    /** Turns an item from the "heard while listening" feed into a review suggestion. */
+    data class SaveNotificationSuggestion(val suggestion: com.anchor.core.notifications.NotificationSuggestion, override val tag: String? = null) : Direct
 }
+
+/** Who the user is and how they like Mine to behave. Read from settings on every refresh. */
+data class UserProfile(
+    val name: String = "",
+    val languages: List<String> = listOf("English"),
+    val dayStartMinute: Int = 7 * 60,
+    val dayEndMinute: Int = 22 * 60,
+    val breakUntilMs: Long? = null,
+    val nudgesPausedUntilMs: Long? = null,
+    /** `ui.*`, `voice.*`, `chat.*`, `consent.*` preferences. */
+    val prefs: Map<String, String> = emptyMap()
+) {
+    fun pref(key: String, default: Boolean): Boolean = prefs[key]?.let { it == "1" || it == "true" } ?: default
+}
+
+/** Outcome of one [UiAction.Direct]. [seq] increases on every result so equal messages still re-trigger. */
+data class ActionResult(
+    val seq: Long,
+    val tag: String?,
+    val message: String,
+    val undoToken: String? = null,
+    val isError: Boolean = false,
+    /** The action needs a choice from the user (time chips, duplicate, which item); see open proposals. */
+    val needsChoice: Boolean = false,
+    val targetId: String? = null
+)

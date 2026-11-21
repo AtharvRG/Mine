@@ -60,7 +60,7 @@ object CaptureNotifications {
     fun replace(context: Context, notificationId: Int, title: String, text: String) {
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return
         val notification = NotificationCompat.Builder(context, com.anchor.mine.alarms.NotificationChannels.ALARM)
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setSmallIcon(com.anchor.mine.R.drawable.ic_notification)
             .setContentTitle(title)
             .setContentText(text)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)

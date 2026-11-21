@@ -80,14 +80,29 @@ class AmbientForegroundService : Service() {
     @Volatile
     private var isCharging: Boolean = false
 
+    @Volatile
+    private var currentBatteryPct: Int = 100
+
     private val presenceGate = PresenceGate(gateUserPresence = true)
     private val proposalExtractor = AmbientProposalExtractor()
     private val dialogueEngine = DialogueWindowEngine()
     private val recentTurns = mutableListOf<DialogueWindowEngine.Turn>()
+    private val recentAudioSegments = java.util.Collections.synchronizedList(mutableListOf<PresenceGate.ScoredSegment>())
     private var currentSessionId: String? = null
+    @Volatile
+    private var sessionListenSeconds: Int = 0
+    @Volatile
+    private var sessionSpeechSeconds: Int = 0
+    @Volatile
+    private var sessionStartedAt: Long = 0L
+    private var lastTickerTimeMs: Long = 0L
     private var listeningJob: Job? = null
     private var activeRecorder: AudioRecorderHelper? = null
     private val json = Json { ignoreUnknownKeys = true }
+    private val extractionQueue = kotlinx.coroutines.channels.Channel<DialogueWindowEngine.Window>(
+        capacity = 2,
+        onBufferOverflow = kotlinx.coroutines.channels.BufferOverflow.DROP_OLDEST
+    )
 
     private val powerReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -97,6 +112,7 @@ class AmbientForegroundService : Service() {
                     val level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
                     val scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, -1)
                     val pct = if (level >= 0 && scale > 0) (level * 100) / scale else 100
+                    currentBatteryPct = pct
                     isBatteryLow = pct < 20
                     val status = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1)
                     isCharging = status == BatteryManager.BATTERY_STATUS_CHARGING ||
@@ -141,14 +157,28 @@ class AmbientForegroundService : Service() {
         val fgsType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
         } else 0
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            startForeground(NOTIFICATION_ID, buildNotification(AmbientState.Listening), fgsType)
-        } else {
-            startForeground(NOTIFICATION_ID, buildNotification(AmbientState.Listening))
+        currentState = AmbientState.Sleeping(AmbientSleepReason.USER_PAUSED)
+        AmbientStatusBus.publish(currentState)
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                startForeground(NOTIFICATION_ID, buildNotification(currentState), fgsType)
+            } else {
+                startForeground(NOTIFICATION_ID, buildNotification(currentState))
+            }
+        } catch (_: Throwable) {
+            AmbientHeartbeatHelper.checkAndNotifyIfNeeded(this)
+            stopSelf()
+            return
         }
-        currentState = AmbientState.Listening
-        startListeningLoop()
+
+        serviceScope.launch(Dispatchers.Default) {
+            for (window in extractionQueue) {
+                runCatching { processWindowExtraction(window) }
+            }
+        }
+
         startStateTicker()
+        serviceScope.launch { evaluateBlockers() }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -161,6 +191,7 @@ class AmbientForegroundService : Service() {
             }
             ACTION_STOP -> {
                 stopAmbientService()
+                stopSelf()
             }
             ACTION_PAUSE_15M -> {
                 pausedUntilMs = System.currentTimeMillis() + 15 * 60 * 1000L
@@ -177,6 +208,11 @@ class AmbientForegroundService : Service() {
             ACTION_BOOKMARK_2M -> {
                 bookmarkLast2Minutes()
             }
+            ACTION_REFRESH -> {
+                serviceScope.launch { evaluateBlockers() }
+                val manager = getSystemService(Context.NOTIFICATION_SERVICE) as? android.app.NotificationManager
+                manager?.notify(NOTIFICATION_ID, buildNotification(currentState))
+            }
         }
 
         return START_NOT_STICKY
@@ -184,9 +220,39 @@ class AmbientForegroundService : Service() {
 
     private fun startStateTicker() {
         tickerJob?.cancel()
+        lastTickerTimeMs = System.currentTimeMillis()
         tickerJob = serviceScope.launch {
             while (isActive) {
                 delay(10_000L) // Evaluate state & blockers every 10 seconds
+                val now = System.currentTimeMillis()
+                val deltaSec = ((now - lastTickerTimeMs) / 1000L).coerceAtLeast(0L).toInt()
+                lastTickerTimeMs = now
+
+                // P1-14: Increment and persist listen counters on wall-clock time
+                if (currentState is AmbientState.Listening) {
+                    sessionListenSeconds += deltaSec
+                    val sId = currentSessionId ?: run {
+                        val newId = "amb_sess_${UUID.randomUUID()}"
+                        currentSessionId = newId
+                        sessionStartedAt = now
+                        newId
+                    }
+                    val app = application as? MineApp
+                    if (app != null && app.sharedStorage.isCompleted) {
+                        try {
+                            val storage = app.sharedStorage.await()
+                            storage.saveAmbientSession(
+                                AmbientSession(
+                                    id = sId,
+                                    startedAt = sessionStartedAt,
+                                    listenSeconds = sessionListenSeconds,
+                                    speechSeconds = sessionSpeechSeconds,
+                                    segmentsCount = recentAudioSegments.size
+                                )
+                            )
+                        } catch (_: Throwable) {}
+                    }
+                }
                 evaluateBlockers()
             }
         }
@@ -211,7 +277,13 @@ class AmbientForegroundService : Service() {
             return
         }
 
-        // 3. Check phone call / mic busy
+        // 3. Hardware collision arbitration: in-app mic active
+        if (AudioRecorderHelper.isForegroundMicActive) {
+            updateState(AmbientState.Sleeping(AmbientSleepReason.MIC_BUSY))
+            return
+        }
+
+        // 4. Check phone call active
         try {
             val telephonyManager = getSystemService(Context.TELEPHONY_SERVICE) as? TelephonyManager
             @Suppress("DEPRECATION")
@@ -224,17 +296,68 @@ class AmbientForegroundService : Service() {
             // Missing READ_PHONE_STATE, continue safely
         }
 
-        // 4. Check battery low (< 20% and not charging)
-        if (isBatteryLow && !isCharging) {
+        val app = application as? MineApp
+        val storage = if (app != null && app.sharedStorage.isCompleted) {
+            try { app.sharedStorage.await() } catch (_: Exception) { null }
+        } else null
+
+        // 5. Thermal pause
+        val powerManager = getSystemService(Context.POWER_SERVICE) as? android.os.PowerManager
+        val isThermalThrottling = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            (powerManager?.currentThermalStatus ?: 0) >= android.os.PowerManager.THERMAL_STATUS_SEVERE
+        } else false
+        if (isThermalThrottling || storage?.getSetting("ambient.thermal_pause") == "1") {
+            updateState(AmbientState.Sleeping(AmbientSleepReason.THERMAL_PAUSE))
+            return
+        }
+
+        // 6. Charging-only mode
+        val chargingOnly = storage?.getSetting("ambient.charging_only") == "1"
+        if (chargingOnly && !isCharging) {
+            updateState(AmbientState.Sleeping(AmbientSleepReason.CHARGING_ONLY))
+            return
+        }
+
+        // 7. Battery low check (< min_battery_pct and not charging)
+        val minBatteryPct = storage?.getSetting("ambient.min_battery_pct")?.toIntOrNull() ?: 20
+        if (currentBatteryPct < minBatteryPct && !isCharging) {
             updateState(AmbientState.Sleeping(AmbientSleepReason.BATTERY_LOW))
             return
         }
 
-        // 5. Check quiet hours / day window
-        val app = application as? MineApp
-        if (app != null && app.sharedStorage.isCompleted) {
+        // 8. Pause place check
+        if (storage != null) {
+            val currentPlaceId = storage.getSetting("place.current_id")
+            if (currentPlaceId != null) {
+                val place = storage.getPlaces().find { it.id == currentPlaceId }
+                if (place != null && (place.kind.equals("pause", ignoreCase = true) || place.label.contains("pause", ignoreCase = true))) {
+                    updateState(AmbientState.Sleeping(AmbientSleepReason.PAUSE_PLACE))
+                    return
+                }
+            }
+        }
+
+        // 9. Daily cap reached
+        if (storage != null) {
+            val listenCapHours = storage.getSetting("ambient.daily_listen_cap_h")?.toIntOrNull()
+                ?: (storage.getSetting("ambient.daily_cap_minutes")?.toIntOrNull()?.div(60) ?: 10)
+            val sttCapMinutes = storage.getSetting("ambient.daily_stt_cap_min")?.toIntOrNull() ?: 90
+            val dayRule = storage.getEffectiveDayRule(now)
+            val dayKey = com.anchor.core.time.DayRollover.computeDayKey(now, dayRule)
+            val todaySessions = storage.getRecentAmbientSessions(100).filter {
+                com.anchor.core.time.DayRollover.computeDayKey(it.startedAt, dayRule) == dayKey
+            }
+            val todayListenSeconds = todaySessions.sumOf { it.listenSeconds.toLong() }
+            val todaySpeechSeconds = todaySessions.sumOf { it.speechSeconds.toLong() }
+            if (todayListenSeconds >= listenCapHours * 3600L || todaySpeechSeconds >= sttCapMinutes * 60L) {
+                updateState(AmbientState.Sleeping(AmbientSleepReason.DAILY_CAP_REACHED))
+                return
+            }
+        }
+
+        // 10. Quiet hours / outside day window
+        if (storage != null) {
             try {
-                val storage = app.sharedStorage.await()
                 val rule = storage.getEffectiveDayRule(now)
                 if (!com.anchor.core.time.DayRollover.isInDayWindow(now, rule)) {
                     updateState(AmbientState.Sleeping(AmbientSleepReason.OUTSIDE_WINDOW))
@@ -250,10 +373,12 @@ class AmbientForegroundService : Service() {
     private fun updateState(newState: AmbientState) {
         if (currentState != newState) {
             currentState = newState
+            AmbientStatusBus.publish(newState)
             if (newState is AmbientState.Listening) {
                 startListeningLoop()
             } else {
                 stopListeningLoop()
+                currentSessionId = null
             }
             val notification = buildNotification(newState)
             val manager = getSystemService(Context.NOTIFICATION_SERVICE) as? android.app.NotificationManager
@@ -264,169 +389,262 @@ class AmbientForegroundService : Service() {
     private fun startListeningLoop() {
         if (listeningJob?.isActive == true) return
         listeningJob = serviceScope.launch(Dispatchers.IO) {
-            while (isActive && currentState is AmbientState.Listening) {
-                val recorder = AudioRecorderHelper()
-                activeRecorder = recorder
-                val started = recorder.startRecording(this)
-                if (!started) {
-                    delay(2000L)
-                    continue
-                }
-                val sliceStart = System.currentTimeMillis()
-                delay(3000L) // 3-second audio slice
-                val samples = recorder.stopRecording()
+            val recorder = AudioRecorderHelper(isForegroundUserMic = false)
+            activeRecorder = recorder
+            val started = recorder.startRecording(this)
+            if (!started) {
                 activeRecorder = null
-                val sliceEnd = System.currentTimeMillis()
+                return@launch
+            }
 
-                if (samples.isEmpty()) continue
+            val sId = currentSessionId ?: run {
+                val newSId = "amb_sess_${UUID.randomUUID()}"
+                currentSessionId = newSId
+                sessionStartedAt = System.currentTimeMillis()
+                sessionListenSeconds = 0
+                sessionSpeechSeconds = 0
+                newSId
+            }
 
-                // 1. VAD check (zero allocation, in-memory)
-                val hasSpeech = SyntheticAudioFixtures.isSpeechEnergy(samples, thresholdRms = 0.015f)
-                if (!hasSpeech) continue
+            val pendingSegments = mutableListOf<PresenceGate.ScoredSegment>()
+            var lastUserSpeechMs = 0L
 
-                // 2. Acoustic extraction & PresenceGate evaluation
-                val segmentEmb = SyntheticAudioFixtures.extractVoiceprintFromAudio(samples)
-                val app = application as? MineApp
-                if (app == null || !app.sharedStorage.isCompleted) continue
-                val storage = try { app.sharedStorage.await() } catch (_: Exception) { continue }
-                val userVp = storage.getVoiceprint()
-                val userFloats = userVp?.toFloatArray()
+            try {
+                while (isActive && currentState is AmbientState.Listening) {
+                    val sliceStart = System.currentTimeMillis()
+                    delay(3000L) // 3-second continuous audio slice without tearing down AudioRecord
+                    val samples = recorder.snapshotAndClear()
+                    val sliceEnd = System.currentTimeMillis()
 
-                val gateResult = presenceGate.scoreSegment(
-                    tStartMs = sliceStart,
-                    tEndMs = sliceEnd,
-                    samples = samples,
-                    segmentEmbedding = segmentEmb,
-                    voiceprintFloats = userFloats
-                )
+                    if (samples.isEmpty()) continue
+                    // Half-duplex: never transcribe Mine's own voice (notification read-outs, replies).
+                    if (AmbientStatusBus.overlapsOwnSpeech(sliceStart, sliceEnd)) continue
 
-                // 3. Speech Transcription via offline Sherpa ONNX engine
-                val voiceEngine = SherpaVoiceEngine.getInstance(applicationContext)
-                val transcript = voiceEngine?.transcribe(samples)?.trim().orEmpty()
-                if (transcript.isBlank()) continue
+                    val voiceEngine = SherpaVoiceEngine.getInstance(applicationContext)
 
-                // 4. Privacy: Scrub numbers before any storage or processing
-                val scrubbedText = NumberScrubber.scrub(transcript)
+                    // 1. VAD check (zero allocation, in-memory)
+                    val hasSpeech = (voiceEngine?.isSpeech(samples) ?: SyntheticAudioFixtures.isSpeechEnergy(samples, thresholdRms = 0.015f))
+                    if (hasSpeech) sessionSpeechSeconds += 3
 
-                val turn = DialogueWindowEngine.Turn(
-                    segmentId = UUID.randomUUID().toString(),
-                    tStartMs = sliceStart,
-                    tEndMs = sliceEnd,
-                    label = gateResult.label,
-                    text = scrubbedText,
-                    score = gateResult.score,
-                    isShort = gateResult.isShort
-                )
+                    val app = application as? MineApp
+                    if (app == null || !app.sharedStorage.isCompleted) continue
+                    val storage = try { app.sharedStorage.await() } catch (_: Exception) { continue }
 
-                synchronized(recentTurns) {
-                    recentTurns.add(turn)
-                    val cutoff = sliceEnd - 120_000L
-                    recentTurns.removeAll { it.tEndMs < cutoff }
-                }
+                    if (!hasSpeech) continue
 
-                // 5. If user is present, extract proposals & commit
-                if (gateResult.label == SpeakerLabel.USER) {
-                    val liveWindow = DialogueWindowEngine.Window(
-                        id = UUID.randomUUID().toString(),
-                        turns = listOf(turn),
-                        startedAtMs = sliceStart,
-                        endedAtMs = sliceEnd
+                    // 2. Speaker Embedding & PresenceGate evaluation
+                    val userVp = storage.getVoiceprint()
+                    val userFloats = userVp?.toFloatArray()
+
+                    val segmentEmb = voiceEngine?.extractSpeakerEmbedding(samples)
+                        ?: SyntheticAudioFixtures.extractVoiceprintFromAudio(samples)
+
+                    val scoredSegment = presenceGate.scoreSegment(
+                        tStartMs = sliceStart,
+                        tEndMs = sliceEnd,
+                        samples = samples,
+                        segmentEmbedding = segmentEmb,
+                        voiceprintFloats = userFloats
                     )
 
-                    val existingNodes = storage.getActiveNodes(50)
-                    val extracted = proposalExtractor.extract(
-                        window = liveWindow,
-                        llmResponseJson = null,
-                        existingNodes = existingNodes,
-                        nowMs = sliceEnd
-                    )
+                    pendingSegments.add(scoredSegment)
+                    presenceGate.trimRingBuffer(pendingSegments, maxRingDurationMs = 90_000L, currentTimestampMs = sliceEnd)
 
-                    if (extracted.isNotEmpty()) {
-                        val sId = currentSessionId ?: run {
-                            val newSId = "amb_sess_${UUID.randomUUID()}"
-                            currentSessionId = newSId
-                            storage.saveAmbientSession(
-                                AmbientSession(
-                                    id = newSId,
-                                    startedAt = sliceStart,
-                                    listenSeconds = 3,
-                                    speechSeconds = 3,
-                                    segmentsCount = 1
-                                )
+                    synchronized(recentAudioSegments) {
+                        recentAudioSegments.add(scoredSegment)
+                        val cutoff = sliceEnd - 120_000L
+                        recentAudioSegments.removeAll { it.tEndMs < cutoff }
+                    }
+
+                    // 3. Evaluate window gate per Blueprint 61 §3.4:
+                    // Audio is sent to STT when user speaks or within 15s grace window for OTHER speaker
+                    val userSpoke = pendingSegments.any { it.label == SpeakerLabel.USER }
+                    if (userSpoke) {
+                        lastUserSpeechMs = sliceEnd
+                    }
+                    val withinPostUserGrace = (lastUserSpeechMs > 0L && (sliceStart - lastUserSpeechMs) <= 15_000L)
+                    val gateOpened = userSpoke || presenceGate.evaluateWindowGate(pendingSegments) || withinPostUserGrace
+                    if (!gateOpened) {
+                        // Keep accumulating up to 90s context in RAM ring buffer; do not burn battery running STT on stranger speech
+                        continue
+                    }
+
+                    // 4. Presence gate open! Transcribe all pending segments in the dialogue window
+                    val newTurns = mutableListOf<DialogueWindowEngine.Turn>()
+                    for (seg in pendingSegments) {
+                        val transcript = voiceEngine?.transcribe(seg.audioSamples)?.trim().orEmpty()
+                        if (transcript.isNotBlank()) {
+                            val scrubbedText = NumberScrubber.scrub(transcript)
+                            val turn = DialogueWindowEngine.Turn(
+                                segmentId = UUID.randomUUID().toString(),
+                                tStartMs = seg.tStartMs,
+                                tEndMs = seg.tEndMs,
+                                label = seg.label,
+                                text = scrubbedText,
+                                score = seg.score,
+                                isShort = seg.isShort
                             )
-                            newSId
-                        }
-
-                        storage.saveAmbientWindow(
-                            AmbientWindow(
-                                id = liveWindow.id,
-                                sessionId = sId,
-                                startedAt = liveWindow.startedAtMs,
-                                endedAt = liveWindow.endedAtMs,
-                                state = "extracted",
-                                gateOpened = true
-                            )
-                        )
-
-                        storage.saveAmbientSegment(
-                            AmbientSegment(
-                                id = turn.segmentId,
-                                windowId = liveWindow.id,
-                                tStart = turn.tStartMs,
-                                tEnd = turn.tEndMs,
-                                label = turn.label.wire,
-                                score = turn.score,
-                                isShort = turn.isShort,
-                                text = turn.text,
-                                sttRef = "sherpa_offline",
-                                expiresAt = sliceEnd + 48L * 3600 * 1000L
-                            )
-                        )
-
-                        val dayRule = storage.getEffectiveDayRule(sliceEnd)
-                        val currentDayKey = com.anchor.core.time.DayRollover.computeDayKey(sliceEnd, dayRule)
-                        val report = storage.getLatestAmbientReport()?.takeIf { it.dayKey == currentDayKey } ?: run {
-                            val rep = AmbientReport(id = "amb_rep_${UUID.randomUUID()}", dayKey = currentDayKey, generatedAt = sliceEnd)
-                            storage.saveAmbientReport(rep)
-                            rep
-                        }
-
-                        val existingSummaries = storage.getAmbientReportItems(report.id)
-                            .map { it.summary.trim().lowercase() }
-                            .toSet()
-
-                        for (item in extracted) {
-                            val pNode = item.proposedNode
-                            if (item.kind == "proposal" && pNode != null) {
-                                if (item.summary.trim().lowercase() in existingSummaries) {
-                                    continue
-                                }
-                                val uId = "u_${UUID.randomUUID()}"
-                                val event = RawEvent(
-                                    opId = uId,
-                                    opType = "PROPOSE",
-                                    targetType = "node",
-                                    targetId = pNode.id,
-                                    afterJson = json.encodeToString(NodeStateSnapshot(pNode, null)),
-                                    tsUtc = sliceEnd
-                                )
-                                storage.createNodeAndCommit(pNode, event, reminder = null)
-                                storage.saveAmbientReportItem(
-                                    AmbientReportItem(
-                                        id = UUID.randomUUID().toString(),
-                                        reportId = report.id,
-                                        windowId = liveWindow.id,
-                                        kind = "proposal",
-                                        summary = item.summary,
-                                        nodeId = pNode.id,
-                                        flags = item.flags.joinToString(","),
-                                        state = "pending"
-                                    )
-                                )
-                            }
+                            newTurns.add(turn)
                         }
                     }
+
+                    // Reset pending audio segments since they are now transcribed
+                    pendingSegments.clear()
+                    if (newTurns.isEmpty()) continue
+
+                    synchronized(recentTurns) {
+                        recentTurns.addAll(newTurns)
+                        val cutoff = sliceEnd - 120_000L
+                        recentTurns.removeAll { it.tEndMs < cutoff }
+                    }
+
+                    // 5. Send newly transcribed turns to background extraction queue (decoupled from audio recording)
+                    val liveWindow = DialogueWindowEngine.Window(
+                        id = UUID.randomUUID().toString(),
+                        turns = newTurns,
+                        startedAtMs = newTurns.firstOrNull()?.tStartMs ?: sliceStart,
+                        endedAtMs = sliceEnd
+                    )
+                    extractionQueue.trySend(liveWindow)
+
+                    // Persist session progress every 60 seconds so daily caps (listen & speech caps) are accurately tracked
+                    if (sessionListenSeconds % 60 == 0) {
+                        try {
+                            storage.saveAmbientSession(
+                                AmbientSession(
+                                    id = sId,
+                                    startedAt = sessionStartedAt,
+                                    listenSeconds = sessionListenSeconds,
+                                    speechSeconds = sessionSpeechSeconds,
+                                    segmentsCount = recentAudioSegments.size
+                                )
+                            )
+                        } catch (_: Throwable) {}
+                    }
                 }
+            } finally {
+                recorder.stopRecording()
+                activeRecorder = null
+                // Save final session state on exit
+                try {
+                    val app = application as? MineApp
+                    if (app != null && app.sharedStorage.isCompleted) {
+                        val storage = app.sharedStorage.await()
+                        storage.saveAmbientSession(
+                            AmbientSession(
+                                id = sId,
+                                startedAt = sessionStartedAt,
+                                listenSeconds = sessionListenSeconds,
+                                speechSeconds = sessionSpeechSeconds,
+                                segmentsCount = recentAudioSegments.size
+                            )
+                        )
+                    }
+                } catch (_: Throwable) {}
+            }
+        }
+    }
+
+    private suspend fun processWindowExtraction(liveWindow: DialogueWindowEngine.Window) {
+        val app = application as? MineApp ?: return
+        if (!app.sharedStorage.isCompleted) return
+        val storage = try { app.sharedStorage.await() } catch (_: Throwable) { return }
+
+        val existingNodes = storage.getActiveNodes(50)
+        val llmResponseJson = try {
+            val (sysPrompt, userPrompt) = dialogueEngine.buildExtractionPrompt(liveWindow)
+            val prompt = """{"messages":[{"role":"system","content":${json.encodeToString(sysPrompt)}},{"role":"user","content":${json.encodeToString(userPrompt)}}]}"""
+            val onDeviceEngine = com.anchor.mine.provider.AndroidOnDeviceLlmEngine(applicationContext)
+            var rawText = ""
+            onDeviceEngine.generateStream(prompt).collect { event ->
+                if (event is com.anchor.core.provider.StreamEvent.TextDelta) {
+                    rawText += event.text
+                }
+            }
+            rawText.takeIf { it.isNotBlank() }
+        } catch (_: Throwable) {
+            null
+        }
+
+        val sliceEnd = liveWindow.endedAtMs
+        val extracted = proposalExtractor.extract(
+            window = liveWindow,
+            llmResponseJson = llmResponseJson,
+            existingNodes = existingNodes,
+            nowMs = sliceEnd
+        )
+
+        val dayRule = storage.getEffectiveDayRule(sliceEnd)
+        val currentDayKey = com.anchor.core.time.DayRollover.computeDayKey(sliceEnd, dayRule)
+        val latestReport = storage.getLatestAmbientReport()?.takeIf { it.dayKey == currentDayKey }
+        val existingSummaries = latestReport?.let {
+            storage.getAmbientReportItems(it.id).map { item -> item.summary.trim().lowercase() }.toSet()
+        } ?: emptySet()
+
+        val newActionableProposals = extracted.filter {
+            it.kind == "proposal" && it.proposedNode != null && it.summary.trim().lowercase() !in existingSummaries
+        }
+
+        val sId = currentSessionId ?: "amb_sess_${UUID.randomUUID()}"
+        if (newActionableProposals.isNotEmpty()) {
+            storage.saveAmbientWindow(
+                AmbientWindow(
+                    id = liveWindow.id,
+                    sessionId = sId,
+                    startedAt = liveWindow.startedAtMs,
+                    endedAt = liveWindow.endedAtMs,
+                    state = "extracted",
+                    gateOpened = true
+                )
+            )
+
+            for (wTurn in liveWindow.turns) {
+                storage.saveAmbientSegment(
+                    AmbientSegment(
+                        id = wTurn.segmentId,
+                        windowId = liveWindow.id,
+                        tStart = wTurn.tStartMs,
+                        tEnd = wTurn.tEndMs,
+                        label = wTurn.label.wire,
+                        score = wTurn.score,
+                        isShort = wTurn.isShort,
+                        text = wTurn.text,
+                        sttRef = "sherpa_offline",
+                        expiresAt = sliceEnd + 48L * 3600 * 1000L
+                    )
+                )
+            }
+
+            val report = latestReport ?: run {
+                val rep = AmbientReport(id = "amb_rep_${UUID.randomUUID()}", dayKey = currentDayKey, generatedAt = sliceEnd)
+                storage.saveAmbientReport(rep)
+                rep
+            }
+
+            for (item in newActionableProposals) {
+                val pNode = item.proposedNode ?: continue
+                val uId = "u_${UUID.randomUUID()}"
+                val event = RawEvent(
+                    opId = uId,
+                    opType = "PROPOSE",
+                    targetType = "node",
+                    targetId = pNode.id,
+                    afterJson = json.encodeToString(NodeStateSnapshot(pNode, null)),
+                    tsUtc = sliceEnd
+                )
+                storage.createNodeAndCommit(pNode, event, reminder = null)
+                storage.saveAmbientReportItem(
+                    AmbientReportItem(
+                        id = UUID.randomUUID().toString(),
+                        reportId = report.id,
+                        windowId = liveWindow.id,
+                        kind = "proposal",
+                        summary = item.summary,
+                        nodeId = pNode.id,
+                        flags = item.flags.joinToString(","),
+                        state = "pending"
+                    )
+                )
             }
         }
     }
@@ -434,6 +652,45 @@ class AmbientForegroundService : Service() {
     private fun bookmarkLast2Minutes() {
         serviceScope.launch(Dispatchers.IO) {
             val now = System.currentTimeMillis()
+
+            // Transcribe any buffered audio from the last 120s that hasn't been transcribed
+            // (e.g. third-party speech where the presence gate stayed closed).
+            val unTranscribed = synchronized(recentAudioSegments) {
+                val cutoff = now - 120_000L
+                recentAudioSegments.filter { it.tEndMs >= cutoff }
+            }
+            if (unTranscribed.isNotEmpty()) {
+                val voiceEngine = SherpaVoiceEngine.getInstance(applicationContext)
+                val existingStartTimes = synchronized(recentTurns) { recentTurns.map { it.tStartMs }.toSet() }
+                val newlyTranscribed = mutableListOf<DialogueWindowEngine.Turn>()
+                for (seg in unTranscribed) {
+                    if (seg.tStartMs !in existingStartTimes) {
+                        val transcript = voiceEngine?.transcribe(seg.audioSamples)?.trim().orEmpty()
+                        if (transcript.isNotBlank()) {
+                            val scrubbed = NumberScrubber.scrub(transcript)
+                            newlyTranscribed.add(
+                                DialogueWindowEngine.Turn(
+                                    segmentId = UUID.randomUUID().toString(),
+                                    tStartMs = seg.tStartMs,
+                                    tEndMs = seg.tEndMs,
+                                    label = seg.label,
+                                    text = scrubbed,
+                                    score = seg.score,
+                                    isShort = seg.isShort
+                                )
+                            )
+                        }
+                    }
+                }
+                if (newlyTranscribed.isNotEmpty()) {
+                    synchronized(recentTurns) {
+                        recentTurns.addAll(newlyTranscribed)
+                        val cutoff = now - 120_000L
+                        recentTurns.removeAll { it.tEndMs < cutoff }
+                    }
+                }
+            }
+
             val turnsSnapshot = synchronized(recentTurns) {
                 val cutoff = now - 120_000L
                 recentTurns.filter { it.tEndMs >= cutoff }.sortedBy { it.tStartMs }
@@ -610,11 +867,12 @@ class AmbientForegroundService : Service() {
     }
 
     private fun buildNotification(state: AmbientState): Notification {
-        val title = "Ambient Listening"
+        val title = "Mine is listening"
+        val readingNotifications = com.anchor.mine.notifications.NotificationReader.isReadingEnabledCached()
         val content = when (state) {
-            is AmbientState.Listening -> "Listening for conversation..."
-            is AmbientState.Sleeping -> "Paused: ${state.reason.display}"
-            is AmbientState.Processing -> "Processing dialogue..."
+            is AmbientState.Listening -> if (readingNotifications) "Noting commitments · reading your notifications" else "Noting commitments as you talk"
+            is AmbientState.Sleeping -> "Paused · ${state.reason.display}"
+            is AmbientState.Processing -> "Making sense of what was said"
             is AmbientState.Off -> "Stopped"
         }
 
@@ -664,6 +922,7 @@ class AmbientForegroundService : Service() {
         stopListeningLoop()
         tickerJob?.cancel()
         currentState = AmbientState.Off
+        AmbientStatusBus.publish(AmbientState.Off)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             stopForeground(STOP_FOREGROUND_REMOVE)
         } else {
@@ -675,6 +934,7 @@ class AmbientForegroundService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
+        AmbientStatusBus.publish(AmbientState.Off)
         stopListeningLoop()
         try {
             unregisterReceiver(powerReceiver)
@@ -690,6 +950,20 @@ class AmbientForegroundService : Service() {
         const val ACTION_PAUSE_1H = "com.anchor.mine.ambient.ACTION_PAUSE_1H"
         const val ACTION_RESUME = "com.anchor.mine.ambient.ACTION_RESUME"
         const val ACTION_BOOKMARK_2M = "com.anchor.mine.ambient.ACTION_BOOKMARK_2M"
+        const val ACTION_REFRESH = "com.anchor.mine.ambient.ACTION_REFRESH"
+
+        /**
+         * Re-evaluates blockers right away (e.g. the in-app mic was released) and re-posts the
+         * status notification. A no-op when the service is not running.
+         */
+        fun refresh(context: Context) {
+            if (!AmbientStatusBus.isRunning) return
+            try {
+                context.startService(Intent(context, AmbientForegroundService::class.java).apply { action = ACTION_REFRESH })
+            } catch (_: Throwable) {
+                // Background-start restrictions: the 10 s ticker will catch up.
+            }
+        }
 
         fun start(context: Context) {
             val hasMic = androidx.core.content.ContextCompat.checkSelfPermission(
@@ -709,10 +983,16 @@ class AmbientForegroundService : Service() {
         }
 
         fun stop(context: Context) {
-            val intent = Intent(context, AmbientForegroundService::class.java).apply {
-                action = ACTION_STOP
+            try {
+                val intent = Intent(context, AmbientForegroundService::class.java).apply {
+                    action = ACTION_STOP
+                }
+                context.startService(intent)
+            } catch (_: Throwable) {
+                try {
+                    context.stopService(Intent(context, AmbientForegroundService::class.java))
+                } catch (_: Throwable) {}
             }
-            context.startService(intent)
         }
 
         fun bookmark(context: Context) {

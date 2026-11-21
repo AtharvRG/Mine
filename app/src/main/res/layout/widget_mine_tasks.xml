@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@android:color/black"
+    android:padding="12dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingBottom="6dp">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Mine Tasks"
+            android:textColor="@android:color/white"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/widget_alarms_count"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="0 alarms"
+            android:textColor="#BB86FC"
+            android:textSize="12sp" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/widget_task_1"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="No pending priority tasks"
+        android:textColor="#E0E0E0"
+        android:textSize="13sp"
+        android:maxLines="1"
+        android:ellipsize="end"
+        android:paddingVertical="3dp" />
+
+    <TextView
+        android:id="@+id/widget_task_2"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:visibility="gone"
+        android:textColor="#E0E0E0"
+        android:textSize="13sp"
+        android:maxLines="1"
+        android:ellipsize="end"
+        android:paddingVertical="3dp" />
+
+    <TextView
+        android:id="@+id/widget_task_3"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:visibility="gone"
+        android:textColor="#E0E0E0"
+        android:textSize="13sp"
+        android:maxLines="1"
+        android:ellipsize="end"
+        android:paddingVertical="3dp" />
+</LinearLayout>

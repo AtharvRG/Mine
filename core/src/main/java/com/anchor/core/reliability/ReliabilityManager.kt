@@ -24,9 +24,9 @@ class ReliabilityManager(
         val now = clock.now()
         val pending = storage.getPendingReminders()
         val missed = pending.filter { it.fireAtMillis < now - 60000L }
-        
+
         val toNotify = mutableListOf<Reminder>()
-        
+
         for (reminder in missed) {
             // SEC 10: Check if we already logged this fire to prevent duplicate sweeping.
             // H4: dedupe on the fire instance, not on (reminderId, "missed") alone. A reminder
@@ -46,20 +46,20 @@ class ReliabilityManager(
                 toNotify.add(reminder)
             }
         }
-        
+
         val state = storage.getReliabilityState()
         storage.saveReliabilityState(state.copy(sweeperHeartbeat = now))
         evaluateReliabilityScore()
-        
+
         // Blueprint 30 & 42: Prune expired operational logs (diag_log 7d, reminder_fire 90d, outbox 7d)
         storage.pruneOperationalLogs(now)
         // Blueprint 61 §3.6: Prune expired ambient staging segments (48h) and unreviewed proposals (7d)
         storage.pruneAmbientStaging(now)
-        
+
         if (autoExportScheduler.shouldRunAutoExport()) {
             onAutoExportTriggered?.invoke()
         }
-        
+
         return toNotify
     }
 

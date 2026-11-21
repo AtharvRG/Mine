@@ -30,6 +30,7 @@ class RateLimiter(
 
     private val keyTimestamps = mutableMapOf<String, MutableList<Long>>()
     private val keyCooldowns = mutableMapOf<String, Long>()
+    private val strikes = mutableMapOf<String, Int>()
     private val mutex = Mutex()
 
     suspend fun canRequest(key: String, limit: Int): Boolean = mutex.withLock {
@@ -57,13 +58,33 @@ class RateLimiter(
         keyTimestamps.getOrPut(key) { mutableListOf() }.add(monotonicClock())
     }
 
-    suspend fun apply429Cooldown(key: String, retryAfterSeconds: Int? = null) = mutex.withLock {
-        val requestedMin = (retryAfterSeconds ?: 0) / 60
-        val cooldownMin = maxOf(15, minOf(requestedMin, 60)) // at least 15 min, at most 60 min
-        val expiry = clock() + (cooldownMin * 60 * 1000L)
+    suspend fun apply429Cooldown(key: String, retryAfterSeconds: Int? = null, defaultCooldownMin: Int? = null) = mutex.withLock {
+        val n = (strikes[key] ?: 0) + 1
+        strikes[key] = n
+        val backoffMs = if (retryAfterSeconds != null && retryAfterSeconds > 0) {
+            retryAfterSeconds * 1000L
+        } else if (defaultCooldownMin != null) {
+            defaultCooldownMin * 60_000L
+        } else {
+            2_000L * (1L shl (n - 1).coerceAtMost(9))
+        }
+        val maxCap = maxOf(15 * 60_000L, if (defaultCooldownMin != null) defaultCooldownMin * 60_000L else 15 * 60_000L).coerceAtMost(MAX_COOLDOWN_MS)
+        val expiry = clock() + backoffMs.coerceIn(1_000L, maxCap)
         keyCooldowns[key] = expiry
         try {
             persistence?.saveCooldown(key, expiry)
+        } catch (_: Exception) {}
+    }
+
+    suspend fun recordSuccess(key: String) = mutex.withLock {
+        strikes.remove(key)
+    }
+
+    suspend fun clearCooldown(key: String) = mutex.withLock {
+        keyCooldowns[key] = 0L
+        strikes.remove(key)
+        try {
+            persistence?.saveCooldown(key, 0L)
         } catch (_: Exception) {}
     }
 

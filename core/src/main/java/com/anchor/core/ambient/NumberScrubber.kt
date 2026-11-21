@@ -21,12 +21,17 @@ object NumberScrubber {
         """\b\d{3}-\d{2}-\d{4}\b"""
     )
 
-    // Regex 3: One-time passwords and short verification codes (4 to 8 digits, e.g. "code is 849201" or "123-456")
-    private val OTP_REGEX = Regex(
-        """\b(?:\d{3}[ -]\d{3}|\d{4,8})\b"""
+    // Regex 3: Standalone one-time passwords / auth codes (6 to 8 digits, or 3-3 format e.g. "123-456" or "849201")
+    private val STANDALONE_OTP_REGEX = Regex(
+        """\b(?:\d{3}[ -]\d{3}|\d{6,8})\b"""
     )
 
-    // Regex 4: Phone numbers with standard international/domestic formatting
+    // Regex 4: Keyword-preceded verification/PIN codes (4 to 8 digits, e.g. "code is 1234", "pin 5678")
+    private val KEYWORD_OTP_REGEX = Regex(
+        """(?i)\b(?:code|otp|pin|passcode|password|verification|secret)\s*(?:is|:|=)?\s*(\d{4,8})\b"""
+    )
+
+    // Regex 5: Phone numbers with standard international/domestic formatting
     private val PHONE_REGEX = Regex(
         """\b(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b"""
     )
@@ -44,9 +49,22 @@ object NumberScrubber {
 
         result = SSN_REGEX.replace(result, "[number]")
         result = PHONE_REGEX.replace(result, "[number]")
-        result = OTP_REGEX.replace(result) { match ->
+
+        // Replace keyword-preceded 4-8 digit codes (e.g. "code: 1234" -> "code: [number]")
+        result = KEYWORD_OTP_REGEX.replace(result) { match ->
+            val full = match.value
+            val digits = match.groups[1]?.value ?: ""
+            if (digits.isNotEmpty()) {
+                full.replace(digits, "[number]")
+            } else {
+                full
+            }
+        }
+
+        // Replace standalone 6-8 digit or 3-3 format OTPs
+        result = STANDALONE_OTP_REGEX.replace(result) { match ->
             val digitsOnly = match.value.filter { it.isDigit() }
-            if (digitsOnly.length in 4..8) "[number]" else match.value
+            if (digitsOnly.length in 6..8) "[number]" else match.value
         }
 
         return result

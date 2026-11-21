@@ -55,7 +55,10 @@ class AndroidExportManager(
             "learned_pref",
             "signal_log",
             "place",
-            "day_digest"
+            "day_digest",
+            "topic_note",
+            "note_reference",
+            "agent_wakeup"
         )
 
         internal fun generateKek(passphrase: String, salt: ByteArray, mem: Int = 65536, iters: Int = 3, par: Int = 1): ByteArray {
@@ -78,19 +81,19 @@ class AndroidExportManager(
 
     override suspend fun exportTo(file: File, passphrase: String, includeApiKeys: Boolean, includeEmbeddings: Boolean): ExportStats = withContext(Dispatchers.IO) {
         if (passphrase.length < 8) throw IllegalArgumentException("Passphrase too weak (minimum 8 characters)")
-        
+
         val rand = SecureRandom()
         val salt = ByteArray(16).apply { rand.nextBytes(this) }
         val wrapNonce = ByteArray(12).apply { rand.nextBytes(this) }
         val noncePrefix = ByteArray(8).apply { rand.nextBytes(this) }
         val dek = ByteArray(32).apply { rand.nextBytes(this) }
-        
+
         val kek = generateKek(passphrase, salt)
         val wrappedDek = wrapKey(dek, kek, wrapNonce)
-        
+
         val headerBuf = ByteBuffer.allocate(106)
         headerBuf.put("MNEX".toByteArray())
-        headerBuf.putShort(1) 
+        headerBuf.putShort(1)
         val flags = 1 // bit0 = gzip. includeEmbeddings ignored in v1 as vector DB isn't serialized yet.
         headerBuf.putShort(flags.toShort())
         headerBuf.put(1) // kdf_id = 1
@@ -100,68 +103,76 @@ class AndroidExportManager(
         headerBuf.put(salt)
         headerBuf.put(wrapNonce)
         headerBuf.put(wrappedDek)
-        headerBuf.putInt(1024 * 1024) 
+        headerBuf.putInt(1024 * 1024)
         headerBuf.put(noncePrefix)
-        
+
         val headerBytes = headerBuf.array()
         val headerHash = MessageDigest.getInstance("SHA-256").digest(headerBytes)
-        
+
         var messages = 0
         var nodes = 0
         var events = 0
-        
+
         val tmpFile = File(file.parentFile, file.name + ".tmp")
-        
+
         try {
             FileOutputStream(tmpFile).use { fos ->
                 fos.write(headerBytes)
-                
+
                 ChunkedAesOutputStream(fos, dek, noncePrefix, headerHash, 1024 * 1024).use { chunkedOut ->
                     GZIPOutputStream(chunkedOut).use { gzipOut ->
                         val digestStream = HashingOutputStream(gzipOut)
                         OutputStreamWriter(digestStream, Charsets.UTF_8).use { writer ->
                             val db = dbHelper.readableDatabase
-                            
-                            val manifest = buildJsonObject {
-                                put("t", "manifest")
-                                put("v", 1)
-                                put("d", buildJsonObject { put("app_version", "1.0.0") })
+                            db.beginTransactionNonExclusive()
+                            try {
+                                val manifest = buildJsonObject {
+                                    put("t", "manifest")
+                                    put("v", 1)
+                                    put("d", buildJsonObject { put("app_version", "1.0.0") })
+                                }
+                                writer.write(manifest.toString() + "\n")
+
+                                for (tableName in EXPORTED_TABLES) {
+                                    val count = exportTable(db, tableName, writer, includeApiKeys)
+                                    when (tableName) {
+                                        "raw_message" -> messages = count
+                                        "raw_event" -> events = count
+                                        "node" -> nodes = count
+                                    }
+                                }
+
+                                writer.flush()
+                                val footer = buildJsonObject {
+                                    put("t", "footer")
+                                    put("d", buildJsonObject {
+                                        put("sha256", digestStream.getHashHex())
+                                    })
+                                }
+                                writer.write(footer.toString() + "\n")
+                                db.setTransactionSuccessful()
+                            } finally {
+                                db.endTransaction()
                             }
-                            writer.write(manifest.toString() + "\n")
-                            
-                            messages = exportTable(db, "raw_message", writer, includeApiKeys)
-                            events = exportTable(db, "raw_event", writer, includeApiKeys)
-                            nodes = exportTable(db, "node", writer, includeApiKeys)
-                            exportTable(db, "edge", writer, includeApiKeys)
-                            exportTable(db, "soul_fact", writer, includeApiKeys)
-                            exportTable(db, "app_meta", writer, includeApiKeys)
-                            exportTable(db, "day_rule", writer, includeApiKeys)
-                            exportTable(db, "reminder", writer, includeApiKeys)
-                            exportTable(db, "proposal", writer, includeApiKeys)
-                            exportTable(db, "quote_slot", writer, includeApiKeys)
-                            exportTable(db, "learned_pref", writer, includeApiKeys)
-                            exportTable(db, "signal_log", writer, includeApiKeys)
-                            exportTable(db, "place", writer, includeApiKeys)
-                            exportTable(db, "day_digest", writer, includeApiKeys)
-                            
-                            writer.flush()
-                            val footer = buildJsonObject {
-                                put("t", "footer")
-                                put("d", buildJsonObject {
-                                    put("sha256", digestStream.getHashHex())
-                                })
-                            }
-                            writer.write(footer.toString() + "\n")
                         }
                     }
                 }
             }
-            
+
             val stats = verifyOrImportInternal(tmpFile, passphrase, isImport = false)
             if (!stats.verified) throw SecurityException("Verification of written export failed")
-            
+
             if (!tmpFile.renameTo(file)) throw IOException("Failed to save final export file")
-            
+
+            try {
+                val expId = "exp_${java.util.UUID.randomUUID()}"
+                val now = clock.now()
+                dbHelper.writableDatabase.execSQL(
+                    "INSERT OR REPLACE INTO export_log (id, ts, kind, options_json, counts_json, bytes, verified, note) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                    arrayOf<Any?>(expId, now, "export", null, null, file.length(), if (stats.verified) 1 else 0, "Encrypted export created")
+                )
+            } catch (_: Exception) {}
+
             return@withContext stats
         } finally {
             if (tmpFile.exists()) tmpFile.delete()
@@ -182,7 +193,7 @@ class AndroidExportManager(
                 if (r == -1) throw SecurityException("File too short for header")
                 read += r
             }
-            
+
             val buf = ByteBuffer.wrap(headerBytes)
             val magic = ByteArray(4).apply { buf.get(this) }
             if (String(magic) != "MNEX") throw SecurityException("Invalid file magic")
@@ -230,16 +241,25 @@ class AndroidExportManager(
 
                 // Pre-fetch column whitelist for all valid exported tables from fresh temp DB
                 val validColumnsPerTable = mutableMapOf<String, Set<String>>()
+                val blobColumnsPerTable = mutableMapOf<String, Set<String>>()
                 if (isImport && db != null) {
                     for (tName in EXPORTED_TABLES) {
                         val colSet = mutableSetOf<String>()
+                        val blobSet = mutableSetOf<String>()
                         db.query("PRAGMA table_info(\"$tName\")").use { cursor ->
                             val nameColIdx = cursor.getColumnIndexOrThrow("name")
+                            val typeColIdx = cursor.getColumnIndexOrThrow("type")
                             while (cursor.moveToNext()) {
-                                colSet.add(cursor.getString(nameColIdx))
+                                val cName = cursor.getString(nameColIdx)
+                                val cType = cursor.getString(typeColIdx).uppercase()
+                                colSet.add(cName)
+                                if (cType.contains("BLOB")) {
+                                    blobSet.add(cName)
+                                }
                             }
                         }
                         validColumnsPerTable[tName] = colSet
+                        blobColumnsPerTable[tName] = blobSet
                     }
                 }
 
@@ -285,11 +305,29 @@ class AndroidExportManager(
                                             throw SecurityException("Disallowed or unknown column '$colKey' for table '$type'")
                                         }
                                     }
+                                    // Blueprint 15 §3.3 / Audit Part 3: Importing phone creates its own device_id; never overwrite with old phone's device_id
+                                    if (type == "app_meta" && data["key"]?.jsonPrimitive?.content == "device_id") {
+                                        continue
+                                    }
+                                    val blobCols = blobColumnsPerTable[type] ?: emptySet()
                                     val cols = data.keys.joinToString(",") { "\"$it\"" }
                                     val placeholders = data.keys.joinToString(",") { "?" }
-                                    val vals = data.values.map {
-                                        if (it is JsonNull) null else it.jsonPrimitive.content
-                                    }.toTypedArray()
+                                    val vals = data.entries.map { (colName, element) ->
+                                        if (element is JsonNull) null
+                                        else {
+                                            val str = element.jsonPrimitive.content
+                                            if (colName in blobCols || str.startsWith("b64:")) {
+                                                val payload = if (str.startsWith("b64:")) str.substring(4) else str
+                                                try {
+                                                    android.util.Base64.decode(payload, android.util.Base64.NO_WRAP)
+                                                } catch (_: Exception) {
+                                                    str
+                                                }
+                                            } else {
+                                                str
+                                            }
+                                        }
+                                    }.toTypedArray<Any?>()
                                     db.execSQL("INSERT INTO \"$type\" ($cols) VALUES ($placeholders)", vals)
                                 }
                             }
@@ -313,102 +351,143 @@ class AndroidExportManager(
                     // still in place - unopenable, history gone, no backup. The live file is now
                     // copied to a .bak first and the live DB is re-opened and integrity-checked
                     // after the swap; any failure restores the .bak and rethrows.
-                    dbHelper.close()
-                    val originalFile = context.getDatabasePath(liveDbName)
-                    val tempFile = context.getDatabasePath(tempDbName)
-                    val bakFile = context.getDatabasePath("$liveDbName.bak")
-                    // A .bak left by an earlier interrupted swap is the last known-good copy; only
-                    // discard it once we have a fresh one.
-                    bakFile.delete()
-                    if (originalFile.exists()) copyFile(originalFile, bakFile)
-
-                    try {
-                        copyFile(tempFile, originalFile)
-
-                        context.getDatabasePath("$liveDbName-wal").delete()
-                        context.getDatabasePath("$liveDbName-shm").delete()
-                        tempFile.delete()
-                        context.getDatabasePath("$tempDbName-wal").delete()
-                        context.getDatabasePath("$tempDbName-shm").delete()
-
-                        // The copy is only trusted once the swapped DB opens and passes an
-                        // integrity check under the live key.
-                        val verifyHelper = com.anchor.mine.storage.DatabaseProvider.getHelper(context, dbKey, liveDbName)
+                    // P0-05 (Patch E): Protected with DbGate.withWriteLock, WAL checkpoint, and atomic rename swap
+                    com.anchor.mine.storage.DbGate.withWriteLock {
                         try {
-                            verifyHelper.readableDatabase.query("PRAGMA quick_check").use { cursor ->
-                                if (!cursor.moveToFirst() || cursor.getString(0) != "ok") {
-                                    throw IOException("Imported database failed integrity check")
+                            if (scheduler != null) {
+                                val registeredReminders = mutableListOf<String>()
+                                dbHelper.readableDatabase.query("SELECT reminder_id FROM alarm_registry").use { cursor ->
+                                    while (cursor.moveToNext()) {
+                                        registeredReminders.add(cursor.getString(0))
+                                    }
+                                }
+                                for (rId in registeredReminders) {
+                                    scheduler.cancel(rId)
                                 }
                             }
-                        } finally {
-                            verifyHelper.close()
+                        } catch (e: Exception) {
+                            android.util.Log.w("AndroidExportManager", "Failed to cancel old alarms before swap: ${e.message}", e)
+                        }
+                        try {
+                            com.anchor.mine.alarms.DirectBootAlarmStore(context).clearAll()
+                        } catch (_: Exception) {}
+
+                        // Checkpoint WAL completely before closing helper to prevent orphaned WAL frames
+                        try {
+                            dbHelper.writableDatabase.query("PRAGMA wal_checkpoint(TRUNCATE)").use { cursor ->
+                                if (cursor.moveToFirst()) {
+                                    android.util.Log.d("AndroidExportManager", "WAL checkpoint TRUNCATE before swap: busy=${cursor.getInt(0)}, log=${cursor.getInt(1)}, checkpointed=${cursor.getInt(2)}")
+                                }
+                            }
+                        } catch (e: Exception) {
+                            android.util.Log.w("AndroidExportManager", "Failed to checkpoint WAL before swap: ${e.message}", e)
                         }
 
-                        // B4: Rebuild derived msg_chunk rows from the imported raw_message rows.
-                        // This lives INSIDE the rollback window: a rebuild failure used to leave
-                        // the live DB holding imported rows with the .bak already deleted, so the
-                        // pre-import history was gone and the import was half-applied. The rebuild
-                        // derives day_key/ts_utc for rows that lack them, so a sparse export row
-                        // cannot abort the import on msg_chunk's NOT NULL constraints.
-                        rebuildMsgChunks()
+                        dbHelper.close()
+                        val originalFile = context.getDatabasePath(liveDbName)
+                        val tempFile = context.getDatabasePath(tempDbName)
+                        val bakFile = context.getDatabasePath("$liveDbName.bak")
+                        bakFile.delete()
 
-                        // TB-4: Rebind live database helper and MineApp.sharedStorage so the running
-                        // process never hits IllegalStateException: attempt to re-open an already-closed object
-                        rebindLiveDatabase()
-                    } catch (e: Exception) {
-                        // Roll back to the pre-import DB. If the restore itself fails there is
-                        // nothing safer to do than surface both failures.
-                        if (bakFile.exists()) {
-                            try {
-                                copyFile(bakFile, originalFile)
-                                context.getDatabasePath("$liveDbName-wal").delete()
-                                context.getDatabasePath("$liveDbName-shm").delete()
-                                rebindLiveDatabase()
-                            } catch (restoreError: Exception) {
-                                e.addSuppressed(restoreError)
-                            }
-                        } else {
-                            try {
-                                rebindLiveDatabase()
-                            } catch (rebindError: Exception) {
-                                e.addSuppressed(rebindError)
-                            }
+                        if (originalFile.exists()) {
+                            copyFile(originalFile, bakFile)
                         }
-                        throw e
+
+                        try {
+                            copyFile(tempFile, originalFile)
+
+                            context.getDatabasePath("$liveDbName-wal").delete()
+                            context.getDatabasePath("$liveDbName-shm").delete()
+                            context.getDatabasePath("$tempDbName-wal").delete()
+                            context.getDatabasePath("$tempDbName-shm").delete()
+
+                            // The copy is only trusted once the swapped DB opens and passes an
+                            // integrity check under the live key.
+                            val verifyHelper = com.anchor.mine.storage.DatabaseProvider.getHelper(context, dbKey, liveDbName)
+                            try {
+                                verifyHelper.readableDatabase.query("PRAGMA quick_check").use { cursor ->
+                                    if (!cursor.moveToFirst() || cursor.getString(0) != "ok") {
+                                        throw IOException("Imported database failed integrity check")
+                                    }
+                                }
+                            } finally {
+                                verifyHelper.close()
+                            }
+
+                            // B4: Rebuild derived msg_chunk rows from the imported raw_message rows.
+                            rebuildMsgChunks()
+
+                            // TB-4: Rebind live database helper and MineApp.sharedStorage
+                            rebindLiveDatabase()
+                        } catch (e: Exception) {
+                            // Roll back to the pre-import DB.
+                            if (bakFile.exists()) {
+                                try {
+                                    copyFile(bakFile, originalFile)
+                                    context.getDatabasePath("$liveDbName-wal").delete()
+                                    context.getDatabasePath("$liveDbName-shm").delete()
+                                    rebindLiveDatabase()
+                                } catch (restoreError: Exception) {
+                                    e.addSuppressed(restoreError)
+                                }
+                            } else {
+                                try {
+                                    rebindLiveDatabase()
+                                } catch (rebindError: Exception) {
+                                    e.addSuppressed(rebindError)
+                                }
+                            }
+                            throw e
+                        }
+
+                        // Swap verified and the rebuild succeeded: the .bak is no longer needed.
+                        bakFile.delete()
                     }
 
-                    // Swap verified and the rebuild succeeded: the .bak is no longer needed.
-                    bakFile.delete()
+                    val postImportStorage = if (liveDbName == "mine_encrypted.db") {
+                        (context.applicationContext as? com.anchor.mine.MineApp)?.let { app ->
+                            if (app.sharedStorage.isCompleted) {
+                                try {
+                                    app.sharedStorage.getCompleted()
+                                } catch (_: Throwable) {
+                                    null
+                                }
+                            } else null
+                        } ?: com.anchor.mine.storage.AndroidStorage(this.dbHelper)
+                    } else {
+                        null
+                    }
 
                     // Post-import alarm reconciliation
+                    val activeScheduler = scheduler
                     if (reconciler != null) {
                         reconciler.reconcile(force = true)
-                    } else if (scheduler != null) {
-                        val postImportStorage = if (liveDbName == "mine_encrypted.db") {
-                            (context.applicationContext as? com.anchor.mine.MineApp)?.let { app ->
-                                if (app.sharedStorage.isCompleted) {
-                                    try {
-                                        app.sharedStorage.getCompleted()
-                                    } catch (_: Throwable) {
-                                        null
-                                    }
-                                } else null
-                            } ?: com.anchor.mine.storage.AndroidStorage(this.dbHelper)
-                        } else {
+                    } else if (activeScheduler != null) {
+                        val activeStorage = postImportStorage ?: run {
                             val helper = com.anchor.mine.storage.DatabaseProvider.getHelper(context, dbKey, liveDbName)
                             try {
                                 val storage = com.anchor.mine.storage.AndroidStorage(helper)
-                                val postReconciler = com.anchor.core.alarms.AlarmReconciler(storage, scheduler, clock)
+                                val postReconciler = com.anchor.core.alarms.AlarmReconciler(storage, activeScheduler, clock)
                                 postReconciler.reconcile(force = true)
                             } finally {
                                 helper.close()
                             }
                             null
                         }
-                        if (postImportStorage != null) {
-                            val postReconciler = com.anchor.core.alarms.AlarmReconciler(postImportStorage, scheduler, clock)
+                        if (activeStorage != null) {
+                            val postReconciler = com.anchor.core.alarms.AlarmReconciler(activeStorage, activeScheduler, clock)
                             postReconciler.reconcile(force = true)
                         }
+                    }
+
+                    // Post-import vector embeddings rebuild (Blueprint 11 / Item 5.4)
+                    try {
+                        val rebuildStorage = postImportStorage ?: com.anchor.mine.storage.AndroidStorage(this.dbHelper)
+                        val rebuildManager = com.anchor.core.rebuild.RebuildManager(rebuildStorage, clock)
+                        val plan = rebuildManager.planRebuild(com.anchor.core.rebuild.RebuildTarget.EMBEDDINGS)
+                        rebuildManager.executeRebuild(plan, com.anchor.mine.retrieval.LiteRtEmbedder(context))
+                    } catch (e: Exception) {
+                        android.util.Log.w("AndroidExportManager", "Post-import embedding rebuild failed: ${e.message}", e)
                     }
                 }
             } catch (e: Exception) {
@@ -418,7 +497,7 @@ class AndroidExportManager(
                 importHelper?.close()
                 context.getDatabasePath(tempDbName).delete()
             }
-            
+
             return ExportStats(msgCount, nodeCount, eventCount, verified = true)
         }
     }
@@ -428,12 +507,14 @@ class AndroidExportManager(
         db.query("SELECT * FROM $table").use { cursor ->
             val cols = cursor.columnNames
             while (cursor.moveToNext()) {
-                // C3: Filter API keys if requested
-                if (table == "app_meta" && !includeApiKeys) {
+                if (table == "app_meta") {
                     val key = cursor.getString(cursor.getColumnIndexOrThrow("key"))
-                    if (key == "ep" || key == "key" || key == "mod") continue
+                    // Blueprint 15 §3.5 / Audit Part 3: Never export backup/auto-export passphrases
+                    if (key == "export.passphrase" || key == "backup.passphrase" || key.contains("passphrase")) continue
+                    // Filter API keys and fallback credentials when includeApiKeys is false
+                    if (!includeApiKeys && (key == "ep" || key == "key" || key == "mod" || key.contains("key") || key == "provider.fallback.key" || key == "key_fallback")) continue
                 }
-                
+
                 val map = mutableMapOf<String, JsonElement>()
                 for (i in cols.indices) {
                     if (!cursor.isNull(i)) {
@@ -441,6 +522,11 @@ class AndroidExportManager(
                             Cursor.FIELD_TYPE_INTEGER -> map[cols[i]] = JsonPrimitive(cursor.getLong(i))
                             Cursor.FIELD_TYPE_FLOAT -> map[cols[i]] = JsonPrimitive(cursor.getDouble(i))
                             Cursor.FIELD_TYPE_STRING -> map[cols[i]] = JsonPrimitive(cursor.getString(i))
+                            Cursor.FIELD_TYPE_BLOB -> {
+                                val blob = cursor.getBlob(i)
+                                val b64 = android.util.Base64.encodeToString(blob, android.util.Base64.NO_WRAP)
+                                map[cols[i]] = JsonPrimitive("b64:$b64")
+                            }
                         }
                     }
                 }
@@ -590,7 +676,7 @@ class ChunkedAesOutputStream(
         val aad = ByteBuffer.allocate(37).put(headerHash).putInt(chunkCounter).put((if (isFinal) 1 else 0).toByte()).array()
         cipher.updateAAD(aad)
         val ciphertext = cipher.doFinal(buffer, 0, pos)
-        
+
         out.write(ByteBuffer.allocate(4).putInt(ciphertext.size).array())
         out.write(ciphertext)
         pos = 0; chunkCounter++

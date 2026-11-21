@@ -41,6 +41,28 @@ android {
         if (!project.hasProperty("liveTests")) {
             testInstrumentationRunnerArguments["notAnnotation"] = "com.anchor.mine.smoke.LiveTest"
         }
+
+        ndk {
+            abiFilters += listOf("arm64-v8a")
+        }
+    }
+
+    signingConfigs {
+        create("release") {
+            val path = localProps.getProperty("RELEASE_STORE_FILE")
+            if (path != null && file(path).exists()) {
+                storeFile = file(path)
+                storePassword = localProps.getProperty("RELEASE_STORE_PASSWORD")
+                    ?: error("RELEASE_STORE_PASSWORD must be set in local.properties")
+                keyAlias = localProps.getProperty("RELEASE_KEY_ALIAS")
+                    ?: error("RELEASE_KEY_ALIAS must be set in local.properties")
+                keyPassword = localProps.getProperty("RELEASE_KEY_PASSWORD")
+                    ?: error("RELEASE_KEY_PASSWORD must be set in local.properties")
+            } else {
+                // No keystore configured — release build will fail at validateSigningRelease.
+                // Generate a new keystore outside the repo and configure local.properties.
+            }
+        }
     }
 
     buildTypes {
@@ -58,7 +80,8 @@ android {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
-            signingConfig = signingConfigs.getByName("debug")
+            val relConfig = signingConfigs.getByName("release")
+            signingConfig = relConfig
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
@@ -178,7 +201,12 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.6")
     implementation("androidx.activity:activity-compose:1.9.2")
     implementation("androidx.compose.ui:ui")
+    implementation("androidx.compose.foundation:foundation")
+    implementation("androidx.compose.animation:animation")
     implementation("androidx.compose.material3:material3")
+    // Companion UI: ViewModel-backed store and lifecycle-aware state collection.
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.6")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.6")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
 
     // Modern SQLCipher + AndroidX SQLite
@@ -193,6 +221,9 @@ dependencies {
 
     // LiteRT-LM for On-Device EmbeddingGemma 2
     implementation("com.google.ai.edge.litertlm:litertlm-android:0.16.1")
+
+    // Jsoup for Safe Web Search HTML Sanitization & Reader Mode
+    implementation("org.jsoup:jsoup:1.18.3")
 
     // Testing
     testImplementation("junit:junit:4.13.2")

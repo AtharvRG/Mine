@@ -33,9 +33,9 @@ class EndToEndChatTest {
         storage.settings["key"] = "test-key"
         storage.activeNodes.add(Node("n_tomo", "event", "Dinner with Raj", "active"))
         storage.activeNodes.add(Node("n_thur", "event", "Dinner with Sam", "active"))
-        
+
         val clock = FakeClock(1000L)
-        
+
         var turnCount = 0
         val fakeTransport = object : HttpTransport {
             override suspend fun postStream(target: Target, body: String): Flow<String> = flow {
@@ -57,14 +57,14 @@ class EndToEndChatTest {
             override fun schedule(reminder: Reminder) = com.anchor.core.alarms.ScheduleResult.Armed
             override fun cancel(reminderId: String) {}
         }
-        
+
         val dateResolver = DateResolver(clock)
         val checkinBuilder = com.anchor.core.nudge.CheckinBuilder(storage, clock, dateResolver)
         val contextBuilder = ContextBuilder(storage, clock, dateResolver, checkinBuilder)
-        
+
         val controller = ChatController(
-            storage, orchestrator, contextBuilder, 
-            Gateway(storage, Resolver(), dateResolver, clock), 
+            storage, orchestrator, contextBuilder,
+            Gateway(storage, Resolver(), dateResolver, clock),
             scheduler, TestScope(UnconfinedTestDispatcher()), UnconfinedTestDispatcher(), clock
         )
 
@@ -72,7 +72,7 @@ class EndToEndChatTest {
         controller.onAction(UiAction.UpdateDraft("Cancel the dinner"))
         controller.onAction(UiAction.SendMessage)
         assertEquals(1, turnCount) // Ambiguous ends turn immediately so UI can display choice selection
-        
+
         // Verify node wasn't deleted, and a proposal was made
         assertEquals(2, storage.getActiveNodes(100).size)
         assertEquals(1, storage.savedProposals.size)

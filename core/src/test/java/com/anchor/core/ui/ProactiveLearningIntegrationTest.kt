@@ -119,6 +119,15 @@ class ProactiveLearningIntegrationTest {
     }
 
     @Test
+    fun testDismissWhyNudge_ClearsWhyTextInUiState() = runBlocking {
+        controller.onAction(UiAction.WhyNudge())
+        assertNotNull(controller.state.value.whyNudgeText)
+
+        controller.onAction(UiAction.DismissWhyNudge)
+        assertNull(controller.state.value.whyNudgeText)
+    }
+
+    @Test
     fun testLockAndResetLearning_RefreshesUiState() = runBlocking {
         val pref = LearnedPref(
             key = LearningEngine.KEY_NUDGE_REPLY_RATE,

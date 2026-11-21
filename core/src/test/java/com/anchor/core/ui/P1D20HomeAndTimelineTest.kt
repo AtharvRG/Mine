@@ -85,7 +85,8 @@ class P1D20HomeAndTimelineTest {
 
         assertEquals(5, list.size)
         assertTrue("Done node excluded", list.none { it.id == "n_done" })
-        assertTrue("Local-only node excluded", list.none { it.id == "n_local" })
+        // Blueprint 16 & 21 §3.5 Rule 8 / Audit Bug 3: Local-only nodes are visible in Home UI
+        assertTrue("Local-only node included in Home UI", list.any { it.id == "n_local" })
         assertTrue("Stale node excluded", list.none { it.id == "n_stale" })
     }
 

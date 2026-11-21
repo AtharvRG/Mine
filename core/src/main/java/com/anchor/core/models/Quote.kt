@@ -38,4 +38,3 @@ data class QuoteStateCounts(
     val completedToday: Int,
     val atRisk: Boolean
 )
-

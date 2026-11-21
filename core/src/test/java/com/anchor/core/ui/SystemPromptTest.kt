@@ -71,7 +71,7 @@ class SystemPromptTest {
         val requestJson = kotlinx.serialization.json.Json.parseToJsonElement(interceptedPayload).jsonObject
         val messagesArr = requestJson["messages"]?.jsonArray
         val sysMsg = messagesArr?.firstOrNull()?.jsonObject?.get("content")?.jsonPrimitive?.content ?: ""
-        
+
         assertTrue(sysMsg.contains("MUST use when user states an appointment, plan, task, commitment"))
         assertTrue(sysMsg.contains("unless you issue a tool call"))
         assertTrue(sysMsg.contains("confirm_change"))
@@ -185,10 +185,51 @@ class SystemPromptTest {
     }
 
     @Test
-    fun testO1_ProseOnlyReplyThatClaimsAChange_IsReportedAsNotDone() = runBlocking {
-        // O-1's second half: even with a corrected prompt a model can answer in prose. When the
-        // reply claims a reminder was set but no tool call was issued, nothing was stored — the
-        // user must be told that, not shown a confirmation for a reminder that does not exist.
+    fun testO1_ProseOnlyReplyThatClaimsAChange_WhenUnparseable_IsReportedAsNotDone() = runBlocking {
+        // O-1: When the model replies with conversational prose claiming a reminder was set without an envelope,
+        // and RuleBasedQuickAdd cannot parse the utterance, nothing was stored and an error receipt is surfaced.
+        val storage = SharedFakeStorage()
+        storage.settings["key"] = "test-key"
+        val clock = FakeClock(1000L)
+
+        val fakeTransport = object : HttpTransport {
+            override suspend fun postStream(target: Target, body: String): Flow<String> = flow {
+                emit("""data: {"choices":[{"delta":{"content":"Setting an alarm to drink water."}}]}""")
+                emit("data: [DONE]")
+            }
+        }
+
+        val dateResolver = DateResolver(clock)
+        val checkinBuilder = com.anchor.core.nudge.CheckinBuilder(storage, clock, dateResolver)
+        val contextBuilder = ContextBuilder(storage, clock, dateResolver, checkinBuilder)
+
+        val controller = ChatController(
+            storage, ProviderOrchestrator(RateLimiter { clock.now() }, fakeTransport), contextBuilder,
+            Gateway(storage, Resolver(), dateResolver, clock),
+            object : AlarmScheduler { override val lastFiredId = MutableStateFlow<String?>(null); override fun schedule(reminder: Reminder) = com.anchor.core.alarms.ScheduleResult.Armed; override fun cancel(reminderId: String) {} },
+            TestScope(UnconfinedTestDispatcher()), UnconfinedTestDispatcher(), clock
+        )
+
+        // Utterance that cannot be parsed by RuleBasedQuickAdd
+        controller.onAction(UiAction.UpdateDraft("make sure I drink water"))
+        controller.onAction(UiAction.SendMessage)
+
+        assertEquals("Nothing may be stored when the model issued no tool call and rule-based parse failed", 0, storage.reminders.size)
+        val errorReceipts = controller.state.value.receipts.filter { it.isError }
+        assertTrue(
+            "A reply that claims a reminder but issued no tool call must produce an error receipt when unparseable. Receipts: ${controller.state.value.receipts}",
+            errorReceipts.isNotEmpty()
+        )
+        val assistantText = controller.state.value.chatMessages.last { it.role == "assistant" }.content ?: ""
+        assertTrue(
+            "The assistant message must warn that nothing was saved. Was: $assistantText",
+            assistantText.contains("couldn't turn that into a reminder", ignoreCase = true)
+        )
+    }
+
+    @Test
+    fun testO1_ProseOnlyReplyThatClaimsAChange_WhenParseable_SilentlyCoversUp() = runBlocking {
+        // Blueprint 41 / Mandate M1: If RuleBasedQuickAdd can parse the utterance, cover up silently so user gets their reminder.
         val storage = SharedFakeStorage()
         storage.settings["key"] = "test-key"
         val clock = FakeClock(1000L)
@@ -214,17 +255,10 @@ class SystemPromptTest {
         controller.onAction(UiAction.UpdateDraft("set alarm for drink water in 3 minutes"))
         controller.onAction(UiAction.SendMessage)
 
-        assertEquals("Nothing may be stored when the model issued no tool call", 0, storage.reminders.size)
+        assertEquals("Reminder should be saved via silent cover-up", 1, storage.reminders.size)
         val errorReceipts = controller.state.value.receipts.filter { it.isError }
-        assertTrue(
-            "A reply that claims a reminder but issued no tool call must produce an error receipt, " +
-                "not a silent success. Receipts: ${controller.state.value.receipts}",
-            errorReceipts.isNotEmpty()
-        )
-        val assistantText = controller.state.value.chatMessages.last { it.role == "assistant" }.content ?: ""
-        assertTrue(
-            "The assistant message must not read as a confirmation. Was: $assistantText",
-            !assistantText.contains("Setting an alarm", ignoreCase = true)
-        )
+        assertTrue("No error receipts should be present on successful cover-up", errorReceipts.isEmpty())
+        val successReceipts = controller.state.value.receipts.filter { !it.isError }
+        assertTrue("Successful receipt must be produced", successReceipts.isNotEmpty())
     }
 }

@@ -36,7 +36,7 @@ class ProviderTroubleTest {
 
         // Reset limiter
         val limiter2 = RateLimiter { 1000L }
-        
+
         // 2. Lazy Throw (Throws during flow collection)
         val lazyTransport = object : HttpTransport {
             override suspend fun postStream(target: Target, body: String): Flow<String> = flow {
@@ -48,7 +48,7 @@ class ProviderTroubleTest {
             }
         }
         val lazyResults = ProviderOrchestrator(limiter2, lazyTransport).chat(chain, "hi").toList()
-        
+
         // E2: The fallback must follow the partial text. H-12 (R-16) narrowed the old
         // "Clear was emitted mid-stream" assertion: Clear wipes the consumer's buffer, so it is
         // only correct when the failed attempt streamed no text. Here it streamed "partial...",
@@ -59,7 +59,7 @@ class ProviderTroubleTest {
         )
         val text = lazyResults.filterIsInstance<StreamEvent.TextDelta>().joinToString("") { it.text }
         assertEquals("partial...lazy_success", text)
-        
+
         val expiry = limiter2.getCooldownExpiry("key_A")
         assertNotNull(expiry)
     }

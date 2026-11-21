@@ -7,6 +7,8 @@ package com.anchor.mine.alarms
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
+import android.media.AudioAttributes
+import android.media.RingtoneManager
 import androidx.core.app.NotificationCompat
 import com.anchor.core.models.AlarmTier
 
@@ -22,16 +24,35 @@ object NotificationChannels {
     const val CALL_NUDGE = "mine_call_nudge"
     const val AMBIENT = "mine_ambient_listening"
     const val AMBIENT_HEARTBEAT = "mine_ambient_heartbeat"
+    const val CHAT_REPLY = "chat_replies"
 
     fun channelId(tier: AlarmTier): String = if (tier == AlarmTier.GENTLE) GENTLE else ALARM
 
     fun ensureCreated(context: Context) {
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return
         manager.createNotificationChannel(channel(GENTLE, "Gentle Reminders", NotificationManager.IMPORTANCE_DEFAULT))
-        manager.createNotificationChannel(channel(ALARM, "Reminders", NotificationManager.IMPORTANCE_HIGH))
+
+        // P0-04 (Patch D): Real Alarm Tier with USAGE_ALARM, vibration, and public lockscreen visibility
+        val alarmAttributes = AudioAttributes.Builder()
+            .setUsage(AudioAttributes.USAGE_ALARM)
+            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+            .build()
+        val alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+            ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+
+        val alarmChannel = NotificationChannel(ALARM, "Reminders", NotificationManager.IMPORTANCE_HIGH).apply {
+            enableVibration(true)
+            vibrationPattern = longArrayOf(0, 500, 200, 500, 200, 1000)
+            setSound(alarmUri, alarmAttributes)
+            setBypassDnd(true)
+            lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
+        }
+        manager.createNotificationChannel(alarmChannel)
+
         manager.createNotificationChannel(channel(CALL_NUDGE, "Post-call Nudges", NotificationManager.IMPORTANCE_DEFAULT))
         manager.createNotificationChannel(channel(AMBIENT, "Ambient Listening Status", NotificationManager.IMPORTANCE_LOW))
         manager.createNotificationChannel(channel(AMBIENT_HEARTBEAT, "Ambient Listening Alerts", NotificationManager.IMPORTANCE_DEFAULT))
+        manager.createNotificationChannel(channel(CHAT_REPLY, "Chat Replies", NotificationManager.IMPORTANCE_DEFAULT))
     }
 
     private fun channel(id: String, name: String, importance: Int) =

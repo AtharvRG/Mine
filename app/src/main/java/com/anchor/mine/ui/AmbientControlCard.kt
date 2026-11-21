@@ -92,8 +92,10 @@ fun AmbientControlCard(
                     if (recorder.startRecording(this)) {
                         delay(3000L)
                         val samples = recorder.stopRecording()
-                        val vpFloats = SyntheticAudioFixtures.extractVoiceprintFromAudio(samples)
-                        val vp = Voiceprint.fromFloatArray("vp-local", vpFloats, "sherpa-onnx-v1", System.currentTimeMillis())
+                        val voiceEngine = com.anchor.mine.voice.SherpaVoiceEngine.getInstance(context)
+                        val vpFloats = voiceEngine?.extractSpeakerEmbedding(samples) ?: SyntheticAudioFixtures.extractVoiceprintFromAudio(samples)
+                        val modelRef = if (voiceEngine?.isSpeakerExtractorAvailable == true) "sherpa-campplus-v1" else "sherpa-onnx-v1"
+                        val vp = Voiceprint.fromFloatArray("vp-local", vpFloats, modelRef, System.currentTimeMillis())
                         storage?.saveVoiceprint(vp)
                     }
                 } finally {
@@ -214,8 +216,10 @@ fun AmbientControlCard(
                                 if (recorder.startRecording(this)) {
                                     delay(3000L)
                                     val samples = recorder.stopRecording()
-                                    val vpFloats = SyntheticAudioFixtures.extractVoiceprintFromAudio(samples)
-                                    val vp = Voiceprint.fromFloatArray("vp-local", vpFloats, "sherpa-onnx-v1", System.currentTimeMillis())
+                                    val voiceEngine = com.anchor.mine.voice.SherpaVoiceEngine.getInstance(context)
+                                    val vpFloats = voiceEngine?.extractSpeakerEmbedding(samples) ?: SyntheticAudioFixtures.extractVoiceprintFromAudio(samples)
+                                    val modelRef = if (voiceEngine?.isSpeakerExtractorAvailable == true) "sherpa-campplus-v1" else "sherpa-onnx-v1"
+                                    val vp = Voiceprint.fromFloatArray("vp-local", vpFloats, modelRef, System.currentTimeMillis())
                                     storage?.saveVoiceprint(vp)
                                 }
                             } finally {

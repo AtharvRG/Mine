@@ -37,15 +37,33 @@ object RecurrenceEngine {
             timeInMillis = baseTimeMillis
         }
 
+        val byDayMatch = Regex("""BYDAY=([A-Z,]+)""").find(ruleUpper)
+        val targetDays: Set<Int>? = if (byDayMatch != null) {
+            byDayMatch.groupValues[1].split(",").mapNotNull {
+                when (it.trim()) {
+                    "SU" -> Calendar.SUNDAY
+                    "MO" -> Calendar.MONDAY
+                    "TU" -> Calendar.TUESDAY
+                    "WE" -> Calendar.WEDNESDAY
+                    "TH" -> Calendar.THURSDAY
+                    "FR" -> Calendar.FRIDAY
+                    "SA" -> Calendar.SATURDAY
+                    else -> null
+                }
+            }.toSet()
+        } else if (ruleUpper == "WEEKDAYS") {
+            setOf(Calendar.MONDAY, Calendar.TUESDAY, Calendar.WEDNESDAY, Calendar.THURSDAY, Calendar.FRIDAY)
+        } else null
+
         val stepAction: () -> Unit = when {
             ruleUpper.contains("FREQ=HOURLY") || ruleUpper == "HOURLY" -> {
                 { cal.add(Calendar.HOUR_OF_DAY, interval) }
             }
-            ruleUpper.contains("BYDAY=MO,TU,WE,TH,FR") || ruleUpper == "WEEKDAYS" -> {
+            targetDays != null && targetDays.isNotEmpty() -> {
                 {
                     do {
                         cal.add(Calendar.DAY_OF_YEAR, 1)
-                    } while (cal.get(Calendar.DAY_OF_WEEK) == Calendar.SATURDAY || cal.get(Calendar.DAY_OF_WEEK) == Calendar.SUNDAY)
+                    } while (cal.get(Calendar.DAY_OF_WEEK) !in targetDays)
                 }
             }
             ruleUpper.contains("FREQ=WEEKLY") || ruleUpper == "WEEKLY" -> {
@@ -96,13 +114,26 @@ object RecurrenceEngine {
 
         val elapsed = (now - lastCompletedAt).coerceAtLeast(0L)
 
-        // For daily habits: grace window is 36 hours (permits completing anytime next day)
-        // If completed again within 6 hours of previous completion, treat as idempotent same-day completion
         val isDaily = rrule == null || rrule.contains("DAILY", ignoreCase = true) || rrule.equals("daily", ignoreCase = true)
-        val gracePeriod = if (isDaily) 36 * MS_IN_HOUR else 7 * MS_IN_DAY
+        val isWeekly = rrule?.contains("WEEKLY", ignoreCase = true) == true || rrule?.equals("weekly", ignoreCase = true) == true
+        val isMonthly = rrule?.contains("MONTHLY", ignoreCase = true) == true || rrule?.equals("monthly", ignoreCase = true) == true
 
-        if (isDaily && elapsed < 6 * MS_IN_HOUR && currentStreak > 0) {
-            // Already counted today
+        val gracePeriod = when {
+            isDaily -> 36 * MS_IN_HOUR
+            isWeekly -> 10 * MS_IN_DAY
+            isMonthly -> 35 * MS_IN_DAY
+            else -> 7 * MS_IN_DAY
+        }
+
+        val samePeriodWindow = when {
+            isDaily -> 6 * MS_IN_HOUR
+            isWeekly -> 2 * MS_IN_DAY
+            isMonthly -> 7 * MS_IN_DAY
+            else -> 6 * MS_IN_HOUR
+        }
+
+        if (elapsed < samePeriodWindow && currentStreak > 0) {
+            // Already counted in this period
             return StreakResult(currentStreak, bestStreak, isContinued = true)
         }
 

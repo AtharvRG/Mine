@@ -8,6 +8,7 @@ import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import com.anchor.core.alarms.AlarmScheduler
 import com.anchor.core.alarms.ScheduleResult
 import com.anchor.core.models.AlarmTier
@@ -34,6 +35,7 @@ class AndroidAlarmScheduler(private val context: Context) : AlarmScheduler {
 
     override fun schedule(reminder: Reminder): ScheduleResult {
         val intent = Intent(context, AlarmReceiver::class.java).apply {
+            data = Uri.parse("mine://reminder/${reminder.id}")
             putExtra("EXTRA_ID", reminder.id)
             putExtra("EXTRA_TEXT", reminder.text)
             putExtra("EXTRA_TIER", reminder.tier.name)
@@ -46,7 +48,9 @@ class AndroidAlarmScheduler(private val context: Context) : AlarmScheduler {
         return try {
             when (reminder.tier) {
                 AlarmTier.ALARM -> {
-                    val showIntent = Intent(context, com.anchor.mine.MainActivity::class.java)
+                    val showIntent = Intent(context, com.anchor.mine.MainActivity::class.java).apply {
+                        data = Uri.parse("mine://reminder/${reminder.id}")
+                    }
                     val pendingShow = PendingIntent.getActivity(context, reminder.id.hashCode(), showIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
                     alarmManager.setAlarmClock(AlarmManager.AlarmClockInfo(reminder.fireAtMillis, pendingShow), pendingIntent)
                 }
@@ -58,6 +62,7 @@ class AndroidAlarmScheduler(private val context: Context) : AlarmScheduler {
             try {
                 DirectBootAlarmStore(context).saveAlarm(reminder.id, reminder.fireAtMillis, reminder.tier, "Reminder")
             } catch (_: Exception) {}
+            com.anchor.mine.widget.MineAppWidgetProvider.updateWidgets(context)
             ScheduleResult.Armed
         } catch (e: SecurityException) {
             ScheduleResult.Failed("SecurityException: ${e.message ?: "permission denied or exact alarm policy disallow"}")
@@ -69,7 +74,9 @@ class AndroidAlarmScheduler(private val context: Context) : AlarmScheduler {
     }
 
     override fun cancel(reminderId: String) {
-        val intent = Intent(context, AlarmReceiver::class.java)
+        val intent = Intent(context, AlarmReceiver::class.java).apply {
+            data = Uri.parse("mine://reminder/$reminderId")
+        }
         val pendingIntent = PendingIntent.getBroadcast(context, reminderId.hashCode(), intent, PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE)
         if (pendingIntent != null) {
             alarmManager.cancel(pendingIntent)
@@ -78,6 +85,45 @@ class AndroidAlarmScheduler(private val context: Context) : AlarmScheduler {
         try {
             DirectBootAlarmStore(context).removeAlarm(reminderId)
         } catch (_: Exception) {}
+        com.anchor.mine.widget.MineAppWidgetProvider.updateWidgets(context)
+    }
+
+    override fun scheduleAgentWakeup(wakeupId: String, fireAtMillis: Long): ScheduleResult {
+        val intent = Intent(context, AlarmReceiver::class.java).apply {
+            action = AlarmReceiver.ACTION_AGENT_WAKEUP
+            data = Uri.parse("mine://wakeup/$wakeupId")
+            putExtra("EXTRA_WAKEUP_ID", wakeupId)
+            putExtra("EXTRA_SCHEDULED_FOR", fireAtMillis)
+        }
+        val pendingIntent = PendingIntent.getBroadcast(
+            context,
+            wakeupId.hashCode(),
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        return try {
+            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, fireAtMillis, pendingIntent)
+            ScheduleResult.Armed
+        } catch (e: Exception) {
+            ScheduleResult.Failed(e.message ?: e.javaClass.simpleName)
+        }
+    }
+
+    override fun cancelAgentWakeup(wakeupId: String) {
+        val intent = Intent(context, AlarmReceiver::class.java).apply {
+            action = AlarmReceiver.ACTION_AGENT_WAKEUP
+            data = Uri.parse("mine://wakeup/$wakeupId")
+        }
+        val pendingIntent = PendingIntent.getBroadcast(
+            context,
+            wakeupId.hashCode(),
+            intent,
+            PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
+        )
+        if (pendingIntent != null) {
+            alarmManager.cancel(pendingIntent)
+            pendingIntent.cancel()
+        }
     }
 
     /**
@@ -86,6 +132,7 @@ class AndroidAlarmScheduler(private val context: Context) : AlarmScheduler {
      */
     fun scheduleDirectBoot(alarm: DirectBootAlarm): ScheduleResult {
         val intent = Intent(context, AlarmReceiver::class.java).apply {
+            data = Uri.parse("mine://reminder/${alarm.id}")
             putExtra("EXTRA_ID", alarm.id)
             putExtra("EXTRA_TEXT", alarm.label)
             putExtra("EXTRA_TIER", alarm.tier.name)
@@ -101,7 +148,9 @@ class AndroidAlarmScheduler(private val context: Context) : AlarmScheduler {
         return try {
             when (alarm.tier) {
                 AlarmTier.ALARM -> {
-                    val showIntent = Intent(context, com.anchor.mine.MainActivity::class.java)
+                    val showIntent = Intent(context, com.anchor.mine.MainActivity::class.java).apply {
+                        data = Uri.parse("mine://reminder/${alarm.id}")
+                    }
                     val pendingShow = PendingIntent.getActivity(
                         context,
                         alarm.id.hashCode(),
