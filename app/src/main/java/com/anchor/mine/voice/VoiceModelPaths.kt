@@ -22,8 +22,18 @@ data class VoiceModelPaths(
     val ttsTokens: File,
     val ttsDataDir: File,
     val ttsLexicon: File,
-    val speakerModel: File? = null
+    val speakerModel: File? = null,
+    /** Kokoro multi-lang (v1.0+) word-segmentation dictionary folder; absent for older packs. */
+    val ttsDictDir: File? = null,
+    /** Kitten TTS (small, Apache-2.0), the alternative engine. */
+    val kittenModel: File? = null,
+    val kittenVoices: File? = null,
+    val kittenTokens: File? = null,
+    val kittenDataDir: File? = null,
 ) {
+    val kittenComplete: Boolean
+        get() = kittenModel?.exists() == true && kittenVoices?.exists() == true && kittenTokens?.exists() == true && kittenDataDir?.exists() == true
+
     val vadPresent: Boolean
         get() = vadModel.exists()
 
@@ -43,7 +53,10 @@ data class VoiceModelPaths(
         get() = speakerModel != null && speakerModel.exists()
 
     val isComplete: Boolean
-        get() = vadPresent && (sttComplete || ttsComplete)
+        get() = vadPresent && (sttComplete || ttsComplete || kittenComplete)
+
+    /** Any on-device voice installed (Kokoro or Kitten). */
+    val anyTtsComplete: Boolean get() = ttsComplete || kittenComplete
 
     companion object {
         fun resolve(context: Context): VoiceModelPaths? {
@@ -57,7 +70,7 @@ data class VoiceModelPaths(
 
             for (base in candidateDirs) {
                 val candidate = fromBaseDir(base)
-                if (candidate.vadPresent || candidate.sttComplete || candidate.ttsComplete) {
+                if (candidate.vadPresent || candidate.sttComplete || candidate.ttsComplete || candidate.kittenComplete || candidate.speakerPresent) {
                     return candidate
                 }
             }
@@ -68,6 +81,7 @@ data class VoiceModelPaths(
             val vadDir = baseDir.resolve("vad")
             val sttDir = baseDir.resolve("stt/zipformer")
             val ttsDir = baseDir.resolve("tts/kokoro")
+            val kittenDir = baseDir.resolve("tts/kitten")
 
             return VoiceModelPaths(
                 vadModel = vadDir.resolve("silero_vad.onnx"),
@@ -84,7 +98,12 @@ data class VoiceModelPaths(
                     baseDir.resolve("speaker/campplus.onnx"),
                     baseDir.resolve("speaker/3dspeaker.onnx"),
                     baseDir.resolve("speaker/speaker.onnx")
-                ).firstOrNull { it.exists() }
+                ).firstOrNull { it.exists() },
+                ttsDictDir = ttsDir.resolve("dict").takeIf { it.exists() },
+                kittenModel = kittenDir.resolve("model.fp16.onnx"),
+                kittenVoices = kittenDir.resolve("voices.bin"),
+                kittenTokens = kittenDir.resolve("tokens.txt"),
+                kittenDataDir = kittenDir.resolve("espeak-ng-data"),
             )
         }
     }

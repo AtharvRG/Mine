@@ -26,6 +26,31 @@ object AmbientStatusBus {
 
     private val speakingUntil = AtomicLong(0L)
 
+    /**
+     * What the listening loop is doing with speech, for the Listening screen: the STT route in
+     * use, why (if it isn't the one asked for), a warning to act on, and segment counters.
+     * Never any audio or text.
+     */
+    data class Pipeline(
+        val sttRoute: String = "none",
+        val sttNote: String? = null,
+        val sttWarning: String? = null,
+        val userSegments: Int = 0,
+        val otherSegments: Int = 0,
+        val windowsTranscribed: Int = 0,
+        val windowsDropped: Int = 0,
+        /** Last speaker-match score (0..1) and label, for the live "voice check". */
+        val lastScore: Float? = null,
+        val lastLabel: String? = null,
+    )
+
+    private val _pipeline = MutableStateFlow(Pipeline())
+    val pipeline: StateFlow<Pipeline> = _pipeline.asStateFlow()
+
+    internal fun publishPipeline(p: Pipeline) {
+        _pipeline.value = p
+    }
+
     internal fun publish(s: AmbientState) {
         _state.value = s
     }

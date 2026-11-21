@@ -16,6 +16,14 @@ import android.os.Build
 import android.os.IBinder
 import android.telephony.TelephonyManager
 import androidx.core.app.NotificationCompat
+import com.anchor.core.ambient.AmbientPipeline
+import com.anchor.core.ambient.AmbientSttMode
+import com.anchor.core.ambient.AmbientSttPlanner
+import com.anchor.core.ambient.EnergySegmenter
+import com.anchor.core.ambient.SpeechSegmenter
+import com.anchor.core.ambient.SttPlan
+import com.anchor.core.ambient.SttRoute
+import com.anchor.core.provider.KeyPool
 import com.anchor.core.ambient.AmbientReport
 import com.anchor.core.ambient.AmbientReportItem
 import com.anchor.core.ambient.AmbientSegment
@@ -87,7 +95,6 @@ class AmbientForegroundService : Service() {
     private val proposalExtractor = AmbientProposalExtractor()
     private val dialogueEngine = DialogueWindowEngine()
     private val recentTurns = mutableListOf<DialogueWindowEngine.Turn>()
-    private val recentAudioSegments = java.util.Collections.synchronizedList(mutableListOf<PresenceGate.ScoredSegment>())
     private var currentSessionId: String? = null
     @Volatile
     private var sessionListenSeconds: Int = 0
@@ -247,7 +254,7 @@ class AmbientForegroundService : Service() {
                                     startedAt = sessionStartedAt,
                                     listenSeconds = sessionListenSeconds,
                                     speechSeconds = sessionSpeechSeconds,
-                                    segmentsCount = recentAudioSegments.size
+                                    segmentsCount = pipeline?.stats?.let { it.userSegments + it.otherSegments } ?: 0
                                 )
                             )
                         } catch (_: Throwable) {}
@@ -366,6 +373,14 @@ class AmbientForegroundService : Service() {
             } catch (_: Exception) {}
         }
 
+        // 11. No speech-to-text path: stay "Listening" so notification reading keeps working, but
+        // the loop never opens the mic (audio is never kept to wait for STT, 61 §3.2).
+        val sttNowReady = currentPlan(storage).route != SttRoute.NONE
+        if (sttNowReady != sttReady) {
+            sttReady = sttNowReady
+            (getSystemService(Context.NOTIFICATION_SERVICE) as? android.app.NotificationManager)?.notify(NOTIFICATION_ID, buildNotification(currentState))
+        }
+
         // All clear -> Listening
         updateState(AmbientState.Listening)
     }
@@ -386,9 +401,123 @@ class AmbientForegroundService : Service() {
         }
     }
 
+    // =========================================================================================
+    // Listening loop: mic → VAD segments → speaker check → pipeline (ring, window, gate) → STT
+    // =========================================================================================
+
+    /** Settings the loop reads when it starts. A change applies at the next Listening. */
+    private data class ListenConfig(
+        val mode: AmbientSttMode,
+        val nimKeys: List<String>,
+        val nimFunctionId: String,
+        val language: String,
+        val tLo: Float,
+        val tHi: Float,
+        val gateUserPresence: Boolean,
+        val windowGapMs: Long,
+        val batchMs: Long,
+        val cloudCapSeconds: Long,
+        val extractWithAi: Boolean,
+    )
+
+    private suspend fun loadListenConfig(storage: com.anchor.core.storage.Storage?): ListenConfig {
+        val get: suspend (String) -> String? = { k -> try { storage?.getSetting(k) } catch (_: Exception) { null } }
+        return ListenConfig(
+            mode = AmbientSttMode.fromWire(get(AmbientSttMode.SETTING)),
+            nimKeys = nimKeys(storage),
+            nimFunctionId = get(KEY_NIM_FUNCTION)?.takeIf { it.isNotBlank() } ?: NimWhisperClient.DEFAULT_FUNCTION_ID,
+            language = get(KEY_STT_LANGUAGE)?.takeIf { it.isNotBlank() } ?: "en",
+            tLo = get("ambient.t_lo")?.toFloatOrNull()?.coerceIn(0.3f, 0.9f) ?: 0.60f,
+            tHi = get("ambient.t_hi")?.toFloatOrNull()?.coerceIn(0.4f, 0.95f) ?: 0.80f,
+            gateUserPresence = get("ambient.gate_user_presence") != "0",
+            windowGapMs = (get("ambient.window_gap_s")?.toLongOrNull() ?: 90L).coerceIn(10L, 600L) * 1000L,
+            batchMs = (get("ambient.batch_s")?.toLongOrNull() ?: 30L).coerceIn(5L, 60L) * 1000L,
+            cloudCapSeconds = (get("ambient.daily_stt_cap_min")?.toLongOrNull() ?: 90L) * 60L,
+            extractWithAi = get(KEY_EXTRACT_WITH_AI) == "1",
+        )
+    }
+
+    /** Ambient's own NVIDIA keys, or the chat provider's when that provider is NVIDIA NIM. */
+    private suspend fun nimKeys(storage: com.anchor.core.storage.Storage?): List<String> {
+        if (storage == null) return emptyList()
+        val own = KeyPool.decode(try { storage.getSetting(KEY_NIM_KEYS) } catch (_: Exception) { null })
+        if (own.isNotEmpty()) return own
+        val ep = try { storage.getSetting("ep") } catch (_: Exception) { null }.orEmpty()
+        val host = runCatching { java.net.URI(ep).host.orEmpty() }.getOrDefault("")
+        if (!host.endsWith("api.nvidia.com")) return emptyList()
+        val main = try { storage.getSetting("key") } catch (_: Exception) { null }.orEmpty()
+        val extra = KeyPool.decode(try { storage.getSetting(com.anchor.core.ui.ChatController.KEY_EXTRA_KEYS) } catch (_: Exception) { null })
+        return KeyPool.sanitize(listOf(main) + extra)
+    }
+
+    /** The chat engine's limiter when the graph is up, so NVIDIA keys share one budget across chat and Whisper. */
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    private fun sharedLimiter(app: MineApp): com.anchor.core.provider.RateLimiter =
+        app.appGraph.takeIf { it.isCompleted && it.getCompletionExceptionOrNull() == null }?.getCompleted()?.rateLimiter ?: app.rateLimiter
+
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    private fun sharedOrchestrator(app: MineApp): com.anchor.core.provider.ProviderOrchestrator =
+        app.appGraph.takeIf { it.isCompleted && it.getCompletionExceptionOrNull() == null }?.getCompleted()?.orchestrator ?: app.orchestrator
+
+    private fun isOnline(): Boolean = try {
+        val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager
+        val caps = cm?.getNetworkCapabilities(cm.activeNetwork)
+        caps?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_VALIDATED) == true
+    } catch (_: Throwable) { false }
+
+    private suspend fun cloudSecondsToday(storage: com.anchor.core.storage.Storage?, dayKey: String): Long {
+        val raw = try { storage?.getSetting(KEY_CLOUD_SECONDS) } catch (_: Exception) { null } ?: return 0L
+        val (day, secs) = raw.split(':', limit = 2).let { (it.getOrNull(0) ?: "") to (it.getOrNull(1)?.toLongOrNull() ?: 0L) }
+        return if (day == dayKey) secs else 0L
+    }
+
+    private suspend fun addCloudSeconds(storage: com.anchor.core.storage.Storage, seconds: Long) {
+        val now = System.currentTimeMillis()
+        val dayKey = com.anchor.core.time.DayRollover.computeDayKey(now, storage.getEffectiveDayRule(now))
+        val total = cloudSecondsToday(storage, dayKey) + seconds
+        try { storage.saveSetting(KEY_CLOUD_SECONDS, "$dayKey:$total") } catch (_: Exception) {}
+    }
+
+    /** The STT route for right now, published so the Listening screen can show it and its warning. */
+    private suspend fun currentPlan(storage: com.anchor.core.storage.Storage?): SttPlan {
+        val cfg = loadListenConfig(storage)
+        val now = System.currentTimeMillis()
+        val dayKey = storage?.let { com.anchor.core.time.DayRollover.computeDayKey(now, it.getEffectiveDayRule(now)) } ?: ""
+        val deviceReady = SherpaVoiceEngine.getInstance(applicationContext)?.isSttAvailable == true
+        val plan = AmbientSttPlanner.plan(cfg.mode, deviceReady, cfg.nimKeys.size, isOnline(), cloudSecondsToday(storage, dayKey), cfg.cloudCapSeconds)
+        AmbientStatusBus.publishPipeline(
+            AmbientStatusBus.pipeline.value.copy(
+                sttRoute = plan.route.name.lowercase(), sttNote = plan.note, sttWarning = plan.warning,
+            )
+        )
+        return plan
+    }
+
+    private val pipelineLock = Any()
+    @Volatile private var pipeline: AmbientPipeline? = null
+    private val transcribeQueue = kotlinx.coroutines.channels.Channel<AmbientPipeline.ReadyWindow>(
+        capacity = 4,
+        onBufferOverflow = kotlinx.coroutines.channels.BufferOverflow.DROP_OLDEST
+    )
+    private val windowSttRef = java.util.concurrent.ConcurrentHashMap<String, String>()
+    @Volatile private var transcriberStarted = false
+
+    @Volatile private var sttReady = true
+
     private fun startListeningLoop() {
         if (listeningJob?.isActive == true) return
+        startTranscriberOnce()
         listeningJob = serviceScope.launch(Dispatchers.IO) {
+            // Without any STT route the mic stays closed; re-check every 30 s (a model download or
+            // a new NVIDIA key brings it up without restarting the service).
+            while (isActive && currentState is AmbientState.Listening) {
+                val st = (application as? MineApp)?.let { a -> if (a.sharedStorage.isCompleted) runCatching { a.sharedStorage.await() }.getOrNull() else null }
+                if (currentPlan(st).route != SttRoute.NONE) break
+                sttReady = false
+                delay(30_000L)
+            }
+            if (!isActive || currentState !is AmbientState.Listening) return@launch
+            sttReady = true
             val recorder = AudioRecorderHelper(isForegroundUserMic = false)
             activeRecorder = recorder
             val started = recorder.startRecording(this)
@@ -406,142 +535,242 @@ class AmbientForegroundService : Service() {
                 newSId
             }
 
-            val pendingSegments = mutableListOf<PresenceGate.ScoredSegment>()
-            var lastUserSpeechMs = 0L
+            val app = application as? MineApp
+            val storage0 = if (app != null && app.sharedStorage.isCompleted) runCatching { app.sharedStorage.await() }.getOrNull() else null
+            val cfg = loadListenConfig(storage0)
+            val engine = SherpaVoiceEngine.getInstance(applicationContext)
+            val silero = engine?.newSegmenter()
+            val segmenter: SpeechSegmenter = silero ?: EnergySegmenter()
+            val gate = PresenceGate(tHi = cfg.tHi, tLo = cfg.tLo, gateUserPresence = cfg.gateUserPresence)
+            val pipe = AmbientPipeline(
+                AmbientPipeline.Config(
+                    ringMs = 120_000L,
+                    windowGapMs = cfg.windowGapMs,
+                    batchMs = cfg.batchMs,
+                    tLo = cfg.tLo,
+                    gateUserPresence = cfg.gateUserPresence,
+                )
+            )
+            synchronized(pipelineLock) { pipeline = pipe }
+
+            var userPrint: FloatArray? = storage0?.let { runCatching { it.getVoiceprint() }.getOrNull() }?.toFloatArray()
+            var printLoadedAt = System.currentTimeMillis()
+            // Sample index → wall clock, so a segment's start (counted in samples) gets a real time.
+            val anchors = ArrayDeque<Pair<Long, Long>>()
+            var fed = 0L
+            var lastPersistAt = System.currentTimeMillis()
+
+            fun wallOf(sample: Long): Long {
+                val a = anchors.lastOrNull { it.first <= sample } ?: anchors.firstOrNull() ?: return System.currentTimeMillis()
+                return a.second + (sample - a.first) * 1000L / 16_000L
+            }
+
+            fun hand(windows: List<AmbientPipeline.ReadyWindow>) {
+                for (w in windows) transcribeQueue.trySend(w)
+            }
+
+            fun absorb(segs: List<com.anchor.core.ambient.VadSegment>) {
+                for (seg in segs) {
+                    if (seg.durationMs < 300) continue // clicks and bumps
+                    sessionSpeechSeconds += (seg.durationMs / 1000L).toInt().coerceAtLeast(1)
+                    val t0 = wallOf(seg.startSample)
+                    val t1 = t0 + seg.durationMs
+                    // Speaker check per whole utterance: an x-vector needs ~0.7 s of voice to mean anything.
+                    val emb = if (seg.durationMs >= 700 && userPrint != null) {
+                        runCatching { engine?.extractSpeakerEmbedding(seg.samples) }.getOrNull()
+                            ?: SyntheticAudioFixtures.extractVoiceprintFromAudio(seg.samples)
+                    } else null
+                    val scored = gate.scoreSegment(t0, t1, seg.samples, emb, userPrint)
+                    val ready = synchronized(pipelineLock) {
+                        pipe.add(
+                            AmbientPipeline.Segment(
+                                id = UUID.randomUUID().toString(),
+                                tStartMs = t0, tEndMs = t1, samples = seg.samples,
+                                label = scored.label, score = scored.score, isShort = scored.isShort,
+                            )
+                        )
+                    }
+                    publishStats(pipe, scored.score.takeIf { emb != null }, scored.label.wire)
+                    hand(ready)
+                }
+            }
 
             try {
                 while (isActive && currentState is AmbientState.Listening) {
-                    val sliceStart = System.currentTimeMillis()
-                    delay(3000L) // 3-second continuous audio slice without tearing down AudioRecord
-                    val samples = recorder.snapshotAndClear()
-                    val sliceEnd = System.currentTimeMillis()
+                    delay(250L)
+                    val now = System.currentTimeMillis()
+                    val chunk = recorder.snapshotAndClear()
+                    if (chunk.isNotEmpty()) {
+                        val chunkStart = now - chunk.size * 1000L / 16_000L
+                        anchors.addLast(fed to chunkStart)
+                        while (anchors.size > 600) anchors.removeFirst() // ~150 s of anchors
+                        // Half-duplex: Mine's own voice becomes silence, so the timeline stays whole.
+                        val audio = if (AmbientStatusBus.overlapsOwnSpeech(chunkStart, now)) FloatArray(chunk.size) else chunk
+                        segmenter.accept(audio)
+                        fed += audio.size
+                        absorb(segmenter.drain())
+                    }
+                    hand(synchronized(pipelineLock) { pipe.tick(now) })
 
-                    if (samples.isEmpty()) continue
-                    // Half-duplex: never transcribe Mine's own voice (notification read-outs, replies).
-                    if (AmbientStatusBus.overlapsOwnSpeech(sliceStart, sliceEnd)) continue
-
-                    val voiceEngine = SherpaVoiceEngine.getInstance(applicationContext)
-
-                    // 1. VAD check (zero allocation, in-memory)
-                    val hasSpeech = (voiceEngine?.isSpeech(samples) ?: SyntheticAudioFixtures.isSpeechEnergy(samples, thresholdRms = 0.015f))
-                    if (hasSpeech) sessionSpeechSeconds += 3
-
-                    val app = application as? MineApp
-                    if (app == null || !app.sharedStorage.isCompleted) continue
-                    val storage = try { app.sharedStorage.await() } catch (_: Exception) { continue }
-
-                    if (!hasSpeech) continue
-
-                    // 2. Speaker Embedding & PresenceGate evaluation
-                    val userVp = storage.getVoiceprint()
-                    val userFloats = userVp?.toFloatArray()
-
-                    val segmentEmb = voiceEngine?.extractSpeakerEmbedding(samples)
-                        ?: SyntheticAudioFixtures.extractVoiceprintFromAudio(samples)
-
-                    val scoredSegment = presenceGate.scoreSegment(
-                        tStartMs = sliceStart,
-                        tEndMs = sliceEnd,
-                        samples = samples,
-                        segmentEmbedding = segmentEmb,
-                        voiceprintFloats = userFloats
-                    )
-
-                    pendingSegments.add(scoredSegment)
-                    presenceGate.trimRingBuffer(pendingSegments, maxRingDurationMs = 90_000L, currentTimestampMs = sliceEnd)
-
-                    synchronized(recentAudioSegments) {
-                        recentAudioSegments.add(scoredSegment)
-                        val cutoff = sliceEnd - 120_000L
-                        recentAudioSegments.removeAll { it.tEndMs < cutoff }
+                    // A re-enrolment mid-session takes effect within five minutes.
+                    if (now - printLoadedAt > 5 * 60_000L) {
+                        printLoadedAt = now
+                        val st = if (app != null && app.sharedStorage.isCompleted) runCatching { app.sharedStorage.await() }.getOrNull() else null
+                        st?.let { s -> runCatching { s.getVoiceprint() }.getOrNull()?.let { userPrint = it.toFloatArray() } }
                     }
 
-                    // 3. Evaluate window gate per Blueprint 61 §3.4:
-                    // Audio is sent to STT when user speaks or within 15s grace window for OTHER speaker
-                    val userSpoke = pendingSegments.any { it.label == SpeakerLabel.USER }
-                    if (userSpoke) {
-                        lastUserSpeechMs = sliceEnd
-                    }
-                    val withinPostUserGrace = (lastUserSpeechMs > 0L && (sliceStart - lastUserSpeechMs) <= 15_000L)
-                    val gateOpened = userSpoke || presenceGate.evaluateWindowGate(pendingSegments) || withinPostUserGrace
-                    if (!gateOpened) {
-                        // Keep accumulating up to 90s context in RAM ring buffer; do not burn battery running STT on stranger speech
-                        continue
-                    }
-
-                    // 4. Presence gate open! Transcribe all pending segments in the dialogue window
-                    val newTurns = mutableListOf<DialogueWindowEngine.Turn>()
-                    for (seg in pendingSegments) {
-                        val transcript = voiceEngine?.transcribe(seg.audioSamples)?.trim().orEmpty()
-                        if (transcript.isNotBlank()) {
-                            val scrubbedText = NumberScrubber.scrub(transcript)
-                            val turn = DialogueWindowEngine.Turn(
-                                segmentId = UUID.randomUUID().toString(),
-                                tStartMs = seg.tStartMs,
-                                tEndMs = seg.tEndMs,
-                                label = seg.label,
-                                text = scrubbedText,
-                                score = seg.score,
-                                isShort = seg.isShort
-                            )
-                            newTurns.add(turn)
-                        }
-                    }
-
-                    // Reset pending audio segments since they are now transcribed
-                    pendingSegments.clear()
-                    if (newTurns.isEmpty()) continue
-
-                    synchronized(recentTurns) {
-                        recentTurns.addAll(newTurns)
-                        val cutoff = sliceEnd - 120_000L
-                        recentTurns.removeAll { it.tEndMs < cutoff }
-                    }
-
-                    // 5. Send newly transcribed turns to background extraction queue (decoupled from audio recording)
-                    val liveWindow = DialogueWindowEngine.Window(
-                        id = UUID.randomUUID().toString(),
-                        turns = newTurns,
-                        startedAtMs = newTurns.firstOrNull()?.tStartMs ?: sliceStart,
-                        endedAtMs = sliceEnd
-                    )
-                    extractionQueue.trySend(liveWindow)
-
-                    // Persist session progress every 60 seconds so daily caps (listen & speech caps) are accurately tracked
-                    if (sessionListenSeconds % 60 == 0) {
+                    if (now - lastPersistAt >= 60_000L && app != null && app.sharedStorage.isCompleted) {
+                        lastPersistAt = now
                         try {
-                            storage.saveAmbientSession(
-                                AmbientSession(
-                                    id = sId,
-                                    startedAt = sessionStartedAt,
-                                    listenSeconds = sessionListenSeconds,
-                                    speechSeconds = sessionSpeechSeconds,
-                                    segmentsCount = recentAudioSegments.size
-                                )
+                            app.sharedStorage.await().saveAmbientSession(
+                                AmbientSession(sId, sessionStartedAt, listenSeconds = sessionListenSeconds, speechSeconds = sessionSpeechSeconds, segmentsCount = pipe.stats.userSegments + pipe.stats.otherSegments)
                             )
                         } catch (_: Throwable) {}
                     }
                 }
             } finally {
+                // You pressed Pause or Stop: what was being said is dropped from RAM, untranscribed.
+                // Anything else (a call started, battery, the window closed): finish that conversation.
+                val userStopped = currentState is AmbientState.Off ||
+                    (currentState as? AmbientState.Sleeping)?.reason == AmbientSleepReason.USER_PAUSED
+                if (userStopped) {
+                    synchronized(pipelineLock) { pipe.clear() }
+                } else {
+                    runCatching { segmenter.flush(); absorb(segmenter.drain()) }
+                    hand(synchronized(pipelineLock) { pipe.flush() })
+                }
+                silero?.close()
                 recorder.stopRecording()
                 activeRecorder = null
-                // Save final session state on exit
                 try {
-                    val app = application as? MineApp
-                    if (app != null && app.sharedStorage.isCompleted) {
-                        val storage = app.sharedStorage.await()
-                        storage.saveAmbientSession(
-                            AmbientSession(
-                                id = sId,
-                                startedAt = sessionStartedAt,
-                                listenSeconds = sessionListenSeconds,
-                                speechSeconds = sessionSpeechSeconds,
-                                segmentsCount = recentAudioSegments.size
-                            )
+                    if (app != null && app.sharedStorage.isCompleted) withContext(kotlinx.coroutines.NonCancellable) {
+                        app.sharedStorage.await().saveAmbientSession(
+                            AmbientSession(sId, sessionStartedAt, listenSeconds = sessionListenSeconds, speechSeconds = sessionSpeechSeconds, segmentsCount = pipe.stats.userSegments + pipe.stats.otherSegments)
                         )
                     }
                 } catch (_: Throwable) {}
             }
+        }
+    }
+
+    private fun publishStats(pipe: AmbientPipeline, score: Float?, label: String?) {
+        val st = pipe.stats
+        val cur = AmbientStatusBus.pipeline.value
+        AmbientStatusBus.publishPipeline(
+            cur.copy(
+                userSegments = st.userSegments, otherSegments = st.otherSegments,
+                windowsTranscribed = st.windowsTranscribed, windowsDropped = st.windowsDropped,
+                lastScore = score ?: cur.lastScore, lastLabel = label ?: cur.lastLabel,
+            )
+        )
+    }
+
+    /** One worker turns gated windows into text, so slow STT never stalls the microphone loop. */
+    private fun startTranscriberOnce() {
+        if (transcriberStarted) return
+        transcriberStarted = true
+        serviceScope.launch(Dispatchers.IO) {
+            for (w in transcribeQueue) {
+                runCatching {
+                    val turns = transcribeWindow(w)
+                    if (turns.isEmpty()) return@runCatching
+                    synchronized(recentTurns) {
+                        recentTurns.addAll(turns)
+                        val cutoff = System.currentTimeMillis() - 120_000L
+                        recentTurns.removeAll { it.tEndMs < cutoff }
+                    }
+                    extractionQueue.trySend(
+                        DialogueWindowEngine.Window(id = w.id, turns = turns, startedAtMs = w.startedAtMs, endedAtMs = w.endedAtMs)
+                    )
+                }
+            }
+        }
+    }
+
+    /**
+     * Transcribes one window by the current route. Cloud: one request per speaker run (fewer
+     * requests, NIM keys rotated). Phone: one pass per segment. A cloud failure falls back to the
+     * phone when its model is installed; otherwise the window is dropped (audio is never stored
+     * to wait for later).
+     */
+    private suspend fun transcribeWindow(w: AmbientPipeline.ReadyWindow): List<DialogueWindowEngine.Turn> {
+        val app = application as? MineApp ?: return emptyList()
+        val storage = if (app.sharedStorage.isCompleted) runCatching { app.sharedStorage.await() }.getOrNull() else null
+        val plan = currentPlan(storage)
+        val engine = SherpaVoiceEngine.getInstance(applicationContext)
+
+        suspend fun onDevice(): List<DialogueWindowEngine.Turn> {
+            val e = engine?.takeIf { it.isSttAvailable } ?: return emptyList()
+            windowSttRef[w.id] = "sherpa_offline"
+            return w.segments.mapNotNull { seg ->
+                val text = runCatching { e.transcribe(seg.samples) }.getOrNull()?.trim().orEmpty()
+                if (text.isBlank()) null
+                else DialogueWindowEngine.Turn(seg.id, seg.tStartMs, seg.tEndMs, seg.label, NumberScrubber.scrub(text), seg.score, seg.isShort)
+            }
+        }
+
+        return when (plan.route) {
+            SttRoute.NONE -> emptyList()
+            SttRoute.DEVICE -> onDevice()
+            SttRoute.NIM_WHISPER -> {
+                val cfg = loadListenConfig(storage)
+                val client = NimWhisperClient(sharedLimiter(app), functionId = cfg.nimFunctionId)
+                val out = ArrayList<DialogueWindowEngine.Turn>()
+                var fellBack = false
+                for (b in w.batches) {
+                    val audio = b.joinedSamples()
+                    when (val r = client.transcribe(audio, cfg.nimKeys, cfg.language)) {
+                        is NimWhisperClient.Result.Text -> {
+                            storage?.let { addCloudSeconds(it, audio.size / 16_000L) }
+                            if (r.transcript.isNotBlank()) {
+                                out += DialogueWindowEngine.Turn(
+                                    b.segments.first().id, b.tStartMs, b.tEndMs, b.label,
+                                    NumberScrubber.scrub(r.transcript), b.score, b.isShort,
+                                )
+                            }
+                        }
+                        else -> {
+                            val reason = when (r) {
+                                NimWhisperClient.Result.AllKeysBusy -> "All NVIDIA keys are rate-limited — using the phone"
+                                is NimWhisperClient.Result.AuthFailed -> "NVIDIA rejected the key — check it in Listening settings"
+                                is NimWhisperClient.Result.Failed -> "Whisper failed (${r.message}) — using the phone"
+                                else -> null
+                            }
+                            AmbientStatusBus.publishPipeline(AmbientStatusBus.pipeline.value.copy(sttNote = reason))
+                            fellBack = true
+                            break
+                        }
+                    }
+                }
+                if (fellBack) onDevice() else { windowSttRef[w.id] = "nim_whisper"; out }
+            }
+        }
+    }
+
+    /** Extraction prompt for a cloud model: same rules as on-device, streamed SSE like chat. */
+    private suspend fun extractWithProvider(storage: com.anchor.core.storage.Storage, sys: String, user: String): String? {
+        val app = application as? MineApp ?: return null
+        val ep = storage.getSetting("ep")?.takeIf { it.isNotBlank() } ?: return null
+        val key = storage.getSetting("key")?.takeIf { it.isNotBlank() } ?: return null
+        val model = storage.getSetting("mod").orEmpty()
+        val extra = KeyPool.decode(storage.getSetting(com.anchor.core.ui.ChatController.KEY_EXTRA_KEYS))
+        val rpm = storage.getSetting("provider.rpm_default")?.toIntOrNull() ?: 20
+        val targets = KeyPool.targets(ep, listOf(key) + extra, model, rpm, sharedLimiter(app), limiterPrefix = "bg:")
+        val body = """{"messages":[{"role":"system","content":${json.encodeToString(sys)}},{"role":"user","content":${json.encodeToString(user)}}],"stream":true,"temperature":0.2}"""
+        val sb = StringBuilder()
+        return try {
+            sharedOrchestrator(app).chat(targets, body, envelopeMode = true).collect { ev ->
+                when (ev) {
+                    is com.anchor.core.provider.StreamEvent.TextDelta -> sb.append(ev.text)
+                    is com.anchor.core.provider.StreamEvent.Clear -> sb.clear()
+                    else -> Unit
+                }
+            }
+            sb.toString().takeIf { it.isNotBlank() }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (_: Throwable) {
+            null
         }
     }
 
@@ -551,8 +780,10 @@ class AmbientForegroundService : Service() {
         val storage = try { app.sharedStorage.await() } catch (_: Throwable) { return }
 
         val existingNodes = storage.getActiveNodes(50)
-        val llmResponseJson = try {
-            val (sysPrompt, userPrompt) = dialogueEngine.buildExtractionPrompt(liveWindow)
+        val (sysPrompt, userPrompt) = dialogueEngine.buildExtractionPrompt(liveWindow)
+        val llmResponseJson = if (storage.getSetting(KEY_EXTRACT_WITH_AI) == "1" && isOnline()) {
+            extractWithProvider(storage, sysPrompt, userPrompt)
+        } else try {
             val prompt = """{"messages":[{"role":"system","content":${json.encodeToString(sysPrompt)}},{"role":"user","content":${json.encodeToString(userPrompt)}}]}"""
             val onDeviceEngine = com.anchor.mine.provider.AndroidOnDeviceLlmEngine(applicationContext)
             var rawText = ""
@@ -586,6 +817,7 @@ class AmbientForegroundService : Service() {
         }
 
         val sId = currentSessionId ?: "amb_sess_${UUID.randomUUID()}"
+        val sttRef = windowSttRef.remove(liveWindow.id) ?: "sherpa_offline"
         if (newActionableProposals.isNotEmpty()) {
             storage.saveAmbientWindow(
                 AmbientWindow(
@@ -609,7 +841,7 @@ class AmbientForegroundService : Service() {
                         score = wTurn.score,
                         isShort = wTurn.isShort,
                         text = wTurn.text,
-                        sttRef = "sherpa_offline",
+                        sttRef = sttRef,
                         expiresAt = sliceEnd + 48L * 3600 * 1000L
                     )
                 )
@@ -653,44 +885,28 @@ class AmbientForegroundService : Service() {
         serviceScope.launch(Dispatchers.IO) {
             val now = System.currentTimeMillis()
 
-            // Transcribe any buffered audio from the last 120s that hasn't been transcribed
-            // (e.g. third-party speech where the presence gate stayed closed).
-            val unTranscribed = synchronized(recentAudioSegments) {
-                val cutoff = now - 120_000L
-                recentAudioSegments.filter { it.tEndMs >= cutoff }
-            }
-            if (unTranscribed.isNotEmpty()) {
-                val voiceEngine = SherpaVoiceEngine.getInstance(applicationContext)
-                val existingStartTimes = synchronized(recentTurns) { recentTurns.map { it.tStartMs }.toSet() }
-                val newlyTranscribed = mutableListOf<DialogueWindowEngine.Turn>()
-                for (seg in unTranscribed) {
-                    if (seg.tStartMs !in existingStartTimes) {
-                        val transcript = voiceEngine?.transcribe(seg.audioSamples)?.trim().orEmpty()
-                        if (transcript.isNotBlank()) {
-                            val scrubbed = NumberScrubber.scrub(transcript)
-                            newlyTranscribed.add(
-                                DialogueWindowEngine.Turn(
-                                    segmentId = UUID.randomUUID().toString(),
-                                    tStartMs = seg.tStartMs,
-                                    tEndMs = seg.tEndMs,
-                                    label = seg.label,
-                                    text = scrubbed,
-                                    score = seg.score,
-                                    isShort = seg.isShort
-                                )
-                            )
-                        }
-                    }
-                }
-                if (newlyTranscribed.isNotEmpty()) {
+            // Everything heard in the last two minutes, gated or not: the user asked for it.
+            val heard = synchronized(pipelineLock) { pipeline?.recent(now, 120_000L).orEmpty() }
+            val existingStarts = synchronized(recentTurns) { recentTurns.map { it.tStartMs }.toSet() }
+            val missing = heard.filter { it.tStartMs !in existingStarts }
+            if (missing.isNotEmpty()) {
+                val bookmarkWin = AmbientPipeline.ReadyWindow(
+                    id = UUID.randomUUID().toString(),
+                    segments = missing,
+                    batches = synchronized(pipelineLock) { pipeline?.batchRuns(missing) } ?: emptyList(),
+                    startedAtMs = missing.first().tStartMs,
+                    endedAtMs = missing.last().tEndMs,
+                )
+                val turns = runCatching { transcribeWindow(bookmarkWin) }.getOrDefault(emptyList())
+                windowSttRef.remove(bookmarkWin.id)
+                if (turns.isNotEmpty()) {
                     synchronized(recentTurns) {
-                        recentTurns.addAll(newlyTranscribed)
+                        recentTurns.addAll(turns)
                         val cutoff = now - 120_000L
                         recentTurns.removeAll { it.tEndMs < cutoff }
                     }
                 }
             }
-
             val turnsSnapshot = synchronized(recentTurns) {
                 val cutoff = now - 120_000L
                 recentTurns.filter { it.tEndMs >= cutoff }.sortedBy { it.tStartMs }
@@ -860,6 +1076,7 @@ class AmbientForegroundService : Service() {
     private fun stopListeningLoop() {
         listeningJob?.cancel()
         listeningJob = null
+        synchronized(pipelineLock) { pipeline?.clear(); pipeline = null }
         try {
             activeRecorder?.cancelRecording()
         } catch (_: Exception) {}
@@ -870,7 +1087,12 @@ class AmbientForegroundService : Service() {
         val title = "Mine is listening"
         val readingNotifications = com.anchor.mine.notifications.NotificationReader.isReadingEnabledCached()
         val content = when (state) {
-            is AmbientState.Listening -> if (readingNotifications) "Noting commitments · reading your notifications" else "Noting commitments as you talk"
+            is AmbientState.Listening -> when {
+                !sttReady && readingNotifications -> "Reading your notifications · speech-to-text not set up"
+                !sttReady -> "Waiting for a speech-to-text model or NVIDIA key"
+                readingNotifications -> "Noting commitments · reading your notifications"
+                else -> "Noting commitments as you talk"
+            }
             is AmbientState.Sleeping -> "Paused · ${state.reason.display}"
             is AmbientState.Processing -> "Making sense of what was said"
             is AmbientState.Off -> "Stopped"
@@ -951,6 +1173,14 @@ class AmbientForegroundService : Service() {
         const val ACTION_RESUME = "com.anchor.mine.ambient.ACTION_RESUME"
         const val ACTION_BOOKMARK_2M = "com.anchor.mine.ambient.ACTION_BOOKMARK_2M"
         const val ACTION_REFRESH = "com.anchor.mine.ambient.ACTION_REFRESH"
+
+        /** NVIDIA keys for Whisper, one per line. Empty = reuse the chat provider's keys when it is NIM. */
+        const val KEY_NIM_KEYS = "ambient.stt.nim_keys"
+        const val KEY_NIM_FUNCTION = "ambient.stt.nim_function_id"
+        const val KEY_STT_LANGUAGE = "ambient.stt.language"
+        const val KEY_CLOUD_SECONDS = "ambient.stt.cloud_seconds_today"
+        /** "1" = send transcripts of gated windows to the chat provider for extraction. */
+        const val KEY_EXTRACT_WITH_AI = "ambient.extract_with_ai"
 
         /**
          * Re-evaluates blockers right away (e.g. the in-app mic was released) and re-posts the

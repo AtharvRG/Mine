@@ -14,6 +14,7 @@ import android.os.Build
 import com.k2fsa.sherpa.onnx.FeatureConfig
 import com.k2fsa.sherpa.onnx.OfflineTts
 import com.k2fsa.sherpa.onnx.OfflineTtsConfig
+import com.k2fsa.sherpa.onnx.OfflineTtsKittenModelConfig
 import com.k2fsa.sherpa.onnx.OfflineTtsKokoroModelConfig
 import com.k2fsa.sherpa.onnx.OfflineTtsModelConfig
 import com.k2fsa.sherpa.onnx.OnlineModelConfig
@@ -57,6 +58,20 @@ class SherpaVoiceEngine private constructor(
     val isSttAvailable: Boolean get() = recognizer != null
     val isTtsAvailable: Boolean get() = tts != null
     val isSpeakerExtractorAvailable: Boolean get() = speakerExtractor != null
+
+    /**
+     * A fresh Silero VAD for one audio stream (ambient listening, enrolment). Each stream gets its
+     * own instance so their states never mix; the caller closes it. Null when the VAD model is
+     * not installed — use [com.anchor.core.ambient.EnergySegmenter] then.
+     */
+    fun newSegmenter(): SileroSegmenter? {
+        if (!paths.vadPresent) return null
+        return try {
+            SileroSegmenter(Vad(null, sileroConfig(paths)))
+        } catch (_: Throwable) {
+            null
+        }
+    }
 
     /**
      * Extracts speaker embedding using neural SpeakerEmbeddingExtractor (campplus)
@@ -335,6 +350,10 @@ class SherpaVoiceEngine private constructor(
         @Volatile
         private var nextRetryAt = 0L
 
+        /** Catalog id of the TTS engine the user picked ("tts-kokoro-int8" / "tts-kitten-nano"). Set from settings. */
+        @Volatile
+        var preferredTts: String? = null
+
         fun getInstance(context: Context, customPaths: VoiceModelPaths? = null): SherpaVoiceEngine? {
             instance?.let { return it }
             return synchronized(this) {
@@ -377,26 +396,40 @@ class SherpaVoiceEngine private constructor(
                 .trim()
         }
 
+        /** Silero settings shared by every VAD instance: 0.5 s of silence ends a segment, 20 s caps one. */
+        internal fun sileroConfig(paths: VoiceModelPaths): VadModelConfig = VadModelConfig(
+            sileroVadModelConfig = SileroVadModelConfig(
+                model = paths.vadModel.absolutePath,
+                threshold = 0.5f,
+                minSilenceDuration = 0.5f,
+                minSpeechDuration = 0.25f,
+                windowSize = 512,
+                maxSpeechDuration = 20.0f
+            ),
+            sampleRate = 16000,
+            numThreads = 1,
+            provider = "cpu",
+            debug = false
+        )
+
+        /**
+         * Forgets the cached engine so newly downloaded models are picked up on next use. The old
+         * engine is not closed here: a listening loop may still hold it, and releasing native
+         * memory under it would crash. It is freed when the last holder lets go.
+         */
+        fun reload() {
+            synchronized(this) {
+                instance = null
+                nextRetryAt = 0L
+            }
+        }
+
         fun create(context: Context, customPaths: VoiceModelPaths? = null): SherpaVoiceEngine? {
             val paths = customPaths ?: VoiceModelPaths.resolve(context) ?: return null
-            if (!paths.vadPresent && !paths.sttComplete && !paths.ttsComplete) return null
+            if (!paths.vadPresent && !paths.sttComplete && !paths.anyTtsComplete && !paths.speakerPresent) return null
 
             val vad = if (paths.vadPresent) try {
-                val vadConfig = VadModelConfig(
-                    sileroVadModelConfig = SileroVadModelConfig(
-                        model = paths.vadModel.absolutePath,
-                        threshold = 0.5f,
-                        minSilenceDuration = 0.5f,
-                        minSpeechDuration = 0.25f,
-                        windowSize = 512,
-                        maxSpeechDuration = 20.0f
-                    ),
-                    sampleRate = 16000,
-                    numThreads = 2,
-                    provider = "cpu",
-                    debug = false
-                )
-                Vad(null, vadConfig)
+                Vad(null, sileroConfig(paths))
             } catch (_: Throwable) {
                 null
             } else null
@@ -423,13 +456,28 @@ class SherpaVoiceEngine private constructor(
                 null
             } else null
 
-            val tts = if (paths.ttsComplete) try {
+            // Kokoro or Kitten, as picked in Settings → Models; whichever is installed otherwise.
+            val wantKitten = preferredTts == "tts-kitten-nano"
+            val useKitten = paths.kittenComplete && (wantKitten || !paths.ttsComplete)
+            val tts = if (useKitten) try {
+                val kitten = OfflineTtsKittenModelConfig(
+                    model = paths.kittenModel!!.absolutePath,
+                    voices = paths.kittenVoices!!.absolutePath,
+                    tokens = paths.kittenTokens!!.absolutePath,
+                    dataDir = paths.kittenDataDir!!.absolutePath,
+                    lengthScale = 1.0f
+                )
+                OfflineTts(null, OfflineTtsConfig(model = OfflineTtsModelConfig(kitten = kitten, numThreads = 2, debug = false, provider = "cpu")))
+            } catch (_: Throwable) {
+                null
+            } else if (paths.ttsComplete) try {
                 val kokoroConfig = OfflineTtsKokoroModelConfig(
                     model = paths.ttsModel.absolutePath,
                     voices = paths.ttsVoices.absolutePath,
                     tokens = paths.ttsTokens.absolutePath,
                     dataDir = paths.ttsDataDir.absolutePath,
                     lexicon = if (paths.ttsLexicon.exists()) paths.ttsLexicon.absolutePath else "",
+                    dictDir = paths.ttsDictDir?.absolutePath ?: "",
                     lengthScale = 1.0f
                 )
                 val ttsModelConfig = OfflineTtsModelConfig(
