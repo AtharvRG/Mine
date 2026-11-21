@@ -143,6 +143,8 @@ fun S20AboutYouSoul() {
                 mineText(14f, lineHeight = 1.625f), Hex.Mute,
             )
         }
+        AboutYouChatCard()
+        Spacer(Modifier.height(12.dp))
         ScrollPaper(Modifier.weight(1f), top = 24.dp, spacing = 8.dp) {
             if (facts.isEmpty()) {
                 Column(Modifier.fillMaxWidth().padding(vertical = 40.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {

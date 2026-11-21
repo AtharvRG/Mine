@@ -60,8 +60,8 @@ import com.mine.companion.ui.theme.num
 import com.mine.companion.ui.theme.w
 
 /*
- * First run. Quick setup: consent → name → day → AI → permissions → done.
- * Full setup adds persona, how memory works, Soul seed, privacy and backups.
+ * First run. Quick setup: consent → name → details → day → AI → permissions → done.
+ * Full setup adds persona, how memory works, voice enrolment, Soul seed, privacy and backups.
  * Every step writes real settings; nothing here is a demo.
  */
 
@@ -189,7 +189,7 @@ fun S04SetupBasics() {
                 }
             }
         }
-        Footer { PrimaryButton("Continue", enabled = name.isNotBlank()) { dispatch(MineAction.Navigate(ScreenId.S05)) } }
+        Footer { PrimaryButton("Continue", enabled = name.isNotBlank()) { dispatch(MineAction.Navigate(ScreenId.S45)) } }
     }
 }
 
@@ -273,6 +273,7 @@ private val PersonaCopy = mapOf(
     PersonaType.coach to "Encouraging, with structure. Keeps you accountable.",
     PersonaType.chill to "Easygoing. Light reminders, no pressure.",
     PersonaType.minimal to "Few words. Just the facts.",
+    PersonaType.ultron to "Immaculate English, theatrical wit, mocks your excuses — then helps, precisely.",
 )
 
 @Composable
@@ -349,7 +350,8 @@ fun S09Permissions() {
     val dispatch = mineDispatch()
     val p = mineSelect { it.platform }
     val fast = mineSelect { it.onboardingFastPath }
-    StepScreen(if (fast) ScreenId.S13 else ScreenId.S10) {
+    // Full setup continues to voice enrolment (needs the mic), then the Soul seed.
+    StepScreen(if (fast) ScreenId.S13 else ScreenId.S42) {
         Txt("A few permissions", serifHeading(32f), Mine.Ink1)
         Txt("Only notifications matter for reminders. The rest are optional and can change any time.", mineText(14f, lineHeight = 1.625f), Hex.Mute, Modifier.padding(top = 8.dp, bottom = 20.dp))
         PermissionCard(
@@ -397,8 +399,8 @@ private fun PermissionCard(title: String, body: String, granted: Boolean, requir
 
 private data class SeedQ(val category: String, val question: String, val placeholder: String)
 
+// "What do you do?" is asked on the details screen (S45) in both setup paths.
 private val SeedQuestions = listOf(
-    SeedQ("identity", "What do you do?", "Student, designer, parent, founder…"),
     SeedQ("routine", "What does a normal day look like?", "Gym at 7, work 9–6, gaming at night…"),
     SeedQ("reply_style", "How should I reply?", "Short and direct, or warm and detailed…"),
     SeedQ("health", "Anything health-related I should keep in mind?", "Optional"),

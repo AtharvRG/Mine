@@ -180,7 +180,14 @@ fun mineReducer(state: MineUiState, action: MineAction, now: Long = System.curre
         MineAction.ClearHeardFeed, MineAction.TestNotificationVoice, is MineAction.SaveHeardSuggestion,
         is MineAction.RequestPermission, MineAction.RefreshPlatform, is MineAction.ExportBackup,
         is MineAction.ImportBackup, is MineAction.ExportMarkdown, is MineAction.SetAutoBackupFolder,
-        is MineAction.SetAmbientListening, MineAction.FinishOnboarding, is MineAction.SetDayWindow -> state
+        is MineAction.SetAmbientListening, MineAction.FinishOnboarding, is MineAction.SetDayWindow,
+        is MineAction.SetReplyTo, MineAction.RefreshAmbient, is MineAction.SaveWhisperKeys, MineAction.LoadInstalledApps,
+        is MineAction.DownloadModel, is MineAction.CancelModel, is MineAction.DeleteModel, is MineAction.ActivateModel,
+        is MineAction.EnrollRecord, MineAction.EnrollStop, is MineAction.EnrollRedo, MineAction.EnrollSave, MineAction.EnrollReset,
+        is MineAction.AboutYouSend, MineAction.AboutYouSuggest, MineAction.AboutYouReset -> state
+
+        // Navigation happens in the store (it also sets the quote); nothing to do here.
+        is MineAction.TalkAbout -> state
     }
 
 private fun personaArticle(p: PersonaType): String = when (p) {
@@ -189,4 +196,5 @@ private fun personaArticle(p: PersonaType): String = when (p) {
     PersonaType.coach -> "a coach"
     PersonaType.chill -> "a chill friend"
     PersonaType.minimal -> "a minimalist"
+    PersonaType.ultron -> "Ultron"
 }

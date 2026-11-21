@@ -202,6 +202,10 @@ private fun ScreenContent(s: ScreenId) {
         ScreenId.S29 -> S29Graph()
         ScreenId.S30 -> S30Debug()
         ScreenId.S41 -> S41LivingNotes()
+        ScreenId.S42 -> com.mine.companion.ui.screens.S42VoiceEnrollment()
+        ScreenId.S43 -> com.mine.companion.ui.screens.S43NotificationSources()
+        ScreenId.S44 -> com.mine.companion.ui.screens.S44Models()
+        ScreenId.S45 -> com.mine.companion.ui.screens.S45AboutYouDetails()
         else -> S31S40SystemScreen(s)
     }
 }

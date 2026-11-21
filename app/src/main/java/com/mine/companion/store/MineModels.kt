@@ -17,11 +17,19 @@ enum class ScreenId {
     S21, S22, S23, S24, S25, S26, S27, S28, S29, S30,
     S31, S32, S33, S34, S35, S36, S37, S38, S39, S40,
     S41,
+    /** Teach Mine your voice (enrolment). */
+    S42,
+    /** What notifications Mine may read: every app, with its rule. */
+    S43,
+    /** On-device models: embedders, voices, speech. */
+    S44,
+    /** Onboarding: a bit about you (personal details). */
+    S45,
 }
 
 enum class ModalId { M01, M02, M03, M04, M06, M07, M08, M09, M10, M16 }
 
-enum class PersonaType { companion, cofounder, coach, chill, minimal }
+enum class PersonaType { companion, cofounder, coach, chill, minimal, ultron }
 
 enum class StatusChipState { normal, offline, rate_limited, reminders_at_risk, backup_model, no_ai }
 
@@ -157,7 +165,16 @@ data class ChatMessage(
     val queued: Boolean = false,
     /** A quiet system line (status, what's-new), not a bubble. */
     val isSystem: Boolean = false,
+    /** The message this one replies to, shown as a quote inside the bubble. */
+    val replyTo: ReplyQuote? = null,
+    /** Mine started this conversation itself (check-in, nudge, wake-up, after a call). */
+    val proactive: Boolean = false,
+    /** A fired reminder, shown as a compact line. */
+    val isReminder: Boolean = false,
 )
+
+@Immutable
+data class ReplyQuote(val id: String, val preview: String, val fromAssistant: Boolean, val dayKey: String? = null)
 
 enum class AlarmTierUi { ALARM, GENTLE }
 
@@ -367,6 +384,32 @@ sealed interface MineAction {
     data class ResolveAmbiguity(val messageId: String, val optionId: String) : MineAction
     data class UndoReceipt(val messageId: String, val receiptId: String) : MineAction
     data class SendChatMessage(val text: String) : MineAction
+    /** Quote a message in the composer (swipe / long-press → Reply). Null clears it. */
+    data class SetReplyTo(val draft: ReplyDraft?) : MineAction
+    /** Long-press on a past day's message: open today's chat with it quoted, ready to talk about. */
+    data class TalkAbout(val message: ChatMessage, val dayLabel: String?) : MineAction
+    /** Ambient settings changed: re-evaluate the listening service now. */
+    data object RefreshAmbient : MineAction
+    /** Saves NVIDIA keys used only for Whisper transcription (empty list clears them). */
+    data class SaveWhisperKeys(val keys: List<String>) : MineAction
+    /** Loads every launchable app for the notification-sources screen. */
+    data object LoadInstalledApps : MineAction
+    // Model manager
+    data class DownloadModel(val id: String) : MineAction
+    data class CancelModel(val id: String) : MineAction
+    data class DeleteModel(val id: String) : MineAction
+    /** Makes an installed embedder or TTS engine the active one (re-indexes for embedders). */
+    data class ActivateModel(val id: String) : MineAction
+    // Voice enrolment
+    data class EnrollRecord(val index: Int) : MineAction
+    data object EnrollStop : MineAction
+    data class EnrollRedo(val index: Int) : MineAction
+    data object EnrollSave : MineAction
+    data object EnrollReset : MineAction
+    // About-you interview chat (isolated: no web, no voice, its own history)
+    data class AboutYouSend(val text: String) : MineAction
+    data object AboutYouSuggest : MineAction
+    data object AboutYouReset : MineAction
     data object TriggerProcrastinationGate : MineAction
     data class TriggerWalkNotification(val visible: Boolean) : MineAction
     data class SetMemoryTab(val tab: MemoryTab) : MineAction

@@ -21,6 +21,15 @@
     <!-- Blueprint 61: Foreground Service with Microphone for Ambient Listening -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+    <!-- Notification sources screen: lists launchable apps so the user can pick what Mine may
+         read before an app ever notifies. Narrow query (MAIN/LAUNCHER), no QUERY_ALL_PACKAGES. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+    </queries>
+
     <application
         android:name=".MineApp"
         android:allowBackup="false"

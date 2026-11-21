@@ -69,6 +69,12 @@ class CallNudgeActionReceiver : BroadcastReceiver() {
                         val eval = callEngine.evaluateCandidate(callEventId, proactiveState)
                         if (eval is CallNudgeDecision.ReadyToNudge) {
                             CallNudgeNotifications.show(appContext, callEventId)
+                            // Also a chat message, so the question is waiting in the conversation.
+                            com.anchor.mine.notifications.ProactiveMessages.post(
+                                appContext, storage,
+                                "How did that call go? Anything you promised or need to remember from it?",
+                                source = "call", notify = false,
+                            )
                             storage.updateCallEventState(callEventId, CallNudgeState.NUDGED)
                         }
                     }

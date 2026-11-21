@@ -25,7 +25,14 @@ import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.unit.IntOffset
+import com.mine.companion.store.ReplyDraft
+import com.mine.companion.store.ReplyQuote
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -731,6 +738,7 @@ fun ChatAndDayPage(isPastDayPage: Boolean = false, onClosePeephole: (() -> Unit)
         s.items.firstOrNull { it.status != ItemStatus.done && it.dueLabel.startsWith("Today") }?.let { it.title to it.dueLabel.removePrefix("Today ") }
     }
     val connected = mineSelect { it.engine.providerKey.isNotBlank() || it.engine.onDeviceFallbackEnabled }
+    val replyTo = mineSelect { it.platform.replyTo }
 
     var draft by rememberSaveable { mutableStateOf("") }
     LaunchedEffect(prefill) {
@@ -913,8 +921,12 @@ fun ChatAndDayPage(isPastDayPage: Boolean = false, onClosePeephole: (() -> Unit)
                             copiedId = copiedId,
                             speakingId = speakingId,
                             onCopy = ::handleCopy,
+                            isPastDay = isPastDayPage,
+                            onReply = { m -> dispatch(MineAction.SetReplyTo(ReplyDraft(m.id, m.sender, m.text.take(160)))) },
+                            onTalkAbout = { m -> dispatch(MineAction.TalkAbout(m, selectedPastDate.ifBlank { null })) },
                         )
                         if (!isPastDayPage) {
+                            replyTo?.let { r -> ReplyBar(r) { dispatch(MineAction.SetReplyTo(null)) } }
                             Box(
                                 Modifier
                                     .fillMaxWidth()
@@ -959,8 +971,13 @@ private fun MessageList(
     copiedId: String?,
     speakingId: String?,
     onCopy: (String, String) -> Unit,
+    isPastDay: Boolean = false,
+    onReply: (ChatMessage) -> Unit = {},
+    onTalkAbout: (ChatMessage) -> Unit = {},
 ) {
     val listState = rememberLazyListState()
+    // Long-press opens a small action row under that one message.
+    var menuFor by remember { mutableStateOf<String?>(null) }
     val initialIds = remember { messages.map { it.id }.toHashSet() }
     val rows = remember(messages, busy, error) {
         val lastAssistantIdx = messages.indexOfLast { it.sender == Sender.assistant && !it.isSystem }
@@ -1004,6 +1021,14 @@ private fun MessageList(
                                 m.text, MineType.Footnote, Mine.Ink3,
                                 Modifier.fillMaxWidth().padding(horizontal = 12.dp), textAlign = TextAlign.Center,
                             )
+                            m.isReminder -> Row(
+                                Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                LIcon(Lucide.Bell, 12.dp, Hex.Mute)
+                                Txt(" ${m.text}", MineType.Footnote, Mine.Ink3)
+                            }
                             m.sender == Sender.user -> Presence(
                                 visible = true,
                                 animateOnFirst = animate,
@@ -1011,13 +1036,20 @@ private fun MessageList(
                                 enter = tween(240, easing = MineMotion.FmEaseInOut),
                             ) {
                                 Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                    Txt(
-                                        m.text, mineText(14.5f, 500, lineHeight = 1.625f), Hex.Jet,
-                                        Modifier
-                                            .widthIn(max = bubbleMax)
-                                            .background(Hex.Cream, UserBubble)
-                                            .padding(horizontal = 16.dp, vertical = 10.dp),
-                                    )
+                                    SwipeToReply(enabled = !isPastDay, onReply = { onReply(m) }) {
+                                        Column(
+                                            Modifier
+                                                .widthIn(max = bubbleMax)
+                                                .background(Hex.Cream, UserBubble)
+                                                .messageActions(onLongPress = { menuFor = m.id })
+                                                .padding(horizontal = 16.dp, vertical = 10.dp),
+                                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                                        ) {
+                                            m.replyTo?.let { QuoteBlock(it, onLight = true) }
+                                            Txt(m.text, mineText(14.5f, 500, lineHeight = 1.625f), Hex.Jet)
+                                        }
+                                    }
+                                    if (menuFor == m.id) MessageMenu(isPastDay, onReply = { menuFor = null; onReply(m) }, onTalkAbout = { menuFor = null; onTalkAbout(m) }, onCopy = { menuFor = null; onCopy(m.id, m.text) })
                                     if (m.queued) {
                                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                                             LIcon(Lucide.Clock, 11.dp, Hex.Mute)
@@ -1032,7 +1064,14 @@ private fun MessageList(
                                 initial = Fx(alpha = 0f, y = 10.dp),
                                 enter = tween(250, easing = MineMotion.FmEaseInOut),
                             ) {
-                                AssistantTurn(m, row.streaming, webQuery.takeIf { row.streaming }, copiedId == m.id, speakingId == m.id, onCopy)
+                                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    SwipeToReply(enabled = !isPastDay && !row.streaming && m.text.isNotBlank(), onReply = { onReply(m) }) {
+                                        Box(Modifier.messageActions(enabled = m.text.isNotBlank() && !row.streaming, onLongPress = { menuFor = m.id })) {
+                                            AssistantTurn(m, row.streaming, webQuery.takeIf { row.streaming }, copiedId == m.id, speakingId == m.id, onCopy)
+                                        }
+                                    }
+                                    if (menuFor == m.id) MessageMenu(isPastDay, onReply = { menuFor = null; onReply(m) }, onTalkAbout = { menuFor = null; onTalkAbout(m) }, onCopy = { menuFor = null; onCopy(m.id, m.text) })
+                                }
                             }
                         }
                     }
@@ -1120,6 +1159,13 @@ private fun AssistantTurn(
     val dispatch = mineDispatch()
     val body = mineText(15f, lineHeight = 28f / 15f)
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (m.proactive) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                LIcon(Lucide.Sparkles, 11.dp, Hex.Sky)
+                Txt("Mine reached out", mineText(11.5f, 500), Hex.Sky)
+            }
+        }
+        m.replyTo?.let { QuoteBlock(it, onLight = false) }
         if (streaming && webQuery != null) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 LIcon(Lucide.Globe, 12.dp, Hex.Sky)
@@ -1175,6 +1221,114 @@ private fun AssistantTurn(
                 }
                 if (m.timestamp.isNotBlank()) Txt(m.timestamp, mineText(11.5f).num(), Hex.Mute.copy(alpha = 0.7f))
             }
+        }
+    }
+}
+
+/* ======================================================================== */
+/* Replies                                                                  */
+/* ======================================================================== */
+
+/** Long-press on a bubble (tap does nothing, so text selection and links keep working). */
+@OptIn(ExperimentalFoundationApi::class)
+private fun Modifier.messageActions(enabled: Boolean = true, onLongPress: () -> Unit): Modifier =
+    if (!enabled) this else this.combinedClickable(interactionSource = null, indication = null, onClick = {}, onLongClick = onLongPress)
+
+/** Drag a message right to reply, like WhatsApp: it follows the finger, a reply arrow appears, and it springs back. */
+@Composable
+private fun SwipeToReply(enabled: Boolean, onReply: () -> Unit, content: @Composable () -> Unit) {
+    if (!enabled) { content(); return }
+    val offset = remember { Animatable(0f) }
+    val scope = rememberCoroutineScope()
+    val density = LocalDensity.current
+    val trigger = with(density) { 64.dp.toPx() }
+    var fired by remember { mutableStateOf(false) }
+    Box(
+        Modifier.pointerInput(Unit) {
+            detectHorizontalDragGestures(
+                onDragStart = { fired = false },
+                onDragEnd = { scope.launch { offset.animateTo(0f, tween(180)) } },
+                onDragCancel = { scope.launch { offset.animateTo(0f, tween(180)) } },
+                onHorizontalDrag = { change, dx ->
+                    val next = (offset.value + dx).coerceIn(0f, trigger * 1.3f)
+                    if (next > 0f) change.consume()
+                    scope.launch { offset.snapTo(next) }
+                    if (!fired && next >= trigger) { fired = true; onReply() }
+                },
+            )
+        },
+        contentAlignment = Alignment.CenterStart,
+    ) {
+        val p = (offset.value / trigger).coerceIn(0f, 1f)
+        Box(Modifier.graphicsLayer { alpha = p; scaleX = 0.6f + 0.4f * p; scaleY = 0.6f + 0.4f * p }.padding(start = 4.dp)) {
+            LIcon(Lucide.Reply, 16.dp, Hex.Mute)
+        }
+        Box(Modifier.offset { IntOffset(offset.value.toInt(), 0) }) { content() }
+    }
+}
+
+/** The quoted message inside a bubble: who said it (and when, if another day), two lines of it. */
+@Composable
+private fun QuoteBlock(q: ReplyQuote, onLight: Boolean) {
+    val ink = if (onLight) Hex.Jet else Hex.Bone
+    val bg = if (onLight) Color.Black.copy(alpha = 0.06f) else Color.White.copy(alpha = 0.05f)
+    Row(Modifier.clip(RoundedCornerShape(10.dp)).background(bg)) {
+        Box(Modifier.width(3.dp).height(44.dp).background(if (q.fromAssistant) Hex.Sky else Hex.Gold))
+        Column(Modifier.padding(horizontal = 10.dp, vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Txt(
+                (if (q.fromAssistant) "Mine" else "You") + (q.dayKey?.let { " · $it" } ?: ""),
+                mineText(11.5f, 600), if (q.fromAssistant) Hex.Sky else Hex.Gold,
+            )
+            Txt(q.preview.ifBlank { "Message" }, mineText(12.5f, lineHeight = 1.4f), ink.copy(alpha = 0.75f), maxLines = 2)
+        }
+    }
+}
+
+/** Shown above the composer while replying. */
+@Composable
+private fun ReplyBar(r: ReplyDraft, onClose: () -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .background(Hex.ChatBg)
+            .padding(start = 20.dp, end = 20.dp, top = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Row(
+            Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).background(Color.White.copy(alpha = 0.05f)),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(Modifier.width(3.dp).height(46.dp).background(if (r.sender == Sender.assistant) Hex.Sky else Hex.Gold))
+            Column(Modifier.weight(1f).padding(horizontal = 10.dp, vertical = 6.dp)) {
+                Txt(
+                    "Replying to ${if (r.sender == Sender.assistant) "Mine" else "yourself"}" + (r.dayLabel?.let { " · $it" } ?: ""),
+                    mineText(11.5f, 600), if (r.sender == Sender.assistant) Hex.Sky else Hex.Gold,
+                )
+                Txt(r.preview, mineText(12.5f), Hex.Bone.copy(alpha = 0.75f), maxLines = 1)
+            }
+            Box(Modifier.size(36.dp).tap(onClick = onClose).semantics { contentDescription = "Cancel reply" }, contentAlignment = Alignment.Center) {
+                LIcon(Lucide.X, 14.dp, Hex.Mute)
+            }
+        }
+    }
+}
+
+/** The small row a long-press opens: Reply (today) or Talk about this (past days), and Copy. */
+@Composable
+private fun MessageMenu(isPastDay: Boolean, onReply: () -> Unit, onTalkAbout: () -> Unit, onCopy: () -> Unit) {
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        val pill = Modifier.height(32.dp).background(Color.White.copy(alpha = 0.08f), CircleShape).padding(horizontal = 12.dp)
+        if (isPastDay) {
+            Row(pill.tap(onClick = onTalkAbout), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                LIcon(Lucide.Reply, 13.dp, Hex.Sky); Txt("Talk about this", mineText(12.5f, 500), Hex.Bone)
+            }
+        } else {
+            Row(pill.tap(onClick = onReply), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                LIcon(Lucide.Reply, 13.dp, Hex.Sky); Txt("Reply", mineText(12.5f, 500), Hex.Bone)
+            }
+        }
+        Row(pill.tap(onClick = onCopy), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            LIcon(Lucide.Copy, 13.dp, Hex.Mute); Txt("Copy", mineText(12.5f, 500), Hex.Bone)
         }
     }
 }

@@ -353,9 +353,7 @@ class ContextSensingManager(
                             "You just left home.\n\n$errandChecklists"
                         }
 
-                        val msgId = "a_${UUID.randomUUID()}"
-                        storage.insertRawMessage(msgId, "assistant", finalMessage)
-                        ChatReplyNotifier.notify(context, finalMessage)
+                        com.anchor.mine.notifications.ProactiveMessages.post(context, storage, finalMessage, source = "place")
 
                         // Cancel fallback wakeups and clear context trigger so it doesn't fire again
                         val scheduler = AndroidAlarmScheduler(context)
@@ -394,9 +392,7 @@ class ContextSensingManager(
                             walk.message
                         }
 
-                        val msgId = "a_${UUID.randomUUID()}"
-                        storage.insertRawMessage(msgId, "assistant", finalMessage)
-                        ChatReplyNotifier.notify(context, finalMessage)
+                        com.anchor.mine.notifications.ProactiveMessages.post(context, storage, finalMessage, source = "place")
                     } catch (e: Throwable) {
                         Log.w(TAG, "Error handling CONTEXT_WALKING_STARTED trigger: ${e.message}")
                     }
@@ -412,9 +408,7 @@ class ContextSensingManager(
                                 storage.markAgentWakeupState(w.id, "cancelled")
                             }
                             val welcomeMsg = "Welcome back home! Hope your walk was refreshing."
-                            val msgId = "a_${UUID.randomUUID()}"
-                            storage.insertRawMessage(msgId, "assistant", welcomeMsg)
-                            ChatReplyNotifier.notify(context, welcomeMsg)
+                            com.anchor.mine.notifications.ProactiveMessages.post(context, storage, welcomeMsg, source = "place")
                         }
                     } catch (e: Throwable) {
                         Log.w(TAG, "Error handling CONTEXT_HOME_AGAIN trigger: ${e.message}")

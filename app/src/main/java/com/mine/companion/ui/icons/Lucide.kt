@@ -40,6 +40,7 @@ object Lucide {
     val Check = g("check", "M20 6 9 17l-5-5")
     val X = g("x", "M18 6 6 18", "m6 6 12 12")
     val Plus = g("plus", "M5 12h14", "M12 5v14")
+    val Reply = g("reply", "m9 17-5-5 5-5", "M20 18v-2a4 4 0 0 0-4-4H4")
     val ChevronLeft = g("chevron-left", "m15 18-6-6 6-6")
     val ChevronRight = g("chevron-right", "m9 18 6-6-6-6")
     val ChevronDown = g("chevron-down", "m6 9 6 6 6-6")

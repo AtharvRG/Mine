@@ -31,7 +31,15 @@ object ChatTimelineBuilder {
                 "system" -> if (!msg.content.isNullOrBlank()) {
                     items.add(ChatItem.SystemEvent(msg.content, msg.tsUtc))
                 }
-                else -> items.add(ChatItem.Message(msg.id, msg.role, msg.content, msg.tsUtc))
+                else -> {
+                    val attrs = MessageAttrs.parse(msg.attrs)
+                    // A quoted message still in this window shows its current text (it may have been redacted since).
+                    val reply = attrs.replyTo?.let { r ->
+                        val live = messages.firstOrNull { it.id == r.id }
+                        if (live != null) r.copy(preview = live.content?.take(MessageAttrs.PREVIEW_CHARS) ?: "This message was removed.") else r
+                    }
+                    items.add(ChatItem.Message(msg.id, msg.role, msg.content, msg.tsUtc, reply, attrs.kind))
+                }
             }
             // Receipts caused by this message render directly under it.
             receipts.filter { it.causeMsgId == msg.id }.forEach { items.add(ChatItem.ReceiptItem(it)) }

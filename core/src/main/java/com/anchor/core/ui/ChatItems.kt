@@ -19,7 +19,16 @@ sealed interface ChatItem {
 
     data class DayHeader(val dayKey: String, override val tsUtc: Long) : ChatItem
     data class TimeDivider(override val tsUtc: Long) : ChatItem
-    data class Message(val id: String, val role: String, val content: String?, override val tsUtc: Long) : ChatItem
+    data class Message(
+        val id: String,
+        val role: String,
+        val content: String?,
+        override val tsUtc: Long,
+        /** The message this one quotes, when it is a reply. */
+        val replyTo: ReplyRef? = null,
+        /** "proactive" when Mine started it, "reminder" for a fired reminder; null for a turn. */
+        val kind: String? = null,
+    ) : ChatItem
     data class SystemEvent(val text: String, override val tsUtc: Long) : ChatItem
     data class ReceiptItem(val receipt: ReceiptState) : ChatItem {
         override val tsUtc: Long get() = receipt.timestamp

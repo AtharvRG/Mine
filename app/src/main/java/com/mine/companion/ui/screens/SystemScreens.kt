@@ -36,6 +36,9 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import com.mine.companion.ui.primitives.tap
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -199,7 +202,8 @@ fun S26Settings() {
                 },
             ) { dispatch(MineAction.Navigate(ScreenId.S36)) }
             NavRow("Voice", if (p.offlineSttInstalled || p.systemSttAvailable) "Hands-free ready" else "Needs a speech engine") { dispatch(MineAction.Navigate(ScreenId.S35)) }
-            NavRow("Places", if (e.contextSensingEnabled) "On" else "Off", divider = false) { dispatch(MineAction.Navigate(ScreenId.S34)) }
+            NavRow("Places", if (e.contextSensingEnabled) "On" else "Off") { dispatch(MineAction.Navigate(ScreenId.S34)) }
+            NavRow("Models", "Search memory, voices, speech", divider = false) { dispatch(MineAction.Navigate(ScreenId.S44)) }
         }
         Section("Reliability & data") {
             NavRow(
@@ -229,6 +233,7 @@ private fun providerName(endpoint: String): String {
         "googleapis" in host || "gemini" in host -> "Google"
         "deepseek" in host -> "DeepSeek"
         "together" in host -> "Together"
+        "nvidia" in host -> "NVIDIA NIM"
         "localhost" in host || host.startsWith("192.168") || host.startsWith("10.") -> "Local server"
         else -> host
     }
@@ -239,19 +244,27 @@ private fun personaLabel(id: String) = when (id) {
     "coach" -> "Coach"
     "chill_friend" -> "Chill friend"
     "minimal" -> "Minimal"
+    "ultron" -> "Ultron"
     else -> "Companion"
 }
 
 /* ========================= S07 (settings form) AI provider ========================= */
 
-private data class Preset(val name: String, val endpoint: String, val model: String)
+private data class Preset(val name: String, val endpoint: String, val model: String, val rpm: Int? = null)
+
+private const val NIM_ENDPOINT = "https://integrate.api.nvidia.com/v1/chat/completions"
 
 private val Presets = listOf(
     Preset("OpenAI", "https://api.openai.com/v1/chat/completions", "gpt-4o-mini"),
     Preset("OpenRouter", "https://openrouter.ai/api/v1/chat/completions", "openai/gpt-4o-mini"),
     Preset("Mistral", "https://api.mistral.ai/v1/chat/completions", "mistral-small-latest"),
     Preset("Groq", "https://api.groq.com/openai/v1/chat/completions", "llama-3.3-70b-versatile"),
+    // Free tier: 40 requests a minute per key. Model ids are listed on build.nvidia.com.
+    Preset("NVIDIA NIM", NIM_ENDPOINT, "meta/llama-3.3-70b-instruct", rpm = 40),
 )
+
+internal fun isNimEndpoint(endpoint: String): Boolean =
+    runCatching { java.net.URI(endpoint.trim()).host.orEmpty() }.getOrDefault("").endsWith("api.nvidia.com")
 
 /** The provider form, shared by onboarding (with a Continue) and Settings. */
 @OptIn(ExperimentalLayoutApi::class)
@@ -263,6 +276,11 @@ fun ProviderForm(onSaved: (() -> Unit)? = null) {
     var endpoint by rememberSaveable(e.providerEndpoint) { mutableStateOf(e.providerEndpoint.ifBlank { Presets[0].endpoint }) }
     var model by rememberSaveable(e.providerModel) { mutableStateOf(e.providerModel.ifBlank { Presets[0].model }) }
     var key by rememberSaveable(e.providerKey) { mutableStateOf(e.providerKey) }
+    // Extra keys for the same provider (KeyPool): rotated by load, a 429 benches one and the next takes over.
+    var extraKeys by rememberSaveable(e.providerExtraKeys) { mutableStateOf(e.providerExtraKeys) }
+    var rpm by rememberSaveable(e.providerRpm) { mutableStateOf(e.providerRpm) }
+    val nim = isNimEndpoint(endpoint)
+    var showPool by rememberSaveable { mutableStateOf(e.providerExtraKeys.isNotEmpty()) }
     var testing by remember { mutableStateOf(false) }
     var lastSeq by remember { mutableStateOf(result?.seq ?: 0L) }
     LaunchedEffect(result?.seq) { if (result != null && result.seq != lastSeq) testing = false }
@@ -271,7 +289,7 @@ fun ProviderForm(onSaved: (() -> Unit)? = null) {
         Presets.forEach { pr ->
             val on = endpoint == pr.endpoint
             Pressable(
-                onClick = { endpoint = pr.endpoint; model = pr.model },
+                onClick = { endpoint = pr.endpoint; model = pr.model; pr.rpm?.let { rpm = it } },
                 feel = MineMotion.Press.Chip,
                 modifier = Modifier.height(34.dp).background(if (on) Mine.Ink1 else Mine.Surface2, CircleShape).padding(horizontal = 14.dp),
             ) { Txt(pr.name, MineType.Footnote.w(600), if (on) Mine.Canvas else Mine.Ink1) }
@@ -280,7 +298,19 @@ fun ProviderForm(onSaved: (() -> Unit)? = null) {
     Section(footer = "Any OpenAI-compatible chat endpoint works. Your key is stored encrypted on this phone and sent only to this address.") {
         FieldRow("Address", endpoint, { endpoint = it }, "https://…/v1/chat/completions", keyboard = KeyboardType.Uri)
         FieldRow("Model", model, { model = it }, "gpt-4o-mini")
-        FieldRow("API key", key, { key = it }, "sk-…", secret = true, divider = false)
+        FieldRow("API key", key, { key = it }, if (nim) "nvapi-…" else "sk-…", secret = true, divider = false)
+    }
+    if (nim || showPool || extraKeys.isNotEmpty()) {
+        KeyPoolEditor(
+            keys = extraKeys,
+            onChange = { extraKeys = it },
+            rpm = rpm,
+            onRpm = { rpm = it },
+            nim = nim,
+        )
+    } else {
+        Spacer(Modifier.height(8.dp))
+        Txt("Add more keys for this provider", MineType.Footnote.w(600), Mine.Accent, Modifier.padding(start = 4.dp).tap { showPool = true })
     }
     if (result != null && result.seq != lastSeq || testing) {
         Spacer(Modifier.height(12.dp))
@@ -298,10 +328,49 @@ fun ProviderForm(onSaved: (() -> Unit)? = null) {
             dispatch(MineAction.Engine(UiAction.TestProvider(endpoint, key, model)))
         }
         CapsuleButton(if (onSaved != null) "Save and continue" else "Save", enabled = endpoint.isNotBlank() && key.isNotBlank()) {
-            dispatch(MineAction.Engine(UiAction.SaveProvider(endpoint, key, model)))
-            dispatch(MineAction.ShowToast("Provider saved"))
+            dispatch(MineAction.Engine(UiAction.SaveProvider(endpoint, key, model, extraKeys = extraKeys, rpm = rpm)))
+            val n = com.anchor.core.provider.KeyPool.sanitize(listOf(key) + extraKeys).size
+            dispatch(MineAction.ShowToast(if (n > 1) "Provider saved · $n keys in rotation" else "Provider saved"))
             onSaved?.invoke()
         }
+    }
+}
+
+/**
+ * Up to nine more keys beside the main one. Mine spreads requests across them by load and
+ * benches a key for a minute when it hits 429, so ten free-tier NIM keys act like one fast one.
+ */
+@Composable
+private fun KeyPoolEditor(keys: List<String>, onChange: (List<String>) -> Unit, rpm: Int, onRpm: (Int) -> Unit, nim: Boolean) {
+    val max = com.anchor.core.provider.KeyPool.MAX_KEYS - 1
+    var draft by remember { mutableStateOf("") }
+    Section(
+        "More keys (${keys.size + 1} of ${max + 1})",
+        footer = buildString {
+            append("Each request goes to the least-busy key. A key that's rate-limited sits out for a minute and the next one answers — you won't notice.")
+            if (nim) append(" NVIDIA's free tier allows 40 requests a minute per key; keys from the same NVIDIA account may share one limit.")
+        },
+    ) {
+        keys.forEachIndexed { i, k ->
+            GroupRow(
+                title = com.anchor.core.provider.KeyPool.mask(k),
+                detail = "Key ${i + 2}",
+                divider = true,
+                trailing = {
+                    Box(Modifier.size(30.dp).tap { onChange(keys - k) }.semantics { contentDescription = "Remove key" }, contentAlignment = Alignment.Center) {
+                        LIcon(Lucide.X, 14.dp, Mine.Ink3)
+                    }
+                },
+            )
+        }
+        if (keys.size < max) {
+            FieldRow("Add key", draft, { draft = it.trim() }, if (nim) "nvapi-…" else "Another key", secret = true, divider = true)
+            ActionRow("Add to rotation", Lucide.Plus, enabled = draft.isNotBlank()) {
+                onChange(com.anchor.core.provider.KeyPool.sanitize(keys + draft).take(max))
+                draft = ""
+            }
+        }
+        ChoiceRow("Requests per minute, per key", listOf(10, 20, 30, 40, 50), listOf(10, 20, 30, 40, 50).minBy { kotlin.math.abs(it - rpm) }, { "$it" }, divider = false) { onRpm(it) }
     }
 }
 
@@ -599,9 +668,10 @@ fun S35Voice() {
         Section("Replies", "When on, Mine reads its answers aloud after you type, too.") {
             SwitchRow("Read replies aloud", null, voiceReplies, divider = false) { dispatch(MineAction.ToggleSetting(SettingKey.voiceRepliesEnabled)) }
         }
-        Section("Engines", footer = if (!p.offlineSttInstalled) "For fully offline, private voice, install the Sherpa-ONNX speech models into Mine's files folder." else null) {
+        Section("Engines", footer = if (!p.offlineSttInstalled) "For fully offline, private voice, download the speech models in Settings → Models." else null) {
             ValueRow("Speech to text", stt)
-            ValueRow("Text to speech", if (p.offlineTtsInstalled) "On-device Kokoro" else "Android voice", divider = false)
+            ValueRow("Text to speech", if (p.offlineTtsInstalled) "On-device voice" else "Android voice")
+            NavRow("Models", "Download voices and speech models", divider = false) { dispatch(MineAction.Navigate(ScreenId.S44)) }
         }
     }
 }
@@ -636,6 +706,8 @@ fun S36Listening() {
             }
         }
 
+        SpeechToTextSection()
+
         SectionHeader("Read notifications aloud")
         if (s.enabled && !p.notificationAccess) {
             StatusCard("Allow notification access", "Android asks once. Mine only reads notifications while listening is on.", Tone.Warn, Lucide.Bell, "Open settings",
@@ -651,6 +723,7 @@ fun S36Listening() {
                 dispatch(MineAction.SetNotificationReading(s.copy(enabled = it)))
             }
             if (s.enabled) {
+                NavRow("What Mine can read", "Choose app by app", divider = true) { dispatch(MineAction.Navigate(ScreenId.S43)) }
                 ChoiceRow("How much to say", ContentLevel.entries.toList(), s.contentLevel, {
                     when (it) { ContentLevel.FULL -> "Everything"; ContentLevel.SENDER_ONLY -> "Who it's from"; ContentLevel.APP_ONLY -> "Just the app" }
                 }) {
@@ -699,13 +772,98 @@ fun S36Listening() {
             }
         }
 
+        Section("Your voice", footer = "Mine only transcribes conversations you're part of. Everyone else is “others”, and a TV or strangers on their own never reach speech-to-text.") {
+            NavRow(
+                "Teach Mine your voice",
+                when (e.profile.prefs["ambient.voiceprint_quality"]) {
+                    "good" -> "Enrolled · good"
+                    "okay" -> "Enrolled · could be better"
+                    else -> if (e.voiceprintEnrolled) "Enrolled" else "Not enrolled — listening can't tell it's you"
+                },
+                badge = if (!e.voiceprintEnrolled) "!" else null,
+            ) { dispatch(MineAction.EnrollReset); dispatch(MineAction.Navigate(ScreenId.S42)) }
+            val pipe = p.ambientPipeline
+            val last = pipe.lastScore
+            ValueRow(
+                "Voice check",
+                if (last == null) "Speak near the phone while listening"
+                else "${if (pipe.lastLabel == "user") "You" else "Someone else"} · ${(last * 100).toInt()}% match",
+                detail = "Heard so far: ${pipe.userSegments} from you, ${pipe.otherSegments} from others · ${pipe.windowsTranscribed} conversations kept, ${pipe.windowsDropped} skipped",
+                divider = false,
+            )
+        }
+
         Section("Privacy") {
-            ValueRow("Your voiceprint", if (e.voiceprintEnrolled) "Enrolled" else "Not enrolled", detail = "Helps tell your voice from others nearby")
             ActionRow(if (confirmDelete) "Tap again to delete all listening data" else "Delete all listening data", Lucide.Trash2, tint = Mine.Urgent, divider = false) {
                 if (confirmDelete) { dispatch(MineAction.Engine(UiAction.DeleteAllAmbientData)); confirmDelete = false } else confirmDelete = true
             }
         }
     }
+}
+
+/**
+ * Where ambient speech is transcribed: on the phone (sherpa-onnx), NVIDIA NIM Whisper, or Whisper
+ * with the phone as backup. Whisper needs at least one NVIDIA key; without one this says so and
+ * Mine falls back to the phone (or can't transcribe if no phone model is installed).
+ */
+@Composable
+private fun SpeechToTextSection() {
+    val dispatch = mineDispatch()
+    val e = mineSelect { it.engine }
+    val p = mineSelect { it.platform }
+    val mode = com.anchor.core.ambient.AmbientSttMode.fromWire(e.profile.prefs[com.anchor.core.ambient.AmbientSttMode.SETTING])
+    val ownKeys = e.profile.prefs["ambient.stt.nim_key_count"]?.toIntOrNull() ?: 0
+    val providerIsNim = isNimEndpoint(e.providerEndpoint) && e.providerKey.isNotBlank()
+    val providerKeys = if (providerIsNim) com.anchor.core.provider.KeyPool.sanitize(listOf(e.providerKey) + e.providerExtraKeys).size else 0
+    val keyCount = if (ownKeys > 0) ownKeys else providerKeys
+    var draft by remember { mutableStateOf("") }
+    val pipe = p.ambientPipeline
+
+    SectionHeader("Speech to text")
+    val warning = pipe.sttWarning ?: if (mode != com.anchor.core.ambient.AmbientSttMode.DEVICE && keyCount == 0) com.anchor.core.ambient.AmbientSttPlanner.NO_KEY_WARNING else null
+    if (warning != null) {
+        StatusCard("NVIDIA key needed", warning, Tone.Warn, Lucide.TriangleAlert)
+        Spacer(Modifier.height(10.dp))
+    }
+    GroupedSurface {
+        ChoiceRow(null, com.anchor.core.ambient.AmbientSttMode.entries.toList(), mode, { it.label }) {
+            dispatch(MineAction.Engine(UiAction.SetPref(com.anchor.core.ambient.AmbientSttMode.SETTING, it.wire)))
+            dispatch(MineAction.RefreshAmbient)
+        }
+        ValueRow(
+            "Now using",
+            when (pipe.sttRoute) { "nim_whisper" -> "NVIDIA Whisper"; "device" -> "This phone"; else -> "Nothing yet" },
+            detail = pipe.sttNote ?: if (!p.offlineSttInstalled) "On-phone speech model not installed" else null,
+        )
+        if (mode != com.anchor.core.ambient.AmbientSttMode.DEVICE) {
+            ValueRow(
+                "NVIDIA keys",
+                when {
+                    ownKeys > 0 -> "$ownKeys for Whisper"
+                    providerKeys > 0 -> "Using your AI provider's ($providerKeys)"
+                    else -> "None"
+                },
+                detail = "Rotated like your chat keys: a key that's rate-limited sits out a minute.",
+            )
+            FieldRow("Add keys", draft, { draft = it }, "nvapi-… (several: separate with spaces)", secret = true)
+            ActionRow("Save keys for Whisper", Lucide.Check, enabled = draft.isNotBlank()) {
+                dispatch(MineAction.SaveWhisperKeys(draft.split(Regex("[\\s,;]+"))))
+                draft = ""
+            }
+            if (ownKeys > 0) ActionRow("Remove Whisper keys", Lucide.Trash2, tint = Mine.Urgent) { dispatch(MineAction.SaveWhisperKeys(emptyList())) }
+        }
+        SwitchRow(
+            "Use your AI to understand conversations",
+            "Sends transcripts of conversations you're in to ${if (e.providerKey.isNotBlank()) "your AI provider" else "your AI (not connected)"} to find commitments",
+            e.profile.prefs["ambient.extract_with_ai"] == "1",
+            divider = false,
+        ) { dispatch(MineAction.Engine(UiAction.SetPref("ambient.extract_with_ai", if (it) "1" else "0"))) }
+    }
+    SectionFooter(
+        if (mode == com.anchor.core.ambient.AmbientSttMode.DEVICE) "Everything is transcribed on this phone. Nothing leaves it."
+        else "With Whisper, the audio of conversations you take part in — including other people's voices — goes to NVIDIA to be transcribed. NVIDIA's own policies apply. Audio of anything else never leaves the phone."
+    )
+    Spacer(Modifier.height(10.dp))
 }
 
 private fun minuteLabel(m: Int): String = "%02d:%02d".format((m / 60) % 24, m % 60)

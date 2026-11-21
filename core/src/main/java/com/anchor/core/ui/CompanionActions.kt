@@ -100,7 +100,8 @@ internal class CompanionActions(
             val key = a.key.trim()
             if (PREF_PREFIXES.none { key.startsWith(it) } || key.length > 64) ActionResultDraft("Unknown setting", isError = true)
             else {
-                storage.saveSetting(key, a.value.take(512))
+                // 2 KB: room for ten API keys (one per line) under ambient.stt.nim_keys.
+                storage.saveSetting(key, a.value.take(2048))
                 ActionResultDraft("")
             }
         }
@@ -135,7 +136,8 @@ internal class CompanionActions(
     private suspend fun quickAdd(raw: String): ActionResultDraft {
         val text = raw.trim()
         if (text.isEmpty()) return ActionResultDraft("Type something to add", isError = true)
-        val parsed = quickAdd.parse(text)
+        // The Quick-add sheet: the time may be anywhere in what was typed.
+        val parsed = quickAdd.parseLoose(text)
         val title = (parsed?.title ?: text).trim().take(200)
         val due = parsed?.dueText
         val first = fromTool(tool("propose_change", "intent" to "CREATE", "title" to title, "due_text" to due, "tier" to parsed?.tier?.name?.lowercase()))
@@ -283,7 +285,7 @@ internal class CompanionActions(
         const val KEY_LANGUAGES = "user.languages"
         const val KEY_BREAK_UNTIL = "break.until_ms"
         const val KEY_NUDGES_PAUSED = "nudge.paused_until_ms"
-        val PREF_PREFIXES = listOf("ui.", "voice.", "chat.", "consent.", "ambient.")
+        val PREF_PREFIXES = listOf("ui.", "voice.", "chat.", "consent.", "ambient.", "profile.")
     }
 }
 

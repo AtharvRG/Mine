@@ -314,6 +314,15 @@ class AlarmReceiver : BroadcastReceiver() {
                     )
                 )
 
+                // A quiet line in today's chat too, so the conversation shows what fired. Never
+                // instead of the notification (already posted above), and never fatal.
+                try {
+                    com.anchor.mine.notifications.ProactiveMessages.post(
+                        context, storage, if (isMissed) safeText else "Reminder: $safeText",
+                        source = "reminder", kind = com.anchor.core.ui.MessageAttrs.KIND_REMINDER, notify = false,
+                    )
+                } catch (_: Throwable) {}
+
                 // Cleanup/advance recurrence LAST (after notification is posted)
                 val rrule = rem?.rrule
                 if (rem != null && !rrule.isNullOrBlank()) {
@@ -480,8 +489,8 @@ class AlarmReceiver : BroadcastReceiver() {
                     }
                     val text = eval.notificationText
                     if (eval.shouldNotify && !text.isNullOrBlank()) {
-                        val msgId = "a_${UUID.randomUUID()}"
-                        storage.insertRawMessage(msgId, "assistant", text)
+                        // A real chat message (tagged proactive), not just a notification.
+                        val msgId = com.anchor.mine.notifications.ProactiveMessages.post(context, storage, text, source = "wakeup", notify = false)
                         val pState = storage.getProactiveState()
                         val dayRule = storage.getEffectiveDayRule(now)
                         val dayKey = com.anchor.core.time.DayRollover.computeDayKey(now, dayRule)

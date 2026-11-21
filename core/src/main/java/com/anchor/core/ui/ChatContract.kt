@@ -30,6 +30,10 @@ data class UiState(
     val providerEndpoint: String = "",
     val providerKey: String = "",
     val providerModel: String = "",
+    /** More keys for the same provider, rotated with [providerKey] by KeyPool (at most 9 here + the primary). */
+    val providerExtraKeys: List<String> = emptyList(),
+    /** Requests per minute allowed per key ("provider.rpm_default"). NVIDIA NIM's free tier is 40. */
+    val providerRpm: Int = 20,
     val debugStats: String = "Rows: 0",
     val composerDraft: String = "",
     val connectionError: String? = null,
@@ -164,7 +168,19 @@ sealed interface UiAction {
     data class LoadDay(val dayKey: String) : UiAction
     data class ShowDayReminders(val dayKey: String, val startOfDayMs: Long, val endOfDayMs: Long) : UiAction
     data object ClearDaySelection : UiAction
-    data class SaveProvider(val endpoint: String, val key: String, val model: String) : UiAction
+    /**
+     * [extraKeys] null leaves the stored extra keys alone; an empty list clears them.
+     * [rpm] null leaves the per-key request limit alone.
+     */
+    data class SaveProvider(
+        val endpoint: String,
+        val key: String,
+        val model: String,
+        val extraKeys: List<String>? = null,
+        val rpm: Int? = null,
+    ) : UiAction {
+        override fun toString(): String = "SaveProvider(endpoint=$endpoint, key=***, model=$model, extraKeys=${extraKeys?.size}, rpm=$rpm)"
+    }
     data class ImportProviderConfig(val payload: String) : UiAction
     data object RunSelfTest : UiAction
     data object RefreshStats : UiAction
@@ -276,7 +292,9 @@ sealed interface UiAction {
 
     // ---- Direct actions used by the companion UI. Deterministic: no model call. ----
     /** Sends [text] as a chat turn without going through the composer draft. */
-    data class SendText(val text: String) : UiAction
+    data class SendText(val text: String, val replyToId: String? = null) : UiAction
+    /** Something wrote to the chat outside a turn (see ChatEvents): re-read it. */
+    data object ExternalMessagesChanged : UiAction
     /** Re-sends the last user message whose turn failed (see `UiState.lastFailedMsgId`). */
     data object RetryLastMessage : UiAction
     data object DismissConnectionError : UiAction

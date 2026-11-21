@@ -38,6 +38,7 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.contentOrNull
+import com.anchor.core.provider.KeyPool
 import java.util.UUID
 
 class ChatController(
@@ -67,6 +68,43 @@ class ChatController(
 ) {
     private val _state = MutableStateFlow(UiState())
     val state: StateFlow<UiState> = _state.asStateFlow()
+
+    /** Replies waiting for their turn to start: user message id → the message it quotes. */
+    private val pendingReplyContext = java.util.concurrent.ConcurrentHashMap<String, ReplyRef>()
+
+    /** Looks up the quoted message (any day) for its preview, role and day. Null when it is gone. */
+    private suspend fun replyRefFor(messageId: String): ReplyRef? = try {
+        val text = storage.getRawMessage(messageId)
+        val known = (_state.value.chatMessages + _state.value.selectedDayMessages).firstOrNull { it.id == messageId }
+        if (text == null && known == null) null
+        else ReplyRef(
+            id = messageId,
+            preview = (text ?: known?.content).orEmpty().replace("\n", " ").take(MessageAttrs.PREVIEW_CHARS),
+            role = known?.role ?: "assistant",
+            dayKey = known?.dayKey,
+        )
+    } catch (e: Exception) {
+        if (e is CancellationException) throw e
+        null
+    }
+
+    /** The main provider as targets: one per key, ordered by [KeyPool] (least-loaded first). */
+    private suspend fun providerTargets(rpm: Int, limiterPrefix: String, model: String? = null): List<Target> {
+        val st = _state.value
+        val keys = listOf(st.providerKey) + st.providerExtraKeys
+        val m = model ?: st.providerModel
+        val limiter = rateLimiter
+        val pooled = if (limiter == null) {
+            KeyPool.sanitize(keys).map { Target(st.providerEndpoint, it, rpm, model = m, limiterKey = limiterPrefix + it) }
+        } else {
+            KeyPool.targets(st.providerEndpoint, keys, m, rpm, limiter, limiterPrefix)
+        }
+        // No usable key (not loaded yet, or none saved): keep the single-target chain exactly as
+        // before the key pool, so the provider answers with its own clear auth error.
+        return pooled.ifEmpty {
+            listOf(Target(st.providerEndpoint, st.providerKey, rpm, model = m, limiterKey = limiterPrefix + st.providerKey))
+        }
+    }
     private var currentStreamJob: Job? = null
     @Volatile private var currentBotId: String? = null
     private val json = Json { ignoreUnknownKeys = true }
@@ -223,7 +261,12 @@ class ChatController(
     val proactive = storage.getProactiveState()
     val activeThread = proactive.openThreadMsgId?.let { ActiveThread(it, proactive.threadOpenedAt ?: 0L) }
     val initialKey = storage.getSetting("key") ?: ""
-    val initialCooldownExpiry = if (initialKey.isNotBlank()) rateLimiter?.getCooldownExpiry(initialKey) else null
+    val extraKeys = KeyPool.decode(storage.getSetting(KEY_EXTRA_KEYS)).filter { it != initialKey }
+    // With a key pool, the provider is only "cooling down" when every key is.
+    val initialCooldownExpiry = if (initialKey.isBlank()) null else {
+        val expiries = (listOf(initialKey) + extraKeys).map { rateLimiter?.getCooldownExpiry(it) }
+        if (expiries.any { it == null }) null else expiries.filterNotNull().minOrNull()
+    }
 
     _state.update { it.copy(
         receipts = recentReceipts + currentTransientReceipts(),
@@ -231,6 +274,8 @@ class ChatController(
         chatMessages = if (it.isChatLoading) it.chatMessages else storage.getRecentMessages(30),
         providerEndpoint = storage.getSetting("ep") ?: "https://api.openai.com/v1/chat/completions",
         providerKey = initialKey,
+        providerExtraKeys = extraKeys,
+        providerRpm = storage.getSetting("provider.rpm_default")?.toIntOrNull() ?: 20,
         providerModel = storage.getSetting("mod") ?: "gpt-4o-mini",
         debugStats = storage.getDebugStats().entries.joinToString("\n") { e -> "${e.key}: ${e.value}" },
         openProposals = proposals,
@@ -309,7 +354,28 @@ class ChatController(
             }
             is UiAction.SendText -> {
                 val text = action.text.trim()
-                if (text.isNotEmpty()) sendText(text)
+                val replyTo = action.replyToId
+                if (text.isEmpty()) return
+                if (replyTo == null) sendText(text)
+                else coroutineScope.launch(defaultDispatcher) {
+                    // A reply is stored first, with the quote in attrs, then runs the normal turn
+                    // (the same path as Retry, which also sends an already-stored message).
+                    val id = "u_${UUID.randomUUID()}"
+                    val ref = replyRefFor(replyTo)
+                    try {
+                        storage.insertRawMessageWithAttrs(id, "user", text, null, ref?.let { MessageAttrs.reply(it) })
+                        if (ref != null) pendingReplyContext[id] = ref
+                        refreshUI()
+                    } catch (e: Exception) {
+                        if (e is CancellationException) throw e
+                        sendText(text)
+                        return@launch
+                    }
+                    sendText(text, id)
+                }
+            }
+            is UiAction.ExternalMessagesChanged -> coroutineScope.launch(defaultDispatcher) {
+                try { refreshUI() } catch (e: Exception) { if (e is CancellationException) throw e }
             }
             is UiAction.RetryLastMessage -> coroutineScope.launch(defaultDispatcher) {
                 val id = _state.value.lastFailedMsgId ?: return@launch
@@ -380,8 +446,20 @@ class ChatController(
                 // One unit: a half-written config (new endpoint + old key) fails every request.
                 // On failure the UI must keep showing the config that is actually persisted.
                 try {
-                    storage.saveSettings(mapOf("ep" to ep, "key" to key, "mod" to mod))
-                    _state.update { it.copy(providerEndpoint = ep, providerKey = key, providerModel = mod) }
+                    val settings = mutableMapOf("ep" to ep, "key" to key, "mod" to mod)
+                    // Extra keys for the same provider (KeyPool). The primary key stays in "key" so
+                    // everything that reads one key keeps working.
+                    val extra = action.extraKeys?.let { k -> KeyPool.sanitize(k).filter { it != key }.take(KeyPool.MAX_KEYS - 1) }
+                    if (extra != null) settings[KEY_EXTRA_KEYS] = KeyPool.encode(extra)
+                    action.rpm?.let { settings["provider.rpm_default"] = it.coerceIn(1, RateLimiter.HARD_RPM_CAP).toString() }
+                    storage.saveSettings(settings)
+                    _state.update {
+                        it.copy(
+                            providerEndpoint = ep, providerKey = key, providerModel = mod,
+                            providerExtraKeys = extra ?: it.providerExtraKeys,
+                            providerRpm = action.rpm?.coerceIn(1, RateLimiter.HARD_RPM_CAP) ?: it.providerRpm,
+                        )
+                    }
                 } catch (e: Exception) {
                     if (e is kotlinx.coroutines.CancellationException) throw e
                     addTransientReceipt(ReceiptState(UUID.randomUUID().toString(), "Could not save provider settings: ${e.message ?: e.javaClass.simpleName}", null, isError = true, timestamp = clock.now()))
@@ -990,6 +1068,37 @@ class ChatController(
                             )
                         )
                     }
+                    // Personal details from the About-you step become identity facts.
+                    val profileValues = ProfileFields.ALL.associate { f -> f.key to storage.getSetting(f.key).orEmpty() }
+                    val profileLocal = storage.getSetting(ProfileFields.KEY_LOCAL_ONLY) == "1"
+                    val today = java.time.Instant.ofEpochMilli(now).atZone(DayRollover.safeTimeZone(storage.getEffectiveDayRule(now).tzId).toZoneId()).toLocalDate()
+                    val already = storage.getActiveSoulFacts(includeLocalOnly = true).map { it.statement.trim().lowercase() }.toSet()
+                    for ((field, statement) in ProfileFields.soulStatements(profileValues, today)) {
+                        if (statement.trim().lowercase() in already) continue
+                        val fact = SoulFact(
+                            id = "s_${UUID.randomUUID()}",
+                            category = if (field == ProfileFields.ABOUT) "other" else "identity",
+                            statement = statement,
+                            confidence = ONBOARDING_FACT_CONFIDENCE,
+                            source = "onboarding",
+                            origin = "approved",
+                            status = "active",
+                            createdAt = now,
+                            localOnly = profileLocal,
+                            sensitive = field.sensitive
+                        )
+                        storage.createSoulFactAndCommit(
+                            fact,
+                            RawEvent(
+                                opId = "u_${UUID.randomUUID()}",
+                                opType = "CREATE",
+                                targetType = "soul_fact",
+                                targetId = fact.id,
+                                afterJson = json.encodeToString(fact),
+                                tsUtc = now
+                            )
+                        )
+                    }
                     storage.saveSetting(ONBOARDING_DONE_KEY, "1")
                     _state.update { it.copy(onboardingDone = true, onboardingError = null) }
                 } catch (e: Exception) {
@@ -1091,7 +1200,7 @@ class ChatController(
                             // The message row is written before the state is advanced: a crash in
                             // between leaves a nudge the user saw but the engine will re-send, which
                             // is recoverable; the reverse loses it silently.
-                            storage.insertRawMessage(msgId, "assistant", text)
+                            storage.insertRawMessageWithAttrs(msgId, "assistant", text, null, MessageAttrs.proactive("nudge"))
                             storage.saveProactiveState(nudgeEngine.onNudgeSent(afterIgnore, msgId, now, dayKey = currentDayKey))
                             try {
                                 storage.saveNudgeLog(
@@ -2167,6 +2276,14 @@ class ChatController(
                 if (queuedBatch) {
                     pack = pack + ChatMessage("u_${UUID.randomUUID()}", "user", text)
                 }
+                // WhatsApp-style reply: the quoted message goes in as context right before the turn.
+                pendingReplyContext.remove(userMsgId)?.let { ref ->
+                    val full = try { storage.getRawMessage(ref.id) } catch (e: Exception) { if (e is CancellationException) throw e; null }
+                    val todayKey = DayRollover.computeDayKey(clock.now(), storage.getEffectiveDayRule(clock.now()))
+                    val line = ChatMessage("ctx_reply_${ref.id}", "system", MessageAttrs.replyContext(ref, full, todayKey))
+                    val at = pack.indexOfLast { it.id == userMsgId }
+                    pack = if (at >= 0) pack.take(at) + line + pack.drop(at) else pack.dropLast(1) + line + pack.takeLast(1)
+                }
                 var turnComplete = false
                 var loops = 0
                 val executedCalls = mutableSetOf<String>()
@@ -2180,7 +2297,9 @@ class ChatController(
                     val rpm = storage.getSetting("provider.rpm_default")?.toIntOrNull() ?: 20
                     val chain = mutableListOf<Target>()
                     if (networkAvailable() && _state.value.providerKey.isNotBlank()) {
-                        chain.add(Target(_state.value.providerEndpoint, _state.value.providerKey, rpm, model = _state.value.providerModel))
+                        // One key, or a pool of up to ten rotated by load (KeyPool): each key is its
+                        // own target, so a 429 on one moves the turn straight to the next.
+                        chain.addAll(providerTargets(rpm, limiterPrefix = ""))
                     }
                     val fallbackEndpoint = storage.getSetting("provider.fallback.endpoint") ?: storage.getSetting("ep.fallback") ?: storage.getSetting("ep_fallback")
                     val fallbackKey = storage.getSetting("provider.fallback.key") ?: storage.getSetting("key.fallback") ?: storage.getSetting("key_fallback")
@@ -2819,6 +2938,8 @@ class ChatController(
             val prefs = buildMap {
                 for (k in prefKeys) storage.getSetting(k)?.let { put(k, it) }
                 for (n in notes) storage.getSetting("note.mode.${n.id}")?.let { put("note.mode.${n.id}", it) }
+                // How many NVIDIA keys Whisper can use, never the keys themselves.
+                put("ambient.stt.nim_key_count", KeyPool.decode(storage.getSetting("ambient.stt.nim_keys")).size.toString())
             }
             val profile = UserProfile(
                 name = storage.getSetting(CompanionActions.KEY_USER_NAME).orEmpty(),
@@ -3118,7 +3239,11 @@ Respond ONLY in JSON envelope: {"reply":"","calls":[...]}
                     val workerPayload = buildJsonPayload(workerMessages, temperatureOverride = workerTemp)
                     val rpm = storage.getSetting("provider.rpm_default")?.toIntOrNull() ?: 20
                     val workerModel = storage.getSetting("provider.worker.model") ?: storage.getSetting("model.worker") ?: _state.value.providerModel
-                    val chain = listOf(Target(workerEp, workerKey, rpm, model = workerModel, limiterKey = "bg:$workerKey"))
+                    val chain = if (workerKey == _state.value.providerKey && workerEp == _state.value.providerEndpoint) {
+                        providerTargets(rpm, limiterPrefix = "bg:", model = workerModel)
+                    } else {
+                        listOf(Target(workerEp, workerKey, rpm, model = workerModel, limiterKey = "bg:$workerKey"))
+                    }
 
                     val responseBuffer = StringBuilder()
                     orchestrator.chat(chain, workerPayload, envelopeMode = true).collect { event ->
@@ -3170,7 +3295,12 @@ Respond ONLY in JSON envelope: {"reply":"","calls":[...]}
         /** Settings exposed to the UI as preferences. */
         val PROFILE_PREF_KEYS = listOf(
             "ui.reduced_motion", "ui.dev_mode", "chat.reasoning", "voice.replies",
-            "consent.accepted", "ui.onboarding_fast_path", "ambient.enabled", "notif_read.onboarded"
+            "consent.accepted", "ui.onboarding_fast_path", "ambient.enabled", "notif_read.onboarded",
+            // Listening: speech-to-text route, AI extraction, tuned thresholds, enrolment quality.
+            "ambient.stt.mode", "ambient.extract_with_ai", "ambient.t_lo", "ambient.t_hi", "ambient.voiceprint_quality",
+            "ambient.gate_user_presence", "ambient.stt.language",
+            // About you (onboarding): the details the user chose to share.
+            *ProfileFields.ALL_KEYS.toTypedArray()
         )
 
         /**
@@ -3203,6 +3333,8 @@ Respond ONLY in JSON envelope: {"reply":"","calls":[...]}
          * the same messages twice.
          */
         const val QUEUE_CLAIM_MS = 60_000L
+        /** Extra API keys for the main provider, one per line (see KeyPool). */
+        const val KEY_EXTRA_KEYS = "provider.extra_keys"
 
         /** Blueprint 41 §3.5.3: at or past this age a backlog is acknowledged before it is answered. */
         const val OFFLINE_STALE_HOURS = 12L

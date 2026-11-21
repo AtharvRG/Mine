@@ -15,6 +15,7 @@ import com.anchor.core.reliability.ReliabilityManager
 import com.anchor.core.resolver.Resolver
 import com.anchor.core.retrieval.HybridRetriever
 import com.anchor.core.storage.Storage
+import com.anchor.core.storage.getAllActiveNodesPaged
 import com.anchor.core.time.DateResolver
 import com.anchor.core.time.SystemClock
 import com.anchor.core.ui.ChatController
@@ -56,7 +57,43 @@ class AppGraph(
         onDeviceEngine = onDeviceEngine
     )
 
-    val embedder = LiteRtEmbedder(application)
+    /** The embedding model picked in Settings → Models, or the built-in projection until one is installed. */
+    val embedder = com.anchor.mine.retrieval.SwitchableEmbedder(LiteRtEmbedder(application))
+    val modelManager = com.anchor.mine.models.ModelManager(application, appScope)
+
+    init {
+        // Load the chosen embedding model off the main thread; search uses the fallback meanwhile.
+        appScope.launch(Dispatchers.IO) { activateEmbedder(storage.getSetting(com.anchor.core.voice.ModelCatalog.KEY_ACTIVE_EMBEDDER)) }
+    }
+
+    /** Switches the embedder. Returns false when the model is missing or would not load. */
+    fun activateEmbedder(id: String?): Boolean {
+        val entry = id?.let { com.anchor.core.voice.ModelCatalog.byId(it) }?.takeIf { it.embed != null && modelManager.isInstalled(it) }
+        return embedder.use(entry, entry?.let { modelManager.dirOf(it) })
+    }
+
+    /**
+     * Writes vectors for every open item and Soul fact with the active embedder. Run after a
+     * switch: until it finishes, search falls back to keywords for anything not yet embedded.
+     */
+    suspend fun reindexEmbeddings(onProgress: (done: Int, total: Int) -> Unit = { _, _ -> }) {
+        val nodes = storage.getAllActiveNodesPaged()
+        val facts = storage.getActiveSoulFacts(includeLocalOnly = true)
+        val total = nodes.size + facts.size
+        var done = 0
+        for (n in nodes) {
+            embedder.embed(listOf(n.title), com.anchor.core.retrieval.Embedder.Kind.DOCUMENT).firstOrNull()?.let {
+                storage.saveEmbedding("node", n.id, embedder.version, it)
+            }
+            onProgress(++done, total)
+        }
+        for (f in facts) {
+            embedder.embed(listOf(f.statement), com.anchor.core.retrieval.Embedder.Kind.DOCUMENT).firstOrNull()?.let {
+                storage.saveEmbedding("soul_fact", f.id, embedder.version, it)
+            }
+            onProgress(++done, total)
+        }
+    }
     val hybridRetriever = HybridRetriever(storage, embedder, clock, dateResolver)
     val scheduler = AndroidAlarmScheduler(application)
     val webSearchEngine = SafeWebSearchEngine()

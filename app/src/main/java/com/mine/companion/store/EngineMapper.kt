@@ -206,7 +206,7 @@ class EngineMapper(
     // ---------------------------------------------------------------------------------------
 
     private fun timeline(items: List<EngineChatItem>, e: UiState, now: Long, is24h: Boolean): List<ChatMessage> {
-        val messages = items.filterIsInstance<EngineChatItem.Message>().map { ChatLine(it.id, it.role, it.content, it.tsUtc) }
+        val messages = items.filterIsInstance<EngineChatItem.Message>().map { ChatLine(it.id, it.role, it.content, it.tsUtc, it.replyTo, it.kind) }
         val statusLines = items.filterIsInstance<EngineChatItem.StatusNotice>()
         return buildThread(messages, e.receipts, e.openProposals, e.queuedChatIds.toSet(), is24h) +
             statusLines.map { s ->
@@ -218,9 +218,24 @@ class EngineMapper(
     }
 
     private fun dayMessages(e: UiState, is24h: Boolean): List<ChatMessage> =
-        buildThread(e.selectedDayMessages.map { ChatLine(it.id, it.role, it.content, it.tsUtc) }, e.receipts, emptyList(), emptySet(), is24h)
+        buildThread(
+            e.selectedDayMessages.map { m ->
+                val a = com.anchor.core.ui.MessageAttrs.parse(m.attrs)
+                ChatLine(m.id, m.role, m.content, m.tsUtc, a.replyTo, a.kind)
+            },
+            e.receipts, emptyList(), emptySet(), is24h,
+        )
 
-    private data class ChatLine(val id: String, val role: String, val content: String?, val ts: Long)
+    private data class ChatLine(
+        val id: String,
+        val role: String,
+        val content: String?,
+        val ts: Long,
+        val replyTo: com.anchor.core.ui.ReplyRef? = null,
+        val kind: String? = null,
+    ) {
+        val quote: ReplyQuote? get() = replyTo?.let { ReplyQuote(it.id, it.preview, it.role != "user", it.dayKey) }
+    }
 
     /**
      * Receipts are recorded against the user's message; the UI shows them under Mine's answer,
@@ -259,6 +274,7 @@ class EngineMapper(
                 out += ChatMessage(
                     id = l.id, sender = Sender.user, text = l.content ?: "This message is kept on this phone only.",
                     timestamp = timeOnly(l.ts, is24h), tsUtc = l.ts, queued = l.id in queued,
+                    replyTo = l.quote,
                 )
                 pendingCause = l
                 pendingReceipts = byCause[l.id].orEmpty().toMutableList()
@@ -269,6 +285,9 @@ class EngineMapper(
                     timestamp = timeOnly(l.ts, is24h), tsUtc = l.ts,
                     receipts = pendingReceipts.map(::toReceipt).ifEmpty { null },
                     isSystem = l.role == "system",
+                    replyTo = l.quote,
+                    proactive = l.kind == com.anchor.core.ui.MessageAttrs.KIND_PROACTIVE,
+                    isReminder = l.kind == com.anchor.core.ui.MessageAttrs.KIND_REMINDER,
                 )
                 pendingReceipts = mutableListOf()
                 pendingCause = null

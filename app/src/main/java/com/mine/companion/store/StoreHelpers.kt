@@ -10,6 +10,7 @@ internal fun personaFromEngine(id: String): PersonaType = when (id) {
     "coach" -> PersonaType.coach
     "chill_friend", "chill" -> PersonaType.chill
     "minimal" -> PersonaType.minimal
+    "ultron" -> PersonaType.ultron
     else -> PersonaType.companion
 }
 

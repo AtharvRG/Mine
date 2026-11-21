@@ -146,13 +146,21 @@ class MineStore(application: Application) : AndroidViewModel(application) {
     }
 
     private suspend fun collect(g: AppGraph) {
+        // Extras the companion UI shows live: ambient pipeline status, voice enrolment, model downloads.
+        val extras = combine(AmbientStatusBus.pipeline, com.anchor.mine.voice.VoiceEnrollmentSession.ui, g.modelManager.state) { p, en, m -> Triple(p, en, m) }
+        val plat = combine(platform, extras) { pl, (pipe, enroll, models) ->
+            pl.copy(ambientPipeline = pipe, enrollment = enroll, models = models)
+        }
         val device = combine(
             AmbientStatusBus.state,
             VoiceSession.ui,
             NotificationReader.status,
             Speaker.speakingId,
-            platform,
+            plat,
         ) { ambient, voice, reader, speakingId, plat -> Device(ambient, voice, reader, speakingId, plat) }
+
+        // Messages written outside a turn (wake-ups, place triggers, call nudges) appear at once.
+        viewModelScope.launch { com.anchor.core.ui.ChatEvents.external.collect { engine(UiAction.ExternalMessagesChanged) } }
 
         combine(g.chatController.state, device) { engine, dev -> engine to dev }
             .conflate()
@@ -297,6 +305,11 @@ class MineStore(application: Application) : AndroidViewModel(application) {
             e.notificationReading, e.hideNotificationContent,
             e.profile.dayStartMinute, e.profile.dayEndMinute, app,
         )
+        val tts = e.profile.prefs[com.anchor.core.voice.ModelCatalog.KEY_ACTIVE_TTS]
+        if (tts != com.anchor.mine.voice.SherpaVoiceEngine.preferredTts) {
+            com.anchor.mine.voice.SherpaVoiceEngine.preferredTts = tts
+            com.anchor.mine.voice.SherpaVoiceEngine.reload()
+        }
         val r = e.lastActionResult
         if (r != null && r.seq > lastResultSeq) {
             lastResultSeq = r.seq
@@ -356,7 +369,16 @@ class MineStore(application: Application) : AndroidViewModel(application) {
     private fun effect(action: MineAction, before: MineUiState) {
         when (action) {
             is MineAction.Navigate -> when (action.screen) {
-                ScreenId.S20, ScreenId.S22, ScreenId.S29 -> engine(UiAction.LoadMemory)
+                ScreenId.S20 -> {
+                    engine(UiAction.LoadMemory)
+                    graph?.let { com.anchor.mine.profile.AboutYouSession.ensureLoaded(it, viewModelScope) }
+                }
+                ScreenId.S22, ScreenId.S29 -> engine(UiAction.LoadMemory)
+                ScreenId.S43 -> dispatch(MineAction.LoadInstalledApps)
+                ScreenId.S44 -> graph?.let { g ->
+                    val prefs = before.engine.profile.prefs
+                    g.modelManager.refresh(activeEmbedder = g.embedder.activeId, activeTts = prefs[com.anchor.core.voice.ModelCatalog.KEY_ACTIVE_TTS])
+                } ?: Unit
                 ScreenId.S14 -> engine(UiAction.OpenHome)
                 ScreenId.S40 -> engine(UiAction.LoadInsights(7))
                 ScreenId.S30 -> engine(UiAction.RefreshStats)
@@ -433,8 +455,69 @@ class MineStore(application: Application) : AndroidViewModel(application) {
             }
             is MineAction.SendChatMessage -> if (action.text.isNotBlank()) {
                 Speaker.stopNotifications()
-                engine(UiAction.SendText(action.text.trim()))
+                val reply = before.platform.replyTo?.messageId
+                platform.update { it.copy(replyTo = null) }
+                engine(UiAction.SendText(action.text.trim(), replyToId = reply))
             }
+            is MineAction.SetReplyTo -> platform.update { it.copy(replyTo = action.draft, composerFocusTick = if (action.draft != null) it.composerFocusTick + 1 else it.composerFocusTick) }
+            is MineAction.TalkAbout -> {
+                val m = action.message
+                platform.update {
+                    it.copy(
+                        replyTo = ReplyDraft(m.id, m.sender, m.text.take(160), action.dayLabel),
+                        composerFocusTick = it.composerFocusTick + 1,
+                    )
+                }
+                _state.update { it.copy(currentScreen = ScreenId.S15, screenHistory = (it.screenHistory + ScreenId.S15).takeLast(12), activeModal = null, navDirection = 1) }
+            }
+            MineAction.RefreshAmbient -> AmbientForegroundService.refresh(app)
+            is MineAction.SaveWhisperKeys -> {
+                val keys = com.anchor.core.provider.KeyPool.sanitize(action.keys)
+                engine(UiAction.SetPref(AmbientForegroundService.KEY_NIM_KEYS, com.anchor.core.provider.KeyPool.encode(keys)))
+                showToast(if (keys.isEmpty()) "Whisper keys removed" else "${keys.size} NVIDIA key${if (keys.size == 1) "" else "s"} saved for Whisper")
+                viewModelScope.launch { delay(400); AmbientForegroundService.refresh(app) }
+            }
+            MineAction.LoadInstalledApps -> viewModelScope.launch(Dispatchers.IO) {
+                val apps = runCatching { com.anchor.mine.notifications.InstalledApps.launchable(app) }.getOrDefault(emptyMap())
+                platform.update { it.copy(installedApps = apps) }
+            }
+            is MineAction.DownloadModel -> {
+                val g = graph ?: return showToast("Mine is still starting up")
+                val mobile = before.engine.profile.prefs[com.anchor.core.voice.ModelCatalog.KEY_ALLOW_MOBILE_DATA] == "1"
+                g.modelManager.download(action.id, mobile) { entry -> onModelInstalled(g, entry) }
+            }
+            is MineAction.CancelModel -> graph?.modelManager?.cancel(action.id)
+            is MineAction.DeleteModel -> {
+                val g = graph ?: return
+                val e = com.anchor.core.voice.ModelCatalog.byId(action.id)
+                if (e?.embed != null && g.embedder.activeId == e.id) {
+                    g.activateEmbedder(null)
+                    engine(UiAction.SetPref(com.anchor.core.voice.ModelCatalog.KEY_ACTIVE_EMBEDDER, ""))
+                }
+                g.modelManager.delete(action.id)
+                viewModelScope.launch { refreshPlatform() }
+                showToast("Deleted")
+            }
+            is MineAction.ActivateModel -> activateModel(action.id)
+            is MineAction.EnrollRecord -> {
+                if (!hasMic()) { _permissionRequests.tryEmit(Manifest.permission.RECORD_AUDIO); return }
+                com.anchor.mine.voice.VoiceEnrollmentSession.record(app, viewModelScope, action.index)
+            }
+            MineAction.EnrollStop -> com.anchor.mine.voice.VoiceEnrollmentSession.stop()
+            is MineAction.EnrollRedo -> com.anchor.mine.voice.VoiceEnrollmentSession.redo(action.index)
+            MineAction.EnrollReset -> com.anchor.mine.voice.VoiceEnrollmentSession.reset()
+            MineAction.EnrollSave -> viewModelScope.launch(Dispatchers.IO) {
+                val g = graph ?: return@launch showToast("Mine is still starting up")
+                val ok = runCatching { com.anchor.mine.voice.VoiceEnrollmentSession.save(g.storage) }.getOrDefault(false)
+                showToast(if (ok) "Voice saved — Mine will know it's you" else "Record the clips again first")
+                if (ok) {
+                    engine(UiAction.LoadMemory)
+                    AmbientForegroundService.refresh(app)
+                }
+            }
+            is MineAction.AboutYouSend -> graph?.let { com.anchor.mine.profile.AboutYouSession.send(it, viewModelScope, action.text) }
+            MineAction.AboutYouSuggest -> graph?.let { com.anchor.mine.profile.AboutYouSession.cook(it, viewModelScope) }
+            MineAction.AboutYouReset -> graph?.let { com.anchor.mine.profile.AboutYouSession.reset(it, viewModelScope) }
 
             is MineAction.AddReminder -> engine(
                 UiAction.CreateReminder(
@@ -697,12 +780,49 @@ class MineStore(application: Application) : AndroidViewModel(application) {
                 micGranted = hasMic(),
                 notificationsGranted = NotificationManagerCompat.from(app).areNotificationsEnabled(),
                 offlineSttInstalled = paths?.sttComplete == true,
-                offlineTtsInstalled = paths?.ttsComplete == true,
+                offlineTtsInstalled = paths?.anyTtsComplete == true,
+                speakerModelInstalled = paths?.speakerPresent == true,
+                vadInstalled = paths?.vadPresent == true,
                 systemSttAvailable = android.speech.SpeechRecognizer.isRecognitionAvailable(app),
                 is24Hour = android.text.format.DateFormat.is24HourFormat(app),
                 lowPower = (app.getSystemService(android.content.Context.POWER_SERVICE) as? android.os.PowerManager)?.isPowerSaveMode == true,
                 contextLabel = ctxLabel,
             )
+        }
+    }
+
+    /** After a verified download: pick it up right away (first embedder / TTS becomes active). */
+    private fun onModelInstalled(g: AppGraph, entry: com.anchor.core.voice.ModelCatalog.Entry) {
+        viewModelScope.launch { refreshPlatform() }
+        AmbientForegroundService.refresh(app)
+        val prefs = _state.value.engine.profile.prefs
+        when {
+            entry.embed != null && prefs[com.anchor.core.voice.ModelCatalog.KEY_ACTIVE_EMBEDDER].isNullOrBlank() -> activateModel(entry.id)
+            entry.kind == com.anchor.core.voice.ModelAssetKind.TTS && prefs[com.anchor.core.voice.ModelCatalog.KEY_ACTIVE_TTS].isNullOrBlank() -> activateModel(entry.id)
+            else -> showToast("${entry.name} is ready")
+        }
+    }
+
+    private fun activateModel(id: String) {
+        val g = graph ?: return showToast("Mine is still starting up")
+        val e = com.anchor.core.voice.ModelCatalog.byId(id) ?: return
+        if (!g.modelManager.isInstalled(e)) return showToast("Download it first")
+        if (e.embed != null) {
+            viewModelScope.launch(Dispatchers.IO) {
+                if (!g.activateEmbedder(id)) return@launch showToast("${e.name} wouldn't load on this phone")
+                engine(UiAction.SetPref(com.anchor.core.voice.ModelCatalog.KEY_ACTIVE_EMBEDDER, id))
+                showToast("Using ${e.name} — re-indexing your memory…")
+                runCatching { g.reindexEmbeddings() }
+                    .onSuccess { showToast("Search memory re-indexed with ${e.name}") }
+                    .onFailure { showToast("Re-indexing stopped: ${it.message ?: "unknown error"}") }
+                g.modelManager.refresh(activeEmbedder = id, activeTts = _state.value.engine.profile.prefs[com.anchor.core.voice.ModelCatalog.KEY_ACTIVE_TTS])
+            }
+        } else if (e.kind == com.anchor.core.voice.ModelAssetKind.TTS) {
+            engine(UiAction.SetPref(com.anchor.core.voice.ModelCatalog.KEY_ACTIVE_TTS, id))
+            com.anchor.mine.voice.SherpaVoiceEngine.preferredTts = id
+            com.anchor.mine.voice.SherpaVoiceEngine.reload()
+            g.modelManager.refresh(activeEmbedder = g.embedder.activeId, activeTts = id)
+            showToast("${e.name} is now Mine's voice")
         }
     }
 
