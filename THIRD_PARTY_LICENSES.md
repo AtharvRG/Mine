@@ -17,6 +17,8 @@ All dependencies are compatible with the GNU General Public License v3.0 (GPL-3.
 | **SQLCipher for Android** (`net.zetetic:sqlcipher-android`) | 4.19.1 | BSD-style / Zetetic License | https://www.zetetic.net/sqlcipher/ |
 | **Bouncy Castle Cryptography** (`org.bouncycastle:bcprov-jdk18on`) | 1.78.1 | Bouncy Castle Licence (MIT-style) | https://www.bouncycastle.org/licence.html |
 | **Jsoup Java HTML Parser** (`org.jsoup:jsoup`) | 1.18.3 | MIT License | https://jsoup.org/ |
+| **OkHttp HTTP Client** (`com.squareup.okhttp3:okhttp`) | 4.12.0 | Apache-2.0 | https://square.github.io/okhttp/ |
+| **Microsoft ONNX Runtime Android** (`com.microsoft.onnxruntime:onnxruntime-android`) | 1.27.0 | MIT License | https://onnxruntime.ai/ |
 
 ## Testing Dependencies
 

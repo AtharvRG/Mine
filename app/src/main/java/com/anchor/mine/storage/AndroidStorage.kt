@@ -75,6 +75,19 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         content: String,
         causeMsgId: String?,
         dayKey: String?
+    ) = insertRawInternal(id, role, content, causeMsgId, dayKey, null)
+
+    /** Reply quotes and proactive kind ride in the existing `attrs` column (no schema change). */
+    override suspend fun insertRawMessageWithAttrs(id: String, role: String, content: String, causeMsgId: String?, attrsJson: String?) =
+        insertRawInternal(id, role, content, causeMsgId, null, attrsJson?.take(2_000))
+
+    private suspend fun insertRawInternal(
+        id: String,
+        role: String,
+        content: String,
+        causeMsgId: String?,
+        dayKey: String?,
+        attrs: String?
     ) = withIoDb {
         val ts = System.currentTimeMillis()
         val rule = getEffectiveDayRule(ts)
@@ -112,8 +125,8 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         db.beginTransaction()
         try {
             db.execSQL(
-                "INSERT INTO raw_message (id, device_id, ts_utc, tz_offset_min, day_key, role, content, client_msg_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                arrayOf<Any?>(id, deviceId, ts, tzOffset, resolvedDayKey, role, content, causeMsgId)
+                "INSERT INTO raw_message (id, device_id, ts_utc, tz_offset_min, day_key, role, content, client_msg_id, attrs) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                arrayOf<Any?>(id, deviceId, ts, tzOffset, resolvedDayKey, role, content, causeMsgId, attrs)
             )
             if (content.isNotBlank() && role != "system") {
                 db.execSQL(
@@ -160,12 +173,13 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
         // rowid breaks a ts_utc tie: two captures stored in the same millisecond would otherwise
         // come back in an arbitrary order, and QuickCapture.pending() reads this order as the
         // timeline it answers captures against.
-        dbHelper.readableDatabase.query("SELECT id, role, content, day_key, ts_utc FROM raw_message ORDER BY ts_utc DESC, rowid DESC LIMIT ?", arrayOf(limit)).use {
+        dbHelper.readableDatabase.query("SELECT id, role, content, day_key, ts_utc, attrs FROM raw_message ORDER BY ts_utc DESC, rowid DESC LIMIT ?", arrayOf(limit)).use {
             while (it.moveToNext()) {
                 val content = if (it.isNull(2)) null else it.getString(2)
                 val dayKey = if (it.isNull(3)) null else it.getString(3)
                 val tsUtc = if (it.isNull(4)) 0L else it.getLong(4)
-                list.add(ChatMessage(it.getString(0), it.getString(1), content, dayKey, tsUtc))
+                val attrs = if (it.isNull(5)) null else it.getString(5)
+                list.add(ChatMessage(it.getString(0), it.getString(1), content, dayKey, tsUtc, attrs))
             }
         }
         list.reversed()
@@ -1559,7 +1573,7 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
     override suspend fun getMessagesForDay(dayKey: String): List<ChatMessage> = withIoDb {
         val list = mutableListOf<ChatMessage>()
         dbHelper.readableDatabase.query(
-            "SELECT id, role, content, day_key, ts_utc FROM raw_message WHERE day_key = ? ORDER BY ts_utc ASC",
+            "SELECT id, role, content, day_key, ts_utc, attrs FROM raw_message WHERE day_key = ? ORDER BY ts_utc ASC",
             arrayOf(dayKey)
         ).use {
             while (it.moveToNext()) {
@@ -1568,7 +1582,8 @@ class AndroidStorage(@Volatile private var dbHelper: SupportSQLiteOpenHelper) : 
                 val content = if (it.isNull(2)) null else it.getString(2)
                 val dKey = if (it.isNull(3)) null else it.getString(3)
                 val ts = if (it.isNull(4)) 0L else it.getLong(4)
-                list.add(ChatMessage(id, role, content, dKey, ts))
+                val attrs = if (it.isNull(5)) null else it.getString(5)
+                list.add(ChatMessage(id, role, content, dKey, ts, attrs))
             }
         }
         list

@@ -97,6 +97,10 @@ android {
         resources {
             pickFirsts += listOf("com/k2fsa/sherpa/onnx/BuildConfig.class")
         }
+        jniLibs {
+            // sherpa-onnx and onnxruntime-android both bundle libonnxruntime.so (same ORT API level).
+            pickFirsts += listOf("**/libonnxruntime.so")
+        }
     }
 }
 
@@ -221,6 +225,17 @@ dependencies {
 
     // LiteRT-LM for On-Device EmbeddingGemma 2
     implementation("com.google.ai.edge.litertlm:litertlm-android:0.16.1")
+
+    // OkHttp: HTTP/2 for NVIDIA NIM Whisper (gRPC framed by hand, see RivaAsrProto) and for
+    // resumable model downloads. Requested feature; one stable dependency instead of grpc-java +
+    // protobuf + codegen. 4.12.0 is the final 4.x release.
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+
+    // ONNX Runtime for downloadable sentence-embedding models (IBM Granite R2, MiniLM, BGE).
+    // sherpa-onnx ships its own libonnxruntime.so; both are ORT API 27 (sherpa-onnx 1.13.5+ moved
+    // Android to ORT 1.27.1), so one copy serves both — see pickFirsts below. HUMAN-GATED: verify
+    // on device that voice (sherpa) and embeddings (ORT Java) both load after this change.
+    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.27.0")
 
     // Jsoup for Safe Web Search HTML Sanitization & Reader Mode
     implementation("org.jsoup:jsoup:1.18.3")

@@ -29,6 +29,14 @@ interface Storage {
         causeMsgId: String?,
         dayKey: String? = null
     )
+    /**
+     * Same as [insertRawMessage], with [attrsJson] stored in `raw_message.attrs` at insert time
+     * (reply reference, proactive kind). Implementations without attrs support store the message
+     * without them, which loses only the quote, never the message.
+     */
+    suspend fun insertRawMessageWithAttrs(id: String, role: String, content: String, causeMsgId: String?, attrsJson: String?) =
+        insertRawMessage(id, role, content, causeMsgId, null)
+
     suspend fun redactMessage(id: String)
     suspend fun getRawMessage(id: String): String?
     suspend fun hasRawMessage(id: String): Boolean
