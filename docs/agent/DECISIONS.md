@@ -951,4 +951,18 @@ Rejected: printing only the first line of the message (the diagnostic fields `Al
 - **Rejected:** Maintaining a detached `:ui` module; hardcoding demo data; reading OTPs or private notifications aloud; allowing ambient recording to transcribe the app's own voice playback.
 - **Proof:** All 707 `:core:test` pass, all `:app:testDebugUnitTest` pass, `:app:assembleDebug` BUILD SUCCESSFUL.
 
-(Next free: D-226. Add: date, decision, reason, rejected.)
+## D-226 (2026-11-22) — Ambient Listening Pipeline, Multi-Key NVIDIA NIM/Whisper, Model Manager & Conversational Polish Integration
+- **Decision:** Integrated the 11 feature upgrades from `mine-integrated`:
+  1. *Ambient Listening Pipeline & Voice Enrollment*: Silero VAD segmenter with loudness fallback, utterance-by-utterance speaker verification against enrolled voiceprints, 120s RAM audio buffer, multi-clip enrollment quality scoring with guidance, and cloud NVIDIA Whisper ASR via HTTP/2 gRPC framing.
+  2. *Notification Sources ("What Mine can read")*: Screen listing launchable applications so users can configure allowed sources before an app notifies. Narrow `<queries>` intent in AndroidManifest without `QUERY_ALL_PACKAGES`.
+  3. *Natural Time Parsing & Scheduling*: Expanded normalizer and extractor for natural language scheduling ("24th nov at 3.40pm", "in 3 days at 5", "half past 9 tonight", "1540 hrs", "tmrw", timezones like IST/EST, custom time pill in manual task add).
+  4. *Ultron Persona*: Added original, dry, witty, supportive Ultron persona to `PersonaPresets.kt`.
+  5. *Models Page & Embedders*: HuggingFace model download manager with checksum validation and resumability; tokenizers (GPT-2 byte-level BPE for Granite R2, WordPiece for MiniLM/BGE); ONNX Runtime Android integration for downloadable sentence embeddings.
+  6. *Chat Messages & Conversational Context*: Proactive reach-out marker ("Mine reached out"), quiet reminders timeline integration, WhatsApp-style swipe/long-press reply context, cross-day "Talk about this" context.
+  7. *NVIDIA NIM Provider & Key Pool*: Multi-key pool supporting up to 10 keys, 40 req/min rate limiting, 60s cooldown on 429 errors, shared quota accounting between chat and Whisper.
+  8. *Personal Details & About-You Interviewer*: Profile fields (name, pronouns, city, work) in onboarding with on-device-only privacy toggle; isolated About-You interview chat proposing facts for user approval.
+- **Reason:** Upgrade voice intelligence, ambient transcription quality, model sovereignty, and multi-key throughput while preserving strict privacy, offline reliability, and zero audio storage to disk.
+- **Rejected:** Hardcoded model downloads without checksum verification; unbounded remote ASR calls; storing raw audio recordings to flash storage.
+- **Proof:** All 756 `:core:test` pass, all 53 `:app:testDebugUnitTest` pass, `:app:assembleDebug` BUILD SUCCESSFUL, physical device smoke test on `moto g73 5G` (`10.175.15.5:5555`) verified live rendering.
+
+(Next free: D-227. Add: date, decision, reason, rejected.)

@@ -1,6 +1,19 @@
 # TASKS (one at a time, smallest first). Status: [ ] open, [~] in progress, [x] done+reviewed
 Specs for R1-R10: docs/agent/work/session1-remediation-spec.md. Read the task's section before starting.
 
+## Ambient Pipeline, Multi-Key NIM, Model Manager & Conversational Polish (2026-11-22 / D-226)
+[x] Integrated 11 Upgrades from `mine-integrated`
+    [x] Ambient Listening Pipeline & Voice Enrollment: Silero VAD segmenter with loudness fallback, utterance-by-utterance speaker verification against enrolled voiceprints, 120s RAM audio buffer, multi-clip enrollment quality scoring with guidance, and cloud NVIDIA Whisper ASR via HTTP/2 gRPC framing over OkHttp.
+    [x] Notification Sources ("What Mine can read"): Screen listing launchable applications so users can configure allowed sources before an app notifies. Narrow `<queries>` intent in AndroidManifest without `QUERY_ALL_PACKAGES`.
+    [x] Natural Time Parsing & Scheduling: Normalizer, extractor, and DateResolver rules for natural language scheduling ("24th nov at 3.40pm", "in 3 days at 5", "half past 9 tonight", "1540 hrs", "tmrw", timezones like IST/EST, custom time pill in manual task add).
+    [x] Ultron Persona: Original dry, witty, supportive Ultron persona added to `PersonaPresets.kt`.
+    [x] Models Page & Tokenizers: HuggingFace model download manager with checksum validation and resumability; tokenizers (GPT-2 byte-level BPE for Granite R2, WordPiece for MiniLM/BGE); ONNX Runtime Android integration for downloadable sentence embeddings.
+    [x] Chat Messages & Conversational Context: Proactive reach-out marker ("Mine reached out"), quiet reminders timeline integration, WhatsApp-style swipe/long-press reply context, cross-day "Talk about this" context.
+    [x] NVIDIA NIM Chat Provider & Key Pool: Multi-key pool supporting up to 10 keys, 40 req/min rate limiting, 60s cooldown on 429 errors, shared quota accounting between chat and Whisper.
+    [x] Personal Details & About-You Interviewer: Profile fields (name, pronouns, city, work) in onboarding with on-device-only privacy toggle; isolated About-You interview chat proposing facts for user approval.
+    [x] Compiler & Smart Cast Hardening: Fixed Kotlin compiler error `SMARTCAST_IMPOSSIBLE` on `ModelCatalogEntry.note` in `NewScreens.kt:347`. Made `MainActivity.onNewIntent` public for intent routing. Added OkHttp and ONNX Runtime to `THIRD_PARTY_LICENSES.md`.
+    [x] Verification: All 756 `:core:test` passed, all 53 `:app:testDebugUnitTest` passed, `:app:assembleDebug` BUILD SUCCESSFUL. Physical device smoke test verified on `moto g73 5G`.
+
 ## Modern Companion UI & Notification Reading Engine Integration (2026-11-21 / D-225)
 [x] Integrated Companion UI & Notification Reading Engine from `mine-integrated`
     [x] Drop-in `com.mine.companion` UI layer: Home (`S14Home`), Chat (`S15S16Chat`), Memory & Notes (`SecondBrain`), Settings (`SettingsKit`), System/Diagnostics screens (`SystemScreens`), Shell, components, fx shaders, and themes.

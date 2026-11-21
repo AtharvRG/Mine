@@ -1,5 +1,21 @@
 # STATE (update every session; facts only)
-Updated: 2026-11-21 20:10 IST (**Modern Companion UI & Notification Reading Engine Integration COMPLETE. All 707 tests in :core:test passed. All unit tests in :app:testDebugUnitTest passed. :app:assembleDebug BUILD SUCCESSFUL. Zero existing logic regressions.**)
+Updated: 2026-11-22 01:25 IST (**11 Upgrades Integration COMPLETE: Ambient Pipeline, NVIDIA NIM Key Pool, NVIDIA Whisper, Model Manager, Natural Time Parsing, Ultron Persona, About You Interviewer, Onboarding Profile, Proactive Chat & App Notification Sources. All 756 tests in :core:test passed. All 53 unit tests in :app:testDebugUnitTest passed. :app:assembleDebug BUILD SUCCESSFUL. Physical device smoke test verified on moto g73 5G.**)
+
+**Ambient Pipeline, Multi-Key NIM, Model Manager & Conversational Polish Deliverables (2026-11-22 / D-226):**
+- **Ambient Listening Pipeline & Voice Enrollment**: Integrated Silero VAD segmenter with loudness fallback, utterance-by-utterance speaker verification against enrolled voiceprints, 120s RAM audio buffer, multi-clip enrollment quality scoring with guidance, and cloud NVIDIA Whisper ASR via HTTP/2 gRPC framing over OkHttp.
+- **Notification Sources ("What Mine can read")**: Integrated screen listing launchable applications so users can configure allowed sources before an app notifies. Narrow `<queries>` intent in AndroidManifest without `QUERY_ALL_PACKAGES`.
+- **Natural Time Parsing & Scheduling**: Normalizer, extractor, and DateResolver rules for natural language scheduling ("24th nov at 3.40pm", "in 3 days at 5", "half past 9 tonight", "1540 hrs", "tmrw", timezones like IST/EST, custom time pill in manual task add).
+- **Ultron Persona**: Original dry, witty, supportive Ultron persona added to `PersonaPresets.kt`.
+- **Models Page & Tokenizers**: HuggingFace model download manager with checksum validation and resumability; tokenizers (GPT-2 byte-level BPE for Granite R2, WordPiece for MiniLM/BGE); ONNX Runtime Android integration for downloadable sentence embeddings.
+- **Chat Messages & Conversational Context**: Proactive reach-out marker ("Mine reached out"), quiet reminders timeline integration, WhatsApp-style swipe/long-press reply context, cross-day "Talk about this" context.
+- **NVIDIA NIM Chat Provider & Key Pool**: Multi-key pool supporting up to 10 keys, 40 req/min rate limiting, 60s cooldown on 429 errors, shared quota accounting between chat and Whisper.
+- **Personal Details & About-You Interviewer**: Profile fields (name, pronouns, city, work) in onboarding with on-device-only privacy toggle; isolated About-You interview chat proposing facts for user approval.
+- **Compiler & Smart Cast Hardening**: Fixed Kotlin compiler error `SMARTCAST_IMPOSSIBLE` on `ModelCatalogEntry.note` in `NewScreens.kt:347`. Made `MainActivity.onNewIntent` public for intent routing. Added OkHttp and ONNX Runtime to `THIRD_PARTY_LICENSES.md`.
+- **Verification Evidence**:
+  - `:core:test`: 756/756 tests passed (0 failed).
+  - `:app:testDebugUnitTest`: 53/53 unit tests passed (0 failed).
+  - `:app:assembleDebug`: BUILD SUCCESSFUL.
+  - Physical hardware smoke test on `moto g73 5G` (`10.175.15.5:5555`): app installed, launched, SQLCipher db keyed, ContextSensingManager running, UI rendered cleanly.
 
 **Companion UI & Notification Reading Deliverables (2026-11-21 / D-225):**
 - **Unified Companion UI (`com.mine.companion`)**: Complete drop-in Compose UI layer hosted via `MainActivity.kt`. Screens include `S14Home` (orb, floating pill, waveform, priority tasks, reminders), `S15S16Chat` (conversational timeline, streaming text, receipt formatting), `SecondBrain` (memory notes, timeline, topics), `SettingsKit` (providers, ambient, notification reading, day window), and `SystemScreens` (diagnostics, onboarding).
