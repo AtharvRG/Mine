@@ -15,9 +15,12 @@ class PersonaEngineTest {
     private val engine = PersonaEngine()
 
     @Test
-    fun presetsContainAllFiveStandardPersonas() {
+    fun presetsContainAllStandardPersonas() {
         val presets = PersonaPresets.all
-        assertEquals(5, presets.size)
+        // Six since the Ultron persona was added at the developer's request (was five).
+        assertEquals(6, presets.size)
+        assertTrue(presets.any { it.id == PersonaPresets.ULTRON.id })
+        assertTrue(PersonaPresets.ULTRON.prompt.length <= com.anchor.core.persona.Persona.MAX_PROMPT_CHARS)
         assertTrue(presets.any { it.id == PersonaPresets.COMPANION.id })
         assertTrue(presets.any { it.id == PersonaPresets.COFOUNDER.id })
         assertTrue(presets.any { it.id == PersonaPresets.COACH.id })

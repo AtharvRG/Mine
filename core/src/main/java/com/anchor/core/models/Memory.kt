@@ -134,7 +134,9 @@ data class ChatMessage(
     val role: String, // "system", "user", "assistant"
     val content: String?, // Null means redacted
     val dayKey: String? = null,
-    val tsUtc: Long = 0L
+    val tsUtc: Long = 0L,
+    /** `raw_message.attrs`: reply reference and proactive kind (see MessageAttrs). */
+    val attrs: String? = null
 )
 
 @Serializable
