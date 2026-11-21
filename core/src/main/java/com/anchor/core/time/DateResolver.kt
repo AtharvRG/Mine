@@ -66,6 +66,31 @@ class DateResolver(
             "friday" to Calendar.FRIDAY, "fri" to Calendar.FRIDAY,
             "saturday" to Calendar.SATURDAY, "sat" to Calendar.SATURDAY
         )
+        private const val WEEKDAY_WORDS = "sunday|sun|monday|mon|tuesday|tue|tues|wednesday|wed|thursday|thu|thur|thurs|friday|fri|saturday|sat"
+        private val WEEKDAY_WITH_DATE_REGEX = Regex(
+            """^(?:on\s+)?($WEEKDAY_WORDS)\.?\s+((?:the\s+)?\d{1,2}(?:st|nd|rd|th)(?:\s+.*)?|\d{1,2}\s+(?:of\s+)?(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\b.*|(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+\d{1,2}.*|\d{1,4}[/.-]\d{1,2}.*)$"""
+        )
+        private val DAY_AFTER_TOMORROW_REGEX = Regex("""^(?:the\s+)?day\s+after\s+tomorrow(?:\s+(?:at\s+)?(.+))?$""")
+        /** "in 3 days at 5pm", "3 days from now at 5pm" → (3, "5pm"). */
+        private val IN_N_DAYS_AT_REGEX = Regex("""^(?:in\s+)?(\d{1,3})\s+days?(?:\s+from\s+(?:now|today))?\s+(?:at\s+)?(.+)$""")
+        private val NEXT_WEEK_AT_REGEX = Regex("""^next\s+week\s+(?:at\s+)?(.+)$""")
+        private val NEXT_MONTH_REGEX = Regex("""^next\s+month(?:\s+(?:at\s+)?(.*))?$""")
+        /** "the 24th", "24th at 5pm" — but not "24th nov", which the month rules read. */
+        private val ORDINAL_DAY_REGEX = Regex("""^(?:the\s+)?(\d{1,2})(?:st|nd|rd|th)(?!\s+(?:of\s+)?(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec))(?:\s+(?:at\s+)?(.+))?$""")
+        private val NUMERIC_DATE_REGEX = Regex(
+            """^(\d{4}|\d{1,2})[/.-](\d{1,2})(?:[/.-](\d{2}|\d{4}))?(?:\s+(?:at\s+)?(.+))?$"""
+        )
+        private val ISO_INSTANT_REGEX = Regex("""^\d{4}-\d{2}-\d{2}t\d{2}:\d{2}(:\d{2}(?:\.\d+)?)?(z|[+-]\d{2}:?\d{2})?$""")
+        private val ZONE_WORDS = mapOf(
+            "utc" to "UTC", "gmt" to "GMT", "ist" to "Asia/Kolkata",
+            "pst" to "America/Los_Angeles", "pdt" to "America/Los_Angeles", "pt" to "America/Los_Angeles",
+            "est" to "America/New_York", "edt" to "America/New_York", "et" to "America/New_York",
+            "cst" to "America/Chicago", "cdt" to "America/Chicago", "mst" to "America/Denver", "mdt" to "America/Denver",
+            "bst" to "Europe/London", "cet" to "Europe/Paris", "cest" to "Europe/Paris",
+            "jst" to "Asia/Tokyo", "sgt" to "Asia/Singapore", "aest" to "Australia/Sydney",
+        )
+        private val ZONE_SUFFIX_REGEX = Regex("""\s(utc|gmt|ist|pst|pdt|pt|est|edt|et|cst|cdt|mst|mdt|bst|cet|cest|jst|sgt|aest|local time|local)(?:\s+time)?$""")
+
         private val WEEKDAY_REGEX = Regex(
             """^(?:(on\s+next|this\s+coming|coming|on|this|next|last|past)\s+)?""" +
             """(sunday|sun|monday|mon|tuesday|tue|tues|wednesday|wed|thursday|thu|thur|thurs|friday|fri|saturday|sat)""" +
@@ -141,6 +166,16 @@ class DateResolver(
         return Pair(targetMinuteOfDay / 60, targetMinuteOfDay % 60)
     }
 
+    /**
+     * Resolves [dueText] to an instant, or says why it can't.
+     *
+     * The text is first rewritten by [TimeTextNormalizer] ("24th Nov at 3.40 p.m." →
+     * "24th nov at 3:40pm"). A trailing zone ("9am EST", "15:00 UTC") switches the zone for this
+     * one resolution. If the canonical text still doesn't resolve, the date and time phrases are
+     * pulled out of it with [TimeExpressionExtractor] ("at 5pm tomorrow" → "tomorrow at 5pm") —
+     * but only when nothing else is left over, so "3 days before the 24th" or "not tomorrow but
+     * friday" still fail and the caller asks, instead of the resolver silently picking a part.
+     */
     fun resolve(
         dueText: String?,
         rolloverMinuteOfDay: Int = 240,
@@ -148,10 +183,40 @@ class DateResolver(
         severity: Int? = null
     ): DateResolution {
         if (dueText == null) return DateResolution.Failed
-        val normalized = normalizeDigits(dueText).lowercase(Locale.ROOT).trim()
-        if (normalized.isBlank()) return DateResolution.Failed
+        val raw = normalizeDigits(dueText).lowercase(Locale.ROOT).trim()
+        if (raw.isBlank()) return DateResolution.Failed
 
-        val effectiveTz = timeZone ?: this.timeZone
+        var effectiveTz = timeZone ?: this.timeZone
+        var text = TimeTextNormalizer.normalize(raw)
+
+        val zoneMatch = ZONE_SUFFIX_REGEX.find(text)
+        if (zoneMatch != null) {
+            val zoneWord = zoneMatch.groupValues[1]
+            if (zoneWord != "local" && zoneWord != "local time") {
+                effectiveTz = ZONE_WORDS[zoneWord]?.let { TimeZone.getTimeZone(it) } ?: return DateResolution.Failed
+            }
+            text = text.removeRange(zoneMatch.range).replace(Regex("""\s+"""), " ").trim()
+            if (text.isBlank()) return DateResolution.Failed
+        }
+
+        resolveIsoInstant(text, effectiveTz)?.let { return it }
+
+        val first = resolveCanonical(text, rolloverMinuteOfDay, effectiveTz, severity)
+        if (first != DateResolution.Failed) return first
+
+        val extraction = TimeExpressionExtractor.extract(text) ?: return first
+        if (extraction.title.isNotBlank()) return first
+        val canonical = TimeTextNormalizer.normalize(extraction.dueText)
+        if (canonical == text) return first
+        return resolveCanonical(canonical, rolloverMinuteOfDay, effectiveTz, severity)
+    }
+
+    private fun resolveCanonical(
+        normalized: String,
+        rolloverMinuteOfDay: Int,
+        effectiveTz: TimeZone,
+        severity: Int?
+    ): DateResolution {
         val now = clock.now()
         val absCal = Calendar.getInstance(effectiveTz).apply {
             timeInMillis = now
@@ -169,6 +234,10 @@ class DateResolver(
         parseDuration(normalized)?.let {
             return DateResolution.Exact(now + it)
         }
+
+        // 1b. Forms added with the normalizer: weekday + date, day after tomorrow, "in 3 days at 5",
+        // next week/month with a time, "the 24th", numeric dates (24/11, 11/24 asks).
+        resolveExtended(normalized, absCal, now, effectiveTz, severity, rolloverMinuteOfDay)?.let { return it }
 
         // 2. Named dates without time
         if (normalized == "soon") {
@@ -401,6 +470,11 @@ class DateResolver(
 
             val curYear = absCal.get(Calendar.YEAR)
             val resolvedYear = yearGroup?.toIntOrNull() ?: curYear
+            // A lenient Calendar turns "31 nov" into 1 Dec without a word. An impossible date is
+            // a question for the user, never a silent shift.
+            if (!isValidDate(resolvedYear, monthNum, dayNum) &&
+                !(yearGroup == null && isValidDate(curYear + 1, monthNum, dayNum))
+            ) return DateResolution.Failed
             targetCal.set(Calendar.YEAR, resolvedYear)
             targetCal.set(Calendar.MONTH, monthNum)
             targetCal.set(Calendar.DAY_OF_MONTH, dayNum)
@@ -468,6 +542,194 @@ class DateResolver(
             }
         }
     }
+
+    // ---------------------------------------------------------------------------------------
+    // Extended forms
+    // ---------------------------------------------------------------------------------------
+
+    private fun resolveExtended(
+        text: String,
+        absCal: Calendar,
+        now: Long,
+        tz: TimeZone,
+        severity: Int?,
+        rolloverMinuteOfDay: Int
+    ): DateResolution? {
+        // "mon 24 nov", "friday the 27th": the weekday must agree with the date, or we ask.
+        WEEKDAY_WITH_DATE_REGEX.matchEntire(text)?.let { m ->
+            val wanted = WEEKDAYS[m.groupValues[1]] ?: return null
+            val rest = m.groupValues[2]
+            return when (val r = resolveCanonical(rest, rolloverMinuteOfDay, tz, severity)) {
+                is DateResolution.Exact -> if (weekdayOf(r.timeMillis, tz) == wanted) r else DateResolution.Failed
+                is DateResolution.NeedsClarification -> {
+                    val keep = r.candidateMillis.indices.filter { weekdayOf(r.candidateMillis[it], tz) == wanted }
+                    when (keep.size) {
+                        0 -> DateResolution.Failed
+                        1 -> DateResolution.Exact(r.candidateMillis[keep[0]])
+                        else -> DateResolution.NeedsClarification(keep.map { r.candidateMillis[it] }, keep.map { r.chipLabels[it] })
+                    }
+                }
+                else -> r
+            }
+        }
+
+        DAY_AFTER_TOMORROW_REGEX.matchEntire(text)?.let { m ->
+            val cal = absCal.clone() as Calendar
+            cal.add(Calendar.DAY_OF_YEAR, 2)
+            return atTimeOrDefault(cal, m.groupValues[1], now, tz, severity)
+        }
+
+        IN_N_DAYS_AT_REGEX.matchEntire(text)?.let { m ->
+            val n = m.groupValues[1].toIntOrNull() ?: return null
+            if (n !in 1..366) return DateResolution.Failed
+            val cal = absCal.clone() as Calendar
+            cal.add(Calendar.DAY_OF_YEAR, n)
+            return atTimeOrDefault(cal, m.groupValues[2], now, tz, severity)
+        }
+
+        NEXT_WEEK_AT_REGEX.matchEntire(text)?.let { m ->
+            val cal = absCal.clone() as Calendar
+            cal.add(Calendar.DAY_OF_YEAR, 7)
+            return atTimeOrDefault(cal, m.groupValues[1], now, tz, severity)
+        }
+
+        NEXT_MONTH_REGEX.matchEntire(text)?.let { m ->
+            val cal = absCal.clone() as Calendar
+            cal.add(Calendar.MONTH, 1)
+            return atTimeOrDefault(cal, m.groupValues[1], now, tz, severity)
+        }
+
+        // "the 24th", "24th at 5pm": this month if still ahead, otherwise the next month that has that day.
+        ORDINAL_DAY_REGEX.matchEntire(text)?.let { m ->
+            val day = m.groupValues[1].toIntOrNull() ?: return null
+            if (day !in 1..31) return DateResolution.Failed
+            val timePart = m.groupValues[2].takeIf { it.isNotBlank() }
+            val parsed = timePart?.let { parseTimePart(it, severity = severity) ?: return DateResolution.Failed }
+            for (ahead in 0..2) {
+                val cal = absCal.clone() as Calendar
+                cal.set(Calendar.DAY_OF_MONTH, 1)
+                cal.add(Calendar.MONTH, ahead)
+                if (!isValidDate(cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), day)) continue
+                cal.set(Calendar.DAY_OF_MONTH, day)
+                val r = if (parsed == null) defaultMorning(cal, now)
+                else resolveTargetTime(parsed, cal, now, allowPastRollForward = false, timeZone = tz)
+                if (r is DateResolution.Exact || r is DateResolution.NeedsClarification) return r
+            }
+            return DateResolution.PastTime
+        }
+
+        NUMERIC_DATE_REGEX.matchEntire(text)?.let { m ->
+            return resolveNumericDate(m, absCal, now, tz, severity)
+        }
+
+        return null
+    }
+
+    private fun atTimeOrDefault(cal: Calendar, timePart: String, now: Long, tz: TimeZone, severity: Int?): DateResolution {
+        if (timePart.isBlank()) return defaultMorning(cal, now)
+        val parsed = parseTimePart(timePart.trim(), severity = severity) ?: return DateResolution.Failed
+        return resolveTargetTime(parsed, cal, now, allowPastRollForward = false, timeZone = tz)
+    }
+
+    private fun defaultMorning(cal: Calendar, now: Long): DateResolution {
+        val c = cal.clone() as Calendar
+        c.set(Calendar.HOUR_OF_DAY, 9)
+        c.set(Calendar.MINUTE, 0)
+        c.set(Calendar.SECOND, 0)
+        c.set(Calendar.MILLISECOND, 0)
+        return if (c.timeInMillis < now) DateResolution.PastTime else DateResolution.Exact(c.timeInMillis)
+    }
+
+    /**
+     * "24/11", "24/11/2026", "2026/11/24", "24-11-26", "24.11.2026". When both readings are
+     * possible ("5/6"), both dates are offered as chips: the resolver never picks a locale.
+     */
+    private fun resolveNumericDate(m: MatchResult, absCal: Calendar, now: Long, tz: TimeZone, severity: Int?): DateResolution {
+        val a = m.groupValues[1]
+        val b = m.groupValues[2].toIntOrNull() ?: return DateResolution.Failed
+        val c = m.groupValues[3].takeIf { it.isNotBlank() }
+        val timePart = m.groupValues[4].takeIf { it.isNotBlank() }
+        val curYear = absCal.get(Calendar.YEAR)
+
+        val readings = mutableListOf<Triple<Int?, Int, Int>>() // (year or null, month0, day)
+        if (a.length == 4) {
+            val d = c?.toIntOrNull() ?: return DateResolution.Failed
+            readings += Triple(a.toInt(), b - 1, d)
+        } else {
+            val x = a.toIntOrNull() ?: return DateResolution.Failed
+            val year = c?.let { y -> y.toInt().let { if (y.length == 2) 2000 + it else it } }
+            when {
+                x > 12 && b in 1..12 -> readings += Triple(year, b - 1, x)
+                b > 12 && x in 1..12 -> readings += Triple(year, x - 1, b)
+                x in 1..12 && b in 1..12 -> {
+                    readings += Triple(year, b - 1, x)            // day/month first (as written in most of the world)
+                    if (x != b) readings += Triple(year, x - 1, b) // month/day
+                }
+                else -> return DateResolution.Failed
+            }
+        }
+
+        val parsed = timePart?.let { parseTimePart(it, severity = severity) ?: return DateResolution.Failed }
+        val candidates = mutableListOf<Long>()
+        for ((year, month0, day) in readings) {
+            val years = if (year != null) listOf(year) else listOf(curYear, curYear + 1)
+            for (y in years) {
+                if (!isValidDate(y, month0, day)) continue
+                val cal = absCal.clone() as Calendar
+                cal.set(Calendar.DAY_OF_MONTH, 1)
+                cal.set(Calendar.YEAR, y)
+                cal.set(Calendar.MONTH, month0)
+                cal.set(Calendar.DAY_OF_MONTH, day)
+                val r = if (parsed == null) defaultMorning(cal, now)
+                else resolveTargetTime(parsed, cal, now, allowPastRollForward = false, timeZone = tz)
+                val found = when (r) {
+                    is DateResolution.Exact -> listOf(r.timeMillis)
+                    is DateResolution.NeedsClarification -> r.candidateMillis.filter { it > now }
+                    else -> emptyList()
+                }
+                if (found.isNotEmpty()) {
+                    candidates += found
+                    break // the nearest year that works; never also offer the year after
+                }
+            }
+        }
+        val distinct = candidates.distinct().sorted().take(4)
+        return when (distinct.size) {
+            0 -> DateResolution.PastTime
+            1 -> DateResolution.Exact(distinct[0])
+            else -> DateResolution.NeedsClarification(distinct, distinct.map { formatChipLabel(it, now, tz) })
+        }
+    }
+
+    /** "2026-11-24T15:40:00Z", "2026-11-24T21:10+05:30", or without a zone (read in the user's zone). */
+    private fun resolveIsoInstant(text: String, tz: TimeZone): DateResolution? {
+        val m = ISO_INSTANT_REGEX.matchEntire(text) ?: return null
+        val millis = try {
+            val upper = text.uppercase(Locale.ROOT)
+            if (m.groupValues[2].isNotEmpty()) {
+                val withColon = upper.replace(Regex("""([+-]\d{2})(\d{2})$"""), "$1:$2")
+                java.time.OffsetDateTime.parse(withColon).toInstant().toEpochMilli()
+            } else {
+                java.time.LocalDateTime.parse(upper.let { if (m.groupValues[1].isEmpty()) "$it:00" else it })
+                    .atZone(tz.toZoneId()).toInstant().toEpochMilli()
+            }
+        } catch (_: Exception) {
+            return DateResolution.Failed
+        }
+        return if (millis < clock.now()) DateResolution.PastTime else DateResolution.Exact(millis)
+    }
+
+    private fun isValidDate(year: Int, month0: Int, day: Int): Boolean {
+        if (month0 !in 0..11 || day < 1) return false
+        val c = Calendar.getInstance()
+        c.clear()
+        c.set(Calendar.YEAR, year)
+        c.set(Calendar.MONTH, month0)
+        return day <= c.getActualMaximum(Calendar.DAY_OF_MONTH)
+    }
+
+    private fun weekdayOf(millis: Long, tz: TimeZone): Int =
+        Calendar.getInstance(tz).apply { timeInMillis = millis }.get(Calendar.DAY_OF_WEEK)
 
     private data class ParsedTime(
         val hour: Int,

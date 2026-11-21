@@ -383,7 +383,7 @@ fun TogglePanelContent(isStandaloneScreen: Boolean = false) {
                             .padding(6.dp),
                         verticalArrangement = Arrangement.spacedBy(2.dp),
                     ) {
-                        listOf(PersonaType.companion, PersonaType.cofounder, PersonaType.coach, PersonaType.chill, PersonaType.minimal).forEach { p ->
+                        listOf(PersonaType.companion, PersonaType.cofounder, PersonaType.coach, PersonaType.chill, PersonaType.minimal, PersonaType.ultron).forEach { p ->
                             val selected = persona == p
                             Row(
                                 Modifier
@@ -507,6 +507,31 @@ private fun QuickCaptureContent() {
     }
     val focus = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    // Custom date and time from the system pickers. Sent as "yyyy-MM-dd HH:mm" so the resolver
+    // reads it exactly (24-hour, explicit year): nothing to guess.
+    var customValue by remember { mutableStateOf<String?>(null) }
+    var customLabel by remember { mutableStateOf<String?>(null) }
+
+    fun pickCustom() {
+        val start = java.time.LocalDateTime.now().plusHours(1).withMinute(0)
+        val is24 = android.text.format.DateFormat.is24HourFormat(ctx)
+        android.app.DatePickerDialog(ctx, { _, y, m, d ->
+            android.app.TimePickerDialog(ctx, { _, hh, mm ->
+                val dt = java.time.LocalDateTime.of(y, m + 1, d, hh, mm)
+                if (dt.isBefore(java.time.LocalDateTime.now())) {
+                    dispatch(MineAction.ShowToast("That time has already passed"))
+                } else {
+                    customValue = "%04d-%02d-%02d %02d:%02d".format(y, m + 1, d, hh, mm)
+                    customLabel = dt.format(java.time.format.DateTimeFormatter.ofPattern(if (is24) "EEE d MMM, HH:mm" else "EEE d MMM, h:mm a", java.util.Locale.getDefault()))
+                    trigger = TriggerType.time
+                    time = customValue!!
+                }
+            }, start.hour, start.minute, is24).show()
+        }, start.year, start.monthValue - 1, start.dayOfMonth).apply {
+            datePicker.minDate = System.currentTimeMillis() - 1_000
+        }.show()
+    }
 
     fun save() {
         if (title.isBlank()) return
@@ -561,6 +586,10 @@ private fun QuickCaptureContent() {
                     trigger = TriggerType.time
                     time = if (time == p) "" else p
                 }
+            }
+            val customOn = trigger == TriggerType.time && customValue != null && time == customValue
+            CaptureChip(if (customOn) customLabel ?: "Custom" else "Custom time…", customOn, numeric = customOn) {
+                if (customOn) { time = ""; customValue = null; customLabel = null } else pickCustom()
             }
         }
         Column(Modifier.padding(horizontal = 20.dp).padding(top = 16.dp)) {

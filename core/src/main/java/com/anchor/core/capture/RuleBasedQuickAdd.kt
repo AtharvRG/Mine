@@ -7,6 +7,7 @@ package com.anchor.core.capture
 import com.anchor.core.models.AlarmTier
 import com.anchor.core.time.DateResolution
 import com.anchor.core.time.DateResolver
+import com.anchor.core.time.TimeExpressionExtractor
 import java.util.Locale
 
 /**
@@ -95,7 +96,53 @@ class RuleBasedQuickAdd(
             }
         }
 
+        // 4. An explicit command ("remind me…", "set alarm…") with the time anywhere in the
+        // sentence: "remind me to check in on dad at 5pm", "set alarm 6:45am gym tomorrow".
+        if (COMMAND_PREFIX.containsMatchIn(trimmed)) {
+            fromExtraction(trimmed, tier)?.let { return it }
+        }
+
         return null
+    }
+
+    /**
+     * For the Quick-add sheet, where everything typed is meant to be a task: the time may sit
+     * anywhere ("3:40pm dentist tomorrow", "Call Mom 24th Nov 3.40pm"). Not used for chat
+     * messages, where "I have a meeting at 5pm, how should I prep?" must stay a question.
+     */
+    fun parseLoose(input: String): QuickAddResult? {
+        val trimmed = input.trim()
+        if (trimmed.isEmpty()) return null
+        parse(trimmed)?.let { return it }
+        val lower = trimmed.lowercase(Locale.ROOT)
+        val tier = if (lower.startsWith("gentle reminder") || lower.startsWith("gentle remind")) AlarmTier.GENTLE else AlarmTier.ALARM
+        return fromExtraction(trimmed, tier)
+    }
+
+    /**
+     * Pulls the time phrase out of the sentence. A time the resolver can't place yet (ambiguous
+     * "at 6", a past time) still travels as [QuickAddResult.dueText] so the gateway asks about it
+     * instead of the item silently losing its time.
+     */
+    private fun fromExtraction(text: String, tier: AlarmTier): QuickAddResult? {
+        val ex = TimeExpressionExtractor.extract(text) ?: return null
+        val title = ex.title.trim()
+        if (title.isEmpty()) return null
+        val resolution = runCatching { dateResolver.resolve(ex.dueText) }.getOrNull() ?: return null
+        if (resolution == DateResolution.Failed) return null
+        return QuickAddResult(
+            title = title,
+            dueAt = (resolution as? DateResolution.Exact)?.timeMillis,
+            dueText = ex.dueText,
+            tier = tier
+        )
+    }
+
+    private companion object {
+        val COMMAND_PREFIX = Regex(
+            "^\\s*(?:remind\\s+me|gentle\\s+remind(?:er)?|set\\s+(?:an?\\s+)?(?:alarm|reminder|timer)|alarm\\b|todo\\s*:|task\\s*:)",
+            RegexOption.IGNORE_CASE
+        )
     }
 
     private fun parseTrailingTime(content: String, tier: AlarmTier): QuickAddResult? {
