@@ -60,7 +60,7 @@ class ProviderOrchestrator(
                 limiter.recordSuccess(target.limiterKey)
                 return@flow // Success! Turn completes.
             } catch (e: Http429Exception) {
-                limiter.apply429Cooldown(target.limiterKey, e.retryAfterSeconds)
+                limiter.apply429Cooldown(target.limiterKey, e.retryAfterSeconds ?: target.benchSecondsOn429)
                 lastError = e
                 // H-12 (R-16) / Audit Part 6: In envelope mode, failover must clear to prevent invalid concatenated JSON
                 if (envelopeMode || !emittedText) emit(StreamEvent.Clear)

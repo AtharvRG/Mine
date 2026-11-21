@@ -11,8 +11,16 @@ data class Target(
     val key: String,
     val limitRpm: Int,
     val model: String? = null,
-    val limiterKey: String = key
-)
+    val limiterKey: String = key,
+    /**
+     * How long this target sits out after a 429 that carried no Retry-After. Null keeps the
+     * limiter's exponential backoff. Pooled keys ([KeyPool]) bench for a full minute, because
+     * another key is ready to take the request right away.
+     */
+    val benchSecondsOn429: Int? = null
+) {
+    override fun toString(): String = "Target(id=$id, key=${if (key.isBlank()) "" else "***"}, limitRpm=$limitRpm, model=$model)"
+}
 
 interface HttpTransport {
     suspend fun postStream(target: Target, body: String): Flow<String>

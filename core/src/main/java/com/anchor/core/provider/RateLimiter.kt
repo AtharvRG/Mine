@@ -26,6 +26,24 @@ class RateLimiter(
 
     companion object {
         const val MAX_COOLDOWN_MS = 3600_000L // 1 hour max reasonable cooldown
+        /** No single key is ever pushed past this many requests a minute, whatever it is configured to. */
+        const val HARD_RPM_CAP = 50
+    }
+
+    /** One key's state for [KeyPool]: requests in the last minute, last use, and whether it is benched. */
+    data class KeyUsage(val inWindow: Int, val lastUsedAt: Long, val cooling: Boolean)
+
+    suspend fun usage(key: String): KeyUsage = mutex.withLock {
+        val now = clock()
+        val cooldown = keyCooldowns[key] ?: (persistence?.getCooldown(key) ?: 0L).also { keyCooldowns[key] = it }
+        val nowMono = monotonicClock()
+        val stamps = keyTimestamps[key]
+        stamps?.removeAll { nowMono - it > 60_000 || nowMono < it }
+        KeyUsage(
+            inWindow = stamps?.size ?: 0,
+            lastUsedAt = stamps?.lastOrNull() ?: Long.MIN_VALUE,
+            cooling = cooldown > now && cooldown <= now + MAX_COOLDOWN_MS,
+        )
     }
 
     private val keyTimestamps = mutableMapOf<String, MutableList<Long>>()
@@ -51,7 +69,7 @@ class RateLimiter(
         val nowMono = monotonicClock()
         val stamps = keyTimestamps.getOrPut(key) { mutableListOf() }
         stamps.removeAll { nowMono - it > 60_000 || nowMono < it }
-        return stamps.size < minOf(limit, 50)
+        return stamps.size < minOf(limit, HARD_RPM_CAP)
     }
 
     suspend fun recordRequest(key: String) = mutex.withLock {
