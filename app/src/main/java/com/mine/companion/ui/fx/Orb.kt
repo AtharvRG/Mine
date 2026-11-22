@@ -134,10 +134,10 @@ fun Orb(
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)
 @Composable
 private fun Orb33(colors: Pair<Color, Color>, agentState: AgentState?, modifier: Modifier, seed: Int?) {
-    val texture by produceState<Bitmap?>(null) { value = withContext(Dispatchers.Default) { PerlinTexture.get() } }
+    val texture by produceState<Bitmap?>(null) { value = withContext(Dispatchers.Default) { runCatching { PerlinTexture.get() }.getOrNull() } }
     val tex = texture
     if (tex == null) {
-        Spacer(modifier)
+        OrbFallback(colors, modifier)
         return
     }
     val latestColors by rememberUpdatedState(colors)
@@ -145,13 +145,19 @@ private fun Orb33(colors: Pair<Color, Color>, agentState: AgentState?, modifier:
     val s = remember(seed) { OrbState(seed) }
     val frame = remember { mutableLongStateOf(0L) }
     val shader = remember(tex) {
-        RuntimeShader(ORB_AGSL).apply {
-            val bs = BitmapShader(tex, Shader.TileMode.REPEAT, Shader.TileMode.REPEAT)
-            bs.filterMode = BitmapShader.FILTER_MODE_LINEAR
-            setInputShader("uPerlin", bs)
-            setFloatUniform("uTexSize", PerlinTexture.SIZE.toFloat())
-            setFloatUniform("uInverted", 1f)
-        }
+        runCatching {
+            RuntimeShader(ORB_AGSL).apply {
+                val bs = BitmapShader(tex, Shader.TileMode.REPEAT, Shader.TileMode.REPEAT)
+                bs.filterMode = BitmapShader.FILTER_MODE_LINEAR
+                setInputShader("uPerlin", bs)
+                setFloatUniform("uTexSize", PerlinTexture.SIZE.toFloat())
+                setFloatUniform("uInverted", 1f)
+            }
+        }.getOrNull()
+    }
+    if (shader == null) {
+        OrbFallback(colors, modifier)
+        return
     }
 
     val fxActive = LocalFxActive.current
@@ -201,24 +207,37 @@ private fun Orb33(colors: Pair<Color, Color>, agentState: AgentState?, modifier:
 
     Spacer(
         modifier.drawWithCache {
-            val brush = ShaderBrush(shader)
+            val brush = runCatching { ShaderBrush(shader) }.getOrNull()
             val half = min(size.width, size.height) / 2f
-
             val radiusPx = half * (3.5f / (5f * tan(37.5f * PI.toFloat() / 180f)))
-            shader.setFloatUniform("uCenter", size.width / 2f, size.height / 2f)
-            shader.setFloatUniform("uRadiusPx", radiusPx)
-            shader.setFloatUniform("uOffA", s.offsets[0], s.offsets[1], s.offsets[2], s.offsets[3])
-            shader.setFloatUniform("uOffB", s.offsets[4], s.offsets[5], s.offsets[6], 0f)
+            if (brush != null) {
+                runCatching {
+                    shader.setFloatUniform("uCenter", size.width / 2f, size.height / 2f)
+                    shader.setFloatUniform("uRadiusPx", radiusPx)
+                    shader.setFloatUniform("uOffA", s.offsets[0], s.offsets[1], s.offsets[2], s.offsets[3])
+                    shader.setFloatUniform("uOffB", s.offsets[4], s.offsets[5], s.offsets[6], 0f)
+                }
+            }
             onDrawBehind {
                 frame.longValue
-                shader.setFloatUniform("uTime", s.time)
-                shader.setFloatUniform("uAnimation", s.animation)
-                shader.setFloatUniform("uColor1", s.c1[0], s.c1[1], s.c1[2])
-                shader.setFloatUniform("uColor2", s.c2[0], s.c2[1], s.c2[2])
-                shader.setFloatUniform("uInputVolume", s.curIn)
-                shader.setFloatUniform("uOutputVolume", s.curOut)
-                shader.setFloatUniform("uOpacity", s.opacity)
-                drawRect(brush)
+                var drawn = false
+                if (brush != null) {
+                    drawn = runCatching {
+                        shader.setFloatUniform("uTime", s.time)
+                        shader.setFloatUniform("uAnimation", s.animation)
+                        shader.setFloatUniform("uColor1", s.c1[0], s.c1[1], s.c1[2])
+                        shader.setFloatUniform("uColor2", s.c2[0], s.c2[1], s.c2[2])
+                        shader.setFloatUniform("uInputVolume", s.curIn)
+                        shader.setFloatUniform("uOutputVolume", s.curOut)
+                        shader.setFloatUniform("uOpacity", s.opacity)
+                        drawRect(brush)
+                        true
+                    }.getOrDefault(false)
+                }
+                if (!drawn) {
+                    val r = half * 0.912f
+                    drawCircle(colors.first, radius = r)
+                }
             }
         },
     )

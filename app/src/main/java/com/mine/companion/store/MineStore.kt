@@ -166,8 +166,7 @@ class MineStore(application: Application) : AndroidViewModel(application) {
             .conflate()
             .flowOn(Dispatchers.Default)
             .collect { (engine, dev) ->
-                val merged = withContext(Dispatchers.Default) { merge(_state.value, engine, dev) }
-                _state.value = merged
+                _state.update { prev -> merge(prev, engine, dev) }
                 onEngineSideEffects(engine, dev)
             }
     }

@@ -217,9 +217,16 @@ object VoiceSession {
      * null when the session should end (long silence or no speech engine).
      */
     private suspend fun listenOnce(ctx: Context): String? {
-        val sherpa = SherpaVoiceEngine.getInstance(ctx)?.takeIf { it.isSttAvailable }
-        if (sherpa != null) return listenWithSherpa(ctx, sherpa)
-        if (SpeechRecognizer.isRecognitionAvailable(ctx)) return listenWithSystem(ctx)
+        val sherpa = runCatching { SherpaVoiceEngine.getInstance(ctx)?.takeIf { it.isSttAvailable } }.getOrNull()
+        if (sherpa != null) {
+            val spoken = runCatching { listenWithSherpa(ctx, sherpa) }.getOrNull()
+            if (spoken != null) return spoken
+        }
+        val sysAvailable = runCatching { SpeechRecognizer.isRecognitionAvailable(ctx) }.getOrDefault(false)
+        if (sysAvailable) {
+            val spoken = runCatching { listenWithSystem(ctx) }.getOrNull()
+            if (spoken != null) return spoken
+        }
         _ui.update { it.copy(problem = "No speech recognition is available on this phone. Install the offline voice model in Settings → Voice.") }
         return null
     }
@@ -272,42 +279,50 @@ object VoiceSession {
 
     /** Android's recogniser must run on the main thread; results stream into [Ui.heard]. */
     private suspend fun listenWithSystem(ctx: Context): String? = withContext(Dispatchers.Main) {
+        val recognizer = runCatching { SpeechRecognizer.createSpeechRecognizer(ctx) }.getOrNull()
+        if (recognizer == null) {
+            _ui.update { it.copy(problem = "Speech recognition could not be started on this phone.") }
+            return@withContext null
+        }
         val result = CompletableDeferred<String?>()
-        val recognizer = SpeechRecognizer.createSpeechRecognizer(ctx)
-        recognizer.setRecognitionListener(object : RecognitionListener {
-            override fun onReadyForSpeech(params: Bundle?) {}
-            override fun onBeginningOfSpeech() {}
-            override fun onRmsChanged(rmsdB: Float) { level.set(((rmsdB + 2f) / 12f).coerceIn(0f, 1f)) }
-            override fun onBufferReceived(buffer: ByteArray?) {}
-            override fun onEndOfSpeech() { _ui.update { it.copy(phase = Phase.THINKING) } }
-            override fun onError(error: Int) {
-                when (error) {
-                    SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> result.complete(null)
-                    SpeechRecognizer.ERROR_NO_MATCH -> result.complete("")
-                    SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> {
-                        _ui.update { it.copy(problem = "Mine needs microphone access for voice.") }
-                        result.complete(null)
-                    }
-                    else -> result.complete("")
-                }
-            }
-            override fun onResults(results: Bundle?) {
-                val text = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull().orEmpty()
-                result.complete(text)
-            }
-            override fun onPartialResults(partial: Bundle?) {
-                val text = partial?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull()
-                if (!text.isNullOrBlank()) _ui.update { it.copy(heard = text) }
-            }
-            override fun onEvent(eventType: Int, params: Bundle?) {}
-        })
-        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
-            .putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-            .putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
-            .putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, SILENCE_END_MS)
         try {
+            recognizer.setRecognitionListener(object : RecognitionListener {
+                override fun onReadyForSpeech(params: Bundle?) {}
+                override fun onBeginningOfSpeech() {}
+                override fun onRmsChanged(rmsdB: Float) { level.set(((rmsdB + 2f) / 12f).coerceIn(0f, 1f)) }
+                override fun onBufferReceived(buffer: ByteArray?) {}
+                override fun onEndOfSpeech() { _ui.update { it.copy(phase = Phase.THINKING) } }
+                override fun onError(error: Int) {
+                    when (error) {
+                        SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> result.complete(null)
+                        SpeechRecognizer.ERROR_NO_MATCH -> result.complete("")
+                        SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> {
+                            _ui.update { it.copy(problem = "Mine needs microphone access for voice.") }
+                            result.complete(null)
+                        }
+                        else -> result.complete("")
+                    }
+                }
+                override fun onResults(results: Bundle?) {
+                    val text = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull().orEmpty()
+                    result.complete(text)
+                }
+                override fun onPartialResults(partial: Bundle?) {
+                    val text = partial?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull()
+                    if (!text.isNullOrBlank()) _ui.update { it.copy(heard = text) }
+                }
+                override fun onEvent(eventType: Int, params: Bundle?) {}
+            })
+            val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
+                .putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                .putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
+                .putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, SILENCE_END_MS)
             recognizer.startListening(intent)
             withTimeoutOrNull(MAX_UTTERANCE_MS + 5_000) { result.await() } ?: ""
+        } catch (t: Throwable) {
+            if (t is CancellationException) throw t
+            _ui.update { it.copy(problem = "Speech recognition error: ${t.message ?: t.javaClass.simpleName}") }
+            null
         } finally {
             runCatching { recognizer.cancel() }
             runCatching { recognizer.destroy() }

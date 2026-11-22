@@ -91,11 +91,17 @@ private fun PulsingBorder33(params: PulsingBorderParams, modifier: Modifier, res
     val lerp = remember { LerpState(params) }
     val frame = remember { mutableLongStateOf(0L) }
     val shader = remember {
-        RuntimeShader(PULSING_BORDER_AGSL).apply {
-            val noise = BitmapShader(NoiseTexture.bitmap, Shader.TileMode.REPEAT, Shader.TileMode.REPEAT)
-            noise.filterMode = BitmapShader.FILTER_MODE_NEAREST
-            setInputShader("u_noise", noise)
-        }
+        runCatching {
+            RuntimeShader(PULSING_BORDER_AGSL).apply {
+                val noise = BitmapShader(NoiseTexture.bitmap, Shader.TileMode.REPEAT, Shader.TileMode.REPEAT)
+                noise.filterMode = BitmapShader.FILTER_MODE_NEAREST
+                setInputShader("u_noise", noise)
+            }
+        }.getOrNull()
+    }
+    if (shader == null) {
+        PulsingBorderFallback(params, modifier)
+        return
     }
 
     val fxActive = LocalFxActive.current
@@ -136,33 +142,46 @@ private fun PulsingBorder33(params: PulsingBorderParams, modifier: Modifier, res
                     }
                 }
                 .drawWithCache {
-                    val brush = ShaderBrush(shader)
-                    shader.setFloatUniform("u_resolution", size.width, size.height)
-                    shader.setFloatUniform("u_px", 1f / min(size.width, size.height).coerceAtLeast(1f))
+                    val brush = runCatching { ShaderBrush(shader) }.getOrNull()
+                    runCatching {
+                        shader.setFloatUniform("u_resolution", size.width, size.height)
+                        shader.setFloatUniform("u_px", 1f / min(size.width, size.height).coerceAtLeast(1f))
+                    }
                     onDrawBehind {
                         frame.longValue
                         val p = latest
-                        shader.setFloatUniform("u_scale", p.scale)
-                        shader.setFloatUniform("u_time", lerp.time)
-                        setColor(shader, "u_colorBack", p.colorBack)
-                        for (i in 0 until 5) setColor(shader, "u_c$i", p.colors.getOrElse(i) { Color.Transparent })
-                        shader.setFloatUniform("u_colorsCount", min(p.colors.size, 5).toFloat())
-                        shader.setFloatUniform("u_roundness", p.roundness)
-                        shader.setFloatUniform("u_thickness", lerp.thickness)
-                        shader.setFloatUniform("u_marginLeft", p.margin)
-                        shader.setFloatUniform("u_marginRight", p.margin)
-                        shader.setFloatUniform("u_marginTop", p.margin)
-                        shader.setFloatUniform("u_marginBottom", p.margin)
-                        shader.setFloatUniform("u_aspectRatio", if (p.aspectSquare) 1f else 0f)
-                        shader.setFloatUniform("u_softness", p.softness)
-                        shader.setFloatUniform("u_intensity", lerp.intensity)
-                        shader.setFloatUniform("u_bloom", lerp.bloom)
-                        shader.setFloatUniform("u_spots", p.spots.toFloat())
-                        shader.setFloatUniform("u_spotSize", p.spotSize)
-                        shader.setFloatUniform("u_pulse", lerp.pulse)
-                        shader.setFloatUniform("u_smoke", lerp.smoke)
-                        shader.setFloatUniform("u_smokeSize", p.smokeSize)
-                        drawRect(brush)
+                        var drawn = false
+                        if (brush != null) {
+                            drawn = runCatching {
+                                shader.setFloatUniform("u_scale", p.scale)
+                                shader.setFloatUniform("u_time", lerp.time)
+                                setColor(shader, "u_colorBack", p.colorBack)
+                                for (i in 0 until 5) setColor(shader, "u_c$i", p.colors.getOrElse(i) { Color.Transparent })
+                                shader.setFloatUniform("u_colorsCount", min(p.colors.size, 5).toFloat())
+                                shader.setFloatUniform("u_roundness", p.roundness)
+                                shader.setFloatUniform("u_thickness", lerp.thickness)
+                                shader.setFloatUniform("u_marginLeft", p.margin)
+                                shader.setFloatUniform("u_marginRight", p.margin)
+                                shader.setFloatUniform("u_marginTop", p.margin)
+                                shader.setFloatUniform("u_marginBottom", p.margin)
+                                shader.setFloatUniform("u_aspectRatio", if (p.aspectSquare) 1f else 0f)
+                                shader.setFloatUniform("u_softness", p.softness)
+                                shader.setFloatUniform("u_intensity", lerp.intensity)
+                                shader.setFloatUniform("u_bloom", lerp.bloom)
+                                shader.setFloatUniform("u_spots", p.spots.toFloat())
+                                shader.setFloatUniform("u_spotSize", p.spotSize)
+                                shader.setFloatUniform("u_pulse", lerp.pulse)
+                                shader.setFloatUniform("u_smoke", lerp.smoke)
+                                shader.setFloatUniform("u_smokeSize", p.smokeSize)
+                                drawRect(brush)
+                                true
+                            }.getOrDefault(false)
+                        }
+                        if (!drawn) {
+                            val stroke = min(size.width, size.height) * p.thickness * 0.5f
+                            val radius = min(size.width, size.height) * 0.5f * p.roundness
+                            drawRoundRect(p.colors.first(), cornerRadius = CornerRadius(radius), style = Stroke(stroke))
+                        }
                     }
                 },
         )

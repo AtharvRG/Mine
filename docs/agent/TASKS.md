@@ -1,6 +1,17 @@
 # TASKS (one at a time, smallest first). Status: [ ] open, [~] in progress, [x] done+reviewed
 Specs for R1-R10: docs/agent/work/session1-remediation-spec.md. Read the task's section before starting.
 
+## Onboarding Completion & Voice Mode Crash Remediation (2026-11-22)
+[x] Fix Onboarding Finish Crash & Prefilled Restart
+    [x] Safely resolve ZoneId in `ChatController.kt:OnboardingFinish` with fallback chain avoiding `ZoneRulesException` on regional timezones (e.g. IST).
+    [x] Switch `MineStore.kt` state merge collection to atomic `_state.update` to prevent race conditions during S14Home screen transition.
+[x] Fix Voice Session & Hands-Free Screen Crash
+    [x] Add `android.speech.RecognitionService` to `<queries>` in `AndroidManifest.xml` for Android 11+ package visibility.
+    [x] Guard `SpeechRecognizer.createSpeechRecognizer(ctx)` and listening lifecycle in `VoiceSession.kt`.
+    [x] Guard AGSL `RuntimeShader` compilation in `Orb.kt` and `PulsingBorder.kt` with graceful fallback to Canvas gradients if GPU fails.
+    [x] Correct vector subtraction arithmetic in `ORB_AGSL` in `ShaderSources.kt`.
+    [x] Verification: 756/756 `:core:test` pass, 53/53 `:app:testDebugUnitTest` pass, `:app:assembleDebug` BUILD SUCCESSFUL.
+
 ## Ambient Pipeline, Multi-Key NIM, Model Manager & Conversational Polish (2026-11-22 / D-226)
 [x] Integrated 11 Upgrades from `mine-integrated`
     [x] Ambient Listening Pipeline & Voice Enrollment: Silero VAD segmenter with loudness fallback, utterance-by-utterance speaker verification against enrolled voiceprints, 120s RAM audio buffer, multi-clip enrollment quality scoring with guidance, and cloud NVIDIA Whisper ASR via HTTP/2 gRPC framing over OkHttp.

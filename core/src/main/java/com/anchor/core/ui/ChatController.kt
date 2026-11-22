@@ -1071,7 +1071,15 @@ class ChatController(
                     // Personal details from the About-you step become identity facts.
                     val profileValues = ProfileFields.ALL.associate { f -> f.key to storage.getSetting(f.key).orEmpty() }
                     val profileLocal = storage.getSetting(ProfileFields.KEY_LOCAL_ONLY) == "1"
-                    val today = java.time.Instant.ofEpochMilli(now).atZone(DayRollover.safeTimeZone(storage.getEffectiveDayRule(now).tzId).toZoneId()).toLocalDate()
+                    val zoneId = runCatching {
+                        val tz = DayRollover.safeTimeZone(storage.getEffectiveDayRule(now).tzId)
+                        runCatching { tz.toZoneId() }.getOrElse {
+                            runCatching { java.time.ZoneId.of(tz.id, java.time.ZoneId.SHORT_IDS) }
+                                .getOrElse { java.time.ZoneId.systemDefault() }
+                        }
+                    }.getOrElse { java.time.ZoneId.systemDefault() }
+                    val today = runCatching { java.time.Instant.ofEpochMilli(now).atZone(zoneId).toLocalDate() }
+                        .getOrElse { java.time.LocalDate.now() }
                     val already = storage.getActiveSoulFacts(includeLocalOnly = true).map { it.statement.trim().lowercase() }.toSet()
                     for ((field, statement) in ProfileFields.soulStatements(profileValues, today)) {
                         if (statement.trim().lowercase() in already) continue

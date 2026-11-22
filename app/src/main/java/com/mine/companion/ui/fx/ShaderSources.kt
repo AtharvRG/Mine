@@ -456,7 +456,7 @@ float ringAlpha1 = (inputRadius2 >= ringRadius1) ? opacity1 : 0.0; float
 ringAlpha2 = smoothstep(ringRadius2 - 0.05, ringRadius2 + 0.05, inputRadius1) *
 opacity2; float totalRingAlpha = max(ringAlpha1, ringAlpha2);
 
-float3 ringColor = float3(1.0); color.rgb = 1.0 - (1.0 - color.rgb) * (1.0 -
+float3 ringColor = float3(1.0); color.rgb = float3(1.0) - (float3(1.0) - color.rgb) * (float3(1.0) -
 ringColor * totalRingAlpha);
 
 float luminance = mix(color.r, 1.0 - color.r, uInverted); color.rgb =

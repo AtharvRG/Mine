@@ -1,5 +1,14 @@
 # STATE (update every session; facts only)
-Updated: 2026-11-22 08:37 IST (**Ultron Persona Cadence & Rules Tuning Recompiled. All 756 tests in :core:test passed. All 53 unit tests in :app:testDebugUnitTest passed. :app:assembleDebug BUILD SUCCESSFUL. App updated and verified on device moto g73 5G.**)
+Updated: 2026-11-22 10:15 IST (**Onboarding Completion & Voice Mode Crash Fixes. All 756 tests in :core:test passed. All 53 unit tests in :app:testDebugUnitTest passed. :app:assembleDebug BUILD SUCCESSFUL.**)
+
+**Onboarding Completion & Voice Crash Remediation (2026-11-22):**
+- **Onboarding Completion & Restart Fix (`ChatController.kt` & `MineStore.kt`)**: Safely resolved ZoneId using robust fallback chain (`ZoneId.of(tz.id, ZoneId.SHORT_IDS)` and `ZoneId.systemDefault()`), preventing `ZoneRulesException` on devices with unmapped regional timezone IDs. Converted `MineStore` engine state merging to atomic `_state.update` to prevent concurrent UI state overwrite when transitioning to S14Home.
+- **Voice Session & Package Visibility (`AndroidManifest.xml`, `VoiceSession.kt`)**: Declared `android.speech.RecognitionService` in `<queries>` for Android 11+ package visibility. Guarded `SpeechRecognizer.createSpeechRecognizer(ctx)` and listener registration against null and runtime binding crashes, with clean user problem display when speech recognition is unavailable.
+- **AGSL Runtime Shader Resilience (`Orb.kt`, `PulsingBorder.kt`, `ShaderSources.kt`)**: Wrapped `RuntimeShader` compilation in safe fallback logic delegating to smooth Canvas-based rendering (`OrbFallback`, `PulsingBorderFallback`) if device GPU drivers fail shader compilation. Fixed vector subtraction arithmetic in `ORB_AGSL` (`float3(1.0) - ...`) for strict GLSL/SkSL driver compatibility.
+- **Verification Evidence**:
+  - `:core:test`: 756/756 tests passed (0 failed).
+  - `:app:testDebugUnitTest`: 53/53 unit tests passed (0 failed).
+  - `:app:assembleDebug`: BUILD SUCCESSFUL. Output APK at `app/build/outputs/apk/debug/app-debug.apk`.
 
 **Ambient Pipeline, Multi-Key NIM, Model Manager & Conversational Polish Deliverables (2026-11-22 / D-226):**
 - **Ambient Listening Pipeline & Voice Enrollment**: Integrated Silero VAD segmenter with loudness fallback, utterance-by-utterance speaker verification against enrolled voiceprints, 120s RAM audio buffer, multi-clip enrollment quality scoring with guidance, and cloud NVIDIA Whisper ASR via HTTP/2 gRPC framing over OkHttp.
