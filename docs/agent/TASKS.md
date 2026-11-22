@@ -1,6 +1,12 @@
 # TASKS (one at a time, smallest first). Status: [ ] open, [~] in progress, [x] done+reviewed
 Specs for R1-R10: docs/agent/work/session1-remediation-spec.md. Read the task's section before starting.
 
+## Ultron Persona Tuning & Recompile (2026-11-22)
+[x] Update and Recompile Ultron Persona
+    [x] Set humor to 4, update voice description, add 8 grounded modern rules, and add cadence example in `PersonaPresets.kt`.
+    [x] Keep prompt length within 1600 char limit (1580 chars) to pass `PersonaEngineTest`.
+    [x] Verification: 756/756 `:core:test` pass, 53/53 `:app:testDebugUnitTest` pass, `:app:assembleDebug` BUILD SUCCESSFUL.
+
 ## Onboarding Completion & Voice Mode Crash Remediation (2026-11-22)
 [x] Fix Onboarding Finish Crash & Prefilled Restart
     [x] Safely resolve ZoneId in `ChatController.kt:OnboardingFinish` with fallback chain avoiding `ZoneRulesException` on regional timezones (e.g. IST).

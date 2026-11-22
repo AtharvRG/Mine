@@ -1,5 +1,12 @@
 # STATE (update every session; facts only)
-Updated: 2026-11-22 10:15 IST (**Onboarding Completion & Voice Mode Crash Fixes. All 756 tests in :core:test passed. All 53 unit tests in :app:testDebugUnitTest passed. :app:assembleDebug BUILD SUCCESSFUL.**)
+Updated: 2026-11-22 10:28 IST (**Ultron Persona Tuning & Recompile. All 756 tests in :core:test passed. All 53 unit tests in :app:testDebugUnitTest passed. :app:assembleDebug BUILD SUCCESSFUL.**)
+
+**Ultron Persona Tuning & Recompile (2026-11-22):**
+- **PersonaPresets.kt Tuning**: Updated Ultron persona to humor level 4, sharpened voice directives, added grounded modern rules, and included high-low contrast cadence example within the 1600 char limit (1580 chars).
+- **Verification Evidence**:
+  - `:core:test`: 756/756 tests passed (0 failed).
+  - `:app:testDebugUnitTest`: 53/53 unit tests passed (0 failed).
+  - `:app:assembleDebug`: BUILD SUCCESSFUL. Output APK at `app/build/outputs/apk/debug/app-debug.apk`.
 
 **Onboarding Completion & Voice Crash Remediation (2026-11-22):**
 - **Onboarding Completion & Restart Fix (`ChatController.kt` & `MineStore.kt`)**: Safely resolved ZoneId using robust fallback chain (`ZoneId.of(tz.id, ZoneId.SHORT_IDS)` and `ZoneId.systemDefault()`), preventing `ZoneRulesException` on devices with unmapped regional timezone IDs. Converted `MineStore` engine state merging to atomic `_state.update` to prevent concurrent UI state overwrite when transitioning to S14Home.
