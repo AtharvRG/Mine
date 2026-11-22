@@ -1,5 +1,5 @@
 # STATE (update every session; facts only)
-Updated: 2026-11-22 01:25 IST (**11 Upgrades Integration COMPLETE: Ambient Pipeline, NVIDIA NIM Key Pool, NVIDIA Whisper, Model Manager, Natural Time Parsing, Ultron Persona, About You Interviewer, Onboarding Profile, Proactive Chat & App Notification Sources. All 756 tests in :core:test passed. All 53 unit tests in :app:testDebugUnitTest passed. :app:assembleDebug BUILD SUCCESSFUL. Physical device smoke test verified on moto g73 5G.**)
+Updated: 2026-11-22 08:37 IST (**Ultron Persona Cadence & Rules Tuning Recompiled. All 756 tests in :core:test passed. All 53 unit tests in :app:testDebugUnitTest passed. :app:assembleDebug BUILD SUCCESSFUL. App updated and verified on device moto g73 5G.**)
 
 **Ambient Pipeline, Multi-Key NIM, Model Manager & Conversational Polish Deliverables (2026-11-22 / D-226):**
 - **Ambient Listening Pipeline & Voice Enrollment**: Integrated Silero VAD segmenter with loudness fallback, utterance-by-utterance speaker verification against enrolled voiceprints, 120s RAM audio buffer, multi-clip enrollment quality scoring with guidance, and cloud NVIDIA Whisper ASR via HTTP/2 gRPC framing over OkHttp.
